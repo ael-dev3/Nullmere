@@ -19,9 +19,25 @@ public struct Captivity: Codable, Equatable, Sendable {
     public internal(set) var told: [String]?
 }
 
+extension Captivity {
+    /// How long until a prisoner slips away, as their captor is told it on
+    /// the Mac and the phone: "Slips away in 12 watches".
+    public func leftSaid(at watch: Int) -> String {
+        let left = max(0, since + GameState.captivityLasts - watch)
+        return left == 1 ? "Slips away as the watch turns" : "Slips away in \(left) watches"
+    }
+}
+
 extension GameState {
     /// Watches a prisoner is held before they slip away.
     public static let captivityLasts = 20
+
+    /// Whose a prisoner is, and their level, beside their name: "of House
+    /// Wenmor, level 2".
+    public func prisonerOf(_ prisoner: Commander) -> String {
+        let house = houses.indices.contains(prisoner.owner) ? houses[prisoner.owner].title : "a House since gone"
+        return "of \(house), level \(prisoner.level)"
+    }
 
     /// What a House pays to ransom its commander: ten moonsalt a level,
     /// twenty at the least.

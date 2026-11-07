@@ -240,7 +240,8 @@ scrolled to give it; an order still unanswered when the phone is set aside
 is said to have been. The House, Army and Alliance tabs carry a count of
 what waits on the keeper there: envoys to answer, foes gathered near the
 House's holds, wounded it may heal and the Lyceum sitting; commanders with
-a talent to learn and the watch's venture up the Spine not yet made;
+a talent to learn, the watch's venture up the Spine not yet made and
+prisoners to question;
 invitations and Houses asking to join to answer, and allies' work to help.
 
 - **While you were away.** Coming in again after the phone was set aside,
@@ -352,8 +353,9 @@ invitations and Houses asking to join to answer, and allies' work to help.
   orders the rules would take for them, as on the Mac's board: Lead a
   company of war standing at or beside one of the House's holds, Ride
   second beside a company's leader, Ride home, Learn the next rank of a
-  talent with a point to spend, and Wear a piece of the armoury, from
-  whoever wears it; and Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
+  talent with a point to spend, Wear a piece of the armoury, from
+  whoever wears it, and, for one held prisoner by another House, its
+  ransom while the stores would pay it; and Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
   phone (an iPhone 15 Pro or later, with Apple Intelligence on), told of
   the realm from the House's view as the phone holds it. Each answer
   appears as it is spoken, Stop stops it, and an order the commander puts
@@ -361,7 +363,12 @@ invitations and Houses asking to join to answer, and allies' work to help.
   phone gives. What a commander remembers of counsel taken on the phone
   stays on the phone, for the age, and is forgotten when the phone is let
   go. A phone that can't run the model says so, and why, and everything
-  else plays as ever. The Spine: the House's next stage, what its host
+  else plays as ever. The commanders of other Houses the House holds
+  prisoner, as the Mac's Commanders list them: whose and of what level,
+  how long until they slip away, and the last true thing each told of
+  their House, plainly (the Mac's model gives it in the prisoner's
+  voice; the phone shows the realm's own words), with Question, once a
+  watch, and Let go. The Spine: the House's next stage, what its host
   weighs and its spoils, and Send up the Spine, a line of its strongest free
   commanders or any one alone, once a watch, how it went said in the realm's
   word on it.

@@ -539,10 +539,9 @@ struct PrisonersSection: View {
     let session: GameSession
     let prisoners: [Commander]
 
-    /// How long a prisoner has been held, and how long until they slip away.
+    /// How long until a prisoner slips away, in the rules' words.
     static func held(_ captive: Captivity, at watch: Int) -> String {
-        let left = max(0, captive.since + GameState.captivityLasts - watch)
-        return left == 1 ? "Slips away as the watch turns" : "Slips away in \(left) watches"
+        captive.leftSaid(at: watch)
     }
 
     var body: some View {
@@ -551,11 +550,10 @@ struct PrisonersSection: View {
             Caps("Prisoners", size: 8.5, weight: .medium)
                 .foregroundStyle(Palette.text(0.6))
             ForEach(prisoners, id: \.id) { prisoner in
-                let house = state.houses.indices.contains(prisoner.owner) ? state.houses[prisoner.owner].title : "a House since gone"
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline) {
                         Caps(prisoner.name, size: 9.5, weight: .medium).foregroundStyle(Palette.ink)
-                        Text(verbatim: "of \(house), level \(prisoner.level)")
+                        Text(verbatim: state.prisonerOf(prisoner))
                             .font(.nm(10.5))
                             .foregroundStyle(Palette.text(0.65))
                         Spacer()

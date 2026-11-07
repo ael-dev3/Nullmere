@@ -95,6 +95,29 @@ public struct CompanionLedger: Equatable, Sendable {
         /// The pieces of the House's armoury they may take up, from whoever
         /// wears them.
         public let gear: [Order]
+        /// Held prisoner by another House: their ransom, where the House's
+        /// stores would pay it now.
+        public var ransom: Order? = nil
+    }
+
+    /// A commander of another House the House holds prisoner, as the Mac's
+    /// Commanders list them: whose, how long until they slip away, the last
+    /// true thing they told, and what the rules would let the House do with
+    /// them now.
+    public struct Prisoner: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let name: String
+        /// Whose they are, and their level: "of House Wenmor, level 2".
+        public let of: String
+        /// How long until they slip away.
+        public let held: String
+        /// The last true thing they told, plainly; nil before they are
+        /// questioned.
+        public let told: String?
+        /// Questioned, where the rules would question them now: once a watch.
+        public let question: Order?
+        /// Let go home, for nothing.
+        public let release: Order
     }
 
     /// An envoy waiting on the keeper's answer: whose, what it offers in
@@ -262,6 +285,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let drawVeil: Order?
     public let companies: [Company]
     public let commanders: [Commander]
+    /// The commanders of other Houses the House holds prisoner.
+    public let prisoners: [Prisoner]
     /// Help for each ally with works, musters or study under way the
     /// House hasn't helped yet.
     public let helps: [Order]
@@ -371,7 +396,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
-            && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
+            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -397,7 +422,9 @@ public struct CompanionLedger: Equatable, Sendable {
 
     /// What waits on them on the Army tab, for its badge: commanders with a
     /// talent to learn, and the watch's venture up the Spine not yet made.
-    public var armyWaiting: Int { commanders.filter { !$0.talents.isEmpty }.count + (spine.ventures.isEmpty ? 0 : 1) }
+    public var armyWaiting: Int {
+        commanders.filter { !$0.talents.isEmpty }.count + (spine.ventures.isEmpty ? 0 : 1) + prisoners.filter { $0.question != nil }.count
+    }
 
     /// The House's stores as one stock.
     public var stock: Stock {
@@ -483,10 +510,20 @@ public struct CompanionLedger: Equatable, Sendable {
                 let from = piece.wornBy.flatMap { world.commander($0)?.name }.map { ", from \($0)" } ?? ""
                 return Order(title: "Wear the \(piece.title)\(from)", command: .wear(gear: piece.id, commander: id))
             }
+            let ransom = line.heldBy != nil && world.ransomRefusal(id, as: player) == nil
+                ? Order(title: "Ransom for \(GameState.ransom(for: line.commander))", command: .ransom(commander: id)) : nil
             return Commander(id: id, name: line.commander.name, title: "\(line.commander.archetype.title) · level \(line.level)",
                              standing: standing, canCounsel: line.heldBy == nil, leads: leads, seconds: seconds,
                              home: riding ? Order(title: "Ride home", command: .unassign(commander: id)) : nil,
-                             talents: talents, gear: gear)
+                             talents: talents, gear: gear, ransom: ransom)
+        }
+        prisoners = world.prisoners(heldBy: player).sorted { $0.id < $1.id }.compactMap { prisoner in
+            guard let captive = prisoner.captive else { return nil }
+            let question = world.questionRefusal(prisoner.id, as: player) == nil
+                ? Order(title: "Question \(prisoner.name)", command: .question(commander: prisoner.id)) : nil
+            return Prisoner(id: prisoner.id, name: prisoner.name, of: world.prisonerOf(prisoner), held: captive.leftSaid(at: world.watch),
+                            told: captive.told?.last, question: question,
+                            release: Order(title: "Let \(prisoner.name) go home", command: .release(commander: prisoner.id)))
         }
         self.holds = holds.map { hold in
             var work: [String] = []

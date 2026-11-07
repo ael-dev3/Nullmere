@@ -348,6 +348,72 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(Resource.grain.storeSaid(60, gain: -3, room: 400), "Grain 60, losing 3 each watch, storage 400")
     }
 
+    /// Prisoners from the phone, as the Mac's Commanders show them: a
+    /// commander of another House the House holds, told whose they are and
+    /// how long until they slip away, with Question and Let go, each taken
+    /// by the rules, the Army tab counting a prisoner to question;
+    /// questioned, the true thing they told shown plainly and no second
+    /// question offered this watch; let go, gone. And the House's own
+    /// commander held by another: their ransom offered while the stores
+    /// would pay it, and not without.
+    func testThePhoneQuestionsLetsGoAndRansomsPrisoners() throws {
+        var (state, me) = try world()
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        let theirs = try XCTUnwrap(state.commanders(of: other).first)
+        let waitingBefore = CompanionLedger(world: state, player: me).armyWaiting
+        XCTAssertTrue(CompanionLedger(world: state, player: me).prisoners.isEmpty)
+        func hold(_ commander: Commander, by captor: Int) throws {
+            let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == commander.id })
+            let held = Captivity(by: captor, since: state.watch, questioned: 0, lastQuestioned: nil)
+            state.commanders?[index].captive = held
+        }
+        try hold(theirs, by: me)
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.prisoners.map(\.id), [theirs.id])
+        var prisoner = try XCTUnwrap(ledger.prisoners.first)
+        XCTAssertEqual(prisoner.name, theirs.name)
+        XCTAssertEqual(prisoner.of, "of \(state.houses[other].title), level \(theirs.level)")
+        XCTAssertEqual(prisoner.held, "Slips away in \(GameState.captivityLasts) watches")
+        XCTAssertNil(prisoner.told)
+        let question = try XCTUnwrap(prisoner.question)
+        XCTAssertEqual(question.title, "Question \(theirs.name)")
+        XCTAssertEqual(prisoner.release.title, "Let \(theirs.name) go home")
+        assertTaken([question, prisoner.release], in: state, as: me)
+        XCTAssertEqual(ledger.armyWaiting, waitingBefore + 1, "A prisoner to question")
+
+        // Questioned: the true thing told plainly, and once a watch.
+        _ = try state.perform(question.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        prisoner = try XCTUnwrap(ledger.prisoners.first)
+        let told = try XCTUnwrap(state.commander(theirs.id)?.captive?.told?.last)
+        XCTAssertEqual(prisoner.told, told)
+        XCTAssertTrue(state.knowledge(of: other).contains(told), "One true thing of their House")
+        XCTAssertNil(prisoner.question, "Questioned this watch")
+        XCTAssertEqual(ledger.armyWaiting, waitingBefore)
+
+        // Let go: gone home, a prisoner no more.
+        _ = try state.perform(prisoner.release.command, as: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: me).prisoners.isEmpty)
+        XCTAssertNil(state.commander(theirs.id)?.captive)
+
+        // The House's own commander held by another: ransomed while the stores pay it.
+        let mine = try XCTUnwrap(state.commanders(of: me).first)
+        XCTAssertNil(CompanionLedger(world: state, player: me).commanders.first { $0.id == mine.id }?.ransom, "Not held: no ransom")
+        try hold(mine, by: other)
+        ledger = CompanionLedger(world: state, player: me)
+        let line = try XCTUnwrap(ledger.commanders.first { $0.id == mine.id })
+        XCTAssertEqual(line.standing, "Held prisoner by \(state.houses[other].title)")
+        let ransom = try XCTUnwrap(line.ransom)
+        XCTAssertEqual(ransom.title, "Ransom for \(GameState.ransom(for: mine))")
+        assertTaken([ransom], in: state, as: me)
+        state.houses[me].stock.moonsalt = 5
+        XCTAssertNil(CompanionLedger(world: state, player: me).commanders.first { $0.id == mine.id }?.ransom, "Not without the moonsalt")
+        state.houses[me].stock.moonsalt = 500
+        _ = try state.perform(ransom.command, as: me)
+        XCTAssertNil(state.commander(mine.id)?.captive, "Ransomed home")
+        XCTAssertNil(CompanionLedger(world: state, player: me).commanders.first { $0.id == mine.id }?.ransom)
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

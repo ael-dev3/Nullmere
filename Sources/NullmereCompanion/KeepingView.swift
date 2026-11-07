@@ -540,6 +540,16 @@ struct ArmyTab: View {
                             }
                         }
                     }
+                    // The commanders of other Houses the House holds prisoner,
+                    // as the Mac's Commanders list them: questioned once a
+                    // watch for one true thing of their House, or let go.
+                    if !ledger.prisoners.isEmpty {
+                        Section("Prisoners") {
+                            ForEach(ledger.prisoners) { prisoner in
+                                PrisonerRows(session: session, prisoner: prisoner)
+                            }
+                        }
+                    }
                     // The Spine: its next stage, and a line or one commander sent up it.
                     if !ledger.commanders.isEmpty {
                         Section("The Spine") {
@@ -1164,6 +1174,49 @@ struct CommanderOrders: View {
             }
             .font(Night.small)
         }
+        // Held prisoner by another House: ransomed home, where the stores pay it.
+        if let ransom = commander.ransom {
+            Button(ransom.title) { session.give(ransom.command, told: "\(commander.name): \(ransom.title)") }
+                .buttonStyle(.bordered)
+                .font(Night.small)
+                .accessibilityLabel("Ransom \(commander.name) home, for \(ransom.title.replacingOccurrences(of: "Ransom for ", with: ""))")
+        }
+    }
+}
+
+/// A commander the House holds prisoner, as the Mac's Commanders list them:
+/// whose they are, how long until they slip away, the last true thing they
+/// told, plainly, and Question, once a watch, and Let go.
+struct PrisonerRows: View {
+    let session: CompanionSession
+    let prisoner: CompanionLedger.Prisoner
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: prisoner.name)
+                .font(Night.heading)
+            Text(verbatim: "\(prisoner.of) · \(prisoner.held)")
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+            if let told = prisoner.told {
+                Text(verbatim: told)
+                    .font(Night.small)
+                    .foregroundStyle(Night.moon)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        HStack(spacing: 10) {
+            if let question = prisoner.question {
+                Button("Question") { session.give(question.command, told: question.title) }
+                    .accessibilityLabel(question.title)
+            }
+            Button("Let go") { session.give(prisoner.release.command, told: prisoner.release.title) }
+                .accessibilityLabel(prisoner.release.title)
+        }
+        .buttonStyle(.bordered)
+        .font(Night.small)
     }
 }
 
