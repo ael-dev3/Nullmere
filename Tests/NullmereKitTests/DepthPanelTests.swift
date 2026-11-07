@@ -288,6 +288,26 @@ final class DepthPanelTests: XCTestCase {
                                                     watchesLeft: 1, companies: 1, capacity: 4, isCaller: true)), "Sets out next watch")
     }
 
+    /// A realm of a hundred and twenty-eight Houses: an alliance's leader is
+    /// offered the Houses they have reason to invite, nearest first, and
+    /// finds any other by name, not a row for every House unsworn.
+    func testAWideRealmsLeaderInvitesAmongTheHousesOffered() throws {
+        var state = GameState(settings: GameSettings(seedText: "a wide realm's alliance", houseCount: 128,
+                                                     radius: RealmState.radius(forSeats: 128), keepers: 1))
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Wide Accord"), as: me)
+        let (session, link) = session(state)
+        let invitable = session.state.allianceBoard(for: me).invitable
+        XCTAssertGreaterThan(invitable.count, HouseChoice.shownWhole)
+        let choice = session.state.houseChoice(by: me, excluding: [me], among: Set(invitable))
+        let near = try XCTUnwrap(choice.offered.first)
+        draw(AlliancePanel(session: session), width: 360, height: 2400)
+        XCTAssertEqual(shown.filter { $0.hasPrefix("Invite House") }.count, choice.offered.count, "Among \(shown)")
+        XCTAssertLessThan(choice.offered.count, 40, "Not a row for every House unsworn")
+        XCTAssertTrue(PressableButtons.press("Invite \(near.title)"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .inviteToAlliance(house: near.id))
+    }
+
     func testAnEnemyHoldCallsARally() throws {
         var state = world("pressed rally")
         let me = state.player

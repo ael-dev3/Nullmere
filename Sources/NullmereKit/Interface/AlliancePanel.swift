@@ -192,12 +192,21 @@ struct AlliancePanel: View {
         if board.isLeader, !board.invitable.isEmpty {
             Rule(opacity: 0.18)
             Caps("Invite", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
-            ForEach(board.invitable, id: \.self) { house in
-                HStack {
-                    Text(verbatim: title(house)).font(.nm(11)).foregroundStyle(Palette.text(0.8))
-                    Spacer()
-                    QuietButton(title: "Invite", size: 8.5, name: "Invite \(title(house))") {
-                        session.perform(.inviteToAlliance(house: house))
+            if board.invitable.count > HouseChoice.shownWhole {
+                // A realm of a thousand Houses: those the leader has reason to invite, and any other found by name.
+                HouseChooser(session: session, excluding: [session.player], among: Set(board.invitable)) { house in
+                    QuietButton(title: "Invite \(house.title)", size: 8.5) {
+                        session.perform(.inviteToAlliance(house: house.id))
+                    }
+                }
+            } else {
+                ForEach(board.invitable, id: \.self) { house in
+                    HStack {
+                        Text(verbatim: title(house)).font(.nm(11)).foregroundStyle(Palette.text(0.8))
+                        Spacer()
+                        QuietButton(title: "Invite", size: 8.5, name: "Invite \(title(house))") {
+                            session.perform(.inviteToAlliance(house: house))
+                        }
                     }
                 }
             }
