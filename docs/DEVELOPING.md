@@ -307,6 +307,26 @@ are named for the clips they play (`idle`, `march`, `attack`, `hit`,
 variant's in place of the one for all. The importer's own test arm is made the same way, by
 `Art/blender/fixture_arm.py`.
 
+## The score's instruments
+
+The score plays notes of the
+[VS Chamber Orchestra: Community Edition](https://github.com/sgossner/VSCO-2-CE)
+(CC0 1.0), made into the package by `Art/sound/make.py` from a checkout of
+just the files it names (the library is large; fetch those alone):
+
+```sh
+python3 -m pip install numpy scipy
+python3 -I Art/sound/make.py <VSCO-2-CE checkout> Sources/NullmereSound/Recorded
+```
+
+Each note is made mono at 24 kHz, begun where it sounds, measured for the
+pitch it truly sounds (a held note's through its players' vibrato), made as
+loud to the ear as its fellows, its tail let go once it has died away, and
+a held note looped over a stretch of its sustain that joins without a seam.
+They are written as eight-bit blocks of differences in base64 Swift, read
+back exactly by `Recordings.decode` in `Sources/NullmereSound/Recordings.swift`.
+The files in `Recorded/` are generated: run the script again to change them.
+
 ## Layout
 
 ```
@@ -319,7 +339,7 @@ Sources/
   NullmereModels/     The world's shapes: the land's relief and mesh, the models made in Blender read from their glTF files, and every other model built from solids in code, with the rigs that move them. Pure Swift
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
-  NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments, its hall and the score. Pure Swift
+  NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The world's interface: front door, Metal world, panels, the audio engine
   NullmereSteward/    The steward's command-line entry point
@@ -330,7 +350,7 @@ news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/
 Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
 scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
-Art/                  The models made in Blender: their scripts (blender/), the files they make (models/), and embed.py, which writes a file into the package
+Art/                  The models made in Blender: their scripts (blender/), the files they make (models/), and embed.py, which writes a file into the package; and sound/make.py, which makes the score's recorded notes
 Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader
 Tools/world3d-preview/ Browser preview of the world's land, mist, water and staged models, from the shaders' shared section

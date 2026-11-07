@@ -1,16 +1,16 @@
 import Foundation
 import NullmereCore
 
-/// The game's music: an original score written as it plays, by
-/// instruments modelled on real ones and heard in the synthesiser's hall.
-/// A body of strings bows slow chords in D minor over a bass of their own;
-/// a harp's sparse line wanders the minor pentatonic above them, and as
-/// the chord changes the harp may roll the new one softly up; at war two
-/// drums keep a slow march and the chords darken. Over the launcher, the
-/// title theme of the lake the keeper's realm last lay on, each lake in its
-/// own mode and its own voice, harp or glass bells. It renders on the audio
-/// thread inside `Synth`, from its own seeded generator, so the same seed
-/// always plays the same music.
+/// The game's music: an original score written as it plays, by real
+/// instruments, recorded (Recordings), and heard in the synthesiser's hall.
+/// Cellos and violas bow slow chords in D minor over a double bass; a
+/// harp's sparse line wanders the minor pentatonic above them, and as the
+/// chord changes the harp may roll the new one softly up; at war a great
+/// drum and a field drum keep a slow march and the chords darken. Over the
+/// launcher, the title theme of the lake the keeper's realm last lay on,
+/// each lake in its own mode and its own voice, harp or glockenspiel. It
+/// renders on the audio thread inside `Synth`, from its own seeded
+/// generator, so the same seed always plays the same music.
 public struct Score {
     public enum Mood: Equatable, Sendable {
         case peace
@@ -70,7 +70,7 @@ public struct Score {
     private var bellClock: Float = 2
     private var lastNote = 69
     private var harp: Harp
-    private var bells: Bells
+    private var bells: Glockenspiel
     private var lowDrum: Drum
     private var highDrum: Drum
     private var drumClock: Float = 0
@@ -85,10 +85,12 @@ public struct Score {
     init(seed: UInt32 = 0x0D15_EA5E, sampleRate: Float = 48_000) {
         self.seed = seed
         self.sampleRate = sampleRate
+        // Every recorded note read now, so none is read as the score plays.
+        Recordings.load()
         harp = Harp(sampleRate: sampleRate)
-        bells = Bells(sampleRate: sampleRate)
-        lowDrum = Drum(pitch: 55, sampleRate: sampleRate)
-        highDrum = Drum(pitch: 98, sampleRate: sampleRate)
+        bells = Glockenspiel(sampleRate: sampleRate)
+        lowDrum = Drum(.great, sampleRate: sampleRate)
+        highDrum = Drum(.field, sampleRate: sampleRate)
         // Room enough up front that the audio thread never has to find more.
         current.reserveCapacity(6)
         previous.reserveCapacity(6)
@@ -102,10 +104,10 @@ public struct Score {
         guard sampleRate != self.sampleRate else { return }
         self.sampleRate = sampleRate
         harp = Harp(sampleRate: sampleRate)
-        bells = Bells(sampleRate: sampleRate)
-        lowDrum = Drum(pitch: 55, sampleRate: sampleRate)
-        highDrum = Drum(pitch: 98, sampleRate: sampleRate)
-        current = current.enumerated().map { Bowed(frequency: $1.frequency, corner: $1.corner, sampleRate: sampleRate, seed: $0) }
+        bells = Glockenspiel(sampleRate: sampleRate)
+        lowDrum = Drum(.great, sampleRate: sampleRate)
+        highDrum = Drum(.field, sampleRate: sampleRate)
+        current = current.map { Bowed(frequency: $0.frequency, corner: $0.corner, sampleRate: sampleRate, bass: $0.bass) }
         previous.removeAll(keepingCapacity: true)
         crossfade = 1
     }
@@ -122,14 +124,14 @@ public struct Score {
     }
 
     /// The strings take up a chord: each of its notes, and under a chord
-    /// with no low note of its own, its root an octave down.
+    /// with no low note of its own, the bass on its root an octave down.
     private mutating func bow(_ chord: [Int], as theme: Theme) {
         current.removeAll(keepingCapacity: true)
-        for (index, note) in chord.enumerated() {
-            current.append(Bowed(frequency: Score.frequency(note), corner: theme.corner, sampleRate: sampleRate, seed: index + chordChanges))
+        for note in chord {
+            current.append(Bowed(frequency: Score.frequency(note), corner: theme.corner, sampleRate: sampleRate))
         }
         if let root = chord.first, root >= 45 {
-            current.append(Bowed(frequency: Score.frequency(root - 12), corner: theme.corner * 0.4, sampleRate: sampleRate, seed: 5 + chordChanges))
+            current.append(Bowed(frequency: Score.frequency(root - 12), corner: theme.corner * 0.4, sampleRate: sampleRate, bass: true))
         }
     }
 
@@ -169,14 +171,14 @@ public struct Score {
         let strength = 0.55 + 0.3 * random()
         switch theme.voice {
         case .harp: harp.pluck(Score.frequency(next), strength: strength, brightness: theme.brightness, pan: pan)
-        case .bells: bells.strike(Score.frequency(next), timbre: .glass, strength: strength + 0.15, pan: pan)
+        case .bells: bells.strike(Score.frequency(next), strength: strength + 0.15, pan: pan)
         }
         // A theme that answers itself: the same note again, higher, a
         // breath later, as one water answers the other, in the other voice.
         if let echo = theme.echo {
             let answer = Score.frequency(next + echo)
             switch theme.voice {
-            case .harp: bells.strike(answer, timbre: .glass, strength: 0.6, pan: -pan, wait: Theme.echoDelay)
+            case .harp: bells.strike(answer, strength: 0.6, pan: -pan, wait: Theme.echoDelay)
             case .bells: harp.pluck(answer, strength: 0.45, brightness: theme.brightness, pan: -pan, wait: Theme.echoDelay)
             }
         }
@@ -297,7 +299,7 @@ struct Theme {
 
     /// The eaten moon, while the drowned age walks: chords of stacked minor
     /// thirds and tritones, low and slow; a line from the scale of tones
-    /// and half tones that never settles, on glass bells far apart, each
+    /// and half tones that never settles, on the glockenspiel far apart, each
     /// answered on the harp a tritone above; the strings dark, and no
     /// chord rolled.
     static let eclipse = Theme(chords: [[38, 44, 50, 53], [37, 43, 49, 52], [40, 46, 49, 55], [36, 42, 48, 51]],
@@ -309,7 +311,7 @@ struct Theme {
     static let round = Theme(chords: [[50, 57, 60, 64], [43, 55, 59, 62], [45, 52, 55, 60], [41, 53, 57, 64]],
                              melody: [62, 64, 65, 69, 71, 74, 76, 77, 81], chordLength: 12, chordSpread: 6, bellGap: 4,
                              corner: 1_700, roll: 0.6)
-    /// The Twin Waters: A minor, sung by glass bells, every note answered
+    /// The Twin Waters: A minor, sung by the glockenspiel, every note answered
     /// on the harp a fifth above, as one water answers the other.
     static let twin = Theme(chords: [[45, 52, 57, 60], [41, 53, 57, 60], [48, 55, 60, 64], [43, 55, 59, 62]],
                             melody: [57, 60, 62, 64, 67, 69, 72, 74, 76], chordLength: 11, chordSpread: 5, bellGap: 4.5, echo: 7,
@@ -319,8 +321,8 @@ struct Theme {
     static let crescent = Theme(chords: [[40, 52, 55, 59], [41, 53, 57, 60], [38, 50, 53, 57], [40, 52, 55, 65]],
                                 melody: [64, 65, 67, 71, 72, 74, 76, 77, 79], chordLength: 10, chordSpread: 5, bellGap: 3,
                                 corner: 1_300, brightness: 0.6)
-    /// The Drowned Isles: F lydian, its raised fourth afloat, sung by glass
-    /// bells, and long silences, as of water over roofs.
+    /// The Drowned Isles: F lydian, its raised fourth afloat, sung by the
+    /// glockenspiel, and long silences, as of water over roofs.
     static let isles = Theme(chords: [[41, 53, 57, 64], [43, 55, 59, 62], [40, 52, 55, 62], [45, 57, 60, 64]],
                              melody: [65, 67, 69, 71, 72, 76, 77, 79, 81], chordLength: 14, chordSpread: 8, bellGap: 5.5,
                              voice: .bells, corner: 1_400, roll: 0.3)

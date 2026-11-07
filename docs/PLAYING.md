@@ -1310,31 +1310,34 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-Nothing is recorded or sampled: every sound is made as it plays.
+The score is played on recorded instruments; every other sound is made as
+it plays.
 
 - **The night.** A cold drone and the night wind over the water, and a low
   bell as each watch turns.
-- **The score**, written as it plays by instruments modelled on how real
-  ones make their sound: a body of strings bows slow chords in D minor over
-  a bass of their own, three players to each note a few cents apart, each
-  with a slow vibrato of their own, the three through a low-pass that stands
-  for their instruments' bodies; above them a harp (Karplus and Strong's
-  plucked string, kept in tune to a fraction of a sample) wanders the minor
-  pentatonic, each note ringing bright and mellowing as it dies, the low
-  strings longest, and as the chord changes it may roll the new one softly
-  up. At war the chords darken and two skin drums keep a slow march, each
-  blow's pitch falling back as the skin eases. While the moon is eaten and
-  the drowned age walks, the score turns strange: chords of stacked minor
-  thirds and tritones, low and slow, and a line from the scale of tones and
-  half tones that never settles, on glass bells far apart, each answered on
-  the harp a tritone above.
+- **The score**, written as it plays, played on real instruments: notes of
+  the VS Chamber Orchestra: Community Edition (recorded by Sam Gossner and
+  Simon Dalzell), each read from the recorded note nearest it, faster or
+  slower to sound true. Cellos and violas bow slow chords in D minor, softly
+  with vibrato, over a double bass, each note held round a stretch of its
+  own sustain that loops without a seam, the cellos right of the middle and
+  the violas left; above them a harp wanders the minor pentatonic, each note
+  ringing as the string rang, the low strings longest, a softer or duller
+  pluck leaving less of its highs, and as the chord changes it may roll the
+  new one softly up. At war the chords darken and a great drum and a field
+  drum with its snares off keep a slow march, the great drum's softer
+  strokes struck mezzo-forte. While the moon is eaten and the drowned age
+  walks, the score turns strange: chords of stacked minor thirds and
+  tritones, low and slow, and a line from the scale of tones and half tones
+  that never settles, on the glockenspiel far apart, each answered on the
+  harp a tritone above.
 - **The launcher's themes.** Over the launcher, the night's drone and wind
   play beneath a title theme for the lake the keeper's realm last lay on
   (the Nullmere before any), each lake in a mode and a voice of its own:
   the Nullmere in D dorian on the harp, slow and open; the Twin Waters in A
-  minor on glass bells, each note answered on the harp a fifth above a
+  minor on the glockenspiel, each note answered on the harp a fifth above a
   breath later; the Sickle in E phrygian, its half step down to the home
-  note sharp; the Drowned Isles in F lydian on glass bells, with long
+  note sharp; the Drowned Isles in F lydian on the glockenspiel, with long
   silences; and the Frontier's Marches in G mixolydian, bright and martial,
   quicker than any, the harp rolling its chords. Crossing to the realm, the
   score turns to its own, at peace or at war.

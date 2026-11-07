@@ -42,6 +42,21 @@ func strength(of x: ArraySlice<Float>, at frequency: Float, rate: Float) -> Floa
     return (a * a + b * b - k * a * b).squareRoot() / Float(x.count)
 }
 
+/// The frequency near `near` a sound holds most strongly, to a fraction of
+/// a cent: for a struck bar, whose overtones lie far from any harmonic, the
+/// pitch it is heard at.
+func peak(of x: ArraySlice<Float>, near: Float, rate: Float, by step: Float = 0.5) -> Float {
+    let cents = Array(stride(from: Float(-60), through: 60, by: step))
+    let held = cents.map { strength(of: x, at: near * pow(2, $0 / 1_200), rate: rate) }
+    let best = held.indices.max { held[$0] < held[$1] }!
+    var at = cents[best]
+    if best > 0 && best < held.count - 1 {
+        let a = log(held[best - 1]), b = log(held[best]), c = log(held[best + 1])
+        at += step * 0.5 * (a - c) / (a - 2 * b + c)
+    }
+    return near * pow(2, at / 1_200)
+}
+
 /// Seconds a sound takes to fall sixty decibels, from its envelope in
 /// twentieths of a second: from ten decibels below its loudest to forty
 /// below, taken twice.
@@ -55,7 +70,8 @@ func ringing(_ x: [Float], rate: Float) -> Float {
 }
 
 /// The instruments the score plays, each alone: in tune at any sample
-/// rate, ringing as their kind rings, and quiet when done.
+/// rate, ringing as their kind rings, held as long as they are bowed, and
+/// quiet when done.
 final class InstrumentTests: XCTestCase {
     private func harp(_ frequency: Float, rate: Float = 48_000, seconds: Float = 1.5, strength: Float = 0.8) -> [Float] {
         let harp = Harp(sampleRate: rate)
@@ -63,30 +79,28 @@ final class InstrumentTests: XCTestCase {
         return (0..<Int(seconds * rate)).map { _ in harp.sample(dt: 1 / rate).left }
     }
 
-    /// Every string in tune, low and high, at every rate the Mac runs at.
+    /// Every string in tune, low and high, at every rate the Mac runs at,
+    /// whichever recorded string sounds it.
     func testTheHarpIsInTune() {
         for rate: Float in [44_100, 48_000, 96_000] {
-            for frequency: Float in [110, 220, 293.66, 440, 880, 1_318.5] {
+            for frequency: Float in [130.81, 220, 293.66, 440, 698.46, 987.77] {
                 let sound = harp(frequency, rate: rate, seconds: 0.6)
-                let heard = pitch(of: sound[Int(0.1 * rate)..<Int(0.35 * rate)], rate: rate, near: frequency)
-                XCTAssertEqual(cents(heard, from: frequency), 0, accuracy: 4, "\(frequency) Hz at \(rate)")
+                let heard = pitch(of: sound[Int(0.15 * rate)..<Int(0.4 * rate)], rate: rate, near: frequency)
+                XCTAssertEqual(cents(heard, from: frequency), 0, accuracy: 5, "\(frequency) Hz at \(rate)")
             }
         }
     }
 
-    /// The low strings ring longest, each about as long as it should, and a
-    /// string done is let go.
+    /// The low strings ring longest, and a string done is let go.
     func testTheLowStringsRingLongest() {
-        let low = ringing(harp(147, seconds: 8), rate: 48_000)
-        let high = ringing(harp(1_175, seconds: 8), rate: 48_000)
+        let low = ringing(harp(130.81, seconds: 7), rate: 48_000)
+        let high = ringing(harp(987.77, seconds: 7), rate: 48_000)
         XCTAssertGreaterThan(low, high * 1.5, "\(low) s against \(high) s")
-        XCTAssertEqual(low, Harp.ringing(147), accuracy: Harp.ringing(147) * 0.35)
-        XCTAssertEqual(high, Harp.ringing(1_175), accuracy: Harp.ringing(1_175) * 0.35)
 
         let harp = Harp(sampleRate: 48_000)
         harp.pluck(440, strength: 0.5)
         XCTAssertEqual(harp.sounding, 1)
-        for _ in 0..<Int(48_000 * (Harp.ringing(440) + 0.5)) { _ = harp.sample(dt: 1 / 48_000) }
+        for _ in 0..<(48_000 * 7) { _ = harp.sample(dt: 1 / 48_000) }
         XCTAssertEqual(harp.sounding, 0, "Let go once it has rung out")
         harp.pluck(440, strength: 0.5)
         harp.clear()
@@ -94,30 +108,27 @@ final class InstrumentTests: XCTestCase {
     }
 
     /// A pluck leaves nothing but its note: it begins without a click, no
-    /// offset rings on, and harder is louder.
+    /// offset rings on, harder is louder, and a duller pluck keeps less of
+    /// the string's highs.
     func testAPluckIsANoteAndNothingElse() {
         let sound = harp(330, seconds: 2)
-        XCTAssertLessThan(abs(sound[0]), 0.05, "Begun where the string crosses nothing")
+        XCTAssertLessThan(abs(sound[0]), 0.01, "Begun from silence")
+        let steps = zip(sound, sound.dropFirst()).map { abs($1 - $0) }
+        XCTAssertLessThan(steps.max() ?? 1, 0.25, "No click anywhere")
         let mean = sound.reduce(0, +) / Float(sound.count)
         XCTAssertLessThan(abs(mean), 0.001)
         let soft = rms(harp(330, strength: 0.3)), hard = rms(harp(330, strength: 0.9))
         XCTAssertEqual(hard / soft, 3, accuracy: 0.6)
         XCTAssertFalse(sound.contains { $0.isNaN || $0.isInfinite })
-    }
-
-    /// Every pluck carries its note, however its noise falls: of thirty
-    /// plucks of a high string, each holds its own pitch above the octave
-    /// and the twelfth over it.
-    func testEveryPluckCarriesItsNote() {
-        let harp = Harp(sampleRate: 48_000)
-        for _ in 0..<30 {
-            harp.pluck(1_175, strength: 0.8, brightness: 0.6)
-            let sound = (0..<14_400).map { _ in harp.sample(dt: 1 / 48_000).left }
-            let note = strength(of: sound[2_400...], at: 1_175, rate: 48_000)
-            XCTAssertGreaterThan(note, strength(of: sound[2_400...], at: 2_350, rate: 48_000))
-            XCTAssertGreaterThan(note, strength(of: sound[2_400...], at: 3_525, rate: 48_000))
-            harp.clear()
+        XCTAssertLessThan(Harp.corner(brightness: 0.3, strength: 0.5), Harp.corner(brightness: 0.45, strength: 0.5))
+        XCTAssertLessThan(Harp.corner(brightness: 0.45, strength: 0.3), Harp.corner(brightness: 0.45, strength: 0.9))
+        func highs(_ brightness: Float) -> Float {
+            let harp = Harp(sampleRate: 48_000)
+            harp.pluck(440, strength: 0.8, brightness: brightness)
+            let sound = (0..<24_000).map { _ in harp.sample(dt: 1 / 48_000).left }
+            return strength(of: sound[...], at: 440 * 5, rate: 48_000) / strength(of: sound[...], at: 440, rate: 48_000)
         }
+        XCTAssertLessThan(highs(0.3), highs(0.6), "The duller pluck the duller note")
     }
 
     /// A chord rolled waits its turn: each string sounds only when its wait is done.
@@ -138,38 +149,51 @@ final class InstrumentTests: XCTestCase {
         XCTAssertEqual(harp.plucks, 12)
     }
 
-    /// A glass bell sounds its note above its other modes, and dies away.
-    func testABellRingsItsNote() {
-        let bells = Bells(sampleRate: 48_000)
-        bells.strike(440, timbre: .glass, strength: 1, pan: 0.5)
+    /// The glockenspiel sounds two octaves above the note written for it,
+    /// from where it is heard, dies away, and an answer waits its breath.
+    func testTheGlockenspielSoundsTwoOctavesAbove() {
+        let bells = Glockenspiel(sampleRate: 48_000)
+        bells.strike(440, strength: 1, pan: 0.5)
         let sound = (0..<48_000).map { _ in bells.sample(dt: 1 / 48_000) }
         let left = sound.map(\.left), right = sound.map(\.right)
         XCTAssertGreaterThan(rms(right), rms(left), "Heard from the right")
-        let note = strength(of: left[...], at: 440, rate: 48_000)
-        XCTAssertGreaterThan(note, strength(of: left[...], at: 880, rate: 48_000) * 2)
-        XCTAssertGreaterThan(note, strength(of: left[...], at: 466, rate: 48_000) * 20, "Its note, not the one beside it")
-        XCTAssertEqual(ringing((0..<(48_000 * 14)).map { _ in bells.sample(dt: 1 / 48_000).left }, rate: 48_000), Timbre.glass.life, accuracy: 3)
+        let heard = peak(of: left[2_400..<24_000], near: 1_760, rate: 48_000)
+        XCTAssertEqual(cents(heard, from: 1_760), 0, accuracy: 3)
+        XCTAssertGreaterThan(strength(of: left[...], at: 1_760, rate: 48_000), strength(of: left[...], at: 1_864.7, rate: 48_000) * 10,
+                             "Its note, not the one beside it")
+        for _ in 0..<(48_000 * 4) { _ = bells.sample(dt: 1 / 48_000) }
         XCTAssertEqual(bells.sounding, 0, "Rung out")
         XCTAssertEqual(bells.struck, 1)
-        // An answer waits its breath.
-        bells.strike(660, timbre: .glass, strength: 1, wait: 0.5)
+        bells.strike(660, strength: 1, wait: 0.5)
         XCTAssertEqual(rms((0..<Int(0.45 * 48_000)).map { _ in bells.sample(dt: 1 / 48_000).left }), 0)
         XCTAssertGreaterThan(rms((0..<4_800).map { _ in bells.sample(dt: 1 / 48_000).left }), 0.01)
         bells.clear()
         XCTAssertEqual(bells.sounding, 0)
     }
 
-    /// The bowed strings sound their note, and lean apart in the ears.
-    func testTheStringsAreBowedInTune() {
+    /// A note bowed sounds its pitch, cellos below the violas and the bass
+    /// beneath, and is held as long as it is bowed: round its loop for half
+    /// a minute it neither dies nor swells, nor clicks where the loop joins.
+    func testTheStringsAreBowedInTuneAndHeld() {
         for rate: Float in [48_000, 96_000] {
-            var note = Bowed(frequency: 146.83, corner: 1_500, sampleRate: rate, seed: 2)
-            let sound = (0..<Int(2 * rate)).map { _ in note.sample(dt: 1 / rate) }
-            let left = sound.map(\.left), right = sound.map(\.right)
-            let heard = pitch(of: left[Int(0.5 * rate)..<Int(0.8 * rate)], rate: rate, near: 146.83)
-            XCTAssertEqual(cents(heard, from: 146.83), 0, accuracy: 12, "at \(rate)")
-            XCTAssertNotEqual(left, right, "The players apart")
-            XCTAssertEqual(rms(left), rms(right), accuracy: rms(left) * 0.2)
+            for (frequency, bass) in [(Float(146.83), false), (Float(349.23), false), (Float(65.41), true)] {
+                var note = Bowed(frequency: frequency, corner: 1_500, sampleRate: rate, bass: bass)
+                let sound = (0..<Int(30 * rate)).map { _ in note.sample(dt: 1 / rate) }
+                let left = sound.map(\.left), right = sound.map(\.right)
+                let heard = pitch(of: left[Int(1.5 * rate)..<Int(2.5 * rate)], rate: rate, near: frequency)
+                XCTAssertEqual(cents(heard, from: frequency), 0, accuracy: 15, "\(frequency) Hz at \(rate)")
+                XCTAssertNotEqual(left, right, "Heard from where its players sit")
+                let early = rms(left[Int(1.5 * rate)..<Int(4.5 * rate)]), late = rms(left[Int(26 * rate)..<Int(29 * rate)])
+                XCTAssertEqual(decibels(late), decibels(early), accuracy: 3, "Held, \(frequency) Hz")
+                let windows = stride(from: Int(rate), to: left.count - Int(rate / 10), by: Int(rate / 10)).map { rms(left[$0..<($0 + Int(rate / 10))]) }
+                XCTAssertLessThan(decibels(windows.max()!) - decibels(windows.min()!), 12, "Even through the loop, \(frequency) Hz")
+                let steps = zip(left, left.dropFirst()).map { abs($1 - $0) }
+                let typical = steps.sorted()[steps.count * 99 / 100]
+                XCTAssertLessThan(steps.max()!, typical * 4, "No click at the loop's join, \(frequency) Hz at \(rate)")
+            }
         }
+        XCTAssertTrue(Recordings.celloNotes.allSatisfy { $0.frequency < Bowed.violas })
+        XCTAssertTrue(Recordings.violaNotes.allSatisfy { $0.frequency >= Bowed.violas * 0.99 })
     }
 
     /// The bodies' low-pass passes what is under its corner and takes away
@@ -184,22 +208,35 @@ final class InstrumentTests: XCTestCase {
         XCTAssertLessThan(decibels(gain(4_000)), -20)
     }
 
-    /// A drum struck sounds low and falls in pitch, and is quiet soon after.
-    func testADrumSoundsLowAndFalls() {
-        var drum = Drum(pitch: 55, sampleRate: 48_000)
-        XCTAssertFalse(drum.isSounding)
-        drum.strike(1)
-        let sound = (0..<(48_000 * 3 + 480)).map { _ in drum.sample(dt: 1 / 48_000) }
-        XCTAssertFalse(drum.isSounding, "Rung out")
-        var high = Lowpass(corner: 1_000, sampleRate: 48_000)
-        let above = sound.map { $0 - high.process($0) }
-        XCTAssertLessThan(rms(above), rms(sound) * 0.2, "Its weight is low")
-        func crossings(_ part: ArraySlice<Float>) -> Float {
-            Float(zip(part, part.dropFirst()).filter { ($0 < 0) != ($1 < 0) }.count) / Float(part.count)
+    /// The great drum sounds low and as hard as it is struck, forte or
+    /// mezzo-forte; the field drum higher, its two strokes in turn; a
+    /// stroke rings on through the next, and each is quiet soon after.
+    func testTheDrumsAreStruckAsHardAsAsked() {
+        func stroke(_ kind: Drum.Kind, _ strength: Float, times: Int = 1) -> [Float] {
+            var drum = Drum(kind, sampleRate: 48_000)
+            XCTAssertFalse(drum.isSounding)
+            var sound: [Float] = []
+            for _ in 0..<times {
+                drum.strike(strength)
+                sound += (0..<14_400).map { _ in drum.sample(dt: 1 / 48_000) }
+            }
+            sound += (0..<(48_000 * 2)).map { _ in drum.sample(dt: 1 / 48_000) }
+            XCTAssertFalse(drum.isSounding, "Rung out")
+            return sound
         }
-        var smooth = Lowpass(corner: 300, sampleRate: 48_000)
-        let body = sound.map { smooth.process($0) }
-        XCTAssertGreaterThan(crossings(body[480..<2_400]), crossings(body[4_800..<14_400]), "The blow's pitch falls back")
-        XCTAssertGreaterThan(rms(sound[..<4_800]), rms(sound[48_000...]) * 30, "and dies")
+        let full = stroke(.great, 1), softer = stroke(.great, 0.7)
+        XCTAssertEqual(rms(full[..<12_000]) / rms(softer[..<12_000]), 1 / 0.7, accuracy: 0.2)
+        XCTAssertGreaterThan(rms(full[..<4_800]), rms(full[48_000...]) * 30, "and dies")
+        var high = Lowpass(corner: 1_000, sampleRate: 48_000)
+        let above = full.map { $0 - high.process($0) }
+        XCTAssertLessThan(rms(above[..<12_000]), rms(full[..<12_000]) * 0.5, "The great drum's weight is low")
+        let field = stroke(.field, 0.35, times: 2)
+        XCTAssertNotEqual(Array(field[..<4_800]), Array(field[14_400..<19_200]), "Its two strokes in turn")
+        func middle(_ x: [Float]) -> Float {
+            var low = Lowpass(corner: 2_000, sampleRate: 48_000)
+            let lows = x.map { low.process($0) }
+            return zip(x, lows).map { abs($0 - $1) }.reduce(0, +) / max(x.map(abs).reduce(0, +), 1e-9)
+        }
+        XCTAssertGreaterThan(middle(Array(field[..<9_600])), middle(Array(full[..<9_600])), "The field drum the brighter")
     }
 }

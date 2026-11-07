@@ -99,5 +99,10 @@ is still missing.
   under the [GNU Affero General Public License, version 3 only](LICENSE)
   (AGPL-3.0-only). Whoever runs a modified realm or client for others over a
   network must offer them its source.
+- The score's instruments are notes of the
+  [VS Chamber Orchestra: Community Edition](https://github.com/sgossner/VSCO-2-CE),
+  recorded by Sam Gossner and Simon Dalzell and given to the public domain
+  (CC0 1.0); as `Art/sound/make.py` makes them into the game they are under
+  the AGPL with the rest of it.
 - The names Nullmere Online and Nullmere identify the official project.
   Neither licence grants rights to them.
