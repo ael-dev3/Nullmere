@@ -113,6 +113,8 @@ final class CompanionSpacetimeIntegrationTests: XCTestCase {
         // An order given while it is cut off waits; the Mac plays on.
         phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
         XCTAssertEqual(phone.word?.awaited, true)
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): \(CompanionSession.waitsForReach)",
+                       "Told it waits, not that it went")
         let before = try XCTUnwrap(macWorld?.houses[house].stock)
         mac.send(.barter(give: .timber, take: .stone, amount: 3))
         _ = try await until("the Mac's barter while the phone is cut off") { macWorld?.houses[house].stock != before }
