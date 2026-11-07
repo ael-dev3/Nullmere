@@ -29,7 +29,9 @@ game alone. Envoys, a chronicler, a clerk who reads orders written in plain
 words and the House's own commanders, taking counsel with their keeper,
 speak through Apple's on-device model, on each keeper's own Mac. Nullmere
 Companion, its iPhone app, keeps the keeper's House from their phone beside
-their Mac, linked by a code the Mac shows.
+their Mac, linked by a code the Mac shows: its works, musters and companies,
+its alliance's help and rallies, and counsel with its commanders, spoken by
+the phone's own on-device model.
 Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer

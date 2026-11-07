@@ -50,8 +50,9 @@ only, so tested on Linux too).
   `swift build --triple arm64-apple-ios26.0-simulator`, bundles
   `build/companion/Nullmere Companion.app` with its Info.plist (the
   `nullmere` link scheme its QR codes open, and local networking for a
-  realm raised on the Mac), puts its entitlements in the binary as Xcode
-  does for a simulator build, and signs it to run there. Then
+  realm raised on the Mac), compiles the Mac app's Liquid Glass icon
+  (`Packaging/AppIcon.icon`) for the phone, puts its entitlements in the
+  binary as Xcode does for a simulator build, and signs it to run there. Then
   `xcrun simctl install booted "build/companion/Nullmere Companion.app"`.
 - **On the keeper's iPhone:** open `Package.swift` in Xcode, choose the
   **NullmereCompanion** scheme and the phone, and set an Apple developer
@@ -60,8 +61,11 @@ only, so tested on Linux too).
   raised on this Mac (`STEWARD=background scripts/raise-realm.sh local`),
   enters it with a debug build of the Mac app, which offers a link, and
   runs the companion in a simulator, which takes it, gives an order, is
-  set aside and comes in again; the Mac must see the phone's order. CI
-  runs it on every push and keeps the companion's screens.
+  set aside and comes in again; the Mac must see the phone's order. Then
+  the phone takes counsel of a commander through its own on-device model,
+  as the Mac's check does (unverified where the simulator's Mac can't run
+  the model). CI builds the companion right after the Mac app, runs both
+  together on every push, and keeps the companion's screens.
 
 ## Releasing
 
