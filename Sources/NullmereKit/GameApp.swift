@@ -524,11 +524,16 @@ public final class GameApp {
         try? invite.url.absoluteString.write(toFile: path, atomically: true, encoding: .utf8)
     }
 
-    /// For the same script: as the keeper comes in, a link offered when
-    /// NULLMERE_OFFER_LINK names where to write it, and what this Mac sees
+    /// For the same script: as the keeper comes in, a banner raised under
+    /// the name NULLMERE_FOUND_ALLIANCE gives, for the phone to speak to,
+    /// should their House be sworn to none; a link offered when
+    /// NULLMERE_OFFER_LINK names where to write it; and what this Mac sees
     /// of its House written every so often where NULLMERE_LINK_REPORT names,
     /// so the script sees an order given on the phone reach this Mac.
     func linkFromEnvironment(_ environment: [String: String] = ProcessInfo.processInfo.environment, every seconds: Double = 1) {
+        if let name = environment["NULLMERE_FOUND_ALLIANCE"], !name.isEmpty, let session, session.state.alliance(of: session.player) == nil {
+            session.perform(.foundAlliance(name: name))
+        }
         if let path = environment["NULLMERE_OFFER_LINK"], !path.isEmpty, phoneLink == nil { linkPhone() }
         if let path = environment["NULLMERE_LINK_REPORT"], !path.isEmpty, linkReport == nil {
             linkReport = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
@@ -548,14 +553,18 @@ public final class GameApp {
     /// What a Mac sees of its House, as the phone's smoke test reads it: its
     /// companies dug in, what its holds are at work on (each as its hold and
     /// the work raised or company mustered there), the watch, and the last
-    /// words said to the whole realm, a line each.
+    /// words said to the whole realm and to its alliance, a line each.
     static func linkReport(of state: GameState, player: Int) -> String {
         let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
         let working = state.holds(of: player).flatMap { hold in
             [hold.project.map { "\(hold.id):\($0.kind.rawValue)" }, hold.training.map { "\(hold.id):\($0.kind.rawValue)" }].compactMap { $0 }
         }
-        let said = state.wordsSaid.filter { $0.alliance == nil && $0.removed != true }.suffix(5).map { "said: \($0.text)" }
-        return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + said)
+        let words = state.wordsSaid.filter { $0.removed != true }
+        let said = words.filter { $0.alliance == nil }.suffix(5).map { "said: \($0.text)" }
+        let allied = state.alliance(of: player).map { alliance in
+            words.filter { $0.alliance == alliance.id }.suffix(5).map { "alliance said: \($0.text)" }
+        } ?? []
+        return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + said + allied)
             .joined(separator: "\n") + "\n"
     }
 

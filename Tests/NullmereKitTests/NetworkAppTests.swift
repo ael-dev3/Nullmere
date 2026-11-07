@@ -592,18 +592,24 @@ final class NetworkAppTests: XCTestCase {
         let seat = try XCTUnwrap(mac.session?.state.seat(of: mac.session?.player ?? -1))
         let raised = try XCTUnwrap(BuildingKind.allCases.first { mac.session?.perform(.build(hold: seat.id, kind: $0)) == true })
         XCTAssertTrue(mac.session?.perform(.say(words: "Heard on the Mac", toAlliance: false)) == true)
-        mac.linkFromEnvironment(["NULLMERE_OFFER_LINK": linkFile, "NULLMERE_LINK_REPORT": reportFile], every: 0.05)
+        let sworn = mac.session?.state.alliance(of: mac.session?.player ?? -1)
+        mac.linkFromEnvironment(["NULLMERE_OFFER_LINK": linkFile, "NULLMERE_LINK_REPORT": reportFile, "NULLMERE_FOUND_ALLIANCE": "The Linked Accord"],
+                                every: 0.05)
         try await until("the code offered from the environment") { mac.phoneLink != nil }
+        let banner = try XCTUnwrap(mac.session?.state.alliance(of: mac.session?.player ?? -1), "An alliance for the phone to speak to")
+        XCTAssertEqual(banner.name, sworn?.name ?? "The Linked Accord", "Raised, unless the House was sworn to one already")
+        XCTAssertTrue(mac.session?.perform(.say(words: "Heard by the accord", toAlliance: true)) == true)
         try await until("this Mac's House reported") {
             let report = (try? String(contentsOfFile: reportFile, encoding: .utf8)) ?? ""
             return report.contains("\(company.id)") && report.contains("\(seat.id):\(raised.rawValue)") && report.contains("said: Heard on the Mac")
+                && report.contains("alliance said: Heard by the accord")
         }
         mac.stopLinkReport()
         let report = try String(contentsOfFile: reportFile, encoding: .utf8).split(separator: "\n").map(String.init)
         XCTAssertTrue(report[0].hasPrefix("dug in: "), "\(report)")
         XCTAssertTrue(report[1].hasPrefix("at work: ") && report[1].split(separator: " ").contains("\(seat.id):\(raised.rawValue)"), "\(report)")
         XCTAssertEqual(report[2], "watch: \(mac.session?.state.watch ?? -1)")
-        XCTAssertEqual(report.last, "said: Heard on the Mac")
+        XCTAssertEqual(Array(report.suffix(2)), ["said: Heard on the Mac", "alliance said: Heard by the accord"])
 
         // Out of reach: told so, both the offer and the letting go.
         mac.putPhoneLinkAway()

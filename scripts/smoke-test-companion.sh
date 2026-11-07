@@ -4,10 +4,11 @@
 # offers a link; Nullmere Companion, built for the iOS Simulator by
 # scripts/build-companion.sh and run in one, takes the link as the phone's
 # camera would, comes in as the keeper, keeps their House from the phone (a
-# company dug in, words said to the realm, the keeper made ready so the watch
-# turns, a hold set to work), each carried out by the realm, is set aside and
-# comes in again by its own key; and the Mac sees the company dug in, hears
-# the words, sees the watch turned and the hold at work.
+# company dug in, words said to the realm and to the alliance the Mac raised
+# for it, the keeper made ready so the watch turns, a hold set to work), each
+# carried out by the realm, is set aside and comes in again by its own key;
+# and the Mac sees the company dug in, hears the words, sees the watch turned
+# and the hold at work.
 # Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
@@ -89,7 +90,7 @@ xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 started="$(date '+%Y-%m-%d %H:%M:%S')"
 echo "Opening Nullmere Online and entering $REALM as ${KEEPER}, to offer a link…"
 NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$REALM" NULLMERE_IDENTITY_FILE="$IDENTITY" \
-    NULLMERE_KEEPER="$KEEPER" NULLMERE_OFFER_LINK="$LINK" NULLMERE_LINK_REPORT="$MAC_REPORT" \
+    NULLMERE_KEEPER="$KEEPER" NULLMERE_OFFER_LINK="$LINK" NULLMERE_LINK_REPORT="$MAC_REPORT" NULLMERE_FOUND_ALLIANCE="The Phone's Accord" \
     "$MAC" >build/companion-mac-stdout.log 2>&1 &
 mac=$!
 for _ in $(seq 1 90); do
@@ -155,6 +156,15 @@ if [ -n "$WORDS" ]; then
     done
 fi
 echo "The Mac hears the phone's words: $HEARD"
+ALLIED_WORDS="$(sed -n 's/^Said to the alliance: //p' "$REPORT" | head -n 1)"
+ALLIES_HEARD=no
+if [ -n "$ALLIED_WORDS" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "alliance said: $ALLIED_WORDS" "$MAC_REPORT" 2>/dev/null; then ALLIES_HEARD=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac hears the phone's words to the alliance: $ALLIES_HEARD"
 TURNED_TO="$(sed -n 's/^Watch: //p' "$REPORT" | head -n 1)"
 TURNED=no
 if [ -n "$TURNED_TO" ]; then
@@ -213,6 +223,10 @@ if [ "$WORKING" != yes ]; then
 fi
 if [ "$HEARD" != yes ]; then
     echo "error: the Mac never heard the words said on the phone" >&2
+    exit 1
+fi
+if [ "$ALLIES_HEARD" != yes ]; then
+    echo "error: the Mac never heard the words said to the alliance on the phone" >&2
     exit 1
 fi
 if [ "$TURNED" != yes ]; then

@@ -8,8 +8,9 @@ import NullmereCounsel
 /// scripts/smoke-test-companion.sh: it takes the link the keeper's Mac
 /// offered (NULLMERE_COMPANION_LINK, the link its QR code carries), comes
 /// in as the keeper, keeps their House as a keeper does from the phone (a
-/// company dug in, words said to the realm, the keeper made ready for the
-/// watch to turn, a hold set to work), hearing the realm's word on each, is
+/// company dug in, words said to the realm and to their alliance, the
+/// keeper made ready for the watch to turn, a hold set to work), hearing
+/// the realm's word on each, is
 /// set aside and comes in again, and writes
 /// what it saw to Documents/companion-report.txt in its own container,
 /// ending with the word on it all once it is done. NULLMERE_COMPANION_TAB
@@ -152,6 +153,14 @@ enum CompanionCheck {
         let said = "Kept from \(session.keeper?.name ?? "a keeper")'s phone at watch \(ledger.watch)."
         await give(.say(words: said, toAlliance: false), told: "Said to the realm", as: "Said")
         lines.append("Said to the realm: \(said)")
+        // And to the keeper's alliance, where their House is sworn to one.
+        if let alliance = session.ledger?.alliance {
+            let toAllies = "Sworn to \(alliance), from \(session.keeper?.name ?? "a keeper")'s phone."
+            await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to the alliance")
+            lines.append("Said to the alliance: \(toAllies)")
+        } else {
+            lines.append("Sworn to no alliance: nothing said to one")
+        }
         write(done: false)
         // Ready for the watch to turn, from the phone: the watch turns once
         // every keeper there is ready, and a third of it has passed while a
