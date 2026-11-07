@@ -190,6 +190,22 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The Lyceum, while it sits and a question is left: one at a time.
+                    if let asked = ledger.lyceum {
+                        Section("The Lyceum · \(asked.place)") {
+                            Text(verbatim: asked.text)
+                                .font(Night.body)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ForEach(asked.answers) { answer in
+                                Button(answer.title) {
+                                    session.give(answer.command, told: "Answered the Lyceum: \(answer.title)")
+                                }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel("Answer \(answer.title)")
+                            }
+                        }
+                    }
                     // The watch's labours, folded beneath how they stand, and the
                     // happening under way or the next, as the Mac's Realm panel tells them.
                     if ledger.course.labours != nil || ledger.course.happening != nil {

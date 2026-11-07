@@ -195,6 +195,15 @@ public struct CompanionLedger: Equatable, Sendable {
         public let why: String?
     }
 
+    /// The Lyceum's next question the House hasn't answered, while it sits,
+    /// as the Mac sets it: one at a time, its four answers to choose from.
+    public struct Asked: Equatable, Sendable {
+        /// "2 of 5".
+        public let place: String
+        public let text: String
+        public let answers: [Order]
+    }
+
     /// The watch's labours and the happening, as the Mac's Realm panel
     /// tells them: what counts, how far the House has come, what is next.
     public struct Course: Equatable, Sendable {
@@ -304,6 +313,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let errands: [String]
     /// The watch's labours and the happening.
     public let course: Course
+    /// The Lyceum's next question for the House, while it sits.
+    public let lyceum: Asked?
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -364,13 +375,16 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
-    /// answer, companies of Houses at war gathered near its holds, and
-    /// holds with wounded in their beds the House may pay to heal.
-    public var houseWaiting: Int { envoys.count + gatherings.count + holds.filter { $0.heal != nil }.count }
+    /// answer, companies of Houses at war gathered near its holds, holds
+    /// with wounded in their beds the House may pay to heal, and the
+    /// Lyceum's questions while it sits.
+    public var houseWaiting: Int {
+        envoys.count + gatherings.count + holds.filter { $0.heal != nil }.count + (lyceum == nil ? 0 : 1)
+    }
 
     /// What waits on them on the Alliance tab, for its badge: invitations
     /// and Houses asking to join to answer, and allies' work to help.
@@ -576,6 +590,7 @@ public struct CompanionLedger: Equatable, Sendable {
         spine = CompanionLedger.spine(in: world, player: player)
         errands = CompanionLedger.errands(in: world, player: player, satchel: satchel)
         course = CompanionLedger.course(in: world, player: player)
+        lyceum = CompanionLedger.lyceum(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -824,6 +839,20 @@ public struct CompanionLedger: Equatable, Sendable {
             errands.append(opened(ready.map(\.count).joined(separator: " and ") + " ready to use"))
         }
         return errands
+    }
+
+    /// The Lyceum's next question the House hasn't answered while it sits,
+    /// as the Mac's card sets it, each answer one the rules take.
+    static func lyceum(in world: GameState, player: Int) -> Asked? {
+        guard let questions = world.lyceumNow else { return nil }
+        let given = world.lyceumAnswers(of: player)
+        guard let index = given.indices.first(where: { given[$0] == nil }), questions.indices.contains(index) else { return nil }
+        let question = questions[index]
+        let answers = question.choices.enumerated().compactMap { choice, title -> Order? in
+            world.lyceumRefusal(question: index, choice: choice, as: player) == nil
+                ? Order(title: title, command: .answerLyceum(question: index, choice: choice)) : nil
+        }
+        return Asked(place: "\(index + 1) of \(Lyceum.questions)", text: question.text, answers: answers)
     }
 
     /// A hold's Infirmary while any lie in its beds, in the Mac's words, and

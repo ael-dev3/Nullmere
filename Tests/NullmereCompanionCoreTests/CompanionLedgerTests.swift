@@ -257,6 +257,35 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(CompanionLedger(world: state, player: me).drawVeil, "No moonsalt for it")
     }
 
+    /// The Lyceum on the phone, as the Mac's card sets it: nothing while it
+    /// doesn't sit; sitting, the House's next question with its four answers,
+    /// each one the rules take, and the House tab counting it; answered, the
+    /// next; all five answered, nothing more.
+    func testThePhoneAnswersTheLyceum() throws {
+        var (state, me) = try world()
+        state.watch = 12
+        XCTAssertNil(CompanionLedger(world: state, player: me).lyceum, "It doesn't sit")
+        state.watch = 20
+        state.openLyceum()
+        let questions = try XCTUnwrap(state.lyceumNow)
+        var asked = try XCTUnwrap(CompanionLedger(world: state, player: me).lyceum)
+        XCTAssertEqual(asked.place, "1 of \(Lyceum.questions)")
+        XCTAssertEqual(asked.text, questions[0].text)
+        XCTAssertEqual(asked.answers.map(\.title), questions[0].choices)
+        assertTaken(asked.answers, in: state, as: me)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 1, "The House tab's badge: the Lyceum sits")
+        _ = try state.perform(asked.answers[0].command, as: me)
+        asked = try XCTUnwrap(CompanionLedger(world: state, player: me).lyceum)
+        XCTAssertEqual(asked.place, "2 of \(Lyceum.questions)")
+        XCTAssertEqual(asked.text, questions[1].text)
+        for _ in 1..<Lyceum.questions {
+            let next = try XCTUnwrap(CompanionLedger(world: state, player: me).lyceum?.answers.first)
+            _ = try state.perform(next.command, as: me)
+        }
+        XCTAssertNil(CompanionLedger(world: state, player: me).lyceum, "Every question answered")
+        XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 0)
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

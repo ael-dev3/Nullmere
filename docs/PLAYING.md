@@ -239,7 +239,7 @@ seconds at the foot of whichever tab the keeper is on, wherever they have
 scrolled to give it; an order still unanswered when the phone is set
 aside is said to have been. The House, Army and Alliance tabs carry a
 count of what waits on the keeper there: envoys to answer, foes gathered
-near the House's holds and wounded it may heal; commanders with a talent to learn and
+near the House's holds, wounded it may heal and the Lyceum sitting; commanders with a talent to learn and
 the watch's venture up the Spine not yet made; invitations and Houses
 asking to join to answer, and allies' work to help.
 
@@ -252,7 +252,9 @@ asking to join to answer, and allies' work to help.
   and how many keepers are there and ready; On the walls, the companies of
   Houses at war gathered near the House's holds, as the Mac's watchmen tell
   it, and the veil of the Still as it stands (lying and until when, resting
-  and when it may be drawn anew), with Draw the veil for its moonsalt; Envoys waiting, each offer in the words the Mac gives it, with the
+  and when it may be drawn anew), with Draw the veil for its moonsalt; the
+  Lyceum while it sits, as the Mac's card sets it, its next question with
+  its four answers, one at a time until all five are given; Envoys waiting, each offer in the words the Mac gives it, with the
   words its House sent, how long it waits, and Accept (while the keeper has
   what it asks) and Refuse, which asks again where refusing a steward's
   demand is war; Labours and happenings, as the Mac's Realm panel tells
