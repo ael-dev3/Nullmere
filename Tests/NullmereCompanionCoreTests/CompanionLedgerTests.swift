@@ -714,6 +714,37 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(again.why, RuleError.prophecyOpen.description)
     }
 
+    /// Whispers on the water from the phone, as the Mac's Realm panel makes
+    /// and tells them: nothing until a House is chosen; granaries low, one
+    /// whisper for its moonsalt, taken by the rules; a host, one at each
+    /// hold of that House; let loose, heard as the House's own and
+    /// unproven, and another refused with the rules' reason.
+    func testThePhoneWhispersAndHearsWhispers() throws {
+        var (state, me) = try world()
+        XCTAssertTrue(CompanionLedger(world: state, player: me).whispers.isEmpty)
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        XCTAssertNil(CompanionLedger.whispering(.granaries, house: nil, in: state, player: me))
+        let granaries = try XCTUnwrap(CompanionLedger.whispering(.granaries, house: other, in: state, player: me))
+        XCTAssertEqual(granaries.whispers.map(\.title),
+                       ["Whisper that \(state.told(.granariesLow(house: other))), for \(GameState.whisperCost)"])
+        XCTAssertNil(granaries.why)
+        assertTaken(granaries.whispers, in: state, as: me)
+        let host = try XCTUnwrap(CompanionLedger.whispering(.host, house: other, in: state, player: me))
+        XCTAssertEqual(host.whispers.count, state.holds.filter { $0.owner == other }.count, "One at each hold of that House")
+        assertTaken(host.whispers, in: state, as: me)
+        _ = try state.perform(try XCTUnwrap(granaries.whispers.first).command, as: me)
+        let ledger = CompanionLedger(world: state, player: me)
+        let heard = try XCTUnwrap(ledger.whispers.first)
+        let whisper = try XCTUnwrap(state.whispersHeard.last)
+        XCTAssertEqual(heard.said, "Watch \(whisper.spoken): \(state.told(whisper.claim)).")
+        XCTAssertTrue(heard.standing.hasPrefix("Yours. Unproven"), heard.standing)
+        XCTAssertFalse(heard.unmasked)
+        XCTAssertTrue(ledger.hasRealmMatters)
+        let again = try XCTUnwrap(CompanionLedger.whispering(.walls, house: other, in: state, player: me))
+        XCTAssertTrue(again.whispers.isEmpty, "Rested since its last")
+        XCTAssertNotNil(again.why)
+    }
+
     /// The Remembering on the phone, as the Mac's Realm panel sets it: no
     /// riddle, nothing; set, how it stands, its line and each name to
     /// answer, taken by the rules and counted on the House tab; answered

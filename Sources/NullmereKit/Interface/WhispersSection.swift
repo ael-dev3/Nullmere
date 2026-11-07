@@ -10,17 +10,7 @@ struct WhispersSection: View {
     let session: GameSession
 
     /// What a whisper being made says, before its House is chosen.
-    enum Kind: CaseIterable {
-        case host, granaries, walls
-
-        var title: String {
-            switch self {
-            case .host: return "A host gathered"
-            case .granaries: return "Granaries low"
-            case .walls: return "Walls broken"
-            }
-        }
-    }
+    typealias Kind = Whisper.Kind
 
     /// The whispers shown, the latest first.
     static let shown = 5
@@ -41,30 +31,12 @@ struct WhispersSection: View {
     /// The whisper the choices make, once they are enough: a host, at a
     /// hold of its House.
     static func claim(_ kind: Kind, house: Int?, hold: Int? = nil) -> Whisper.Claim? {
-        guard let house else { return nil }
-        switch kind {
-        case .host: return hold.map { .hostGathered(house: house, hold: $0) }
-        case .granaries: return .granariesLow(house: house)
-        case .walls: return .seatBreached(house: house)
-        }
+        Whisper.claim(kind, house: house, hold: hold)
     }
 
     /// How a whisper stands for the keeper, in a line.
     static func standing(_ whisper: Whisper, in state: GameState, player: Int) -> String {
-        if whisper.unmasked, let teller = whisper.by {
-            return "Found false: it was \(teller == player ? "yours" : state.houses[teller].title + "'s")."
-        }
-        let yours = whisper.by == player ? "Yours. " : ""
-        // Its truth as the keeper's Lanterns found it, the realm's word; not
-        // what this copy guessed of it as the whisper was let loose.
-        switch whisper.triedBy.contains(player) ? whisper.truth : nil {
-        case true?: return yours + "True, as your Lanterns found."
-        case false?: return yours + "False, as your Lanterns found."
-        case nil:
-            let until = whisper.spoken + GameState.whisperReach
-            guard state.watch <= until, whisper.claim.house != player else { return yours + "Unproven." }
-            return yours + "Unproven: your Lanterns may try it at any hold of that House until watch \(until)."
-        }
+        state.whisperStandingSaid(whisper, to: player)
     }
 
     var body: some View {
@@ -89,7 +61,7 @@ struct WhispersSection: View {
             }
             ForEach(Array(state.whispersHeard.suffix(WhispersSection.shown).reversed())) { whisper in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: "Watch \(whisper.spoken): \(state.told(whisper.claim)).")
+                    Text(verbatim: state.whisperSaid(whisper))
                         .font(.nm(11))
                         .foregroundStyle(Palette.text(0.85))
                         .fixedSize(horizontal: false, vertical: true)

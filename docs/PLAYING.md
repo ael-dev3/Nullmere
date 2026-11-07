@@ -434,7 +434,13 @@ a vote on the realm's law to cast.
   its own is open, made as the Mac makes one: what it foretells (a House
   falls, takes a hold, two Houses at war, a Moonspire rises), of which
   House among its own and the Houses nearest it, by twelve watches on,
-  staking 10 moonsalt, spoken where the rules take it, or why not. The oaths between the House and others, as the Mac's
+  staking 10 moonsalt, spoken where the rules take it, or why not.
+  Whispers on the water, as the Mac's Realm panel tells them: the latest
+  five heard, unsigned, each with how it stands for the House (unproven,
+  tried by its Lanterns, or found false and its teller named); and
+  Whisper…, one of the House's own about a House nearest it (a host
+  gathered at one of its holds, granaries low, walls broken), let loose
+  for 10 moonsalt where the rules take it, or why not. The oaths between the House and others, as the Mac's
   Houses tell them: the House's own ("Your oath to House Quell: peace
   until watch 40"), each with Renounce, asked first because it binds three
   watches more and the whole realm is told, and marked renounced once it

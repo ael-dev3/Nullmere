@@ -377,6 +377,39 @@ public struct CompanionLedger: Equatable, Sendable {
         public let standAgainst: Order?
     }
 
+    /// A whisper heard on the water, as the Mac's Realm panel tells it,
+    /// and how it stands for the House.
+    public struct Heard: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let said: String
+        public let standing: String
+        /// Found false, its teller named.
+        public let unmasked: Bool
+    }
+
+    /// The whispers told on the phone, the latest first.
+    public static let whispersShown = 5
+
+    /// The whispers the House would let loose of these choices: the one,
+    /// or for a host one at each hold of that House it knows, each where
+    /// the rules would take it, or why none would be.
+    public struct Whispering: Equatable, Sendable {
+        public let whispers: [Order]
+        public let why: String?
+    }
+
+    /// What the House may whisper of these choices; nil until a House is
+    /// chosen.
+    public static func whispering(_ kind: Whisper.Kind, house: Int?, in world: GameState, player: Int) -> Whispering? {
+        guard let house else { return nil }
+        let holds: [Int?] = kind == .host ? world.holds.filter { $0.owner == house }.map { Optional($0.id) } : [nil]
+        let claims = holds.compactMap { Whisper.claim(kind, house: house, hold: $0) }
+        let taken = claims.filter { world.whisperRefusal($0, as: player) == nil }.map { claim in
+            Order(title: "Whisper that \(world.told(claim)), for \(GameState.whisperCost)", command: .whisper(claim))
+        }
+        return Whispering(whispers: taken, why: taken.isEmpty ? claims.first.flatMap { world.whisperRefusal($0, as: player)?.description } : nil)
+    }
+
     /// A prophecy of the House's own being made: what it would foretell,
     /// said as the Mac's Augury says it, and Foretell where the rules
     /// would take it, or why not.
@@ -501,7 +534,7 @@ public struct CompanionLedger: Equatable, Sendable {
     /// tell the House, or the House may foretell, so the way to their page
     /// is offered.
     public var hasRealmMatters: Bool {
-        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || mayForetell
+        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || !whispers.isEmpty || mayForetell
     }
 
     /// What waits on the House among the realm's law, oaths and auguries,
@@ -597,6 +630,8 @@ public struct CompanionLedger: Equatable, Sendable {
     /// Whether the House may foretell: a keeper's, with no prophecy of its
     /// own still open.
     public let mayForetell: Bool
+    /// The whispers heard on the water, the latest first.
+    public let whispers: [Heard]
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -657,7 +692,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -1019,6 +1054,10 @@ public struct CompanionLedger: Equatable, Sendable {
                                                command: .stake(prophecy: prophecy.id, backs: true, moonsalt: stake)) : nil,
                             standAgainst: open ? Order(title: "Stand against it with \(stake) moonsalt",
                                                        command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
+        }
+        whispers = world.whispersHeard.suffix(CompanionLedger.whispersShown).reversed().map { whisper in
+            Heard(id: whisper.id, said: world.whisperSaid(whisper), standing: world.whisperStandingSaid(whisper, to: player),
+                  unmasked: whisper.unmasked)
         }
         mayForetell = world.houses.indices.contains(player) && world.houses[player].isPlayer && !world.houses[player].isEliminated
             && !world.openProphecies.contains { $0.by == player }

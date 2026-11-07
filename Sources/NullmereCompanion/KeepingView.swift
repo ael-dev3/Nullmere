@@ -602,6 +602,24 @@ struct RealmPage: View {
                         }
                     }
                 }
+                // Whispers on the water, as the Mac's Realm panel tells them:
+                // each heard, unsigned, and how it stands for the House; and
+                // one of its own let loose about another House.
+                Section("Whispers on the water") {
+                    ForEach(ledger.whispers) { whisper in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(verbatim: whisper.said)
+                                .font(Night.small)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(verbatim: whisper.standing)
+                                .font(Night.small)
+                                .foregroundStyle(whisper.unmasked ? Night.bad : Night.ink.opacity(0.65))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                    WhisperRows(session: session, houses: ledger.dealings.map { ForetellRows.Choice(id: $0.id, name: $0.name) })
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -1486,6 +1504,53 @@ struct ForetellRows: View {
                     .buttonStyle(.bordered)
                     .accessibilityLabel(foretell.title)
                 } else if let why = foretelling.why {
+                    Text(verbatim: why)
+                        .font(Night.small)
+                        .foregroundStyle(Night.bad)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(Night.small)
+    }
+}
+
+/// A whisper of the House's own, made as the Mac's Realm panel makes one:
+/// what it says, of which House among those nearest, then let loose for
+/// its moonsalt where the rules would take it, or why not.
+struct WhisperRows: View {
+    let session: CompanionSession
+    let houses: [ForetellRows.Choice]
+    @State private var kind: Whisper.Kind?
+    @State private var house: Int?
+
+    var body: some View {
+        DisclosureGroup("Whisper…") {
+            Picker("It says", selection: Binding(get: { kind }, set: { kind = $0; house = nil })) {
+                Text(verbatim: "Choose").tag(Whisper.Kind?.none)
+                ForEach(Whisper.Kind.allCases, id: \.self) { choice in
+                    Text(verbatim: choice.title).tag(Whisper.Kind?.some(choice))
+                }
+            }
+            if kind != nil {
+                Picker("Of which House", selection: $house) {
+                    Text(verbatim: "Choose").tag(Int?.none)
+                    ForEach(houses) { other in
+                        Text(verbatim: other.name).tag(Int?.some(other.id))
+                    }
+                }
+            }
+            if let kind, let world = session.world, let me = session.keeper?.house,
+               let whispering = CompanionLedger.whispering(kind, house: house, in: world, player: me) {
+                ForEach(Array(whispering.whispers.enumerated()), id: \.offset) { order in
+                    Button(order.element.title) {
+                        session.give(order.element.command, told: order.element.title)
+                        self.kind = nil
+                        house = nil
+                    }
+                    .buttonStyle(.bordered)
+                }
+                if let why = whispering.why {
                     Text(verbatim: why)
                         .font(Night.small)
                         .foregroundStyle(Night.bad)

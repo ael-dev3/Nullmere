@@ -26,6 +26,30 @@ public struct Whisper: Codable, Equatable, Identifiable, Sendable {
         }
     }
 
+    /// What a whisper being made says, before its House is chosen.
+    public enum Kind: CaseIterable, Sendable {
+        case host, granaries, walls
+
+        public var title: String {
+            switch self {
+            case .host: return "A host gathered"
+            case .granaries: return "Granaries low"
+            case .walls: return "Walls broken"
+            }
+        }
+    }
+
+    /// The whisper the choices make, once they are enough: a host, at a
+    /// hold of its House.
+    public static func claim(_ kind: Kind, house: Int?, hold: Int? = nil) -> Claim? {
+        guard let house else { return nil }
+        switch kind {
+        case .host: return hold.map { .hostGathered(house: house, hold: $0) }
+        case .granaries: return .granariesLow(house: house)
+        case .walls: return .seatBreached(house: house)
+        }
+    }
+
     public let id: Int
     /// The House that let it loose: in a keeper's view, known only to that
     /// House, and to all once it is found false.
@@ -142,6 +166,30 @@ extension GameState {
     }
 
     /// A whisper as the realm tells it.
+    /// A whisper heard, as the Mac's Realm panel and the phone tell it.
+    public func whisperSaid(_ whisper: Whisper) -> String {
+        "Watch \(whisper.spoken): \(told(whisper.claim))."
+    }
+
+    /// How a whisper stands for a keeper's House, in a line, on the Mac and
+    /// the phone: unproven, tried by its Lanterns, or found false and its
+    /// teller named.
+    public func whisperStandingSaid(_ whisper: Whisper, to house: Int) -> String {
+        if whisper.unmasked, let teller = whisper.by {
+            return "Found false: it was \(teller == house ? "yours" : (houses.indices.contains(teller) ? houses[teller].title : "a fallen House") + "'s")."
+        }
+        let yours = whisper.by == house ? "Yours. " : ""
+        // Its truth as the House's Lanterns found it, the realm's word.
+        switch whisper.triedBy.contains(house) ? whisper.truth : nil {
+        case true?: return yours + "True, as your Lanterns found."
+        case false?: return yours + "False, as your Lanterns found."
+        case nil:
+            let until = whisper.spoken + GameState.whisperReach
+            guard watch <= until, whisper.claim.house != house else { return yours + "Unproven." }
+            return yours + "Unproven: your Lanterns may try it at any hold of that House until watch \(until)."
+        }
+    }
+
     public func told(_ claim: Whisper.Claim) -> String {
         let name = houses.indices.contains(claim.house) ? houses[claim.house].title : "a fallen House"
         switch claim {
