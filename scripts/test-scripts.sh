@@ -135,7 +135,7 @@ check "no backup is left behind" "$([ -e "$REALM.smoke-backup" ] && echo left ||
 MAC="$WORK/mac"
 mkdir -p "$MAC/scripts" "$WORK/macbin"
 cp scripts/check-on-mac.sh "$MAC/scripts/"
-for half in check-voices check-counsel measure-mac; do
+for half in check-voices check-counsel measure-mac check-phone-counsel; do
     printf '#!/usr/bin/env bash\necho ran >> "%s/%s.ran"\nexit "${%s_STATUS:-0}"\n' "$WORK" "$half" "$(echo "$half" | tr a-z- A-Z_)" \
         > "$MAC/scripts/$half.sh"
 done
@@ -154,25 +154,28 @@ mac_run() {
 }
 halves_ran() {
     echo "$([ -f "$WORK/check-voices.ran" ] && echo voices) $([ -f "$WORK/check-counsel.ran" ] && echo counsel)" \
-        "$([ -f "$WORK/measure-mac.ran" ] && echo figures)"
+        "$([ -f "$WORK/measure-mac.ran" ] && echo figures) $([ -f "$WORK/check-phone-counsel.ran" ] && echo phone)"
 }
 mac_run env CHECK_VOICES_STATUS=1 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh fails when the voices do" "$(cat "$WORK/mac.status")" "1"
-check "and takes counsel and measures all the same" "$(halves_ran)" "voices counsel figures"
+check "and takes counsel and measures all the same" "$(halves_ran)" "voices counsel figures phone"
 check "and says which passed" "$(grep -cE '^  The (voices .*failed|figures .*passed)$' "$WORK/mac.out")" "2"
 check "and commits nothing" "$(grep -c "nothing was committed" "$WORK/mac.out")" "1"
 mac_run env CHECK_COUNSEL_STATUS=2 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh fails when the model wasn't ready for counsel" "$(cat "$WORK/mac.status")" "1"
 check "and says counsel is unverified, not failed" "$(grep -c "^  Counsel (Apple Intelligence) *unverified (the model isn't ready)$" "$WORK/mac.out")" "1"
-check "and still hears and measures" "$(halves_ran)" "voices counsel figures"
+check "and still hears and measures" "$(halves_ran)" "voices counsel figures phone"
 mac_run env CHECK_COUNSEL_STATUS=1 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh fails when counsel breaks its rules" "$(grep -c "^  Counsel (Apple Intelligence) *failed$" "$WORK/mac.out")" "1"
+mac_run env CHECK_PHONE_COUNSEL_STATUS=2 "$MAC/scripts/check-on-mac.sh" --no-commit
+check "check-on-mac.sh fails when the phone's model gave no answer" "$(cat "$WORK/mac.status")" "1"
+check "and says the phone is unverified, not failed" "$(grep -c "^  The phone (its Mac's model) *unverified (the model gave no answer)$" "$WORK/mac.out")" "1"
 mac_run "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh passes when every part does" "$(cat "$WORK/mac.status")" "0"
-check "having heard, taken counsel and measured" "$(halves_ran)" "voices counsel figures"
+check "having heard, taken counsel and measured" "$(halves_ran)" "voices counsel figures phone"
 mac_run env MAC_ARCH=x86_64 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh refuses a Mac without Apple silicon" "$(cat "$WORK/mac.status")" "1"
-check "before hearing or measuring" "$(halves_ran)" "  "
+check "before hearing or measuring" "$(halves_ran)" "   "
 
 # build-companion.sh: in a stand-in repository, with stand-in tools for
 # the iOS SDK, the Swift build and signing, the companion bundled whole,

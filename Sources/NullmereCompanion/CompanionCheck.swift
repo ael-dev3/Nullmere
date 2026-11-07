@@ -84,16 +84,41 @@ enum CompanionCheck {
         #endif
     }
 
-    /// Counsel taken through this phone's own model, if asked for.
+    /// Counsel taken through this phone's own model, if asked for, and then
+    /// the House's clerk reading a keeper's own words through it, each
+    /// written to a report of its own (Documents/counsel-report.txt, then
+    /// Documents/clerk-report.txt).
     static func takeCounselIfAsked() {
         guard ProcessInfo.processInfo.environment["NULLMERE_COUNSEL_REPORT"] != nil else { return }
         let written = documents.appendingPathComponent("counsel-report.txt")
+        let read = documents.appendingPathComponent("clerk-report.txt")
         try? FileManager.default.removeItem(at: written)
+        try? FileManager.default.removeItem(at: read)
         Task {
             let report = await CounselCheck.run(on: device, simulated: simulated)
             try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
             try? report.text.write(to: written, atomically: true, encoding: .utf8)
+            try? await clerkReport().write(to: read, atomically: true, encoding: .utf8)
         }
+    }
+
+    /// The words the clerk is given to read in the check.
+    static let clerkWords = "Dig in my first company of war, and raise a granary at my seat."
+
+    /// The House's clerk reading a keeper's own words through this phone's
+    /// model, against a keeper's view as the realm gives it: what came of
+    /// the reading, and each line's order or why it can't be given; or why
+    /// the model couldn't read them, the words read as written instead.
+    static func clerkReport() async -> String {
+        let world = GameState(settings: GameSettings(seedText: "the phone's clerk", houseCount: 4, radius: 18, keepers: 1))
+        let player = world.player
+        let began = Date()
+        let reading = await OrderClerk().read(clerkWords, in: world.view(for: player), player: player)
+        var lines = ["The House's clerk on \(device), asked: \(clerkWords)",
+                     String(format: "%@ (%.2f s in all)", reading.summary, Date().timeIntervalSince(began))]
+        if let trouble = reading.trouble { lines.append(trouble) }
+        lines += reading.lines.map { "  \($0.text): \($0.why ?? $0.told)" }
+        return lines.joined(separator: "\n")
     }
 
     private static func until(_ seconds: Double, _ condition: () -> Bool) async -> Bool {

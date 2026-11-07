@@ -121,6 +121,17 @@ else
     line "3. Counsel" "NOT YET HEARD"
     also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
 fi
+# Counsel and the clerk on the phone, through the simulator whose model is
+# its Mac's: told beside the Mac's own, not counted among step 3's three.
+phone="$(ls perf/mac/*-counsel-phone.txt 2>/dev/null | head -n 1 || true)"
+[ -n "$phone" ] || phone=build/counsel-phone-report.txt
+if [ -s "$phone" ] && grep -q "Counsel kept to its rules." "$phone"; then
+    line "3. On the phone" "HEARD from its Mac's model, within its rules ($phone)"
+elif [ -s "$phone" ]; then
+    line "3. On the phone" "UNVERIFIED or OUT OF BOUNDS: see $phone"
+else
+    line "3. On the phone" "NOT YET HEARD: scripts/check-on-mac.sh (on a Mac with Apple Intelligence and an iPhone simulator)"
+fi
 measured="$(ls perf/mac/*.json 2>/dev/null | tr '\n' ' ' || true)"
 if [ -n "$measured" ]; then
     line "3. The figures" "MEASURED: $measured"

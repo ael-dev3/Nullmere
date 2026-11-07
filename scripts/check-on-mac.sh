@@ -2,12 +2,15 @@
 # Everything going live asks of a real Mac, in one command: Apple's
 # on-device model heard speaking every voice within its rules
 # (scripts/check-voices.sh), a commander taking counsel through it, held to
-# counsel's rules (scripts/check-counsel.sh), and the game's frame, GPU and
-# turn figures measured on Apple silicon beside CI's (scripts/measure-mac.sh).
-# All three are kept in perf/mac/ and, when all pass, committed, so they are
+# counsel's rules (scripts/check-counsel.sh), the game's frame, GPU and
+# turn figures measured on Apple silicon beside CI's (scripts/measure-mac.sh),
+# and the keeper's phone taking counsel and having the clerk read their own
+# words through its model, in the iOS Simulator whose model is this Mac's
+# (scripts/check-phone-counsel.sh).
+# All four are kept in perf/mac/ and, when all pass, committed, so they are
 # on record.
-# Needs a Mac with Apple silicon, macOS 26, Xcode 26, and Apple
-# Intelligence turned on and downloaded.
+# Needs a Mac with Apple silicon, macOS 26, Xcode 26 with an iPhone
+# simulator, and Apple Intelligence turned on and downloaded.
 #
 #   scripts/check-on-mac.sh             # check, hear, measure, commit
 #   scripts/check-on-mac.sh --no-commit # check, hear, measure; leave perf/mac/ to commit
@@ -38,10 +41,11 @@ echo
 voices=failed
 counsel=failed
 figures=failed
-echo "== 1 of 3: the voices"
+phone=failed
+echo "== 1 of 4: the voices"
 if scripts/check-voices.sh; then voices=passed; fi
 echo
-echo "== 2 of 3: a commander's counsel"
+echo "== 2 of 4: a commander's counsel"
 heard=0
 scripts/check-counsel.sh || heard=$?
 case "$heard" in
@@ -49,16 +53,24 @@ case "$heard" in
     2) counsel="unverified (the model isn't ready)" ;;
 esac
 echo
-echo "== 3 of 3: the figures"
+echo "== 3 of 4: the figures"
 if scripts/measure-mac.sh; then figures=passed; fi
+echo
+echo "== 4 of 4: counsel and the clerk on the phone"
+heard=0
+scripts/check-phone-counsel.sh || heard=$?
+case "$heard" in
+    0) phone=passed ;;
+    2) phone="unverified (the model gave no answer)" ;;
+esac
 
 echo
 echo "== Summary"
 printf '  %-28s %s\n' "The voices (Apple Intelligence)" "$voices" "Counsel (Apple Intelligence)" "$counsel" \
-    "The figures (Apple silicon)" "$figures"
-if [ "$voices" != passed ] || [ "$counsel" != passed ] || [ "$figures" != passed ]; then
+    "The figures (Apple silicon)" "$figures" "The phone (its Mac's model)" "$phone"
+if [ "$voices" != passed ] || [ "$counsel" != passed ] || [ "$figures" != passed ] || [ "$phone" != passed ]; then
     echo
-    echo "error: not everything passed; nothing was committed. See build/voices-report.txt, build/counsel-report.txt and build/mac-perf.log." >&2
+    echo "error: not everything passed; nothing was committed. See build/voices-report.txt, build/counsel-report.txt, build/mac-perf.log and build/counsel-phone-report.txt." >&2
     exit 1
 fi
 
