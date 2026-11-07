@@ -9,7 +9,8 @@ import NullmereCounsel
 /// offered (NULLMERE_COMPANION_LINK, the link its QR code carries), comes
 /// in as the keeper, keeps their House as a keeper does from the phone (a
 /// company dug in, words said to the realm, an alliance's banner raised and
-/// words said to it, another company marched from the chart of the House's
+/// words said to it and a study of it chosen and given toward, a commander
+/// given a company, another company marched from the chart of the House's
 /// land, the keeper made ready for the watch to turn, a hold set to work),
 /// hearing
 /// the realm's word on each, is
@@ -180,8 +181,23 @@ enum CompanionCheck {
             let toAllies = "Sworn to \(alliance), from \(session.keeper?.name ?? "a keeper")'s phone."
             await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to allies")
             lines.append("Said to the alliance: \(toAllies)")
+            // The alliance's study chosen from the phone, and given toward.
+            if let pursue = session.ledger?.pursuits.first {
+                await give(pursue.command, told: pursue.title, as: "Pursued")
+                if await until(30, { session.ledger?.allianceGifts.isEmpty == false }), let gift = session.ledger?.allianceGifts.first {
+                    await give(gift.command, told: gift.title, as: "Given toward the study")
+                } else {
+                    lines.append("Nothing the House could give toward the study")
+                }
+            }
         } else {
             lines.append("Sworn to no alliance: nothing said to one")
+        }
+        // A commander given a company of war from the phone, where one is free.
+        if let commander = session.ledger?.commanders.first(where: { !$0.leads.isEmpty }), let lead = commander.leads.first {
+            await give(lead.command, told: "\(commander.name): \(lead.title)", as: "Commanded")
+        } else {
+            lines.append("No commander free to take up a company by a hold")
         }
         // The chart of the House's land, and another company marched from
         // it to open ground the House has explored near its seat.
