@@ -609,6 +609,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertTrue(report[0].hasPrefix("dug in: "), "\(report)")
         XCTAssertTrue(report[1].hasPrefix("at work: ") && report[1].split(separator: " ").contains("\(seat.id):\(raised.rawValue)"), "\(report)")
         XCTAssertEqual(report[2], "watch: \(mac.session?.state.watch ?? -1)")
+        XCTAssertEqual(report[3], "alliance: \(banner.name)")
         XCTAssertEqual(Array(report.suffix(2)), ["said: Heard on the Mac", "alliance said: Heard by the accord"])
 
         // Out of reach: told so, both the offer and the letting go.

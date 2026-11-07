@@ -8,8 +8,9 @@ import NullmereCounsel
 /// scripts/smoke-test-companion.sh: it takes the link the keeper's Mac
 /// offered (NULLMERE_COMPANION_LINK, the link its QR code carries), comes
 /// in as the keeper, keeps their House as a keeper does from the phone (a
-/// company dug in, words said to the realm and to their alliance, the
-/// keeper made ready for the watch to turn, a hold set to work), hearing
+/// company dug in, words said to the realm, an alliance's banner raised and
+/// words said to it, the keeper made ready for the watch to turn, a hold set
+/// to work), hearing
 /// the realm's word on each, is
 /// set aside and comes in again, and writes
 /// what it saw to Documents/companion-report.txt in its own container,
@@ -140,8 +141,9 @@ enum CompanionCheck {
         write(done: false)
         /// An order given from the phone, the realm's word on it heard and
         /// written under `what`: never a name the smoke test reads a line by
-        /// (Fortified company, Said to the realm, Said to the alliance,
-        /// Watch, At work), or it reads the realm's word for what was done.
+        /// (Fortified company, Said to the realm, Raised the banner of, Said
+        /// to the alliance, Watch, At work), or it reads the realm's word for
+        /// what was done.
         func give(_ command: Command, told: String, as what: String) async {
             let asked = Date()
             session.give(command, told: told)
@@ -156,7 +158,17 @@ enum CompanionCheck {
         let said = "Kept from \(session.keeper?.name ?? "a keeper")'s phone at watch \(ledger.watch)."
         await give(.say(words: said, toAlliance: false), told: "Said to the realm", as: "Said")
         lines.append("Said to the realm: \(said)")
-        // And to the keeper's alliance, where their House is sworn to one.
+        // An alliance's banner raised from the phone, where the keeper's
+        // House is sworn to none, and words said to it.
+        if session.ledger?.alliance == nil {
+            let banner = "The Phone's Accord"
+            await give(.foundAlliance(name: banner), told: "Raise the banner of \(banner)", as: "Raised")
+            if await until(30, { session.ledger?.alliance != nil }) {
+                lines.append("Raised the banner of: \(banner)")
+            } else {
+                broken.append("the banner raised from the phone never stood")
+            }
+        }
         if let alliance = session.ledger?.alliance {
             let toAllies = "Sworn to \(alliance), from \(session.keeper?.name ?? "a keeper")'s phone."
             await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to allies")

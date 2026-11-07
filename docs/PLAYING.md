@@ -272,7 +272,14 @@ been heard from lately.
 - **Alliance.** The alliance and its Houses, the leader first, with Help
   for each ally with works, musters or study under way the House hasn't
   helped yet; what was said in it lately, and to the whole realm; and a
-  line to say to either.
+  line to say to either. What waits on the keeper's answer, as the Mac's
+  Alliance panel tells it: an alliance's invitation, to join or decline
+  (no joining one that is full, or holds a House at war with the
+  keeper's), and for its leader, each House asking to join, to admit or
+  refuse. Sworn to none, Ask to join the alliances that would take the
+  House, those whose leaders' seats are nearest first, or Raise a banner
+  of the keeper's own naming; its leader may Invite the nearest Houses that
+  could join, and any of its Houses Leave it, asked once more first.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.

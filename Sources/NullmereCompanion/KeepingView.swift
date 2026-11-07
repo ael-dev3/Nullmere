@@ -338,11 +338,15 @@ struct ArmyTab: View {
 }
 
 /// The alliance and its words, and the words said to the whole realm, with
-/// a line to say.
+/// a line to say; what waits on the keeper's answer among the alliances,
+/// and, as on the Mac, joining one or raising a banner, inviting Houses to
+/// the one they lead, and leaving.
 struct AllianceTab: View {
     let session: CompanionSession
     @State private var words = ""
     @State private var toAlliance = true
+    @State private var banner = ""
+    @State private var leaving = false
 
     var body: some View {
         NavigationStack {
@@ -364,9 +368,51 @@ struct AllianceTab: View {
                                     .font(Night.small)
                             }
                         } else {
-                            Text(verbatim: "Your House is in no alliance. Raise a banner or ask to join one on your Mac.")
+                            Text(verbatim: "Your House is in no alliance.")
                                 .font(Night.small)
                                 .foregroundStyle(Night.ink.opacity(0.75))
+                        }
+                    }
+                    if !ledger.invitations.isEmpty || !ledger.requests.isEmpty {
+                        Section("Awaiting your answer") {
+                            ForEach(ledger.invitations + ledger.requests) { answer in
+                                AnswerRow(session: session, answer: answer)
+                            }
+                        }
+                    }
+                    if ledger.alliance == nil {
+                        Section("Join an alliance, or raise one") {
+                            ForEach(ledger.asks) { ask in
+                                Button(ask.title) { session.give(ask.command, told: ask.title) }
+                                    .buttonStyle(.bordered)
+                                    .font(Night.small)
+                            }
+                            TextField("A name for your banner", text: $banner)
+                                .font(Night.body)
+                            Button("Raise a banner") {
+                                let name = banner.trimmingCharacters(in: .whitespaces)
+                                session.give(.foundAlliance(name: name), told: "Raise the banner of \(name)")
+                                banner = ""
+                            }
+                            .disabled(!Alliance.isValidName(banner.trimmingCharacters(in: .whitespaces)))
+                        }
+                    } else {
+                        if !ledger.invites.isEmpty {
+                            Section("Invite a House") {
+                                ForEach(ledger.invites) { invite in
+                                    Button(invite.title) { session.give(invite.command, told: invite.title) }
+                                        .buttonStyle(.bordered)
+                                        .font(Night.small)
+                                }
+                            }
+                        }
+                        if let leave = ledger.leave {
+                            Section {
+                                Button(leave.title, role: .destructive) { leaving = true }
+                                    .confirmationDialog("\(leave.title)?", isPresented: $leaving, titleVisibility: .visible) {
+                                        Button(leave.title, role: .destructive) { session.give(leave.command, told: leave.title) }
+                                    }
+                            }
                         }
                     }
                     Section {
@@ -449,6 +495,36 @@ struct AwaySection: View {
             Button("Done") { session.dismissAway() }
                 .accessibilityLabel("Put away what happened while you were away")
         }
+    }
+}
+
+/// An invitation to the House, or a House asking to join the alliance it
+/// leads, and the keeper's answer, which the realm carries out.
+struct AnswerRow: View {
+    let session: CompanionSession
+    let answer: CompanionLedger.Answer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: answer.question)
+                .font(Night.body)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                if let accept = answer.accept {
+                    Button(accept.title) { session.give(accept.command, told: accept.title) }
+                        .buttonStyle(.borderedProminent)
+                } else if let unable = answer.unable {
+                    Text(verbatim: unable)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button(answer.refuse.title) { session.give(answer.refuse.command, told: answer.refuse.title) }
+                    .buttonStyle(.bordered)
+            }
+            .font(Night.small)
+        }
+        .padding(.vertical, 4)
     }
 }
 

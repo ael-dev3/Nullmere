@@ -96,6 +96,20 @@ public struct CompanionLedger: Equatable, Sendable {
         public let refusingIsWar: Bool
     }
 
+    /// A question among the alliances waiting on the keeper's answer: an
+    /// alliance's invitation to the House, or a House asking to join the
+    /// alliance it leads, with the answers the rules take.
+    public struct Answer: Equatable, Identifiable, Sendable {
+        public let id: String
+        public let question: String
+        /// Nil while the alliance couldn't take the House: full, or one of
+        /// its Houses at war with it, as `unable` says.
+        public let accept: Order?
+        public let refuse: Order
+        /// Why it can't be accepted now, where it can't.
+        public let unable: String?
+    }
+
     public let house: String
     public let watch: Int
     /// Envoys waiting on the keeper, the first come first.
@@ -122,6 +136,21 @@ public struct CompanionLedger: Equatable, Sendable {
     public let realmWords: [Said]
     /// The realm's chronicle, the latest first.
     public let chronicle: [String]
+    /// The alliances' invitations to the House while it is sworn to none,
+    /// as the Mac's Alliance panel shows them (`GameState.allianceBoard`).
+    public let invitations: [Answer]
+    /// For the leader of the House's alliance, the Houses asking to join.
+    public let requests: [Answer]
+    /// The alliances the House, sworn to none, may ask to join now, those
+    /// whose leaders' seats are nearest first, and none that invited it.
+    public let asks: [Order]
+    /// For the leader, the Houses it may invite now, the nearest first.
+    public let invites: [Order]
+    /// The House's alliance to leave, while it is sworn to one.
+    public let leave: Order?
+
+    /// The most alliances offered to ask, and Houses to invite, at once.
+    public static let alliancesOffered = 6
 
     /// The most lines of words and of the chronicle shown.
     public static let linesShown = 30
@@ -132,6 +161,8 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
+            && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
+            && a.leave == b.leave
     }
 
     /// The ledger of `player`'s House in their view of the world.
@@ -222,6 +253,42 @@ public struct CompanionLedger: Equatable, Sendable {
         allianceWords = allied.map { alliance in lines(said.filter { $0.alliance == alliance.id }) } ?? []
         realmWords = lines(said.filter { $0.alliance == nil })
         chronicle = world.chronicle.suffix(CompanionLedger.linesShown).reversed().map(\.text)
+
+        // The alliances, as the Mac's Alliance panel reads them: what waits
+        // on the House's answer, whom it may ask or invite, and leaving.
+        let board = world.allianceBoard(for: player)
+        func canJoin(_ house: Int, _ alliance: Alliance) -> Bool {
+            alliance.members.count < board.limit && !alliance.members.contains { world.isAtWar(house, $0) }
+        }
+        let home = world.seat(of: player)?.position
+        func distance(_ house: Int) -> Int {
+            guard let home, let seat = world.seat(of: house) else { return Int.max }
+            return home.distance(to: seat.position)
+        }
+        invitations = board.invitations.map { invited in
+            Answer(id: "invited by \(invited.id)", question: "\(invited.name) invites your House to join it.",
+                   accept: canJoin(player, invited)
+                       ? Order(title: "Join \(invited.name)", command: .answerInvitation(alliance: invited.id, accept: true)) : nil,
+                   refuse: Order(title: "Decline \(invited.name)", command: .answerInvitation(alliance: invited.id, accept: false)),
+                   unable: canJoin(player, invited) ? nil : "It is full, or one of its Houses is at war with yours.")
+        }
+        requests = board.alliance.map { own in
+            board.asking.map { asker in
+                Answer(id: "asked by \(asker)", question: "\(title(asker)) asks to join \(own.name).",
+                       accept: canJoin(asker, own) ? Order(title: "Admit \(title(asker))", command: .answerRequest(house: asker, accept: true)) : nil,
+                       refuse: Order(title: "Refuse \(title(asker))", command: .answerRequest(house: asker, accept: false)),
+                       unable: canJoin(asker, own) ? nil : "Your alliance is full, or one of its Houses is at war with it.")
+            }
+        } ?? []
+        let invitedBy = Set(board.invitations.map(\.id))
+        asks = board.others.filter { $0.refusal == nil && !invitedBy.contains($0.alliance.id) }.map(\.alliance)
+            .sorted { (distance($0.leader), $0.id) < (distance($1.leader), $1.id) }
+            .prefix(CompanionLedger.alliancesOffered)
+            .map { Order(title: "Ask to join \($0.name)", command: .askToJoin(alliance: $0.id)) }
+        invites = board.invitable.sorted { (distance($0), $0) < (distance($1), $1) }
+            .prefix(CompanionLedger.alliancesOffered)
+            .map { Order(title: "Invite \(title($0))", command: .inviteToAlliance(house: $0)) }
+        leave = board.alliance.map { Order(title: "Leave \($0.name)", command: .leaveAlliance) }
     }
 
     /// The most sites a company is offered to gather at: the nearest.

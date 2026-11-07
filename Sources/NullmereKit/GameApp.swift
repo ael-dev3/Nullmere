@@ -552,8 +552,9 @@ public final class GameApp {
 
     /// What a Mac sees of its House, as the phone's smoke test reads it: its
     /// companies dug in, what its holds are at work on (each as its hold and
-    /// the work raised or company mustered there), the watch, and the last
-    /// words said to the whole realm and to its alliance, a line each.
+    /// the work raised or company mustered there), the watch, the alliance
+    /// it is sworn to, and the last words said to the whole realm and to its
+    /// alliance, a line each.
     static func linkReport(of state: GameState, player: Int) -> String {
         let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
         let working = state.holds(of: player).flatMap { hold in
@@ -564,7 +565,8 @@ public final class GameApp {
         let allied = state.alliance(of: player).map { alliance in
             words.filter { $0.alliance == alliance.id }.suffix(5).map { "alliance said: \($0.text)" }
         } ?? []
-        return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + said + allied)
+        let sworn = state.alliance(of: player).map { ["alliance: \($0.name)"] } ?? []
+        return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + sworn + said + allied)
             .joined(separator: "\n") + "\n"
     }
 

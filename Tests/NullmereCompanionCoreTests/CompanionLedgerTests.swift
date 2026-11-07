@@ -171,6 +171,83 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// The alliances from the phone, as the Mac's Alliance panel reads them:
+    /// sworn to none, the House asks to join those that would take it, the
+    /// nearest first, answers those that invited it (no acceptance offered
+    /// where one couldn't take it), and raises a banner of its own; leading
+    /// it, it answers the Houses asking to join, invites the nearest that
+    /// could, and may leave. Every order one the rules take as offered.
+    func testTheAlliancesAreKeptFromThePhone() throws {
+        var (state, me) = try world()
+        let others = state.houses.indices.filter { $0 != me }
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.asks.isEmpty && ledger.invitations.isEmpty && ledger.requests.isEmpty && ledger.invites.isEmpty,
+                      "No alliance stands")
+        XCTAssertNil(ledger.leave)
+
+        // Two stewards raise banners: the keeper may ask either, the nearest first.
+        _ = try state.perform(.foundAlliance(name: "Hostward"), as: others[0])
+        _ = try state.perform(.foundAlliance(name: "Farward"), as: others[1])
+        let hostward = try XCTUnwrap(state.alliance(of: others[0]))
+        let farward = try XCTUnwrap(state.alliance(of: others[1]))
+        let home = try XCTUnwrap(state.seat(of: me)).position
+        func distance(_ house: Int) -> Int { state.seat(of: house).map { $0.position.distance(to: home) } ?? Int.max }
+        let nearestFirst = [hostward, farward].sorted { (distance($0.leader), $0.id) < (distance($1.leader), $1.id) }
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.asks.map(\.command), nearestFirst.map { Command.askToJoin(alliance: $0.id) })
+        XCTAssertEqual(ledger.asks.map(\.title), nearestFirst.map { "Ask to join \($0.name)" })
+        assertTaken(ledger.asks, in: state, as: me)
+
+        // Hostward invites the keeper: answered, not asked.
+        _ = try state.perform(.inviteToAlliance(house: me), as: others[0])
+        ledger = CompanionLedger(world: state, player: me)
+        let invitation = try XCTUnwrap(ledger.invitations.first)
+        XCTAssertEqual(invitation.question, "Hostward invites your House to join it.")
+        let join = try XCTUnwrap(invitation.accept)
+        XCTAssertEqual(join.command, .answerInvitation(alliance: hostward.id, accept: true))
+        XCTAssertEqual(join.title, "Join Hostward")
+        XCTAssertEqual(invitation.refuse.command, .answerInvitation(alliance: hostward.id, accept: false))
+        XCTAssertNil(invitation.unable)
+        XCTAssertEqual(ledger.asks.map(\.command), [.askToJoin(alliance: farward.id)], "The alliance that invited it isn't asked")
+        assertTaken([join, invitation.refuse], in: state, as: me)
+        // Full, Hostward couldn't take it: its invitation answered no other way than declined.
+        var full = state
+        let index = try XCTUnwrap(full.alliances?.firstIndex { $0.id == hostward.id })
+        full.alliances?[index].members.append(others[2])
+        let crowded = try XCTUnwrap(CompanionLedger(world: full, player: me).invitations.first)
+        XCTAssertNil(crowded.accept)
+        XCTAssertEqual(crowded.unable, "It is full, or one of its Houses is at war with yours.")
+
+        // Declined, the keeper raises a banner of their own, and leads it.
+        _ = try state.perform(invitation.refuse.command, as: me)
+        _ = try state.perform(.foundAlliance(name: "Moonward"), as: me)
+        let moonward = try XCTUnwrap(state.alliance(of: me))
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.invitations.isEmpty)
+        XCTAssertTrue(ledger.asks.isEmpty, "Sworn, it asks no other")
+        XCTAssertEqual(ledger.leave?.command, .leaveAlliance)
+        XCTAssertEqual(ledger.leave?.title, "Leave Moonward")
+        XCTAssertEqual(ledger.invites.map(\.command), [.inviteToAlliance(house: others[2])], "The leaders of the others can't be invited")
+        XCTAssertEqual(ledger.invites.first?.title, "Invite \(state.houses[others[2]].title)")
+        assertTaken(ledger.invites + [try XCTUnwrap(ledger.leave)], in: state, as: me)
+
+        // A House asking to join waits on the leader's answer; admitted, the alliance is full.
+        _ = try state.perform(.askToJoin(alliance: moonward.id), as: others[2])
+        ledger = CompanionLedger(world: state, player: me)
+        let request = try XCTUnwrap(ledger.requests.first)
+        XCTAssertEqual(request.question, "\(state.houses[others[2]].title) asks to join Moonward.")
+        let admit = try XCTUnwrap(request.accept)
+        XCTAssertEqual(admit.command, .answerRequest(house: others[2], accept: true))
+        XCTAssertEqual(request.refuse.command, .answerRequest(house: others[2], accept: false))
+        assertTaken([admit, request.refuse], in: state, as: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: others[2]).requests.isEmpty, "Only the leader answers")
+        _ = try state.perform(admit.command, as: me)
+        XCTAssertTrue(state.areAllied(me, others[2]))
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.requests.isEmpty)
+        XCTAssertTrue(ledger.invites.isEmpty, "Full: no House could join it now")
+    }
+
     /// Envoys waiting on the keeper, the first come first, their terms as
     /// the Mac words them and the answers the rules take; a trade the keeper
     /// can't pay offered no acceptance; a steward's demand of tribute marked,
