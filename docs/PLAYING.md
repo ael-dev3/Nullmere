@@ -321,7 +321,11 @@ been heard from lately.
   learned; Give all the grade still needs, or as much of each store it
   lacks as the House has (a grade paid for is learned at once, and every
   three hundred given in worth brings the giver a Salt Hourglass); and for
-  its leader, Pursue, the next study at its next grade.
+  its leader, Pursue, the next study at its next grade. The Houses
+  nearest: the twelve whose seats lie nearest the keeper's, each with how
+  it stands with the keeper's House (at war, at peace, in a pact or sworn
+  to the alliance), Send an envoy with peace, a pact or a demand of tribute
+  where the rules would carry it, and Declare war, asked once more first.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.

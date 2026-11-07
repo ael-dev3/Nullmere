@@ -119,6 +119,17 @@ public struct CompanionLedger: Equatable, Sendable {
         public let uses: [Order]
     }
 
+    /// Another House as the phone's dealings list it: how it stands with the
+    /// keeper's, the envoys the rules would carry to it now, and war, which
+    /// the phone asks again before it is declared.
+    public struct Dealing: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let name: String
+        public let stance: String
+        public let envoys: [Order]
+        public let war: Order?
+    }
+
     /// A question among the alliances waiting on the keeper's answer: an
     /// alliance's invitation to the House, or a House asking to join the
     /// alliance it leads, with the answers the rules take.
@@ -179,6 +190,11 @@ public struct CompanionLedger: Equatable, Sendable {
     public let invites: [Order]
     /// The House's alliance to leave, while it is sworn to one.
     public let leave: Order?
+    /// The Houses nearest the keeper's seat, the nearest first, and the
+    /// dealings the rules would take with each.
+    public let dealings: [Dealing]
+    /// The most Houses the phone deals with at once: the nearest.
+    public static let dealtWith = 12
     /// The alliance's studies, as the Mac's Alliance panel tells them: the
     /// study it pursues and what is still to give toward its next grade, or
     /// that it pursues none, and what it has learned together.
@@ -213,6 +229,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
+            && a.dealings == b.dealings
     }
 
     /// The House's stores as one stock.
@@ -396,6 +413,7 @@ public struct CompanionLedger: Equatable, Sendable {
         leave = board.alliance.map { Order(title: "Leave \($0.name)", command: .leaveAlliance) }
         calls = CompanionLedger.calls(in: world, player: player, holds: holds)
         // The alliance's studies, as the Mac's Alliance panel reads them.
+        dealings = CompanionLedger.dealings(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -427,6 +445,37 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         return offered.sorted { ($0.distance, $0.order.title) < ($1.distance, $1.order.title) }
             .lazy.map(\.order).filter { world.refusal(of: $0.command, as: player) == nil }.prefix(CompanionLedger.alliancesOffered).map { $0 }
+    }
+
+    /// The Houses standing nearest the keeper's seat, the nearest first, each
+    /// with how it stands with the keeper's House and the envoys and war the
+    /// rules would take now.
+    static func dealings(in world: GameState, player: Int) -> [Dealing] {
+        let houses = world.houses
+        guard houses.indices.contains(player), let home = world.seat(of: player)?.position else { return [] }
+        let others = houses.indices.filter { $0 != player && !houses[$0].isEliminated }.compactMap { house -> (Int, Int)? in
+            world.seat(of: house).map { (house, $0.position.distance(to: home)) }
+        }
+        let nearest = others.sorted { ($0.1, $0.0) < ($1.1, $1.0) }.prefix(dealtWith).map(\.0)
+        return nearest.map { house in
+            let name = houses[house].title
+            let stance: String
+            if world.areAllied(player, house) {
+                stance = "Sworn to your alliance"
+            } else {
+                switch world.stance(player, house) {
+                case .war: stance = "At war with your House"
+                case .pact: stance = "In a pact with your House"
+                case .peace: stance = "At peace with your House"
+                }
+            }
+            let offered: [(String, Proposal)] = [("Offer peace to", .peace), ("Offer a pact to", .pact), ("Demand tribute of", .tribute)]
+            let envoys = offered.map { Order(title: "\($0.0) \(name)", command: .propose($0.1, to: house)) }
+                .filter { world.refusal(of: $0.command, as: player) == nil }
+            let war = Order(title: "Declare war on \(name)", command: .declareWar(on: house))
+            return Dealing(id: house, name: name, stance: stance, envoys: envoys,
+                           war: world.isAtWar(player, house) || world.refusal(of: war.command, as: player) != nil ? nil : war)
+        }
     }
 
     /// The alliance's studies for the ledger: what it pursues and still needs

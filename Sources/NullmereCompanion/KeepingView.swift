@@ -412,6 +412,15 @@ struct AllianceTab: View {
                         .disabled(words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         WordLine(session: session)
                     }
+                    // The Houses nearest, how each stands with the keeper's,
+                    // and envoys or war sent from the phone.
+                    if !ledger.dealings.isEmpty {
+                        Section("The Houses nearest") {
+                            ForEach(ledger.dealings) { dealing in
+                                DealingRow(session: session, dealing: dealing)
+                            }
+                        }
+                    }
                     if ledger.alliance != nil {
                         Section("Said in the alliance") {
                             SaidLines(lines: ledger.allianceWords)
@@ -685,6 +694,40 @@ struct CompanyRows: View {
                 OrdersMenu(title: "Keep gates", orders: company.gates,
                            label: "Send the \(company.name) to keep an ally's gates") { gates in
                     session.give(gates.command, told: "\(gates.title), the \(company.name)")
+                }
+            }
+            .font(Night.small)
+        }
+    }
+}
+
+/// Another House and the keeper's dealings with it: its stance, Send an
+/// envoy, and war, asked once more before it is declared.
+struct DealingRow: View {
+    let session: CompanionSession
+    let dealing: CompanionLedger.Dealing
+    @State private var declaring = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: dealing.name)
+                .font(Night.body)
+            Text(verbatim: dealing.stance)
+                .font(Night.small)
+                .foregroundStyle(dealing.stance.hasPrefix("At war") ? Night.bad : Night.ink.opacity(0.7))
+        }
+        .accessibilityElement(children: .combine)
+        if !dealing.envoys.isEmpty || dealing.war != nil {
+            HStack(spacing: 10) {
+                ListedOrdersMenu(title: "Send an envoy", orders: dealing.envoys, label: "Send an envoy to \(dealing.name)") { order in
+                    session.give(order.command, told: order.title)
+                }
+                if let war = dealing.war {
+                    Button("Declare war", role: .destructive) { declaring = true }
+                        .accessibilityLabel(war.title)
+                        .confirmationDialog("\(war.title)?", isPresented: $declaring, titleVisibility: .visible) {
+                            Button(war.title, role: .destructive) { session.give(war.command, told: war.title) }
+                        }
                 }
             }
             .font(Night.small)

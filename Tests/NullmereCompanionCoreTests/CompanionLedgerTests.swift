@@ -107,6 +107,47 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger, "A commander's standing changes the ledger")
     }
 
+    /// The Houses nearest the keeper's seat on the phone, the nearest first:
+    /// each with how it stands with the keeper's House, the envoys the rules
+    /// would carry and war where it may be declared; peace offered once at
+    /// war, and war no longer; an ally named as sworn to the alliance.
+    func testTheHousesNearestAreDealtWithFromThePhone() throws {
+        var (state, me) = try world()
+        let home = try XCTUnwrap(state.seat(of: me)).position
+        var ledger = CompanionLedger(world: state, player: me)
+        let others = state.houses.indices.filter { $0 != me }
+        XCTAssertEqual(Set(ledger.dealings.map(\.id)), Set(others), "Every House of a small lake")
+        let distances = ledger.dealings.map { try? XCTUnwrap(state.seat(of: $0.id)).position.distance(to: home) }
+        XCTAssertEqual(distances, distances.sorted { ($0 ?? 0) < ($1 ?? 0) }, "The nearest first")
+        for dealing in ledger.dealings {
+            XCTAssertEqual(dealing.name, state.houses[dealing.id].title)
+            XCTAssertEqual(dealing.stance, "At peace with your House")
+            XCTAssertEqual(dealing.war?.command, .declareWar(on: dealing.id))
+            XCTAssertFalse(dealing.envoys.contains { $0.command == .propose(.peace, to: dealing.id) }, "No peace offered at peace")
+            assertTaken(dealing.envoys + [try XCTUnwrap(dealing.war)], in: state, as: me)
+        }
+
+        let foe = try XCTUnwrap(ledger.dealings.first).id
+        _ = try state.declareWar(by: me, on: foe)
+        ledger = CompanionLedger(world: state, player: me)
+        let atWar = try XCTUnwrap(ledger.dealings.first { $0.id == foe })
+        XCTAssertEqual(atWar.stance, "At war with your House")
+        XCTAssertNil(atWar.war, "At war already")
+        let peace = try XCTUnwrap(atWar.envoys.first { $0.command == .propose(.peace, to: foe) }, "\(atWar.envoys.map(\.title))")
+        XCTAssertEqual(peace.title, "Offer peace to \(state.houses[foe].title)")
+        assertTaken(atWar.envoys, in: state, as: me)
+
+        let ally = try XCTUnwrap(others.first { $0 != foe })
+        state.houses[ally].temperament = .steadfast
+        _ = try state.perform(.foundAlliance(name: "Dealward"), as: me)
+        _ = try state.perform(.inviteToAlliance(house: ally), as: me)
+        XCTAssertTrue(state.areAllied(me, ally))
+        let sworn = try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.first { $0.id == ally })
+        XCTAssertEqual(sworn.stance, "Sworn to your alliance")
+        if let war = sworn.war { assertTaken([war], in: state, as: me) }
+        XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger)
+    }
+
     /// The alliance's studies from the phone, as the Mac's Alliance panel
     /// keeps them: none sworn to no alliance; the leader offered each study
     /// at its next grade, none given toward before one is pursued; then what
