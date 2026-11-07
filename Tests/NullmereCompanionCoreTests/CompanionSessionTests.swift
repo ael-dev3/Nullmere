@@ -229,6 +229,47 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// The realm's other words, as the phone hears them while it keeps the
+    /// House: an order the realm refused, its reason told with the world as
+    /// it stands; a refusal of anything else, told as itself; the world
+    /// settled after an order, the order carried out; readiness as the
+    /// realm last said; news alone, nothing changed.
+    func testTheRealmsOtherWordsAreToldAsTheyCome() async throws {
+        let (db, running, mac, _, _) = try await realm()
+        defer { running.cancel() }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping }
+        let world = try XCTUnwrap(phone.world)
+        let company = try XCTUnwrap(phone.ledger?.companies.first { $0.orders.contains { $0.title == "Fortify" } })
+
+        phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
+        phone.hear(.orderRefused(.rule(.notYours), world))
+        XCTAssertEqual(phone.word?.refused, true)
+        XCTAssertEqual(phone.word?.awaited, false)
+        XCTAssertTrue(phone.word?.text.hasPrefix("Fortify the \(company.name): the realm refused it.") == true, phone.word?.text ?? "")
+        XCTAssertEqual(phone.world?.unit(company.id)?.fortified, world.unit(company.id)?.fortified, "The world as the realm holds it")
+
+        phone.hear(.refused(.manyNewcomers))
+        XCTAssertEqual(phone.phase, .keeping, "Still in")
+        XCTAssertEqual(phone.word, CompanionSession.Word(text: RealmError.manyNewcomers.description, refused: true, awaited: false))
+
+        phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
+        XCTAssertEqual(phone.word?.awaited, true)
+        phone.hear(.settled(world, []))
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): carried out by the realm.")
+
+        phone.hear(.readiness(true))
+        XCTAssertTrue(phone.isReady)
+        let before = phone.ledger
+        phone.hear(.heard([]))
+        XCTAssertEqual(phone.ledger, before, "News alone changes nothing")
+        phone.unlink()
+        mac.close()
+    }
+
     /// A realm too old to link phones is said to be, and the phone asks for
     /// nothing more of it; one that can't be reached is told so.
     func testARealmThatCantLinkIsSaidToBe() async throws {
