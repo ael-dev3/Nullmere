@@ -452,15 +452,18 @@ jobs:
           echo "::group::Summary"
           grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|STARS \|STILL \|MIST \|LAKEAFAR \|PERF-CHECK " build-test.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
+          # The reports end without a newline, and a report of one line is its
+          # first and last: each line printed once, and ended (awk 1 ends them).
+          ends() { awk '{ last = $0 } NR == 1 { print } END { if (NR > 1) print last }' "$1" 2>/dev/null || true; }
           # Whose voices were heard, and their verdict.
-          sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 || true
+          sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 | awk 1 || true
           # Whose counsel was taken, and its verdict.
-          sed -n '1p;$p' build/counsel-report.txt 2>/dev/null || true
+          ends build/counsel-report.txt
           # The keeper's phone beside their Mac: what it did, and what the Mac saw.
-          cat build/companion-report.txt 2>/dev/null && echo || true
+          awk 1 build/companion-report.txt 2>/dev/null || true
           grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
           # Counsel taken on the phone, through its own model: whose, and its verdict.
-          sed -n '1p;$p' build/counsel-phone-report.txt 2>/dev/null && echo || true
+          ends build/counsel-phone-report.txt
           # The ballad the runner's own model made, as a keeper's Mac makes one.
           grep -h "^ballad of " build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true

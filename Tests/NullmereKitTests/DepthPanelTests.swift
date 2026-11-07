@@ -1508,6 +1508,30 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .writeLetter(to: other, words: "x"), events: [], in: session.state, player: me), [.parley])
     }
 
+    /// A realm of more keepers than a menu shows well: a letter's reader
+    /// chosen among those the keeper has reason to write to, nearest first,
+    /// or found by name, not picked from a menu of every keeper.
+    func testAWideRealmsLetterGoesToAKeeperChosenAmongThoseOffered() throws {
+        var state = GameState(settings: GameSettings(seedText: "a wide realm's letters", houseCount: 128,
+                                                     radius: RealmState.radius(forSeats: 128), keepers: 1))
+        let me = state.player
+        for house in state.houses.indices { state.houses[house].isPlayer = true }
+        let (session, link) = session(state)
+        let keepers = LettersSection.keepers(in: session.state, besides: me)
+        XCTAssertEqual(keepers.count, 127)
+        let choice = session.state.houseChoice(by: me, excluding: [me], among: Set(keepers))
+        XCTAssertTrue(choice.searchable)
+        let near = try XCTUnwrap(choice.offered.first)
+        draw(LettersSection(session: session, open: true), width: 360, height: 1200)
+        XCTAssertEqual(shown.filter { $0.hasPrefix("To House") }.count, choice.offered.count, "Among \(shown)")
+        XCTAssertLessThan(choice.offered.count, 40, "Not a hundred and twenty-seven")
+        XCTAssertFalse(shown.contains("Send"), "No one to write to until one is chosen")
+        XCTAssertTrue(PressableButtons.press("To \(near.title)"), "Among \(shown)")
+        draw(LettersSection(session: session, open: true, to: near.id, draft: "Well met, neighbour"), width: 360, height: 1200)
+        XCTAssertTrue(PressableButtons.press("Send"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .writeLetter(to: near.id, words: "Well met, neighbour"))
+    }
+
     /// The Pedlar of the Still lying off the keeper's hold, a ware bought.
     func testThePedlarsCardSellsAWare() throws {
         var state = world("pressed pedlar")

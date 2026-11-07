@@ -167,10 +167,12 @@ struct LettersSection: View {
     @State private var to: Int?
     @State private var draft: String
 
-    /// `open` and `draft` as the keeper left them: folded and empty to begin.
-    init(session: GameSession, open: Bool = false, draft: String = "") {
+    /// `open`, the keeper written to and `draft` as the keeper left them:
+    /// folded, no one chosen and empty to begin.
+    init(session: GameSession, open: Bool = false, to: Int? = nil, draft: String = "") {
         self.session = session
         _open = State(initialValue: open)
+        _to = State(initialValue: to)
         _draft = State(initialValue: draft)
     }
 
@@ -189,7 +191,10 @@ struct LettersSection: View {
         let state = session.state
         let letters = state.letters(of: session.player)
         let keepers = LettersSection.keepers(in: state, besides: session.player)
-        let reader = to ?? keepers.first
+        // More keepers than a menu shows well: the keeper chooses whom to
+        // write to among those they have reason to, or finds them by name.
+        let wide = keepers.count > HouseChoice.shownWhole
+        let reader = to ?? (wide ? nil : keepers.first)
         FoldedList(title: "Letters", count: letters.count,
                    summary: letters.last.map { LettersSection.line($0, in: state, player: session.player) } ?? "To one keeper alone, read by them and you.",
                    open: $open) {
@@ -200,13 +205,25 @@ struct LettersSection: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
             }
+            if wide {
+                Text(verbatim: "Write to which keeper?")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.6))
+                HouseChooser(session: session, excluding: [session.player], among: Set(keepers)) { house in
+                    QuietButton(title: "To \(house.title)", size: 8.5, prominent: reader == house.id, name: "Write to \(house.title)") {
+                        to = house.id
+                    }
+                }
+            }
             if let reader {
                 let refusal = state.letterRefusal(to: reader, draft, as: session.player)
-                Picker("Write to", selection: Binding(get: { reader }, set: { to = $0 })) {
-                    ForEach(keepers, id: \.self) { Text(verbatim: state.houses[$0].title).tag($0) }
+                if !wide {
+                    Picker("Write to", selection: Binding(get: { reader }, set: { to = $0 })) {
+                        ForEach(keepers, id: \.self) { Text(verbatim: state.houses[$0].title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .accessibilityLabel("Write to")
                 }
-                .labelsHidden()
-                .accessibilityLabel("Write to")
                 HStack {
                     TextField("A letter for \(state.houses[reader].title)", text: $draft)
                         .textFieldStyle(.plain)

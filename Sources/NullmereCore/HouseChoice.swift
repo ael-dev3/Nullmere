@@ -8,8 +8,8 @@ import Foundation
 public struct HouseChoice: Equatable, Sendable {
     /// The Houses offered.
     public let offered: [House]
-    /// Whether the keeper may look for a House by its name: in a realm of
-    /// more Houses standing than a chooser offers whole.
+    /// Whether the keeper may look for a House by its name: where more
+    /// Houses standing may be named than a chooser offers whole.
     public let searchable: Bool
     /// How many more Houses go by the name looked for than are offered.
     public let more: Int
@@ -51,18 +51,20 @@ public struct HouseChoice: Equatable, Sendable {
 
 extension GameState {
     /// The Houses a keeper of `house` is offered to name, among those
-    /// standing but the `excluding`. In a realm of up to ninety-six Houses
-    /// standing, every one, in the order of their seats, whatever is looked
-    /// for. Past that, those the keeper has reason to name: their own, if it
+    /// standing (and of those `among`, where only some may be named, as a
+    /// letter goes to a keeper) but the `excluding`. Where up to ninety-six
+    /// Houses standing may be named, every one, in the order of their
+    /// seats, whatever is looked for. Past that, those the keeper has
+    /// reason to name: their own, if it
     /// is not excluded; their alliance's; their liege and their vassals;
     /// every House they have dealt with; the dozen whose seats are nearest
     /// theirs; and the dozen leading the race; nearest their seat first.
     /// With a name looked for (`query`), the Houses whose name holds it,
     /// among them all, nearest first, two dozen at most. The race is
     /// `standings` where it is already worked out, else worked out here.
-    public func houseChoice(by house: Int, matching query: String = "", excluding: Set<Int> = [],
+    public func houseChoice(by house: Int, matching query: String = "", excluding: Set<Int> = [], among: Set<Int>? = nil,
                             standings race: [Standing]? = nil) -> HouseChoice {
-        let living = livingIDs
+        let living = among.map { among in livingIDs.filter { among.contains($0) } } ?? livingIDs
         let candidates = living.filter { !excluding.contains($0) }
         guard living.count > HouseChoice.shownWhole else {
             return HouseChoice(offered: candidates.map { houses[$0] }, searchable: false, more: 0)

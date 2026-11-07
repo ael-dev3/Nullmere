@@ -64,6 +64,28 @@ final class HouseChoiceTests: XCTestCase {
         XCTAssertFalse(state.houseChoice(by: me, excluding: [me, liege]).offered.map(\.id).contains(liege), "Unless excluded")
     }
 
+    /// A letter goes to a keeper: only the Houses that may be named are
+    /// offered, shown whole while they are ninety-six or fewer, however many
+    /// Houses stand, and none of the rest is found by its name.
+    func testOnlyTheHousesThatMayBeNamedAreOffered() throws {
+        let state = HouseChoiceTests.wide
+        let me = 40
+        let few = Set(state.livingIDs.filter { $0 % 2 == 0 && $0 != me })
+        let shown = state.houseChoice(by: me, excluding: [me], among: few)
+        XCTAssertFalse(shown.searchable, "Sixty-three of a hundred and twenty-eight, shown whole")
+        XCTAssertEqual(shown.offered.map(\.id), few.sorted(), "In the order of their seats")
+
+        let many = Set(state.livingIDs.filter { $0 != me && $0 % 8 != 3 })
+        let wide = state.houseChoice(by: me, excluding: [me], among: many)
+        XCTAssertGreaterThan(many.count, HouseChoice.shownWhole)
+        XCTAssertTrue(wide.searchable)
+        XCTAssertFalse(wide.offered.isEmpty)
+        XCTAssertTrue(wide.offered.allSatisfy { many.contains($0.id) }, "Only those that may be named")
+        let unnamed = state.houseChoice(by: me, matching: state.houses[3].name, excluding: [me], among: many)
+        XCTAssertFalse(unnamed.offered.contains { $0.id == 3 }, "One that may not be named isn't found by its name")
+        XCTAssertTrue(state.houseChoice(by: me, matching: state.houses[3].name, excluding: [me]).offered.contains { $0.id == 3 })
+    }
+
     func testAnyHouseOfAWideRealmIsFoundByItsName() throws {
         let state = HouseChoiceTests.wide
         let me = 40
