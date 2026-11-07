@@ -33,9 +33,10 @@ their Mac, linked by a code the Mac shows: a chart of its land and its
 borders, its works, musters and companies sent from the chart, its
 commanders and the Spine, the caretaker's standing orders for while the
 keeper is away, the Lantern Inn and the pedlar, letters to other keepers,
-its alliance's studies, help and rallies, its dealings with the Houses
-nearest, and counsel with its commanders and orders in the keeper's own
-words, read by the phone's own on-device model. Out of reach, it says so
+the watch's labours and the realm's happenings, its alliance's studies,
+help and rallies, its dealings with the Houses nearest, and counsel with
+its commanders and orders in the keeper's own words, read by the phone's
+own on-device model. Out of reach, it says so
 and keeps the House; back, it takes up where it was.
 Website: [nullmere.online](https://nullmere.online).
 

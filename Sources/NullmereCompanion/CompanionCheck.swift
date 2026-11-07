@@ -51,6 +51,10 @@ enum CompanionCheck {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "words"
     }
 
+    /// How long the phone, made ready, waits for the watch to turn: past a
+    /// third of a 600-s watch, the least it lasts while a keeper is away.
+    static let watchTurnWait = 240.0
+
     /// The line a report ends with when every step came as it should.
     static let passed = "The companion kept its keeper's House."
     /// The line a report ends with while its steps go on.
@@ -352,17 +356,23 @@ enum CompanionCheck {
         write(done: false)
         // Ready for the watch to turn, from the phone: the watch turns once
         // every keeper there is ready, and a third of it has passed while a
-        // keeper whose House stands is away. The House's holds may be at
-        // work already as the keeper comes in (a seat taken from its steward
-        // is kept as it stood); a watch on, what they mustered is done.
+        // keeper whose House stands is away (the keeper the smoke test
+        // entered before, across the network). On CI's realm a watch is
+        // 600 s, so the turn may wait 200 s from the watch's start: the
+        // phone, made ready within 110 s of it, waited past 90 s (run 696).
+        // The House's holds may be at work already as the keeper comes in
+        // (a seat taken from its steward is kept as it stood); a watch on,
+        // what they mustered is done.
         let before = session.ledger?.watch ?? ledger.watch
         let readied = Date()
         session.setReady(true)
-        if await until(90, { (session.ledger?.watch ?? before) > before }) {
+        if await until(Self.watchTurnWait, { (session.ledger?.watch ?? before) > before }) {
             lines.append(String(format: "Made ready: the watch turned to %ld in %.2f s", session.ledger?.watch ?? before,
                                 Date().timeIntervalSince(readied)))
         } else {
-            lines.append("Made ready: the watch didn't turn in 90 s, a keeper there not yet ready")
+            let left = session.secondsLeft(at: Date()).map { ", its own time \($0) s from its end" } ?? ""
+            lines.append(String(format: "Made ready: the watch didn't turn in %.0f s%@: %ld of %ld keepers there ready",
+                                Self.watchTurnWait, left, session.status?.ready ?? 0, session.status?.online ?? 0))
         }
         lines.append("Watch: \(session.ledger?.watch ?? before)")
         // The silver key the watch's turn brought, spent at the Lantern Inn
