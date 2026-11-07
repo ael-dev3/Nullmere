@@ -11,12 +11,16 @@ public protocol CompanionMemory: AnyObject {
     var realm: URL? { get set }
     /// By commander.
     var counsel: [Int: CounselMemory] { get set }
+    /// What the keeper last saw of their House on this phone, to tell them
+    /// what happened while it was set aside.
+    var lastSeen: LastSeen? { get set }
 }
 
 /// A memory kept for the life of the process: for tests.
 public final class PassingMemory: CompanionMemory {
     public var realm: URL?
     public var counsel: [Int: CounselMemory] = [:]
+    public var lastSeen: LastSeen?
     public init(realm: URL? = nil) { self.realm = realm }
 }
 
@@ -63,6 +67,9 @@ public final class CompanionSession {
     public private(set) var ledger: CompanionLedger?
     /// The realm's word on the last order given here.
     public private(set) var word: Word?
+    /// What happened to the House while the phone was set aside, told as it
+    /// comes in again, until the keeper puts it away.
+    public private(set) var away: AwayReport?
     public private(set) var isReady = false
     /// The realm can't be reached just now, and why.
     public private(set) var outOfReach: String?
@@ -125,6 +132,9 @@ public final class CompanionSession {
     /// back. Its keeper stays while their Mac is there.
     public func pause() {
         guard let link, phase == .keeping else { return }
+        if let world, let house = keeper?.house, world.houses.indices.contains(house) {
+            memory.lastSeen = LastSeen(of: house, in: world)
+        }
         link.leave()
         self.link = nil
         phase = .away
@@ -142,6 +152,11 @@ public final class CompanionSession {
         let age = status?.age ?? 0
         let kept = memory.counsel[commander].flatMap { $0.age == age ? $0 : nil }
         return (grounded, kept ?? CounselMemory(commander: commander, age: age))
+    }
+
+    /// The report of what happened while away, put away.
+    public func dismissAway() {
+        away = nil
     }
 
     /// Keeps what a commander remembers of counsel taken here, forgetting
@@ -224,6 +239,9 @@ public final class CompanionSession {
             problem = nil
             outOfReach = nil
             memory.realm = realm
+            if let house = keeper.house, let seen = memory.lastSeen, seen.house == house {
+                away = AwayReport(since: seen, now: world, player: house)
+            }
             show(world)
         case .refused(let error):
             if error == .unknownKeeper {
@@ -277,6 +295,8 @@ public final class CompanionSession {
         link = nil
         memory.realm = nil
         memory.counsel = [:]
+        memory.lastSeen = nil
+        away = nil
         keeper = nil
         world = nil
         ledger = nil

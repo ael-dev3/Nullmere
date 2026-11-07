@@ -4,10 +4,7 @@ import NullmereCore
 /// marks its turning.
 struct WatchSummary: Equatable {
     let watch: Int
-    struct Change: Hashable {
-        let resource: Resource
-        let delta: Int
-    }
+    typealias Change = StockChange
 
     /// Each resource's change in store, after upkeep, for those that moved.
     let changes: [Change]

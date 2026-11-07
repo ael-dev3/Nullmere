@@ -48,9 +48,20 @@ struct CompanionApp: App {
 final class DefaultsMemory: CompanionMemory {
     private let key = "companion.realm"
     private let counselKey = "companion.counsel"
+    private let seenKey = "companion.lastSeen"
     var realm: URL? {
         get { UserDefaults.standard.string(forKey: key).flatMap(URL.init(string:)) }
         set { UserDefaults.standard.set(newValue?.absoluteString, forKey: key) }
+    }
+    var lastSeen: LastSeen? {
+        get { UserDefaults.standard.data(forKey: seenKey).flatMap { try? JSONDecoder().decode(LastSeen.self, from: $0) } }
+        set {
+            if let newValue, let data = try? JSONEncoder().encode(newValue) {
+                UserDefaults.standard.set(data, forKey: seenKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: seenKey)
+            }
+        }
     }
     var counsel: [Int: CounselMemory] {
         get {

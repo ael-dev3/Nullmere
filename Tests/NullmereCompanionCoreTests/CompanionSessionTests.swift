@@ -307,6 +307,45 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// Set aside while the realm goes on, the phone is told as it comes in
+    /// again what happened to the House meanwhile, as the Mac tells it, until
+    /// the keeper puts it away; let go, it remembers nothing of it.
+    func testThePhoneTellsWhatHappenedWhileItWasAway() async throws {
+        let (db, running, mac, keeper, steward) = try await realm()
+        defer { running.cancel() }
+        let memory = PassingMemory()
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: memory) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping }
+        XCTAssertNil(phone.away, "Nothing to tell, the first time in")
+        let house = try XCTUnwrap(keeper.house)
+        let watch = try XCTUnwrap(phone.world?.watch)
+
+        phone.pause()
+        XCTAssertEqual(memory.lastSeen?.watch, watch, "What the phone last saw, kept")
+        await steward.reshape { state in state.world.houses[house].stock = Stock(grain: 777, timber: 666, stone: 555, moonsalt: 44) }
+        var turned = false
+        mac.onEvent = { if case .watchTurned = $0 { turned = true } }
+        mac.setReady(true)
+        try await until("the watch turned while the phone was away") { turned }
+
+        phone.resume()
+        try await until("in again") { phone.phase == .keeping }
+        let away = try XCTUnwrap(phone.away)
+        XCTAssertGreaterThanOrEqual(away.watches, 1)
+        XCTAssertTrue(away.title.hasPrefix("While you were away"), away.title)
+        XCTAssertFalse(away.changes.isEmpty, "The stores' change told")
+        phone.dismissAway()
+        XCTAssertNil(phone.away)
+
+        phone.unlink()
+        XCTAssertNil(memory.lastSeen, "Let go, it remembers nothing of the House")
+        XCTAssertNil(phone.away)
+        mac.close()
+    }
+
     /// A realm too old to link phones is said to be, and the phone asks for
     /// nothing more of it; one that can't be reached is told so.
     func testARealmThatCantLinkIsSaidToBe() async throws {

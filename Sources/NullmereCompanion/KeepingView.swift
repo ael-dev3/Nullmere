@@ -68,6 +68,9 @@ struct HouseTab: View {
     var body: some View {
         NavigationStack {
             List {
+                if let away = session.away {
+                    AwaySection(session: session, away: away)
+                }
                 if let ledger = session.ledger {
                     Section {
                         VStack(alignment: .leading, spacing: 6) {
@@ -383,6 +386,54 @@ struct AllianceTab: View {
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("Alliance")
+        }
+    }
+}
+
+/// What happened to the House while the phone was set aside, as the Mac
+/// tells a keeper come back to it, until put away.
+struct AwaySection: View {
+    let session: CompanionSession
+    let away: AwayReport
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(verbatim: away.title)
+                    .font(Night.heading)
+                if !away.changes.isEmpty {
+                    Text(verbatim: away.changes.map { "\($0.resource.title) \($0.delta > 0 ? "+" : "\u{2212}")\(abs($0.delta))" }
+                        .joined(separator: "   "))
+                        .font(Night.figures)
+                        .foregroundStyle(Night.moon)
+                }
+                if let holds = away.holdsLine {
+                    Text(verbatim: holds)
+                        .font(Night.body)
+                        .foregroundStyle(away.holdsChange > 0 ? Night.good : Night.bad)
+                }
+                ForEach(Array(away.news.enumerated()), id: \.offset) { line in
+                    Text(verbatim: line.element)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let more = away.moreLine {
+                    Text(verbatim: more)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.55))
+                }
+                if let standing = away.standing {
+                    Text(verbatim: standing)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 4)
+            .accessibilityElement(children: .combine)
+            Button("Done") { session.dismissAway() }
+                .accessibilityLabel("Put away what happened while you were away")
         }
     }
 }

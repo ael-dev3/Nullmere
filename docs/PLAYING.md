@@ -217,6 +217,11 @@ background: the keeper stays in the realm while their Mac or their phone
 is there, and one device leaving takes them away only when neither has
 been heard from lately.
 
+- **While you were away.** Coming in again after the phone was set aside,
+  what happened to the House meanwhile, as the Mac tells a keeper come back
+  to it: the watches passed, the stores' change, holds won or lost, what the
+  Chronicle tells of the House, and the caretaker's keeping of standing
+  orders; Done puts it away.
 - **House.** The realm, its age and watch, the time until the watch turns
   and how many keepers are there and ready; On the walls, the companies of
   Houses at war gathered near the House's holds, as the Mac's watchmen tell
