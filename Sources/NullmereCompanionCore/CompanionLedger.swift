@@ -349,6 +349,22 @@ public struct CompanionLedger: Equatable, Sendable {
     public let law: Law
     /// The House in the Ring.
     public let ring: TheRing
+
+    /// What waits in the Ring and up the Spine, said on the Army tab's way
+    /// to them: keepers' lines to challenge, or the House's line to stand,
+    /// and the watch's venture up the Spine not yet made; nothing where
+    /// nothing waits.
+    public var venturesWaiting: [String] {
+        var said: [String] = []
+        let challenges = ring.rivals.filter { $0.challenge != nil }.count
+        if challenges > 0 {
+            said.append(challenges == 1 ? "A keeper's line to challenge in the Ring" : "\(challenges) keepers' lines to challenge in the Ring")
+        } else if ring.stand != nil {
+            said.append("Your commanders may stand a line in the Ring")
+        }
+        if !spine.ventures.isEmpty { said.append("This watch's venture up the Spine still to make") }
+        return said
+    }
     /// Help for each ally with works, musters or study under way the
     /// House hasn't helped yet.
     public let helps: [Order]

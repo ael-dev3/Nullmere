@@ -61,12 +61,14 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertFalse(free.isEmpty, "A House begins with a commander")
         XCTAssertEqual(ledger.spine.ventures.count, free.count + (free.count > 1 ? 1 : 0), "\(ledger.spine.ventures.map(\.title))")
         XCTAssertEqual(ledger.armyWaiting, 1, "The Army tab's badge: the watch's venture up the Spine")
+        XCTAssertEqual(ledger.venturesWaiting, ["Your commanders may stand a line in the Ring", "This watch's venture up the Spine still to make"])
         assertTaken(ledger.spine.ventures, in: state, as: me)
         let alone = try XCTUnwrap(ledger.spine.ventures.last)
         _ = try state.perform(alone.command, as: me)
         ledger = CompanionLedger(world: state, player: me)
         XCTAssertTrue(ledger.spine.ventures.isEmpty, "Once a watch")
         XCTAssertEqual(ledger.armyWaiting, 0, "Ventured: nothing waits")
+        XCTAssertFalse(ledger.venturesWaiting.contains { $0.contains("Spine") }, "Ventured: the Spine waits no more")
         XCTAssertTrue(ledger.spine.said.hasSuffix("Your House has ventured this watch.") || ledger.spine.said == "Every stage of the Spine is yours.",
                       ledger.spine.said)
     }
@@ -552,6 +554,10 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(ring.bouts, [state.boutSaid(bout, to: me)])
         XCTAssertTrue(ring.bouts[0].hasPrefix("Watch \(bout.watch): You challenged \(state.houses[other].title), and"), ring.bouts[0])
         XCTAssertTrue(ring.standing.hasSuffix("\(GameState.ringChallenges - 1) challenges left this watch."), ring.standing)
+        // Said on the Army tab's way to the Ring and the Spine.
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.venturesWaiting.first, "A keeper's line to challenge in the Ring")
+        XCTAssertEqual(ledger.venturesWaiting.contains("This watch's venture up the Spine still to make"), !ledger.spine.ventures.isEmpty)
     }
 
     /// The caretaker's standing orders on the phone: told as they stand,

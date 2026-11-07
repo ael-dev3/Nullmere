@@ -371,7 +371,10 @@ a vote on the realm's law to cast.
   how long until they slip away, and the last true thing each told of
   their House, plainly (the Mac's model gives it in the prisoner's
   voice; the phone shows the realm's own words), with Question, once a
-  watch, and Let go. The Ring, as the Mac's Commanders tell it: where
+  watch, and Let go. On a page of their own, The Ring and the Spine,
+  whose way from the Army tab says only what waits there (keepers' lines
+  to challenge, or the House's line to stand, and the watch's venture up
+  the Spine still to make): the Ring, as the Mac's Commanders tell it: where
   the House stands and the challenges left it this watch, and its last
   bouts; and, folded until asked for, its heaviest commanders to stand as
   its line, and the other keepers' lines, each with its standing and

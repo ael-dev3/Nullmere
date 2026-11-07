@@ -459,6 +459,49 @@ struct MarketPage: View {
     }
 }
 
+/// The Ring and the Spine, a page of their own off the Army tab: where the
+/// House stands in the Ring and its bouts, its line to stand and the other
+/// keepers' lines to challenge; and the Spine's next stage, with a line or
+/// one commander to send up it.
+struct VenturesPage: View {
+    let session: CompanionSession
+
+    /// The Army tab's way to it.
+    static let way = "The Ring and the Spine"
+
+    var body: some View {
+        List {
+            if let ledger = session.ledger {
+                if session.word != nil || session.outOfReach != nil {
+                    Section {
+                        WordLine(session: session)
+                    }
+                }
+                Section("The Ring") {
+                    RingRows(session: session, ring: ledger.ring)
+                }
+                Section("The Spine") {
+                    Text(verbatim: ledger.spine.said)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                    ListedOrdersMenu(title: "Send up the Spine", orders: ledger.spine.ventures,
+                                     label: "Send your commanders up the Spine") { order in
+                        session.give(order.command, told: order.title)
+                    }
+                    .font(Night.body)
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Night.background)
+        .navigationTitle(VenturesPage.way)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+}
+
 /// The House's companies: what each is about and the orders it may be
 /// given, each the realm's to decide; and its commanders, each of whom may
 /// be asked for counsel, spoken by Apple's on-device model on this phone.
@@ -550,26 +593,26 @@ struct ArmyTab: View {
                             }
                         }
                     }
-                    // The Ring, as the Mac's Commanders tell it: where the House
-                    // stands and its last bouts, and, folded, its line to stand
-                    // and the other keepers' lines to challenge.
+                    // The Ring and the Spine on a page of their own, the way to
+                    // it saying what waits there.
                     if !ledger.commanders.isEmpty {
-                        Section("The Ring") {
-                            RingRows(session: session, ring: ledger.ring)
-                        }
-                    }
-                    // The Spine: its next stage, and a line or one commander sent up it.
-                    if !ledger.commanders.isEmpty {
-                        Section("The Spine") {
-                            Text(verbatim: ledger.spine.said)
-                                .font(Night.small)
-                                .foregroundStyle(Night.ink.opacity(0.8))
-                                .fixedSize(horizontal: false, vertical: true)
-                            ListedOrdersMenu(title: "Send up the Spine", orders: ledger.spine.ventures,
-                                             label: "Send your commanders up the Spine") { order in
-                                session.give(order.command, told: order.title)
+                        Section {
+                            NavigationLink {
+                                VenturesPage(session: session)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(verbatim: VenturesPage.way)
+                                        .font(Night.body)
+                                    ForEach(ledger.venturesWaiting, id: \.self) { waiting in
+                                        Text(verbatim: waiting)
+                                            .font(Night.small)
+                                            .foregroundStyle(Night.moon)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                                .accessibilityElement(children: .combine)
                             }
-                            .font(Night.body)
                         }
                     }
                 }
