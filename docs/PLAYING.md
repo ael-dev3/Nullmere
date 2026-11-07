@@ -371,7 +371,11 @@ a vote on the realm's law to cast.
   how long until they slip away, and the last true thing each told of
   their House, plainly (the Mac's model gives it in the prisoner's
   voice; the phone shows the realm's own words), with Question, once a
-  watch, and Let go. The Spine: the House's next stage, what its host
+  watch, and Let go. The Ring, as the Mac's Commanders tell it: where
+  the House stands and the challenges left it this watch, and its last
+  bouts; and, folded until asked for, its heaviest commanders to stand as
+  its line, and the other keepers' lines, each with its standing and
+  weight, to Challenge. The Spine: the House's next stage, what its host
   weighs and its spoils, and Send up the Spine, a line of its strongest free
   commanders or any one alone, once a watch, how it went said in the realm's
   word on it.

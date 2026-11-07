@@ -507,6 +507,53 @@ final class CompanionLedgerTests: XCTestCase {
                        !state.holds.contains { $0.owner != me && $0.position.distance(to: far) <= GameState.scoutReach })
     }
 
+    /// The Ring from the phone, as the Mac's Commanders tell it: standing
+    /// no line, told how to enter and offered its heaviest commanders as
+    /// its line, taken by the rules; stood, told its standing and the
+    /// challenges left it, the same line offered no more; another keeper's
+    /// line told with its standing and weight and challenged, taken by the
+    /// rules; the bout told, and a challenge fewer left.
+    func testThePhoneStandsALineInTheRingAndChallenges() throws {
+        var (state, me) = try world()
+        _ = state.commanderJoins(me, why: "answers the banner of")
+        var ring = CompanionLedger(world: state, player: me).ring
+        XCTAssertTrue(ring.standing.hasPrefix("Your House stands no line in the Ring."), ring.standing)
+        XCTAssertTrue(ring.rivals.isEmpty)
+        let stand = try XCTUnwrap(ring.stand)
+        let strongest = state.strongestRingLine(of: me)
+        XCTAssertEqual(stand.command, .standInTheRing(strongest))
+        XCTAssertEqual(strongest.count, 2)
+        XCTAssertGreaterThanOrEqual(state.ringWeight(of: try XCTUnwrap(state.commander(strongest[0]))),
+                                    state.ringWeight(of: try XCTUnwrap(state.commander(strongest[1]))), "The heaviest first")
+        let names = strongest.compactMap { state.commander($0)?.name }
+        XCTAssertEqual(stand.title, "Stand \(names[0]) and \(names[1]) in the Ring")
+        assertTaken([stand], in: state, as: me)
+        _ = try state.perform(stand.command, as: me)
+        ring = CompanionLedger(world: state, player: me).ring
+        XCTAssertEqual(ring.standing, "Your standing is \(GameState.ringStart), first of 1. \(GameState.ringChallenges) challenges left this watch.")
+        XCTAssertNil(ring.stand, "That line stands already")
+
+        // Another keeper stands a line: told, and challenged.
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        state.houses[other].isPlayer = true
+        let theirs = try XCTUnwrap(state.commanders(of: other).first).id
+        _ = try state.perform(.standInTheRing([theirs]), as: other)
+        ring = CompanionLedger(world: state, player: me).ring
+        let rival = try XCTUnwrap(ring.rivals.first)
+        XCTAssertEqual(rival.id, other)
+        XCTAssertEqual(rival.name, state.houses[other].title)
+        XCTAssertEqual(rival.line, state.ringLineSaid(of: other))
+        let challenge = try XCTUnwrap(rival.challenge)
+        XCTAssertEqual(challenge.title, "Challenge \(state.houses[other].title)")
+        assertTaken([challenge], in: state, as: me)
+        _ = try state.perform(challenge.command, as: me)
+        ring = CompanionLedger(world: state, player: me).ring
+        let bout = try XCTUnwrap(state.ring?.bouts.last)
+        XCTAssertEqual(ring.bouts, [state.boutSaid(bout, to: me)])
+        XCTAssertTrue(ring.bouts[0].hasPrefix("Watch \(bout.watch): You challenged \(state.houses[other].title), and"), ring.bouts[0])
+        XCTAssertTrue(ring.standing.hasSuffix("\(GameState.ringChallenges - 1) challenges left this watch."), ring.standing)
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

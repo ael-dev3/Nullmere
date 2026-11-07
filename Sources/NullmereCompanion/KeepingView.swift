@@ -550,6 +550,14 @@ struct ArmyTab: View {
                             }
                         }
                     }
+                    // The Ring, as the Mac's Commanders tell it: where the House
+                    // stands and its last bouts, and, folded, its line to stand
+                    // and the other keepers' lines to challenge.
+                    if !ledger.commanders.isEmpty {
+                        Section("The Ring") {
+                            RingRows(session: session, ring: ledger.ring)
+                        }
+                    }
                     // The Spine: its next stage, and a line or one commander sent up it.
                     if !ledger.commanders.isEmpty {
                         Section("The Spine") {
@@ -1262,6 +1270,57 @@ struct LawRows: View {
                             .font(Night.small)
                     }
                     .padding(.vertical, 2)
+                }
+            }
+            .font(Night.small)
+        }
+    }
+}
+
+/// The Ring, as the Mac's Commanders tell it: where the House stands and the
+/// challenges left it, its last bouts, and, folded until asked for, its
+/// heaviest commanders to stand as its line and the other keepers' lines,
+/// each with its standing and weight, to challenge where the rules would.
+struct RingRows: View {
+    let session: CompanionSession
+    let ring: CompanionLedger.TheRing
+
+    var body: some View {
+        Text(verbatim: ring.standing)
+            .font(Night.small)
+            .foregroundStyle(Night.ink.opacity(0.8))
+            .fixedSize(horizontal: false, vertical: true)
+        ForEach(ring.bouts, id: \.self) { bout in
+            Text(verbatim: bout)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if ring.stand != nil || !ring.rivals.isEmpty {
+            DisclosureGroup("Enter the Ring") {
+                if let stand = ring.stand {
+                    Button(stand.title) { session.give(stand.command, told: stand.title) }
+                        .buttonStyle(.bordered)
+                        .font(Night.small)
+                }
+                ForEach(ring.rivals) { rival in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: rival.name)
+                                .font(Night.body)
+                            Text(verbatim: rival.line)
+                                .font(Night.small.monospacedDigit())
+                                .foregroundStyle(Night.ink.opacity(0.65))
+                        }
+                        .accessibilityElement(children: .combine)
+                        Spacer()
+                        if let challenge = rival.challenge {
+                            Button("Challenge") { session.give(challenge.command, told: challenge.title) }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel(challenge.title)
+                        }
+                    }
                 }
             }
             .font(Night.small)

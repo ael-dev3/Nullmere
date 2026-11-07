@@ -19,25 +19,14 @@ struct RingSection: View {
         _picked = State(initialValue: picked ?? session.state.ringLine(of: session.player) ?? [])
     }
 
-    /// Where the House stands in the Ring, in a line.
+    /// Where the House stands in the Ring, in the rules' words.
     static func standingLine(_ state: GameState, player: Int) -> String {
-        guard state.ringLine(of: player) != nil else {
-            return "Your House stands no line in the Ring. Stand up to three of your commanders in it to challenge other keepers' lines."
-        }
-        let ranks = state.ringRanks
-        let place = ranks.firstIndex(of: player).map { ", \(SeatBriefing.ordinal($0 + 1)) of \(ranks.count)" } ?? ""
-        let left = GameState.ringChallenges - state.challengesMade(by: player)
-        let challenges = left == 1 ? "1 challenge" : "\(left) challenges"
-        return "Your standing is \(state.ringStanding(of: player))\(place). \(challenges) left this watch."
+        state.ringStandingSaid(of: player)
     }
 
-    /// A bout, in a line, as the House it touched reads it.
+    /// A bout, in a line, as the House it touched reads it, in the rules' words.
     static func boutLine(_ bout: Ring.Bout, in state: GameState, player: Int) -> String {
-        let other = bout.challenger == player ? bout.defender : bout.challenger
-        let name = state.houses.indices.contains(other) ? state.houses[other].title : "a fallen House"
-        let how = bout.challenger == player ? "You challenged \(name)" : "\(name) challenged you"
-        let won = bout.winner == player
-        return "Watch \(bout.watch): \(how), and \(won ? "won" : "lost"); \(won ? "+" : "−")\(bout.change)."
+        state.boutSaid(bout, to: player)
     }
 
     var body: some View {
@@ -97,7 +86,7 @@ struct RingSection: View {
                             session.perform(.challenge(house: other))
                         }
                         Spacer()
-                        Text(verbatim: "\(state.ringStanding(of: other)), weighing \(state.ringWeight(ofLine: other))")
+                        Text(verbatim: state.ringLineSaid(of: other))
                             .font(.nm(10))
                             .foregroundStyle(Palette.text(0.6))
                     }

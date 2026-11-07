@@ -100,6 +100,29 @@ public struct CompanionLedger: Equatable, Sendable {
         public var ransom: Order? = nil
     }
 
+    /// The Ring, as the Mac's Commanders tell it: where the House stands,
+    /// its last bouts, its strongest line to stand, and the other keepers'
+    /// lines, each with its standing and weight and a challenge where the
+    /// rules would take one now.
+    public struct TheRing: Equatable, Sendable {
+        /// Another keeper's House standing a line.
+        public struct Rival: Equatable, Identifiable, Sendable {
+            public let id: Int
+            public let name: String
+            /// Its standing and what its line weighs.
+            public let line: String
+            public let challenge: Order?
+        }
+
+        public let standing: String
+        /// The House's last bouts, the latest last.
+        public let bouts: [String]
+        /// The House's heaviest commanders stood as its line, where that
+        /// would change the line it stands.
+        public let stand: Order?
+        public let rivals: [Rival]
+    }
+
     /// The realm's law, as the Mac's Houses tell it: the edict before the
     /// realm, its tally, and the House's vote, or Aye and Nay where the
     /// rules would take its vote now; the edicts holding the realm; and
@@ -324,6 +347,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let prisoners: [Prisoner]
     /// The realm's law, and the House's say in it.
     public let law: Law
+    /// The House in the Ring.
+    public let ring: TheRing
     /// Help for each ally with works, musters or study under way the
     /// House hasn't helped yet.
     public let helps: [Order]
@@ -433,7 +458,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
-            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.helps == b.helps
+            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -468,6 +493,24 @@ public struct CompanionLedger: Equatable, Sendable {
         var stock = Stock()
         for store in stores { stock[store.resource] = store.amount }
         return stock
+    }
+
+    /// The House in the Ring as it is told it, and the orders the rules
+    /// would take for it there now.
+    static func ring(in world: GameState, player: Int) -> TheRing {
+        let bouts = (world.ring?.bouts ?? []).filter { $0.challenger == player || $0.defender == player }.suffix(3)
+        let strongest = world.strongestRingLine(of: player)
+        let names = strongest.compactMap { world.commander($0)?.name }
+        let listed = names.count <= 1 ? names.joined() : names.dropLast().joined(separator: ", ") + " and " + names.last!
+        let stand = !strongest.isEmpty && world.ringLine(of: player) != strongest && world.ringLineRefusal(strongest, as: player) == nil
+            ? Order(title: "Stand \(listed) in the Ring", command: .standInTheRing(strongest)) : nil
+        let rivals = world.ringRanks.filter { $0 != player }.map { other in
+            TheRing.Rival(id: other, name: world.houses[other].title, line: world.ringLineSaid(of: other),
+                          challenge: world.challengeRefusal(of: other, as: player) == nil
+                            ? Order(title: "Challenge \(world.houses[other].title)", command: .challenge(house: other)) : nil)
+        }
+        return TheRing(standing: world.ringStandingSaid(of: player), bouts: bouts.map { world.boutSaid($0, to: player) },
+                       stand: stand, rivals: rivals)
     }
 
     /// The realm's law as `player`'s House is told it, and the orders the
@@ -582,6 +625,7 @@ public struct CompanionLedger: Equatable, Sendable {
                              talents: talents, gear: gear, ransom: ransom)
         }
         law = CompanionLedger.law(in: world, player: player)
+        ring = CompanionLedger.ring(in: world, player: player)
         prisoners = world.prisoners(heldBy: player).sorted { $0.id < $1.id }.compactMap { prisoner in
             guard let captive = prisoner.captive else { return nil }
             let question = world.questionRefusal(prisoner.id, as: player) == nil

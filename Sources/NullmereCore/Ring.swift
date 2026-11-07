@@ -175,6 +175,43 @@ extension GameState {
         return [.bout(bout)]
     }
 
+    /// Where a House stands in the Ring, in a line, as the Mac and the phone
+    /// tell it: its standing, its place and the challenges left it this
+    /// watch; or, standing no line, how it may enter.
+    public func ringStandingSaid(of house: Int) -> String {
+        guard ringLine(of: house) != nil else {
+            return "Your House stands no line in the Ring. Stand up to three of your commanders in it to challenge other keepers' lines."
+        }
+        let ranks = ringRanks
+        let place = ranks.firstIndex(of: house).map { ", \(ordinal($0 + 1)) of \(ranks.count)" } ?? ""
+        let left = GameState.ringChallenges - challengesMade(by: house)
+        let challenges = left == 1 ? "1 challenge" : "\(left) challenges"
+        return "Your standing is \(ringStanding(of: house))\(place). \(challenges) left this watch."
+    }
+
+    /// A bout, in a line, as a House it touched reads it.
+    public func boutSaid(_ bout: Ring.Bout, to house: Int) -> String {
+        let other = bout.challenger == house ? bout.defender : bout.challenger
+        let name = houses.indices.contains(other) ? houses[other].title : "a fallen House"
+        let how = bout.challenger == house ? "You challenged \(name)" : "\(name) challenged you"
+        let won = bout.winner == house
+        return "Watch \(bout.watch): \(how), and \(won ? "won" : "lost"); \(won ? "+" : "−")\(bout.change)."
+    }
+
+    /// Another keeper's line as the Ring shows it beside its challenge: its
+    /// standing and what it weighs.
+    public func ringLineSaid(of house: Int) -> String {
+        "\(ringStanding(of: house)), weighing \(ringWeight(ofLine: house))"
+    }
+
+    /// The line a House would stand to weigh the most: its heaviest
+    /// commanders free to stand, up to three, the heaviest first.
+    public func strongestRingLine(of house: Int) -> [Int] {
+        commanders(of: house).filter { $0.captive == nil }
+            .sorted { (ringWeight(of: $1), $0.id) < (ringWeight(of: $0), $1.id) }
+            .prefix(GameState.ringLine).map(\.id)
+    }
+
     /// The keepers' Houses of the Ring by standing, the highest first, ties
     /// by the House's place.
     public var ringRanks: [Int] {
