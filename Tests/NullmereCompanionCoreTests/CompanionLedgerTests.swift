@@ -232,8 +232,13 @@ final class CompanionLedgerTests: XCTestCase {
         _ = try marching.perform(.move(unit: spear.id, to: seat.position), as: me)
         let moving = try XCTUnwrap(CompanionLedger(world: marching, player: me).companies.first { $0.id == spear.id })
         if marching.unit(spear.id)?.destination != nil {
-            XCTAssertTrue(moving.doing.hasPrefix("Marching to "), moving.doing)
+            XCTAssertEqual(moving.doing, "Marching to \(seat.name)", "To a hold by its name, never \"to at\" it")
             XCTAssertTrue(moving.orders.contains { $0.title == "Halt" })
         }
+        // To open ground, its own words: never "to on" nor "to in" it (run 658's phone said "Marching to on the barrows").
+        XCTAssertEqual(CompanionLedger.whither("on the barrows by Tirford"), "the barrows by Tirford")
+        XCTAssertEqual(CompanionLedger.whither("in the field"), "the field")
+        XCTAssertEqual(CompanionLedger.whither("at Tirford"), "Tirford")
+        XCTAssertEqual(CompanionLedger.whither("Tirford"), "Tirford")
     }
 }

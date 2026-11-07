@@ -50,13 +50,22 @@ enum CompanionCheck {
         #endif
     }
 
+    /// Whether the phone is a simulator, whose model is its Mac's.
+    static var simulated: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
     /// Counsel taken through this phone's own model, if asked for.
     static func takeCounselIfAsked() {
         guard ProcessInfo.processInfo.environment["NULLMERE_COUNSEL_REPORT"] != nil else { return }
         let written = documents.appendingPathComponent("counsel-report.txt")
         try? FileManager.default.removeItem(at: written)
         Task {
-            let report = await CounselCheck.run(on: device)
+            let report = await CounselCheck.run(on: device, simulated: simulated)
             try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
             try? report.text.write(to: written, atomically: true, encoding: .utf8)
         }

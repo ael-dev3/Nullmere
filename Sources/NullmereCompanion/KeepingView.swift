@@ -90,7 +90,7 @@ struct HouseTab: View {
                                 }
                             }
                             if let status = session.status {
-                                Text(verbatim: "\(status.online) keepers there, \(status.ready) ready")
+                                Text(verbatim: "\(status.online) \(status.online == 1 ? "keeper" : "keepers") there, \(status.ready) ready")
                                     .font(Night.small)
                                     .foregroundStyle(Night.ink.opacity(0.7))
                             }

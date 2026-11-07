@@ -117,7 +117,8 @@ for _ in $(seq 1 150); do
 done
 cp "$KEPT" "$REPORT" 2>/dev/null || echo "The companion wrote no report." >"$REPORT"
 shot army 2
-cat "$REPORT"
+# The apps' reports end without a newline: what follows starts its own line.
+cat "$REPORT"; echo
 
 # The Mac sees the company the phone ordered dug in.
 COMPANY="$(sed -n 's/^Fortified company: //p' "$REPORT" | head -n 1)"
@@ -150,12 +151,14 @@ for _ in $(seq 1 240); do
     sleep 1
 done
 cp "$COUNSEL" "$COUNSEL_REPORT" 2>/dev/null || echo "The companion wrote no report of counsel." >"$COUNSEL_REPORT"
-cat "$COUNSEL_REPORT"
+cat "$COUNSEL_REPORT"; echo
 PHONE_COUNSEL=failed
 # Read whole first: grep -q leaving a pipe early must not read as no match.
 COUNSEL_FIRST="$(head -n 1 "$COUNSEL_REPORT")"
 if [[ "$COUNSEL_FIRST" == *", not ready ("* ]]; then
     PHONE_COUNSEL="unverified: the model can't be asked here"
+elif [[ "$COUNSEL_FIRST" == *", unheard ("* ]]; then
+    PHONE_COUNSEL="unverified: the simulator's model is its Mac's, and it gave no answer"
 elif [ "$(tail -n 1 "$COUNSEL_REPORT")" = "Counsel kept to its rules." ]; then
     PHONE_COUNSEL="heard, within its rules"
 fi

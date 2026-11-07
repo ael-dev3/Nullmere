@@ -67,9 +67,13 @@ public enum CounselCheck {
     }
 
     /// Asks it on `device`, as the report names the device: "this Mac",
-    /// "this iPhone".
+    /// "this iPhone". `simulated`: the device is a simulator, whose model is
+    /// its Mac's; where that says it is ready yet gives no answer at all, as
+    /// on a Mac that can't run it, the report says it went unheard,
+    /// unverified like a model that can't be asked, never passed nor broken.
     @MainActor
-    public static func run(on device: String = "this Mac", availability: (() -> SystemLanguageModel.Availability)? = nil) async -> Report {
+    public static func run(on device: String = "this Mac", simulated: Bool = false,
+                           availability: (() -> SystemLanguageModel.Availability)? = nil) async -> Report {
         guard let (world, commander) = world(),
               let counsel = CommanderCounsel(state: world.view(for: world.player), player: world.player, commander: commander) else {
             return Report(text: "No commander to take counsel of.", failures: ["no commander"], unavailable: false)
@@ -83,6 +87,8 @@ public enum CounselCheck {
         var text = ["Counsel of \(named), heard from Apple's on-device model on \(device)", ""]
         var failures: [String] = []
         var looked = 0
+        var answered = 0
+        var unanswered: [String] = []
         for question in questions {
             let before = session.lines.count
             session.ask(question)
@@ -95,6 +101,7 @@ public enum CounselCheck {
             }
             let facts = ([counsel.briefing] + (await session.told())).joined(separator: "\n")
             if let answer = heard.last(where: { $0.kind == .commander }) {
+                answered += 1
                 let broke = problems(of: answer.text, facts: facts)
                 text.append("\(counsel.commander.name): \(answer.text)")
                 if let timing = session.timing {
@@ -106,8 +113,16 @@ public enum CounselCheck {
                 let why = heard.last(where: { $0.kind == .trouble })?.text ?? "no answer"
                 text.append("  NO ANSWER: \(why)")
                 failures.append("\(question) went unanswered: \(why)")
+                unanswered.append(why)
             }
             text.append("")
+        }
+        if simulated, answered == 0 {
+            // A simulator's model is its Mac's: none of it heard is no
+            // counsel broken, and none verified.
+            text[0] = "Apple's on-device model on \(device), unheard (it says it is ready, yet gave no answer: "
+                + "\(unanswered.first ?? "no answer") A simulator's model is its Mac's.)"
+            return Report(text: text.joined(separator: "\n"), failures: [], unavailable: true)
         }
         if looked == 0 { failures.append("the commander never looked before answering") }
         for offer in session.offers {

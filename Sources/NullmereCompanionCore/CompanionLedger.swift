@@ -311,9 +311,17 @@ public struct CompanionLedger: Equatable, Sendable {
         case .reinforce(let hold)?: return "Keeping the gates of \(world.hold(hold)?.name ?? "an ally's hold")"
         case nil: break
         }
-        if let destination = unit.destination { return "Marching to \(world.placeName(of: destination))" }
+        if let destination = unit.destination { return "Marching to " + whither(world.placeName(of: destination)) }
         if unit.fortified { return "Dug in" }
         return "At rest"
+    }
+
+    /// A place as a march's end, its own word for where let go: "at
+    /// Tirford" is "Tirford", "on the barrows by Tirford" is "the barrows by
+    /// Tirford", "in the field" is "the field".
+    static func whither(_ place: String) -> String {
+        for preposition in ["at ", "on ", "in "] where place.hasPrefix(preposition) { return String(place.dropFirst(preposition.count)) }
+        return place
     }
 
     static func watches(_ count: Int) -> String {
