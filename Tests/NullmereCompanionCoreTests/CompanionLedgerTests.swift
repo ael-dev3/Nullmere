@@ -472,6 +472,41 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(EdictKind.safeConduct.lawSaid, "No House strikes Founders or Lanterns.")
     }
 
+    /// A House's Lanterns scout from the phone, as on the Mac: a Lantern
+    /// within two tiles of another House's hold offered Scout, taken by the
+    /// rules; scouted, its moves spent, offered no more; none offered by a
+    /// hold of its own House or one beyond its reach.
+    func testThePhoneSendsLanternsToScoutAHold() throws {
+        var (state, me) = try world()
+        let foreign = try XCTUnwrap(state.holds.first { $0.owner != me })
+        let near = try XCTUnwrap(foreign.position.spiral(2).dropFirst().first { hex in
+            hex.distance(to: foreign.position) == 2
+                && state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && !state.isOccupied(hex) && state.hold(at: hex) == nil
+        })
+        let lantern = Unit(id: state.takeID(), kind: .lantern, owner: me, position: near)
+        state.units.append(lantern)
+        func scouting() throws -> [CompanionLedger.Order] {
+            let company = try XCTUnwrap(CompanionLedger(world: state, player: me).companies.first { $0.id == lantern.id })
+            return company.orders.filter { if case .scout = $0.command { return true }; return false }
+        }
+        let offered = try scouting()
+        XCTAssertEqual(offered.first?.title, "Scout \(foreign.name)")
+        XCTAssertEqual(offered.first?.command, .scout(unit: lantern.id, hold: foreign.id))
+        XCTAssertFalse(offered.contains { if case .scout(_, let hold) = $0.command { return state.hold(hold)?.owner == me }; return false },
+                       "Never the House's own hold")
+        assertTaken(offered, in: state, as: me)
+        let events = try state.perform(try XCTUnwrap(offered.first).command, as: me)
+        XCTAssertTrue(events.contains { if case .holdScouted = $0 { return true }; return false })
+        XCTAssertTrue(try scouting().isEmpty, "Its moves spent")
+        // Beyond reach: nothing offered.
+        let far = try XCTUnwrap(state.seat(of: me)).position
+        let home = Unit(id: state.takeID(), kind: .lantern, owner: me, position: far)
+        state.units.append(home)
+        let homeCompany = try XCTUnwrap(CompanionLedger(world: state, player: me).companies.first { $0.id == home.id })
+        XCTAssertEqual(homeCompany.orders.filter { if case .scout = $0.command { return true }; return false }.isEmpty,
+                       !state.holds.contains { $0.owner != me && $0.position.distance(to: far) <= GameState.scoutReach })
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

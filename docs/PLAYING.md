@@ -328,8 +328,10 @@ a vote on the realm's law to cast.
   carrying, Drill one by a Muster Hall, March to any of the House's holds,
   Strike what lies in its reach (the wilds, and the companies and holds of
   Houses at war with the keeper's), Gather at the nearest sites of the
-  land it may work, Rally to a rally of the alliance gathering, and Keep
-  gates at the nearest of the allies' seats. Above them, Call a rally,
+  land it may work, Rally to a rally of the alliance gathering, Keep
+  gates at the nearest of the allies' seats, and, for Lanterns, Scout a
+  hold of another House within two tiles of them, the nearest first, its
+  report among the House's reports. Above them, Call a rally,
   sworn to an alliance and with none called: on a lair the House has found
   within its rung, or a hold it knows of a House at war, the nearest first,
   mustered at its nearest Muster Hall and gathering two watches. Orders

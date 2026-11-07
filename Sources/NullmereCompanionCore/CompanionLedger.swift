@@ -524,7 +524,15 @@ public struct CompanionLedger: Equatable, Sendable {
                 ("Recall", .recall(unit: unit.id), gathering),
                 ("Drill", .drill(unit: unit.id), unit.kind.isMilitary && unit.drillAt == nil && world.drillRefusal(of: unit) == nil),
             ]
-            let orders = offered.filter(\.2).map { Order(title: $0.0, command: $0.1) }
+            // Lanterns within reach of another House's hold scout it, the
+            // nearest first, as the Mac offers it, where the rules would.
+            let scouts: [Order] = unit.kind == .lantern && unit.movesLeft > 0
+                ? world.holds.filter { $0.owner != player && $0.position.distance(to: unit.position) <= GameState.scoutReach }
+                    .sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+                    .filter { world.refusal(of: .scout(unit: unit.id, hold: $0.id), as: player) == nil }
+                    .map { Order(title: "Scout \($0.name)", command: .scout(unit: unit.id, hold: $0.id)) }
+                : []
+            let orders = offered.filter(\.2).map { Order(title: $0.0, command: $0.1) } + scouts
             let marches = holds.filter { $0.position != unit.position && unit.destination != $0.position }.map { hold in
                 Order(title: "March to \(hold.name)", command: .move(unit: unit.id, to: hold.position))
             }
