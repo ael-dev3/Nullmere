@@ -262,7 +262,9 @@ network comes back.
   holds and companies reach (eighteen hexes at most): each hex in its
   ground's colour as the House knows it, dimmed where the House doesn't
   see it now and under fog where it hasn't explored, the lake's water
-  showing through; every hold of the realm in the colour of whose it is
+  showing through; the House's own land, as its holds claim it, lit
+  faintly and edged in moonlight, and other Houses' land edged in their
+  colours over ground the House has explored; every hold of the realm in the colour of whose it is
   (the House's own in moonlight, its allies' green, Houses at war red,
   others grey), the companies and wilds the House sees, the lairs and
   sites on ground it has explored, and the holy sites, the names of the

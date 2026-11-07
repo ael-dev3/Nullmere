@@ -362,4 +362,40 @@ final class CompanionChartTests: XCTestCase {
         XCTAssertEqual(moved.marks.first { $0.id == "company \(id)" }?.hex, after)
         XCTAssertNotEqual(moved, chart)
     }
+
+    /// Whose land each hex lies in, by the holds' claims the keeper's view
+    /// knows: the seat in the House's own; each land's edge drawn where it
+    /// meets another House's or no one's, the House's own wherever it runs
+    /// on the chart, another's only over ground the House has explored.
+    func testTheHousesLandAndItsBordersAreCharted() throws {
+        let (state, me) = world()
+        let view = state.view(for: me)
+        let chart = CompanionChart(world: view, player: me)
+        let seat = try XCTUnwrap(view.seat(of: me))
+        let cells = Dictionary(uniqueKeysWithValues: chart.cells.map { ($0.hex, $0) })
+        XCTAssertEqual(cells[seat.position]?.land, .own, "The seat stands in the House's own land")
+        let claims = view.territory()
+        for cell in chart.cells {
+            let index = try XCTUnwrap(view.map.index(of: cell.hex))
+            let house = claims[index].flatMap { view.hold($0)?.owner }
+            XCTAssertEqual(cell.land == .own, house == me, "\(cell.hex)")
+            XCTAssertEqual(cell.land == nil, house == nil, "\(cell.hex)")
+        }
+        let own = chart.borders.filter { $0.side == .own }
+        XCTAssertFalse(own.isEmpty, "The House's land has its edge on the chart")
+        for border in chart.borders {
+            XCTAssertEqual(cells[border.hex]?.land, border.side)
+            XCTAssertTrue(border.hex.neighbors.contains(border.beyond))
+            XCTAssertNotNil(cells[border.beyond], "Both sides of an edge on the chart")
+            if border.side != .own {
+                XCTAssertEqual(cells[border.hex]?.explored, true, "Another's edge only over ground the House has explored")
+            }
+        }
+        for cell in chart.cells where cell.land == .own {
+            for beyond in cell.hex.neighbors where cells[beyond] != nil && cells[beyond]?.land != .own {
+                XCTAssertTrue(own.contains(CompanionChart.Border(hex: cell.hex, beyond: beyond, side: .own)),
+                              "The edge between \(cell.hex) and \(beyond)")
+            }
+        }
+    }
 }

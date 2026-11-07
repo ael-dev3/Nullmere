@@ -258,7 +258,27 @@ struct ChartView: View {
             let shade = CompanionChart.shade(of: each)
             let placed = cell.offsetBy(dx: at.x, dy: at.y)
             context.fill(placed, with: .color(Color(red: shade.red, green: shade.green, blue: shade.blue)))
+            // The House's own land lit faintly, as its claims reach.
+            if each.land == .own { context.fill(placed, with: .color(Night.moon.opacity(0.08))) }
             context.stroke(placed, with: .color(Night.background.opacity(0.55)), lineWidth: 0.5)
+        }
+        // Whose land is whose: each land's edge where it meets another's or
+        // no one's, in the colour of whose it is.
+        for border in chart.borders {
+            let at = point(of: border.hex, canvas: canvas, size: size)
+            guard shown.contains(at) else { continue }
+            let beyond = point(of: border.beyond, canvas: canvas, size: size)
+            let middle = CGPoint(x: (at.x + beyond.x) / 2, y: (at.y + beyond.y) / 2)
+            func far(_ corner: CGPoint) -> CGFloat {
+                (corner.x - middle.x) * (corner.x - middle.x) + (corner.y - middle.y) * (corner.y - middle.y)
+            }
+            // The two corners nearest the midpoint between the two hexes: their shared edge.
+            let corners = unit.map { CGPoint(x: Double(at.x) + $0.x, y: Double(at.y) + $0.y) }.sorted { far($0) < far($1) }
+            var edge = Path()
+            edge.move(to: corners[0])
+            edge.addLine(to: corners[1])
+            let own = border.side == .own
+            context.stroke(edge, with: .color(Self.colour(of: border.side).opacity(own ? 0.95 : 0.7)), lineWidth: own ? 1.8 : 1.1)
         }
         // The House's marches: a line from each company to where it is bound.
         for mark in chart.marks {

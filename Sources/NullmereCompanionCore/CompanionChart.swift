@@ -18,6 +18,20 @@ public struct CompanionChart: Equatable, Sendable {
         public let explored: Bool
         /// Seen by the House now, from its holds and companies.
         public let seen: Bool
+        /// Whose land it lies in, by the holds' claims the keeper's view
+        /// knows of; none's, nil.
+        public var land: Side? = nil
+    }
+
+    /// An edge of a hex of some House's land where it meets another House's
+    /// land or no one's: the chart draws the House's borders by them.
+    public struct Border: Equatable, Sendable {
+        /// The hex within the land.
+        public let hex: Hex
+        /// Its neighbour across the edge, outside it.
+        public let beyond: Hex
+        /// Whose land it is.
+        public let side: Side
     }
 
     /// Whose a mark is, as the chart colours it.
@@ -85,6 +99,9 @@ public struct CompanionChart: Equatable, Sendable {
     /// The regions of the shores whose hearts lie on the chart, by name, as
     /// every keeper's map writes them, fog or none.
     public let regions: [(name: String, hex: Hex)]
+    /// The edges of the Houses' lands within the chart: all the House's
+    /// own, and another House's where the House has explored.
+    public let borders: [Border]
 
     public static func == (a: CompanionChart, b: CompanionChart) -> Bool {
         a.center == b.center && a.radius == b.radius && a.cells == b.cells && a.marks == b.marks
@@ -113,18 +130,35 @@ public struct CompanionChart: Equatable, Sendable {
         self.radius = radius
         let seen = world.visibility(for: player)
         let explored = houses.indices.contains(player) ? houses[player].explored : Explored()
-        cells = center.spiral(radius).compactMap { hex in
-            guard let index = world.map.index(of: hex) else { return nil }
-            return Cell(hex: hex, terrain: world.map[index].terrain, explored: explored.indices.contains(index) && explored[index],
-                        seen: seen.indices.contains(index) && seen[index])
-        }
-        func reached(_ hex: Hex) -> Bool { hex.distance(to: center) <= radius }
         func side(_ house: Int) -> Side {
             guard houses.indices.contains(house) else { return .other }
             if house == player { return .own }
             if world.areAllied(player, house) { return .ally }
             return world.isAtWar(player, house) ? .foe : .other
         }
+        // Whose land each hex lies in, by the claims of the holds the view knows.
+        let claims = world.territory()
+        var owner: [Hex: Int] = [:]
+        cells = center.spiral(radius).compactMap { hex in
+            guard let index = world.map.index(of: hex) else { return nil }
+            let house = claims.indices.contains(index) ? claims[index].flatMap { world.hold($0)?.owner } : nil
+            if let house { owner[hex] = house }
+            return Cell(hex: hex, terrain: world.map[index].terrain, explored: explored.indices.contains(index) && explored[index],
+                        seen: seen.indices.contains(index) && seen[index], land: house.map(side))
+        }
+        // Each land's edge where it meets another House's land or no one's,
+        // within the chart: the House's own wherever it runs, another's only
+        // over ground the House has explored.
+        var borders: [Border] = []
+        let onChart = Set(cells.map(\.hex))
+        for cell in cells {
+            guard let house = owner[cell.hex], let land = cell.land, land == .own || cell.explored else { continue }
+            for beyond in cell.hex.neighbors where onChart.contains(beyond) && owner[beyond] != house {
+                borders.append(Border(hex: cell.hex, beyond: beyond, side: land))
+            }
+        }
+        self.borders = borders
+        func reached(_ hex: Hex) -> Bool { hex.distance(to: center) <= radius }
         func whose(_ house: Int) -> String {
             house == player ? "your" : houses.indices.contains(house) ? "\(houses[house].title)'s" : "a fallen House's"
         }
