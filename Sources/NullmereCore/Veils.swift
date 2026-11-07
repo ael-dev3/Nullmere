@@ -53,6 +53,19 @@ extension GameState {
         return nil
     }
 
+    /// How a House's veil stands, in a line, as the Mac and the phone tell
+    /// it: lying, and until when; resting, and when it may be drawn again;
+    /// or what drawing it costs and does.
+    public func veilSaid(of house: Int) -> String {
+        if isVeiled(house), let veil = veil(of: house) {
+            return "Veiled until watch \(veil.until): none may strike, rally on or scout your holds, unless you strike first."
+        }
+        if let veil = veil(of: house), watch < veil.until + GameState.veilRest {
+            return "The mist gathers again: the veil may be drawn anew at watch \(veil.until + GameState.veilRest)."
+        }
+        return "The veil of the Still, for \(GameState.veilCost): for \(GameState.veilLasts) watches none may strike your holds, unless you strike first."
+    }
+
     /// A keeper draws the veil over their House's holds.
     mutating func drawVeil(as house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = veilRefusal(as: house) { throw refusal }

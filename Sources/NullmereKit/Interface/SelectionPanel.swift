@@ -1364,16 +1364,9 @@ extension SelectionPanel {
 struct VeilLine: View {
     let session: GameSession
 
-    /// How the House's veil stands, in a line.
-    static func words(_ state: GameState, house: Int) -> String {
-        if state.isVeiled(house), let veil = state.veil(of: house) {
-            return "Veiled until watch \(veil.until): none may strike, rally on or scout your holds, unless you strike first."
-        }
-        if let veil = state.veil(of: house), state.watch < veil.until + GameState.veilRest {
-            return "The mist gathers again: the veil may be drawn anew at watch \(veil.until + GameState.veilRest)."
-        }
-        return "The veil of the Still, for \(GameState.veilCost): for \(GameState.veilLasts) watches none may strike your holds, unless you strike first."
-    }
+    /// How the House's veil stands, in a line, in the words the phone tells
+    /// it in too.
+    static func words(_ state: GameState, house: Int) -> String { state.veilSaid(of: house) }
 
     var body: some View {
         let state = session.state, me = session.player

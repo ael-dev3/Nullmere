@@ -244,6 +244,10 @@ public struct CompanionLedger: Equatable, Sendable {
     /// Companies of Houses at war gathered near the House's holds, as the
     /// walls' watchmen tell it.
     public let gatherings: [String]
+    /// How the House's veil of the Still stands, in the Mac's words.
+    public let veil: String
+    /// Drawing the veil over the House's holds, where the rules would now.
+    public let drawVeil: Order?
     public let companies: [Company]
     public let commanders: [Commander]
     /// Help for each ally with works, musters or study under way the
@@ -350,6 +354,7 @@ public struct CompanionLedger: Equatable, Sendable {
 
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
+            && a.veil == b.veil && a.drawVeil == b.drawVeil
             && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
@@ -398,6 +403,8 @@ public struct CompanionLedger: Equatable, Sendable {
                          refusingIsWar: world.refusingIsWar(envoy))
         }
         gatherings = world.gatherings(against: player).map(world.words(of:))
+        veil = world.veilSaid(of: player)
+        drawVeil = world.veilRefusal(as: player) == nil ? Order(title: "Draw the veil", command: .drawVeil) : nil
         let holds = world.holds(of: player).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
         // The House's companies told apart where two would be named alike.
         let names = SpokenOrders.distinctNames(in: world, player: player)

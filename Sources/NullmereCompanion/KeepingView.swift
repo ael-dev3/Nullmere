@@ -163,14 +163,24 @@ struct HouseTab: View {
                         .tint(Night.moon)
                         WordLine(session: session)
                     }
-                    if !ledger.gatherings.isEmpty {
-                        Section("On the walls") {
-                            ForEach(ledger.gatherings, id: \.self) { gathering in
-                                Text(verbatim: gathering)
-                                    .font(Night.body)
-                                    .foregroundStyle(Night.bad)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+                    // The walls: foes gathered near the House's holds, and the veil
+                    // of the Still, how it stands, drawn from here before a blow.
+                    Section("On the walls") {
+                        ForEach(ledger.gatherings, id: \.self) { gathering in
+                            Text(verbatim: gathering)
+                                .font(Night.body)
+                                .foregroundStyle(Night.bad)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text(verbatim: ledger.veil)
+                            .font(Night.small)
+                            .foregroundStyle(ledger.drawVeil == nil ? Night.moon : Night.ink.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let draw = ledger.drawVeil {
+                            Button(draw.title) { session.give(draw.command, told: draw.title) }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel("Draw the veil of the Still over your holds")
                         }
                     }
                     if !ledger.envoys.isEmpty {

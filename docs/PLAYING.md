@@ -251,7 +251,8 @@ asking to join to answer, and allies' work to help.
 - **House.** The realm, its age and watch, the time until the watch turns
   and how many keepers are there and ready; On the walls, the companies of
   Houses at war gathered near the House's holds, as the Mac's watchmen tell
-  it; Envoys waiting, each offer in the words the Mac gives it, with the
+  it, and the veil of the Still as it stands (lying and until when, resting
+  and when it may be drawn anew), with Draw the veil for its moonsalt; Envoys waiting, each offer in the words the Mac gives it, with the
   words its House sent, how long it waits, and Accept (while the keeper has
   what it asks) and Refuse, which asks again where refusing a steward's
   demand is war; Labours and happenings, as the Mac's Realm panel tells

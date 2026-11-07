@@ -229,6 +229,34 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNotNil(state.refusal(of: .heal(hold: seat.id), as: me), "Nor would the rules take it")
     }
 
+    /// The veil of the Still on the phone, in the Mac's words: offered for its
+    /// moonsalt and taken by the rules; drawn, told until when and offered no
+    /// more; lifted, told when it may be drawn anew; rested, offered again,
+    /// but not without the moonsalt.
+    func testThePhoneDrawsTheVeilOfTheStill() throws {
+        var (state, me) = try world()
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.veil, "The veil of the Still, for \(GameState.veilCost): for \(GameState.veilLasts) watches none may "
+                       + "strike your holds, unless you strike first.")
+        let draw = try XCTUnwrap(ledger.drawVeil)
+        XCTAssertEqual(draw.command, .drawVeil)
+        assertTaken([draw], in: state, as: me)
+        _ = try state.perform(draw.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let until = state.watch + GameState.veilLasts
+        XCTAssertEqual(ledger.veil, "Veiled until watch \(until): none may strike, rally on or scout your holds, unless you strike first.")
+        XCTAssertNil(ledger.drawVeil, "Drawn already")
+
+        state.watch = until
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.veil, "The mist gathers again: the veil may be drawn anew at watch \(until + GameState.veilRest).")
+        XCTAssertNil(ledger.drawVeil)
+        state.watch = until + GameState.veilRest
+        XCTAssertNotNil(CompanionLedger(world: state, player: me).drawVeil, "Rested")
+        state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 0)
+        XCTAssertNil(CompanionLedger(world: state, player: me).drawVeil, "No moonsalt for it")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.
