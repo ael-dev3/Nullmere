@@ -134,26 +134,30 @@ extension GameState {
         return lifted + [.rallyCalled(rally: rally.id, caller: house, target: targetID)]
     }
 
-    mutating func joinRally(_ rallyID: Int, with unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
-        let index = try ownedUnit(unitID, of: house)
+    /// Why a company of `house` can't be sent to a rally now, or nil if it
+    /// can: what sending it holds to, without sending it.
+    public func joinRallyRefusal(_ rallyID: Int, with unitID: Int, as house: Int) -> RuleError? {
+        guard let unit = unit(unitID) else { return .unknownUnit }
+        guard unit.owner == house else { return .notYours }
         // Only its own side knows of a rally gathering.
-        guard let rallyIndex = rallyIndex(rallyID), isOfRally(house, rallies![rallyIndex]) else { throw .unknownRally }
-        let rally = rallies![rallyIndex]
-        guard !rally.marching else { throw .rallySetOut }
-        let unit = units[index]
-        guard unit.kind.isMilitary else { throw .cannotFight }
-        guard let target = self.target(of: rally) else { throw .unknownHold }
-        guard mayStrike(house, target) else { throw .notAtWar(target.owner) }
-        guard unit.errand != .rally(rallyID) else { throw .alreadyRallying }
-        let sent = rally.companies.filter { self.unit($0)?.errand == .rally(rallyID) }
-        guard sent.count < capacity(of: rally) else { throw .rallyFull }
-        let muster = hold(rally.muster)!
-        if unit.position.distance(to: muster.position) > 1 {
-            guard path(for: unit, to: muster.position) != nil else { throw .noPath }
-            units[index].destination = muster.position
-        } else {
-            units[index].destination = nil
-        }
+        guard let rally = rally(rallyID), isOfRally(house, rally) else { return .unknownRally }
+        guard !rally.marching else { return .rallySetOut }
+        guard unit.kind.isMilitary else { return .cannotFight }
+        guard let target = target(of: rally) else { return .unknownHold }
+        guard mayStrike(house, target) else { return .notAtWar(target.owner) }
+        guard unit.errand != .rally(rallyID) else { return .alreadyRallying }
+        guard rally.companies.filter({ self.unit($0)?.errand == .rally(rallyID) }).count < capacity(of: rally) else { return .rallyFull }
+        guard let muster = hold(rally.muster) else { return .unknownHold }
+        guard unit.position.distance(to: muster.position) <= 1 || path(for: unit, to: muster.position) != nil else { return .noPath }
+        return nil
+    }
+
+    mutating func joinRally(_ rallyID: Int, with unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+        if let refusal = joinRallyRefusal(rallyID, with: unitID, as: house) { throw refusal }
+        let index = unitIndex(unitID)!, rallyIndex = rallyIndex(rallyID)!
+        let muster = hold(rallies![rallyIndex].muster)!
+        let sent = rallies![rallyIndex].companies.filter { unit($0)?.errand == .rally(rallyID) }
+        units[index].destination = units[index].position.distance(to: muster.position) > 1 ? muster.position : nil
         units[index].fortified = false
         units[index].errand = .rally(rallyID)
         rallies![rallyIndex].companies = sent + [unitID]
@@ -162,19 +166,27 @@ extension GameState {
 
     // MARK: Keeping an ally's gates
 
-    mutating func reinforce(_ holdID: Int, with unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
-        let index = try ownedUnit(unitID, of: house)
-        guard units[index].kind.isMilitary else { throw .cannotFight }
-        guard let hold = hold(holdID) else { throw .unknownHold }
-        guard hold.owner == house || areAllied(house, hold.owner) else { throw .notAnAllysHold }
-        let unit = units[index]
+    /// Why a company of `house` can't be sent to keep a hold's gates now,
+    /// or nil if it can: what sending it holds to, without sending it.
+    public func reinforceRefusal(_ holdID: Int, with unitID: Int, as house: Int) -> RuleError? {
+        guard let unit = unit(unitID) else { return .unknownUnit }
+        guard unit.owner == house else { return .notYours }
+        guard unit.kind.isMilitary else { return .cannotFight }
+        guard let hold = hold(holdID) else { return .unknownHold }
+        guard hold.owner == house || areAllied(house, hold.owner) else { return .notAnAllysHold }
         if unit.position.distance(to: hold.position) > 1 {
-            guard path(for: unit, to: hold.position) != nil else { throw .noPath }
-            units[index].destination = hold.position
+            guard path(for: unit, to: hold.position) != nil else { return .noPath }
         } else {
-            guard unit.errand != .reinforce(hold: holdID) else { throw .alreadyThere }
-            units[index].destination = nil
+            guard unit.errand != .reinforce(hold: holdID) else { return .alreadyThere }
         }
+        return nil
+    }
+
+    mutating func reinforce(_ holdID: Int, with unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+        if let refusal = reinforceRefusal(holdID, with: unitID, as: house) { throw refusal }
+        let index = unitIndex(unitID)!
+        let hold = hold(holdID)!
+        units[index].destination = units[index].position.distance(to: hold.position) > 1 ? hold.position : nil
         units[index].fortified = false
         units[index].errand = .reinforce(hold: holdID)
         return [.sentToReinforce(unit: unitID, owner: house, hold: holdID)] + march(unitID)

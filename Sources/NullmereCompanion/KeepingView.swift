@@ -231,6 +231,18 @@ struct ArmyTab: View {
                                 }
                                 .font(Night.small)
                             }
+                            if !company.rallies.isEmpty || !company.gates.isEmpty {
+                                HStack(spacing: 10) {
+                                    OrdersMenu(title: "Rally", orders: company.rallies, label: "Send the \(company.name) to a rally") { rally in
+                                        session.give(rally.command, told: "\(rally.title), the \(company.name)")
+                                    }
+                                    OrdersMenu(title: "Keep gates", orders: company.gates,
+                                               label: "Send the \(company.name) to keep an ally's gates") { gates in
+                                        session.give(gates.command, told: "\(gates.title), the \(company.name)")
+                                    }
+                                }
+                                .font(Night.small)
+                            }
                         }
                     }
                     if !ledger.commanders.isEmpty {
@@ -309,6 +321,14 @@ struct AllianceTab: View {
                             Text(verbatim: ledger.allies.joined(separator: ", "))
                                 .font(Night.small)
                                 .foregroundStyle(Night.ink.opacity(0.75))
+                            // Alliance help: each of an ally's works, musters
+                            // and study helped once, every second help taking
+                            // a watch off it.
+                            ForEach(ledger.helps) { help in
+                                Button(help.title) { session.give(help.command, told: help.title) }
+                                    .buttonStyle(.bordered)
+                                    .font(Night.small)
+                            }
                         } else {
                             Text(verbatim: "Your House is in no alliance. Raise a banner or ask to join one on your Mac.")
                                 .font(Night.small)

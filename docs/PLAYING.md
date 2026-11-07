@@ -229,8 +229,9 @@ been heard from lately.
   Fortify one not dug in, Halt one on the march, Recall one gathering or
   carrying, Drill one by a Muster Hall, March to any of the House's holds,
   Strike what lies in its reach (the wilds, and the companies and holds of
-  Houses at war with the keeper's), and Gather at the nearest sites of the
-  land it may work. An order the rules wouldn't take from the keeper's view is
+  Houses at war with the keeper's), Gather at the nearest sites of the
+  land it may work, Rally to a rally of the alliance gathering, and Keep
+  gates at the nearest of the allies' seats. An order the rules wouldn't take from the keeper's view is
   refused on the phone with their reason and sent nowhere; one sent is
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone
@@ -245,8 +246,10 @@ been heard from lately.
   stays on the phone, for the age, and is forgotten when the phone is let
   go. A phone that can't run the model says so, and why, and everything
   else plays as ever.
-- **Alliance.** The alliance and its Houses, the leader first; what was
-  said in it lately, and to the whole realm; and a line to say to either.
+- **Alliance.** The alliance and its Houses, the leader first, with Help
+  for each ally with works, musters or study under way the House hasn't
+  helped yet; what was said in it lately, and to the whole realm; and a
+  line to say to either.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.

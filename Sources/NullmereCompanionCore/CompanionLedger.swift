@@ -28,6 +28,10 @@ public struct CompanionLedger: Equatable, Sendable {
         public let strikes: [Order]
         /// The nearest sites of the land it may be sent to gather at.
         public let gathers: [Order]
+        /// The rallies of the House's side it may be sent to now.
+        public let rallies: [Order]
+        /// The nearest of its allies' seats whose gates it may keep.
+        public let gates: [Order]
     }
 
     /// An order offered: what it says, and the command it gives.
@@ -79,6 +83,9 @@ public struct CompanionLedger: Equatable, Sendable {
     public let watch: Int
     public let companies: [Company]
     public let commanders: [Commander]
+    /// Help for each ally with works, musters or study under way the
+    /// House hasn't helped yet.
+    public let helps: [Order]
     public let holds: [Hold]
     public let stores: [(resource: Resource, amount: Int)]
     /// The alliance, by name, and its Houses, the leader first.
@@ -93,7 +100,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public static let linesShown = 30
 
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
-        a.house == b.house && a.watch == b.watch && a.companies == b.companies && a.commanders == b.commanders && a.holds == b.holds
+        a.house == b.house && a.watch == b.watch && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
+            && a.holds == b.holds
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
     }
@@ -124,7 +132,9 @@ public struct CompanionLedger: Equatable, Sendable {
             return Company(id: unit.id, name: SpokenOrders.named(unit, in: world), troops: GameState.counted(world.troops(of: unit)),
                            leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world),
                            orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
-                           gathers: CompanionLedger.gathers(for: unit, in: world, player: player))
+                           gathers: CompanionLedger.gathers(for: unit, in: world, player: player),
+                           rallies: CompanionLedger.rallies(for: unit, in: world, player: player),
+                           gates: CompanionLedger.gates(for: unit, in: world, player: player))
         }
         commanders = world.commandersBoard(for: player).lines.map { line in
             let standing: String
@@ -158,7 +168,12 @@ public struct CompanionLedger: Equatable, Sendable {
         stores = Resource.allCases.map { ($0, stock[$0]) }
         let allied = world.alliance(of: player)
         alliance = allied?.name
-        allies = (allied.map { [$0.leader] + $0.members.filter { $0 != allied?.leader } } ?? []).map(title)
+        let sworn = allied.map { [$0.leader] + $0.members.filter { $0 != allied?.leader } } ?? []
+        allies = sworn.map(title)
+        helps = sworn.filter { $0 != player }.compactMap { ally in
+            let count = world.helpable(by: player, for: ally)
+            return count > 0 ? Order(title: "Help \(title(ally)), \(count) under way", command: .help(house: ally)) : nil
+        }
         let said = world.wordsSaid.filter { $0.removed != true }
         func lines(_ words: [Word]) -> [Said] {
             words.suffix(CompanionLedger.linesShown).map { Said(id: $0.id, from: title($0.from), text: $0.text, watch: $0.watch, isOwn: $0.from == player) }
@@ -204,6 +219,26 @@ public struct CompanionLedger: Equatable, Sendable {
         return nearest.lazy.filter { world.gatherRefusal(unit.id, at: $0.id, as: player) == nil }.prefix(sitesOffered).map { site in
             Order(title: "Gather \(site.store.title.lowercased()) at \(world.placeName(of: site.position))",
                   command: .gather(unit: unit.id, site: site.id))
+        }
+    }
+
+    /// The rallies of the House's side a company of war with no errand may
+    /// be sent to now, as the rules would send it.
+    static func rallies(for unit: Unit, in world: GameState, player: Int) -> [Order] {
+        guard unit.kind.isMilitary, unit.errand == nil else { return [] }
+        return world.ralliesStanding.filter { world.joinRallyRefusal($0.id, with: unit.id, as: player) == nil }.map { rally in
+            Order(title: "Join the rally against \(world.targetName(rally.target) ?? "a hold")", command: .joinRally(rally: rally.id, unit: unit.id))
+        }
+    }
+
+    /// The nearest of the House's allies' seats a company of war with no
+    /// errand may be sent to keep the gates of, as the rules would send it.
+    static func gates(for unit: Unit, in world: GameState, player: Int) -> [Order] {
+        guard unit.kind.isMilitary, unit.errand == nil, let allied = world.alliance(of: player) else { return [] }
+        let seats = Set([allied.leader] + allied.members).subtracting([player]).compactMap { world.seat(of: $0) }
+        let nearest = seats.sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        return nearest.lazy.filter { world.reinforceRefusal($0.id, with: unit.id, as: player) == nil }.prefix(sitesOffered).map { seat in
+            Order(title: "Keep the gates of \(seat.name)", command: .reinforce(unit: unit.id, hold: seat.id))
         }
     }
 
