@@ -236,12 +236,12 @@ when its network comes back. The realm's word on each order given from the
 phone, each its own however many wait together, and what came of it where
 it is told at once (a chest's contents, a venture's end), stays a few
 seconds at the foot of whichever tab the keeper is on, wherever they have
-scrolled to give it; an order still unanswered when the phone is set
-aside is said to have been. The House, Army and Alliance tabs carry a
-count of what waits on the keeper there: envoys to answer, foes gathered
-near the House's holds, wounded it may heal and the Lyceum sitting; commanders with a talent to learn and
-the watch's venture up the Spine not yet made; invitations and Houses
-asking to join to answer, and allies' work to help.
+scrolled to give it; an order still unanswered when the phone is set aside
+is said to have been. The House, Army and Alliance tabs carry a count of
+what waits on the keeper there: envoys to answer, foes gathered near the
+House's holds, wounded it may heal and the Lyceum sitting; commanders with
+a talent to learn and the watch's venture up the Spine not yet made;
+invitations and Houses asking to join to answer, and allies' work to help.
 
 - **While you were away.** Coming in again after the phone was set aside,
   what happened to the House meanwhile, as the Mac tells a keeper come back
@@ -250,30 +250,30 @@ asking to join to answer, and allies' work to help.
   orders; Done puts it away.
 - **House.** The realm, its age and watch, the time until the watch turns
   and how many keepers are there and ready; On the walls, the companies of
-  Houses at war gathered near the House's holds, as the Mac's watchmen tell
-  it, and the veil of the Still as it stands (lying and until when, resting
-  and when it may be drawn anew), with Draw the veil for its moonsalt; the
-  Lyceum while it sits, as the Mac's card sets it, its next question with
-  its four answers, one at a time until all five are given; Envoys waiting, each offer in the words the Mac gives it, with the
-  words its House sent, how long it waits, and Accept (while the keeper has
-  what it asks) and Refuse, which asks again where refusing a steward's
-  demand is war; Labours and happenings, as the Mac's Realm panel tells
-  them: the watch's labours, folded beneath how far the House has come
-  with them and its vigour toward the moon's next chest, and the happening
-  under way (until when, what counts in it, the House's points toward its
-  next mark and its place) or when the next begins; the House's stores,
-  and beneath them the way to Barter,
-  the Inn and the satchel, which says only what waits there now (the
-  pedlar lying off a hold and how many of his wares the House may buy, its
-  keys to spend at the Inn and a word before a silver one is lost, the
-  items it may use now); its holds,
-  each with what it raises and musters and how long each has to go, its
-  Infirmary while any lie in its beds (who lies there, and those being
+  Houses at war gathered near the House's holds, as the Mac's watchmen
+  tell it, and the veil of the Still as it stands (lying and until when,
+  resting and when it may be drawn anew), with Draw the veil for its
+  moonsalt; Envoys waiting, each offer in the words the Mac gives it, with
+  the words its House sent, how long it waits, and Accept (while the
+  keeper has what it asks) and Refuse, which asks again where refusing a
+  steward's demand is war; the Lyceum while it sits, as the Mac's card
+  sets it, its next question with its four answers, one at a time until
+  all five are given; Labours and happenings, as the Mac's Realm panel
+  tells them: the watch's labours, folded beneath how far the House has
+  come with them and its vigour toward the moon's next chest, and the
+  happening under way (until when, what counts in it, the House's points
+  toward its next mark and its place) or when the next begins; the House's
+  stores, and beneath them the way to Barter, the Inn and the satchel,
+  which says only what waits there now (the pedlar lying off a hold and
+  how many of his wares the House may buy, its keys to spend at the Inn
+  and a word before a silver one is lost, the items it may use now); its
+  holds, each with what it raises and musters and how long each has to go,
+  its Infirmary while any lie in its beds (who lies there, and those being
   healed) with Heal for half what mustering them anew costs, and Raise and
   Muster: the works it may raise a level and the companies it may muster
-  at the first tier now, the House able to pay; While you are
-  away, the caretaker's standing orders as they stand, with Muster (the one
-  kind of company of war it musters), Raise first (the work it raises first
+  at the first tier now, the House able to pay; While you are away, the
+  caretaker's standing orders as they stand, with Muster (the one kind of
+  company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace
   made with any House or none, tribute paid or none, and the House kept as
   it sees fit); the realm's chronicle, the latest first, three lines open
