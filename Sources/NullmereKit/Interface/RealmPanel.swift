@@ -587,16 +587,11 @@ struct LaboursSection: View {
         _open = State(initialValue: open)
     }
 
-    /// The fold's line: labours done, and the vigour toward the next chest.
-    static func summary(_ labours: Labours) -> String {
-        let done = labours.tasks.filter(\.isDone).count
-        let next = Labours.chests.dropFirst(labours.opened).first
-        return "\(done) of \(labours.tasks.count) done this watch · vigour \(labours.vigour)" + (next.map { " of \($0) for the next chest" } ?? ", every chest opened")
-    }
+    /// The fold's line: labours done, and the vigour toward the next chest,
+    /// in the words the phone tells them in too.
+    static func summary(_ labours: Labours) -> String { labours.summary }
 
-    static func line(_ labour: Labour) -> String {
-        "\(labour.kind.title): \(min(labour.done, labour.kind.measure)) of \(labour.kind.measure)"
-    }
+    static func line(_ labour: Labour) -> String { labour.line }
 
     var body: some View {
         if let labours = session.state.labours(of: session.player) {
@@ -606,7 +601,7 @@ struct LaboursSection: View {
                         .font(.nm(10.5))
                         .foregroundStyle(labour.isDone ? Palette.good : Palette.text(0.8))
                 }
-                Text(verbatim: "Each done is \(Labours.vigourPerLabour) vigour as the watch turns; the moon's chests open at \(Labours.chests.map(String.init).joined(separator: ", ")).")
+                Text(verbatim: Labours.worth)
                     .font(.nm(9.5))
                     .foregroundStyle(Palette.text(0.5))
                     .fixedSize(horizontal: false, vertical: true)

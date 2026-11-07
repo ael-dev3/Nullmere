@@ -285,6 +285,27 @@ public struct RealmBoard: Equatable, Sendable {
     public var nextMark: Int? {
         Happening.marks.indices.contains(marksPassed) ? Happening.marks[marksPassed] : nil
     }
+
+    /// The happening under way, as the Mac's Realm panel tells it: until
+    /// when, and what counts in it; or, none under way, when the next
+    /// begins and what it is.
+    public func happeningSaid(at watch: Int) -> String? {
+        if let happening {
+            let left = max(happening.ends - watch, 0)
+            return "\(happening.kind.title), until the \(ordinal(happening.ends)) watch, \(left) to go: \(happening.kind.goal)."
+        }
+        guard let next = nextBegins else { return nil }
+        return "\(nextKind?.title ?? "The next happening") begins at the \(ordinal(next)) watch" + (nextKind.map { ": \($0.goal)." } ?? ".")
+    }
+
+    /// The House's part in the happening under way: its points toward the
+    /// next mark, and its place among the Houses with points.
+    public var standingSaid: String? {
+        guard let happening else { return nil }
+        var line = "Your points: " + (nextMark.map { "\(points) of \($0) for the next mark" } ?? "\(points), every mark passed")
+        if let place { line += ", \(ordinal(place)) of \(happening.leaderboard.count) with points" }
+        return line
+    }
 }
 
 extension GameState {

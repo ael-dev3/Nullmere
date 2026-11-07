@@ -54,6 +54,28 @@ public struct Labours: Codable, Equatable, Sendable {
     public static let chestItems: [[ItemKind]] = [[.hourglass], [.hourglass, .mendingDraught], [.wardStone, .hourglass, .hourglass]]
 }
 
+extension Labours {
+    /// How the watch's labours stand, in a line, as the Mac and the phone
+    /// tell it: "1 of 3 done this watch · vigour 10 of 20 for the next chest".
+    public var summary: String {
+        let done = tasks.filter(\.isDone).count
+        let next = Labours.chests.dropFirst(opened).first
+        return "\(done) of \(tasks.count) done this watch · vigour \(vigour)" + (next.map { " of \($0) for the next chest" } ?? ", every chest opened")
+    }
+
+    /// What a labour done is worth, and when the moon's chests open.
+    public static var worth: String {
+        "Each done is \(vigourPerLabour) vigour as the watch turns; the moon's chests open at \(chests.map(String.init).joined(separator: ", "))."
+    }
+}
+
+extension Labour {
+    /// A labour as it stands: "Raise works: 1 of 1".
+    public var line: String {
+        "\(kind.title): \(min(done, kind.measure)) of \(kind.measure)"
+    }
+}
+
 extension LabourKind {
     /// How much of it an event does, for which House.
     func share(of event: GameEvent, in state: GameState) -> (house: Int, amount: Int)? {

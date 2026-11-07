@@ -156,6 +156,41 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(CompanionLedger(world: state, player: me).errands, [])
     }
 
+    /// The watch's labours and the happening on the phone, in the Mac's words:
+    /// none set at first and the next happening told; the labours as they
+    /// stand and the vigour toward the next chest; the happening under way,
+    /// what counts in it, the House's points toward its next mark and its place.
+    func testThePhoneTellsTheWatchsLaboursAndTheHappening() throws {
+        var (state, me) = try world()
+        var course = CompanionLedger(world: state, player: me).course
+        XCTAssertNil(course.labours, "None set before the first watch turns")
+        XCTAssertEqual(course.tasks, [])
+        XCTAssertNil(course.standing)
+        let next = try XCTUnwrap(state.realmBoard(for: me).nextKind)
+        XCTAssertEqual(course.happening, "\(next.title) begins at the tenth watch: \(next.goal).")
+
+        state.labourBook = [me: Labours(watch: state.watch, tasks: [Labour(kind: .muster, done: 0), Labour(kind: .raise, done: 1),
+                                                                    Labour(kind: .gather, done: 200)], vigour: 10, opened: 0)]
+        course = CompanionLedger(world: state, player: me).course
+        XCTAssertEqual(course.labours, "2 of 3 done this watch · vigour 10 of 20 for the next chest")
+        XCTAssertEqual(course.tasks, [.init(text: "Muster companies: 0 of 1", done: false), .init(text: "Raise works: 1 of 1", done: true),
+                                      .init(text: "Bring stores home from the land's sites: 150 of 150", done: true)])
+
+        var muster = Happening(number: 0, kind: .muster, begins: state.watch, houses: state.houses.count)
+        let other = (me + 1) % state.houses.count
+        muster.points[me] = 14
+        muster.passed[me] = 1
+        muster.points[other] = 30
+        muster.passed[other] = 2
+        state.happening = muster
+        course = CompanionLedger(world: state, player: me).course
+        XCTAssertEqual(course.happening, "The Great Muster, until the \(ordinal(muster.ends)) watch, \(muster.ends - state.watch) to go: "
+                       + "\(HappeningKind.muster.goal).")
+        XCTAssertEqual(course.standing, "Your points: 14 of 25 for the next mark, second of 2 with points")
+        state.happening?.passed[me] = Happening.marks.count
+        XCTAssertEqual(CompanionLedger(world: state, player: me).course.standing, "Your points: 14, every mark passed, second of 2 with points")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

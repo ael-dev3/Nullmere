@@ -189,6 +189,25 @@ public struct CompanionLedger: Equatable, Sendable {
         public let why: String?
     }
 
+    /// The watch's labours and the happening, as the Mac's Realm panel
+    /// tells them: what counts, how far the House has come, what is next.
+    public struct Course: Equatable, Sendable {
+        /// A labour as it stands, "Muster companies: 0 of 1", and whether done.
+        public struct Line: Equatable, Sendable {
+            public let text: String
+            public let done: Bool
+        }
+        /// How the labours stand, "1 of 3 done this watch · vigour 10 of 20
+        /// for the next chest"; nil while the House is set none.
+        public let labours: String?
+        public let tasks: [Line]
+        /// The happening under way and what counts in it, or when the next
+        /// begins.
+        public let happening: String?
+        /// The House's points and place in the happening under way.
+        public let standing: String?
+    }
+
     /// The Lantern Inn: the House's keys, and the chests it may open now.
     public struct Inn: Equatable, Sendable {
         /// The keys the House holds, and a word where one more would be lost.
@@ -273,6 +292,8 @@ public struct CompanionLedger: Equatable, Sendable {
     /// words each, for the House tab's way to them; none where nothing
     /// waits there but barter.
     public let errands: [String]
+    /// The watch's labours and the happening.
+    public let course: Course
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -332,7 +353,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands
+            && a.errands == b.errands && a.course == b.course
     }
 
     /// The House's stores as one stock.
@@ -526,6 +547,7 @@ public struct CompanionLedger: Equatable, Sendable {
         pedlar = CompanionLedger.pedlar(in: world, player: player)
         spine = CompanionLedger.spine(in: world, player: player)
         errands = CompanionLedger.errands(in: world, player: player, satchel: satchel)
+        course = CompanionLedger.course(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -774,6 +796,16 @@ public struct CompanionLedger: Equatable, Sendable {
             errands.append(opened(ready.map(\.count).joined(separator: " and ") + " ready to use"))
         }
         return errands
+    }
+
+    /// The House's labours this watch and its part in the happening, in the
+    /// Mac's words (`Labours.summary`, `RealmBoard.happeningSaid`).
+    static func course(in world: GameState, player: Int) -> Course {
+        let labours = world.labours(of: player)
+        let board = world.realmBoard(for: player)
+        return Course(labours: labours?.summary,
+                      tasks: labours?.tasks.map { Course.Line(text: $0.line, done: $0.isDone) } ?? [],
+                      happening: board.happeningSaid(at: world.watch), standing: board.standingSaid)
     }
 
     /// The House's keys at the Lantern Inn, five of each kind kept and more

@@ -174,6 +174,44 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The watch's labours, folded beneath how they stand, and the
+                    // happening under way or the next, as the Mac's Realm panel tells them.
+                    if ledger.course.labours != nil || ledger.course.happening != nil {
+                        Section("Labours and happenings") {
+                            if let labours = ledger.course.labours {
+                                DisclosureGroup {
+                                    ForEach(Array(ledger.course.tasks.enumerated()), id: \.offset) { task in
+                                        Label {
+                                            Text(verbatim: task.element.text)
+                                        } icon: {
+                                            Image(systemName: task.element.done ? "checkmark.circle.fill" : "circle")
+                                        }
+                                        .font(Night.small)
+                                        .foregroundStyle(task.element.done ? Night.good : Night.ink.opacity(0.85))
+                                        .accessibilityLabel(task.element.done ? "Done: \(task.element.text)" : task.element.text)
+                                    }
+                                } label: {
+                                    Text(verbatim: labours)
+                                        .font(Night.small)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            if let happening = ledger.course.happening {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(verbatim: happening)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.85))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    if let standing = ledger.course.standing {
+                                        Text(verbatim: standing)
+                                            .font(Night.small)
+                                            .foregroundStyle(Night.moon)
+                                    }
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
                     Section("Stores") {
                         ForEach(ledger.stores, id: \.resource) { store in
                             HStack {
