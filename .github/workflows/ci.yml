@@ -103,6 +103,25 @@ jobs:
             exit 1
           fi
 
+      - name: Build the companion for the iOS Simulator
+        id: companion
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # Early, so its errors show minutes into the run, not at its end; a
+        # failure here still fails the job, at "The companion was built".
+        continue-on-error: true
+        timeout-minutes: 20
+        # bash -eo pipefail: the script's own failure fails the step, not tee's success.
+        # Its errors are raised as annotations too, readable however long the log.
+        shell: bash
+        run: |
+          mkdir -p build
+          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
+              echo "::error title=Companion for iOS::${line}"
+            done
+            exit 1
+          fi
+
       - name: Test
         run: NULLMERE_KEEP_RENDERS="$PWD/build" swift test --enable-code-coverage 2>&1 | tee build-test.log
 
@@ -269,22 +288,6 @@ jobs:
 
       # Nullmere Companion, the keeper's iPhone app, built for the iOS
       # Simulator from the same package, bundled and signed to run there.
-      - name: Build the companion for the iOS Simulator
-        id: companion
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        timeout-minutes: 20
-        # bash -eo pipefail: the script's own failure fails the step, not tee's success.
-        # Its errors are raised as annotations too, readable however long the log.
-        shell: bash
-        run: |
-          mkdir -p build
-          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
-            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
-              echo "::error title=Companion for iOS::${line}"
-            done
-            exit 1
-          fi
-
       # Both real apps on the realm raised above: the Mac enters and offers
       # a link; the phone, in the simulator, takes it, plays, is set aside
       # and comes in again, and the Mac sees its order. Then the phone takes
@@ -297,6 +300,12 @@ jobs:
         env:
           NULLMERE_REALM: http://127.0.0.1:3000/nullmere
         run: scripts/smoke-test-companion.sh 2>&1 | tee build/smoke-companion.log
+
+      - name: The companion was built
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.companion.outcome != 'success' }}
+        run: |
+          echo "::error title=Companion for iOS::The companion didn't build for the iOS Simulator; its errors are above, in its own step."
+          exit 1
 
       - name: Keep the screenshots
         if: always()
