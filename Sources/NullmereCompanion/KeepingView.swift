@@ -714,6 +714,13 @@ struct AllianceTab: View {
                             LawRows(session: session, law: ledger.law)
                         }
                     }
+                    // Oaths, as the Mac's Houses tell them: the House's own,
+                    // each renounced with notice, and those sworn to it.
+                    if !ledger.oathsSworn.isEmpty || !ledger.oathsToUs.isEmpty {
+                        Section("Oaths") {
+                            OathRows(session: session, oaths: ledger.oathsSworn + ledger.oathsToUs)
+                        }
+                    }
                     if !ledger.invitations.isEmpty || !ledger.requests.isEmpty {
                         Section("Awaiting your answer") {
                             ForEach(ledger.invitations + ledger.requests) { answer in
@@ -1246,6 +1253,47 @@ struct CommanderOrders: View {
                 .buttonStyle(.bordered)
                 .font(Night.small)
                 .accessibilityLabel("Ransom \(commander.name) home, for \(ransom.title.replacingOccurrences(of: "Ransom for ", with: ""))")
+        }
+    }
+}
+
+/// The oaths between the House and others, as the Mac's Houses tell them,
+/// each of the House's own renounced with notice once the keeper says so,
+/// as the Mac asks first.
+struct OathRows: View {
+    let session: CompanionSession
+    let oaths: [CompanionLedger.SwornOath]
+
+    var body: some View {
+        ForEach(oaths) { oath in
+            OathRow(session: session, oath: oath)
+        }
+    }
+}
+
+/// An oath in a line, with Renounce where it is the House's to renounce,
+/// asked first.
+private struct OathRow: View {
+    let session: CompanionSession
+    let oath: CompanionLedger.SwornOath
+    @State private var renouncing = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: oath.terms)
+                .font(Night.small)
+                .fixedSize(horizontal: false, vertical: true)
+            if let renounce = oath.renounce {
+                Button(renounce.title, role: .destructive) { renouncing = true }
+                    .buttonStyle(.bordered)
+                    .font(Night.small)
+                    .accessibilityHint(GameState.renounceSaid)
+                    .confirmationDialog("\(renounce.title)?", isPresented: $renouncing, titleVisibility: .visible) {
+                        Button(renounce.title, role: .destructive) { session.give(renounce.command, told: renounce.title) }
+                    } message: {
+                        Text(verbatim: GameState.renounceSaid)
+                    }
+            }
         }
     }
 }

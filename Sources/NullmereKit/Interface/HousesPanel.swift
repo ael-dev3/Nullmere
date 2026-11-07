@@ -566,7 +566,7 @@ struct HouseRow: View {
                         ConfirmButton(title: "Renounce the oath of \(HouseRow.sworn(oath))", confirm: "Renounce your oath to \(house.title)?") {
                             session.perform(.renounce(oath: oath.id))
                         }
-                        .help("It binds three watches more, and the whole realm is told.")
+                        .help(GameState.renounceSaid)
                     }
                 }
                 if choosingGift, stance != .war {
@@ -720,7 +720,7 @@ struct HouseRow: View {
     /// them: the keeper's own, and the other's to them.
     static func oathLines(between player: Int, and other: Int, in state: GameState) -> [String] {
         state.oathsInForce.compactMap { oath in
-            let held = "\(sworn(oath)) until watch \(state.lastWatch(of: oath))\(oath.renounced == nil ? "" : ", renounced")"
+            let held = state.heldSaid(oath)
             if oath.by == player, oath.to == other { return "Your oath: \(held)." }
             if oath.by == other, oath.to == player { return "Their oath to you: \(held)." }
             return nil
@@ -729,10 +729,7 @@ struct HouseRow: View {
 
     /// What an oath swears, without whom to: "peace", "30 grain each watch".
     static func sworn(_ oath: Oath) -> String {
-        switch oath.term {
-        case .peace: return "peace"
-        case let .send(resource, amount): return "\(GameState.counted(amount)) \(resource.title.lowercased()) each watch"
-        }
+        oath.swornSaid
     }
 
     /// The keeper's oaths to another House it may still renounce.

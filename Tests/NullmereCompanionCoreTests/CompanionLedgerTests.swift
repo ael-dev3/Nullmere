@@ -595,6 +595,37 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(state.gear(of: me).count, before + 1, "Into the armoury")
     }
 
+    /// Oaths on the phone, in the words of the Mac's Houses: one the House
+    /// swore told and offered to renounce, taken by the rules; renounced,
+    /// told until when it binds and offered no more; one sworn to the House
+    /// told as its swearer swore it.
+    func testThePhoneTellsAndRenouncesOaths() throws {
+        var (state, me) = try world()
+        XCTAssertTrue(CompanionLedger(world: state, player: me).oathsSworn.isEmpty)
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        state.houses[other].isPlayer = true
+        _ = try state.perform(.swear(.peace, to: other, watches: 10), as: me)
+        var ledger = CompanionLedger(world: state, player: me)
+        let sworn = try XCTUnwrap(ledger.oathsSworn.first)
+        let oath = try XCTUnwrap(state.oaths(by: me).first)
+        let quell = state.houses[other].title
+        XCTAssertEqual(sworn.terms, "Your oath to \(quell): peace until watch \(state.lastWatch(of: oath))")
+        let renounce = try XCTUnwrap(sworn.renounce)
+        XCTAssertEqual(renounce.title, "Renounce the oath of peace to \(quell)")
+        assertTaken([renounce], in: state, as: me)
+        _ = try state.perform(renounce.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let renounced = try XCTUnwrap(ledger.oathsSworn.first)
+        XCTAssertNil(renounced.renounce, "Renounced once")
+        XCTAssertEqual(renounced.terms, "Your oath to \(quell): peace until watch \(state.watch + GameState.oathNotice), renounced")
+        // Sworn to the House: told as its swearer swore it, not the House's
+        // to renounce.
+        _ = try state.perform(.swear(.send(.grain, 30), to: me, watches: 8), as: other)
+        let theirs = try XCTUnwrap(CompanionLedger(world: state, player: me).oathsToUs.first)
+        XCTAssertEqual(theirs.terms, "\(quell)'s oath to you: 30 grain each watch until watch \(state.watch + 8)")
+        XCTAssertNil(theirs.renounce, "Not the House's to renounce")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

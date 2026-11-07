@@ -396,7 +396,11 @@ a vote on the realm's law to cast.
   closes) and the House's vote, or Aye and Nay while it may cast one; the
   edicts holding the realm and for how long; and, folded until asked for,
   the edicts the House may put to it now, each with what it would forbid
-  and its cost. What waits on the keeper's answer, as the Mac's
+  and its cost. The oaths between the House and others, as the Mac's
+  Houses tell them: the House's own ("Your oath to House Quell: peace
+  until watch 40"), each with Renounce, asked first because it binds three
+  watches more and the whole realm is told, and marked renounced once it
+  is; and those sworn to the House. What waits on the keeper's answer, as the Mac's
   Alliance panel tells it: an alliance's invitation, to join or decline
   (no joining one that is full, or holds a House at war with the
   keeper's), and for its leader, each House asking to join, to admit or

@@ -123,6 +123,18 @@ public struct CompanionLedger: Equatable, Sendable {
         public let rivals: [Rival]
     }
 
+    /// An oath in force between the House and another, as the Mac's Houses
+    /// tell it on the other's line, with whom it is between.
+    public struct SwornOath: Equatable, Identifiable, Sendable {
+        public let id: Int
+        /// "Your oath to House Quell: peace until watch 40", ", renounced"
+        /// once it is; or, sworn to the House, "House Quell's oath to you:
+        /// 30 grain each watch until watch 40".
+        public let terms: String
+        /// Renounced with notice, where the House swore it and has not yet.
+        public let renounce: Order?
+    }
+
     /// The House's Forge, as the Mac's Commanders tell it: how fine it
     /// works, the makings the House keeps, and each piece of the three sets
     /// at the finest it makes, what it gives and takes, with Forge where
@@ -384,6 +396,9 @@ public struct CompanionLedger: Equatable, Sendable {
     public let ring: TheRing
     /// The House's Forge.
     public let forge: Forge
+    /// The oaths the House has sworn, and those sworn to it.
+    public let oathsSworn: [SwornOath]
+    public let oathsToUs: [SwornOath]
 
     /// What waits in the Ring and up the Spine, said on the Army tab's way
     /// to them: keepers' lines to challenge, or the House's line to stand,
@@ -511,7 +526,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
-            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.forge == b.forge && a.helps == b.helps
+            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.forge == b.forge && a.oathsSworn == b.oathsSworn && a.oathsToUs == b.oathsToUs && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -700,6 +715,16 @@ public struct CompanionLedger: Equatable, Sendable {
         law = CompanionLedger.law(in: world, player: player)
         ring = CompanionLedger.ring(in: world, player: player)
         forge = CompanionLedger.forge(in: world, player: player)
+        // Oaths, as the Mac's Houses tell them on the other House's line,
+        // renounced with notice where the House swore one and has not yet.
+        oathsSworn = world.oaths(by: player).map { oath in
+            SwornOath(id: oath.id, terms: "Your oath to \(title(oath.to)): \(world.heldSaid(oath))",
+                      renounce: world.renounceRefusal(oath.id, as: player) == nil
+                        ? Order(title: "Renounce the oath of \(oath.swornSaid) to \(title(oath.to))", command: .renounce(oath: oath.id)) : nil)
+        }
+        oathsToUs = world.oathsInForce.filter { $0.to == player && $0.by != player }.map { oath in
+            SwornOath(id: oath.id, terms: "\(title(oath.by))'s oath to you: \(world.heldSaid(oath))", renounce: nil)
+        }
         prisoners = world.prisoners(heldBy: player).sorted { $0.id < $1.id }.compactMap { prisoner in
             guard let captive = prisoner.captive else { return nil }
             let question = world.questionRefusal(prisoner.id, as: player) == nil

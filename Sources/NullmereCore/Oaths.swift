@@ -39,6 +39,16 @@ public struct Oath: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+extension Oath {
+    /// What it swears, without whom to: "peace", "30 grain each watch".
+    public var swornSaid: String {
+        switch term {
+        case .peace: return "peace"
+        case let .send(resource, amount): return "\(GameState.counted(amount)) \(resource.title.lowercased()) each watch"
+        }
+    }
+}
+
 /// How an oath came to an end.
 public enum OathEnd: String, Codable, Equatable, Sendable, PlainCases {
     /// Kept to its last watch.
@@ -58,6 +68,8 @@ extension GameState {
     public static let oathLongest = 60
     /// The watches a renounced oath still binds.
     public static let oathNotice = 3
+    /// What renouncing an oath does, said beside it on the Mac and the phone.
+    public static let renounceSaid = "It binds three watches more, and the whole realm is told."
 
     /// The oaths in force, the oldest first.
     public var oathsInForce: [Oath] { oaths ?? [] }
@@ -83,6 +95,13 @@ extension GameState {
             guard oath.by == house, oath.to == other, case .send = oath.term else { return false }
             return true
         }
+    }
+
+    /// An oath as it holds, without whom to, in one wording for the Mac's
+    /// Houses and the phone: "peace until watch 40", "30 grain each watch
+    /// until watch 40", and ", renounced" once it is.
+    public func heldSaid(_ oath: Oath) -> String {
+        "\(oath.swornSaid) until watch \(lastWatch(of: oath))\(oath.renounced == nil ? "" : ", renounced")"
     }
 
     /// An oath as the realm tells it: "peace with House X until watch 40",
