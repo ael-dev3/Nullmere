@@ -1053,6 +1053,7 @@ struct WareRow: View {
             Spacer()
             if let buy = ware.buy {
                 Button("Buy") { session.give(buy.command, told: buy.title) }
+                    .buttonStyle(.bordered)
                     .font(Night.body)
                     .accessibilityLabel(buy.title)
             }

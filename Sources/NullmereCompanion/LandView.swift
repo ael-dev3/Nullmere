@@ -137,6 +137,9 @@ struct ListedOrdersMenu: View {
                     Button(order.element.title) { give(order.element) }
                 }
             }
+            // Bordered, so that two or three side by side in a list's row
+            // each answer only to their own touch, not the row's.
+            .buttonStyle(.bordered)
             .accessibilityLabel(label)
         }
     }
