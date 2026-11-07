@@ -266,7 +266,8 @@ network comes back.
   hourglass to hasten a hold's work or muster, or the study; a cache to open
   while the stores have room; a ward stone for a hold whose ward isn't
   whole; a draught to share while a company is hurt); the realm's
-  chronicle, the latest first; and Ready for the watch to turn, which
+  chronicle, the latest first, three lines open and the earlier folded
+  beneath them; and Ready for the watch to turn, which
   counts as the keeper's, Mac or phone.
 - **Land.** The chart of the House's land about its seat, as far as its
   holds and companies reach (eighteen hexes at most): each hex in its

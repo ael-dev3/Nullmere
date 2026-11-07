@@ -212,12 +212,19 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The chronicle, the latest first: three lines open, the
+                    // earlier folded beneath them, the world first.
                     Section("The chronicle") {
-                        ForEach(Array(ledger.chronicle.enumerated()), id: \.offset) { line in
-                            Text(verbatim: line.element)
-                                .font(Night.small)
-                                .foregroundStyle(Night.ink.opacity(0.8))
-                                .fixedSize(horizontal: false, vertical: true)
+                        ForEach(Array(ledger.chronicle.prefix(CompanionLedger.reportsOpen).enumerated()), id: \.offset) { line in
+                            ChronicleLine(text: line.element)
+                        }
+                        if ledger.chronicle.count > CompanionLedger.reportsOpen {
+                            DisclosureGroup("\(ledger.chronicle.count - CompanionLedger.reportsOpen) earlier") {
+                                ForEach(Array(ledger.chronicle.dropFirst(CompanionLedger.reportsOpen).enumerated()), id: \.offset) { line in
+                                    ChronicleLine(text: line.element)
+                                }
+                            }
+                            .font(Night.small)
                         }
                     }
                     Section {
@@ -1058,5 +1065,17 @@ struct WareRow: View {
                     .accessibilityLabel(buy.title)
             }
         }
+    }
+}
+
+/// A line of the realm's chronicle as the House tab lists it.
+struct ChronicleLine: View {
+    let text: String
+
+    var body: some View {
+        Text(verbatim: text)
+            .font(Night.small)
+            .foregroundStyle(Night.ink.opacity(0.8))
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
