@@ -3,8 +3,9 @@
 # steward it started (by its pid, or by name for one started before pids
 # were kept) and tells a local server's sign-in from maincloud's; the smoke
 # tests' helper puts this Mac's hosted realm and keeper's name back however
-# a test ends; check-on-mac.sh runs both its halves whatever either does,
-# says which passed, and refuses a Mac that can't run them. Each runs
+# a test ends; check-on-mac.sh runs all its parts whatever any does, says
+# which passed (counsel its model wasn't ready for being unverified, not
+# passed), and refuses a Mac that can't run them. Each runs
 # against stand-ins, touching nothing real.
 #
 #   scripts/test-scripts.sh      (run by scripts/check-scripts.sh)
@@ -134,7 +135,7 @@ check "no backup is left behind" "$([ -e "$REALM.smoke-backup" ] && echo left ||
 MAC="$WORK/mac"
 mkdir -p "$MAC/scripts" "$WORK/macbin"
 cp scripts/check-on-mac.sh "$MAC/scripts/"
-for half in check-voices measure-mac; do
+for half in check-voices check-counsel measure-mac; do
     printf '#!/usr/bin/env bash\necho ran >> "%s/%s.ran"\nexit "${%s_STATUS:-0}"\n' "$WORK" "$half" "$(echo "$half" | tr a-z- A-Z_)" \
         > "$MAC/scripts/$half.sh"
 done
@@ -152,19 +153,26 @@ mac_run() {
     set -e
 }
 halves_ran() {
-    echo "$([ -f "$WORK/check-voices.ran" ] && echo voices) $([ -f "$WORK/measure-mac.ran" ] && echo figures)"
+    echo "$([ -f "$WORK/check-voices.ran" ] && echo voices) $([ -f "$WORK/check-counsel.ran" ] && echo counsel)" \
+        "$([ -f "$WORK/measure-mac.ran" ] && echo figures)"
 }
 mac_run env CHECK_VOICES_STATUS=1 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh fails when the voices do" "$(cat "$WORK/mac.status")" "1"
-check "and measures all the same" "$(halves_ran)" "voices figures"
+check "and takes counsel and measures all the same" "$(halves_ran)" "voices counsel figures"
 check "and says which passed" "$(grep -cE '^  The (voices .*failed|figures .*passed)$' "$WORK/mac.out")" "2"
 check "and commits nothing" "$(grep -c "nothing was committed" "$WORK/mac.out")" "1"
+mac_run env CHECK_COUNSEL_STATUS=2 "$MAC/scripts/check-on-mac.sh" --no-commit
+check "check-on-mac.sh fails when the model wasn't ready for counsel" "$(cat "$WORK/mac.status")" "1"
+check "and says counsel is unverified, not failed" "$(grep -c "^  Counsel (Apple Intelligence) *unverified (the model isn't ready)$" "$WORK/mac.out")" "1"
+check "and still hears and measures" "$(halves_ran)" "voices counsel figures"
+mac_run env CHECK_COUNSEL_STATUS=1 "$MAC/scripts/check-on-mac.sh" --no-commit
+check "check-on-mac.sh fails when counsel breaks its rules" "$(grep -c "^  Counsel (Apple Intelligence) *failed$" "$WORK/mac.out")" "1"
 mac_run "$MAC/scripts/check-on-mac.sh" --no-commit
-check "check-on-mac.sh passes when both halves do" "$(cat "$WORK/mac.status")" "0"
-check "having heard and measured" "$(halves_ran)" "voices figures"
+check "check-on-mac.sh passes when every part does" "$(cat "$WORK/mac.status")" "0"
+check "having heard, taken counsel and measured" "$(halves_ran)" "voices counsel figures"
 mac_run env MAC_ARCH=x86_64 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh refuses a Mac without Apple silicon" "$(cat "$WORK/mac.status")" "1"
-check "before hearing or measuring" "$(halves_ran)" " "
+check "before hearing or measuring" "$(halves_ran)" "  "
 
 [ "$failures" = 0 ] && echo "The scripts do what they say."
 exit "$failures"

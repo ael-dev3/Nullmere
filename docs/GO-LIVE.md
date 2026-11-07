@@ -192,13 +192,14 @@ repository.
   `Nullmere-Online-1.0.0.dmg: accepted` with `source=Notarized Developer ID`
   (for version 1.0.0).
 
-## 3. Hear the voices and measure, on a real Mac
+## 3. Hear the voices and counsel, and measure, on a real Mac
 
 Needs a Mac with Apple silicon, macOS 26, Xcode 26, and Apple Intelligence
 turned on (System Settings > Apple Intelligence & Siri) and its model
 downloaded. CI's runners are virtual Macs. CI asks their model for the
-voices through the debug app too (the voices step of its build job), but
-so far they have told it they aren't eligible, though the release app's
+voices and for a commander's counsel through the debug app too (the voices
+and counsel steps of its build job), but so far they have told it they
+aren't eligible, though the release app's
 own check finds the model ready; the release build carries no hooks to
 ask it with. And their figures are a virtual Mac's, not Apple silicon's
 own. A keeper's Mac is the one that counts.
@@ -206,9 +207,13 @@ own. A keeper's Mac is the one that counts.
 - [ ] One command: Apple's on-device model speaks for every kind of envoy and
   chronicle entry, each line held to the voices' rules (spoken at all,
   short, grave, no numbers but the facts', no talk of games or players);
-  then the frame, GPU and turn figures CI holds to `perf/baseline.json` are
-  taken here and set beside CI's. When both pass, both are committed to
-  `perf/mac/`.
+  then a commander takes counsel through it, as on a keeper's Mac: three
+  questions about the realm as their House sees it, answered by looking
+  about with the counsel's tools, an order put forward that the realm would
+  take, what was said remembered, and an answer stopped as it begins, each
+  held to counsel's rules; then the frame, GPU and turn figures CI holds to
+  `perf/baseline.json` are taken here and set beside CI's. When all pass,
+  all are committed to `perf/mac/`.
 
   ```sh
   scripts/check-on-mac.sh
@@ -218,11 +223,15 @@ own. A keeper's Mac is the one that counts.
 
   ```
     The voices (Apple Intelligence) passed
+    Counsel (Apple Intelligence) passed
     The figures (Apple silicon)  passed
   ```
 
-  and it says `Committed. Put it on record: git push`. Either half can be
-  run alone: `scripts/check-voices.sh`, `scripts/measure-mac.sh`.
+  and it says `Committed. Put it on record: git push`. Counsel reading
+  `unverified (the model isn't ready)` means this Mac's model wasn't ready
+  to be asked: turn Apple Intelligence on, let its model download, and run
+  it again. Each part can be run alone: `scripts/check-voices.sh`,
+  `scripts/check-counsel.sh`, `scripts/measure-mac.sh`.
 
 - [ ] **Changes things.** Put them on record:
 

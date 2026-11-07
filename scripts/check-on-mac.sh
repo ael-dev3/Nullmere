@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Everything going live asks of a real Mac, in one command: Apple's
 # on-device model heard speaking every voice within its rules
-# (scripts/check-voices.sh), and the game's frame, GPU and turn figures
-# measured on Apple silicon beside CI's (scripts/measure-mac.sh). Both are
-# kept in perf/mac/ and, when both pass, committed, so they are on record.
+# (scripts/check-voices.sh), a commander taking counsel through it, held to
+# counsel's rules (scripts/check-counsel.sh), and the game's frame, GPU and
+# turn figures measured on Apple silicon beside CI's (scripts/measure-mac.sh).
+# All three are kept in perf/mac/ and, when all pass, committed, so they are
+# on record.
 # Needs a Mac with Apple silicon, macOS 26, Xcode 26, and Apple
 # Intelligence turned on and downloaded.
 #
 #   scripts/check-on-mac.sh             # check, hear, measure, commit
 #   scripts/check-on-mac.sh --no-commit # check, hear, measure; leave perf/mac/ to commit
 #
-# Each half runs even when the other fails; the summary says which passed,
-# and the command fails unless both did.
+# Each part runs even when another fails; the summary says which passed,
+# and the command fails unless all did. Counsel not taken because this Mac's
+# model isn't ready is said to be unverified, not passed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -33,19 +36,29 @@ echo "This Mac: $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'Apple 
 echo
 
 voices=failed
+counsel=failed
 figures=failed
-echo "== 1 of 2: the voices"
+echo "== 1 of 3: the voices"
 if scripts/check-voices.sh; then voices=passed; fi
 echo
-echo "== 2 of 2: the figures"
+echo "== 2 of 3: a commander's counsel"
+heard=0
+scripts/check-counsel.sh || heard=$?
+case "$heard" in
+    0) counsel=passed ;;
+    2) counsel="unverified (the model isn't ready)" ;;
+esac
+echo
+echo "== 3 of 3: the figures"
 if scripts/measure-mac.sh; then figures=passed; fi
 
 echo
 echo "== Summary"
-printf '  %-28s %s\n' "The voices (Apple Intelligence)" "$voices" "The figures (Apple silicon)" "$figures"
-if [ "$voices" != passed ] || [ "$figures" != passed ]; then
+printf '  %-28s %s\n' "The voices (Apple Intelligence)" "$voices" "Counsel (Apple Intelligence)" "$counsel" \
+    "The figures (Apple silicon)" "$figures"
+if [ "$voices" != passed ] || [ "$counsel" != passed ] || [ "$figures" != passed ]; then
     echo
-    echo "error: not everything passed; nothing was committed. See build/voices-report.txt and build/mac-perf.log." >&2
+    echo "error: not everything passed; nothing was committed. See build/voices-report.txt, build/counsel-report.txt and build/mac-perf.log." >&2
     exit 1
 fi
 
@@ -54,7 +67,7 @@ if [ "$commit" = 1 ]; then
     if git diff --cached --quiet -- perf/mac; then
         echo "Nothing new to commit in perf/mac/."
     else
-        git commit -m "Hear the voices and measure the game on $(sysctl -n hw.model)" -- perf/mac
+        git commit -m "Hear the voices and counsel, and measure the game on $(sysctl -n hw.model)" -- perf/mac
         echo "Committed. Put it on record: git push"
     fi
 else

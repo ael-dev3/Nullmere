@@ -26,7 +26,7 @@ app=""
 case "${1:-}" in
     "") ;;
     --app) app="${2:?usage: scripts/check-counsel.sh [--app <path>]}" ;;
-    *) echo "usage: scripts/check-counsel.sh [--app <path>]" >&2; exit 2 ;;
+    *) echo "usage: scripts/check-counsel.sh [--app <path>]" >&2; exit 64 ;;
 esac
 mkdir -p build
 if [ -z "$app" ]; then
@@ -46,4 +46,18 @@ if head -n 1 "$report" | grep -q ", not ready ("; then
     exit 2
 fi
 cat "$report"
-[ "$(tail -n 1 "$report")" = "Counsel kept to its rules." ]
+if [ "$(tail -n 1 "$report")" = "Counsel kept to its rules." ]; then
+    if [ -z "${CI:-}" ]; then
+        # Kept beside this Mac's voices and measurements, to be committed:
+        # counsel heard from the model itself, on record.
+        name="$(sysctl -n hw.model | tr -c 'A-Za-z0-9,.-' '-' | sed 's/-*$//')"
+        mkdir -p perf/mac
+        cp "$report" "perf/mac/$name-counsel.txt"
+        echo
+        echo "Counsel kept to its rules. What was heard: perf/mac/$name-counsel.txt"
+    fi
+else
+    echo
+    echo "error: counsel didn't keep its rules, or wasn't heard; see build/counsel-report.txt" >&2
+    exit 1
+fi

@@ -90,8 +90,9 @@ else
     also "scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>, then tag a version"
 fi
 
-# 3. On a real Mac: the voices heard with Apple Intelligence, and the
-# figures measured on Apple silicon, both on record (scripts/check-on-mac.sh).
+# 3. On a real Mac: the voices heard with Apple Intelligence, a commander's
+# counsel heard from the same model within its rules, and the figures
+# measured on Apple silicon, all on record (scripts/check-on-mac.sh).
 on_mac=0
 report="$(ls perf/mac/*-voices.txt 2>/dev/null | head -n 1 || true)"
 [ -n "$report" ] || report=build/voices-report.txt
@@ -105,6 +106,21 @@ else
     line "3. The voices" "NOT YET HEARD"
     also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
 fi
+counsel="$(ls perf/mac/*-counsel.txt 2>/dev/null | head -n 1 || true)"
+[ -n "$counsel" ] || counsel=build/counsel-report.txt
+if [ -s "$counsel" ] && grep -q "Counsel kept to its rules." "$counsel"; then
+    line "3. Counsel" "HEARD from the model, within its rules ($counsel)"
+    on_mac=$((on_mac + 1))
+elif [ -s "$counsel" ] && head -n 1 "$counsel" | grep -q ", not ready ("; then
+    line "3. Counsel" "UNVERIFIED: that Mac's model wasn't ready ($counsel)"
+    also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
+elif [ -s "$counsel" ]; then
+    line "3. Counsel" "OUT OF BOUNDS: see $counsel"
+    also "scripts/check-counsel.sh"
+else
+    line "3. Counsel" "NOT YET HEARD"
+    also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
+fi
 measured="$(ls perf/mac/*.json 2>/dev/null | tr '\n' ' ' || true)"
 if [ -n "$measured" ]; then
     line "3. The figures" "MEASURED: $measured"
@@ -113,7 +129,7 @@ else
     line "3. The figures" "NOT YET MEASURED"
     also "scripts/check-on-mac.sh  (on a Mac with Apple silicon)"
 fi
-[ "$on_mac" = 2 ] && done_steps=$((done_steps + 1))
+[ "$on_mac" = 3 ] && done_steps=$((done_steps + 1))
 
 # 4. VoiceOver, listened to: no machine can tell how it sounds.
 line "4. VoiceOver" "BY EAR: docs/GO-LIVE.md, step 4 (CI audits every screen and walks the map: scripts/ui-test.sh)"
