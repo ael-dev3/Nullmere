@@ -21,6 +21,8 @@ set -Eeuo pipefail
 # A step that stops the script says where, so no failure is a silent one.
 trap 'echo "error: smoke-test-companion.sh stopped at line $LINENO: $BASH_COMMAND" >&2' ERR
 cd "$(dirname "$0")/.."
+# shellcheck source=settled-log.sh
+. scripts/settled-log.sh
 
 REALM="${NULLMERE_REALM:-http://127.0.0.1:3000/nullmere}"
 APP="build/companion/Nullmere Companion.app"
@@ -81,6 +83,7 @@ shot pairing
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 
 # The Mac: in as the keeper, offering a link and saying what it sees.
+started="$(date '+%Y-%m-%d %H:%M:%S')"
 echo "Opening Nullmere Online and entering $REALM as ${KEEPER}, to offer a link…"
 NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$REALM" NULLMERE_IDENTITY_FILE="$IDENTITY" \
     NULLMERE_KEEPER="$KEEPER" NULLMERE_OFFER_LINK="$LINK" NULLMERE_LINK_REPORT="$MAC_REPORT" \
@@ -92,6 +95,11 @@ for _ in $(seq 1 90); do
 done
 if [ ! -s "$LINK" ]; then
     echo "error: the Mac offered no link within 90 seconds" >&2
+    # Why, in the game's own words: whether it entered, was refused or
+    # couldn't reach the realm, or why no link was offered.
+    settled_log "$started" online.nullmere.game "realm" \
+        | grep -E "Entered the realm|refused|unreachable|No phone link" \
+        | sed -E 's/^.*\[online\.nullmere\.game[^]]*\] /The Mac said: /' >&2 || true
     cat build/companion-mac-stdout.log >&2 || true
     exit 1
 fi

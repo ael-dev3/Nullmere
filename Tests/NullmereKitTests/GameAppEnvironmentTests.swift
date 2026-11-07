@@ -101,6 +101,35 @@ final class GameAppEnvironmentTests: XCTestCase {
         app.leaveWorld()
     }
 
+    /// CI's phone smoke test met this: the smoke test before it entered the
+    /// same realm as another keeper, whose name stayed remembered for the
+    /// realm, and the phone's Mac, with an identity of its own the realm had
+    /// never seen, went in by it, was refused and offered no link. A name
+    /// remembered without the identity it was given to is no one's: the
+    /// keeper named comes in by their name, and the name is theirs again
+    /// when the Mac comes back with its identity.
+    func testANameRememberedWithoutItsIdentityIsNoOnes() async throws {
+        let address = GameApp.RealmAddress.hosted(seed: "a name without its identity")
+        let identity = FileIdentityStore(url: dir.appendingPathComponent("identity"))
+        UserDefaults.standard.set("Ilsen", forKey: GameApp.nameKey(for: address))
+        defer { UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address)) }
+        setenv("NULLMERE_KEEPER", "Brannoc", 1)
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address,
+                          identity: identity, opensAtOnce: false)
+        XCTAssertNil(app.keeperName, "Another identity's name, not this Mac's")
+        XCTAssertNil(UserDefaults.standard.string(forKey: GameApp.nameKey(for: address)), "Let go")
+        app.checkModel()
+        try await until("the keeper named to step in") { app.session != nil }
+        XCTAssertEqual(app.keeperName, "Brannoc")
+        app.leaveWorld()
+
+        // The same Mac again, its identity kept: the name is its keeper's.
+        unsetenv("NULLMERE_KEEPER")
+        let again = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address,
+                            identity: identity, opensAtOnce: false)
+        XCTAssertEqual(again.keeperName, "Brannoc", "Known by the identity this Mac keeps")
+    }
+
     func testATestBuildCanKeepTheBriefingAndOpenOtherPanels() async throws {
         setenv("NULLMERE_KEEPER", "Bel", 1)
         setenv("NULLMERE_SHOW", "briefing,chronicle,guide", 1)

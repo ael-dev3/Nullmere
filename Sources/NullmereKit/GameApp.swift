@@ -132,8 +132,15 @@ public final class GameApp {
         self.readModel = readiness
         let address = address ?? GameApp.defaultAddress
         self.address = address
-        self.identityStore = identity ?? GameApp.defaultIdentityStore(for: address)
-        keeperName = UserDefaults.standard.string(forKey: GameApp.nameKey(for: address))
+        let identityStore = identity ?? GameApp.defaultIdentityStore(for: address)
+        self.identityStore = identityStore
+        // The name remembered for a realm is that of the identity this Mac
+        // keeps for it. With none kept, never made or left, it is no one's
+        // here: it is let go, and the keeper comes in by the name they give,
+        // not by an identity the realm has never seen.
+        let nameKey = GameApp.nameKey(for: address)
+        if identityStore.load()?.isEmpty != false { UserDefaults.standard.removeObject(forKey: nameKey) }
+        keeperName = UserDefaults.standard.string(forKey: nameKey)
         let soundOn = sound ?? (UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true)
         self.isSoundOn = soundOn
         self.ambience = Ambience(enabled: soundOn)
@@ -456,6 +463,7 @@ public final class GameApp {
     public func linkPhone() {
         guard canLinkPhone, let link, case .network(let realm) = address else { return }
         guard CompanionInvite.isAcceptable(realm) else {
+            Self.logger.notice("No phone link offered: the realm is reached in the clear.")
             phoneProblem = Self.phoneNeedsHTTPS
             return
         }
@@ -475,6 +483,7 @@ public final class GameApp {
                 if let invite = self.phoneLink { Self.tellLink(invite, to: ProcessInfo.processInfo.environment["NULLMERE_OFFER_LINK"]) }
                 #endif
             case .failure(let why):
+                Self.logger.notice("No phone link offered: \(why.words, privacy: .public)")
                 self.phoneProblem = why.words
             }
         }

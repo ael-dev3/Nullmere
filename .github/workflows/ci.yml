@@ -456,7 +456,7 @@ jobs:
           sed -n '1p;$p' build/counsel-report.txt 2>/dev/null || true
           # The keeper's phone beside their Mac: what it did, and what the Mac saw.
           cat build/companion-report.txt 2>/dev/null || true
-          grep -h "^On \|^The Mac sees\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
+          grep -h "^On \|^The Mac sees\|^The Mac said: \|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
           # Counsel taken on the phone, through its own model: whose, and its verdict.
           sed -n '1p;$p' build/counsel-phone-report.txt 2>/dev/null || true
           # The ballad the runner's own model made, as a keeper's Mac makes one.
