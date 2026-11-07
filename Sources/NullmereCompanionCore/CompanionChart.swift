@@ -77,6 +77,14 @@ public struct CompanionChart: Equatable, Sendable {
     /// The holds first, then the sites, holy sites and lairs, and what
     /// stands in the field over them.
     public let marks: [Mark]
+    /// The regions of the shores whose hearts lie on the chart, by name, as
+    /// every keeper's map writes them, fog or none.
+    public let regions: [(name: String, hex: Hex)]
+
+    public static func == (a: CompanionChart, b: CompanionChart) -> Bool {
+        a.center == b.center && a.radius == b.radius && a.cells == b.cells && a.marks == b.marks
+            && a.regions.map(\.name) == b.regions.map(\.name) && a.regions.map(\.hex) == b.regions.map(\.hex)
+    }
 
     /// The least reach of a chart, and the most: a House whose companies
     /// march further sees them on the Army tab.
@@ -140,6 +148,7 @@ public struct CompanionChart: Equatable, Sendable {
                                 + "\(GameState.counted(world.troops(of: unit))) troops"))
         }
         self.marks = marks
+        regions = (world.atlas?.regions ?? []).filter { reached($0.heart) }.map { ($0.name, $0.heart) }
     }
 
     /// Whether a hex lies on the chart.

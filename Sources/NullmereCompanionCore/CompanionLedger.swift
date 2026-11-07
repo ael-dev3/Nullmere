@@ -198,6 +198,22 @@ public struct CompanionLedger: Equatable, Sendable {
     public let dealings: [Dealing]
     /// The most Houses the phone deals with at once: the nearest.
     public static let dealtWith = 12
+    /// The latest reports shown open; the earlier ones folded beneath them.
+    public static let reportsOpen = 3
+
+    /// The line the Houses nearest are folded behind: how many, and how
+    /// many stand at war with the keeper's House or are sworn to its
+    /// alliance.
+    public static func dealingsLine(_ dealings: [Dealing]) -> String {
+        let war = dealings.filter { $0.stance.hasPrefix("At war") }.count
+        let sworn = dealings.filter { $0.stance.hasPrefix("Sworn") }.count
+        var line = dealings.count == 1 ? "The House nearest" : "The \(dealings.count) Houses nearest"
+        var told: [String] = []
+        if war > 0 { told.append("\(war) at war with yours") }
+        if sworn > 0 { told.append("\(sworn) of your alliance") }
+        if !told.isEmpty { line += ": " + told.joined(separator: ", ") }
+        return line
+    }
     /// The alliance's studies, as the Mac's Alliance panel tells them: the
     /// study it pursues and what is still to give toward its next grade, or
     /// that it pursues none, and what it has learned together.

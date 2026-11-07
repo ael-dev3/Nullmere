@@ -236,8 +236,16 @@ struct ArmyTab: View {
                     // hunts, fields of battle, scoutings and lairs assaulted.
                     if !session.reports.isEmpty {
                         Section("Reports") {
-                            ForEach(session.reports.prefix(CompanionLedger.linesShown)) { report in
+                            ForEach(session.reports.prefix(CompanionLedger.reportsOpen)) { report in
                                 ReportRow(report: report)
+                            }
+                            if session.reports.count > CompanionLedger.reportsOpen {
+                                DisclosureGroup("Earlier reports (\(session.reports.count - CompanionLedger.reportsOpen))") {
+                                    ForEach(session.reports.dropFirst(CompanionLedger.reportsOpen)) { report in
+                                        ReportRow(report: report)
+                                    }
+                                }
+                                .font(Night.small)
                             }
                         }
                     }
@@ -424,9 +432,16 @@ struct AllianceTab: View {
                     // The Houses nearest, how each stands with the keeper's,
                     // and envoys or war sent from the phone.
                     if !ledger.dealings.isEmpty {
-                        Section("The Houses nearest") {
-                            ForEach(ledger.dealings) { dealing in
-                                DealingRow(session: session, dealing: dealing)
+                        Section {
+                            // Folded behind a line, the world first: opened
+                            // when the keeper would deal with a House.
+                            DisclosureGroup {
+                                ForEach(ledger.dealings) { dealing in
+                                    DealingRow(session: session, dealing: dealing)
+                                }
+                            } label: {
+                                Text(verbatim: CompanionLedger.dealingsLine(ledger.dealings))
+                                    .font(Night.body)
                             }
                         }
                     }

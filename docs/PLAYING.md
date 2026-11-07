@@ -261,7 +261,8 @@ been heard from lately.
   showing through; every hold of the realm in the colour of whose it is
   (the House's own in moonlight, its allies' green, Houses at war red,
   others grey), the companies and wilds the House sees, the lairs and
-  sites on ground it has explored, and the holy sites. Drag to look about
+  sites on ground it has explored, and the holy sites, the names of the
+  shores' regions written faint beneath them. Drag to look about
   and pinch to look closer; Your seat turns the chart back. Tap a hex for
   what lies there and the orders the rules would take there: a strike on
   it from each company in reach, a rally called on it, Gather here and
@@ -294,7 +295,8 @@ been heard from lately.
   companies, the House's reports, the latest first, as the Mac files them:
   each battle and hunt it had a part in, each field of battle as it ended,
   each hold its Lanterns scouted and each lair it assaulted, opened for
-  each side's part (kept while the phone stays linked). Then the
+  each side's part (kept while the phone stays linked), the latest three
+  open and the earlier folded beneath them. Then the
   House's commanders, each with how they stand and the
   orders the rules would take for them, as on the Mac's board: Lead a
   company of war standing at or beside one of the House's holds, Ride
@@ -326,7 +328,9 @@ been heard from lately.
   lacks as the House has (a grade paid for is learned at once, and every
   three hundred given in worth brings the giver a Salt Hourglass); and for
   its leader, Pursue, the next study at its next grade. The Houses
-  nearest: the twelve whose seats lie nearest the keeper's, each with how
+  nearest, folded behind a line saying how many stand at war with the
+  keeper's House or are sworn to its alliance: the twelve whose seats lie
+  nearest the keeper's, each with how
   it stands with the keeper's House (at war, at peace, in a pact or sworn
   to the alliance), Send an envoy with peace, a pact or a demand of tribute
   where the rules would carry it, Send a gift of any store, as much as a

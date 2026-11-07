@@ -254,6 +254,15 @@ struct ChartView: View {
             context.fill(placed, with: .color(Color(red: shade.red, green: shade.green, blue: shade.blue)))
             context.stroke(placed, with: .color(Night.background.opacity(0.55)), lineWidth: 0.5)
         }
+        // The regions' names, faint beneath what stands on the land.
+        for region in chart.regions {
+            let at = point(of: region.hex, canvas: canvas, size: size)
+            guard shown.contains(at) else { continue }
+            context.draw(Text(verbatim: region.name.uppercased())
+                            .font(.system(size: 9, weight: .regular, design: .serif).italic())
+                            .foregroundStyle(Night.ink.opacity(0.45)),
+                         at: at)
+        }
         for mark in chart.marks {
             let at = point(of: mark.hex, canvas: canvas, size: size)
             guard shown.contains(at) else { continue }

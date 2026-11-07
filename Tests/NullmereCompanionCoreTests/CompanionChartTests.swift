@@ -81,6 +81,33 @@ final class CompanionChartTests: XCTestCase {
         let lastHold = things.lastIndex { $0 == .seat || $0 == .hold } ?? -1
         XCTAssertFalse(things.prefix(lastHold + 1).contains(.company))
         XCTAssertEqual(chart, CompanionChart(world: view, player: me), "Read alike from the same view")
+        // The shores' regions whose hearts lie on the chart, named as every map names them.
+        let regions = (state.atlas?.regions ?? []).filter { $0.heart.distance(to: chart.center) <= chart.radius }
+        XCTAssertEqual(chart.regions.map(\.name), regions.map(\.name))
+        XCTAssertEqual(chart.regions.map(\.hex), regions.map(\.heart))
+    }
+
+    /// A lake with its streams and regions: the regions whose hearts lie on
+    /// the chart written there, a company far afield taking it to its most.
+    func testTheRegionsAboutTheSeatAreWrittenOnTheChart() throws {
+        var state = GameState(settings: GameSettings(seedText: "companion chart regions", houseCount: 4, radius: 18, keepers: 1, rivers: true))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let afield = try XCTUnwrap(state.map.hexes.first { hex in
+            hex.distance(to: seat.position) == CompanionChart.mostRadius - CompanionChart.margin
+                && state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        let index = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
+        state.units[index].position = afield
+        let chart = CompanionChart(world: state.view(for: me), player: me)
+        XCTAssertEqual(chart.radius, CompanionChart.mostRadius)
+        let expected = try XCTUnwrap(state.atlas).regions.filter { $0.heart.distance(to: seat.position) <= chart.radius }
+        XCTAssertFalse(expected.isEmpty, "Regions within eighteen hexes of the seat")
+        XCTAssertEqual(chart.regions.map(\.name), expected.map(\.name))
+        for region in chart.regions {
+            XCTAssertLessThanOrEqual(region.hex.distance(to: chart.center), chart.radius)
+            XCTAssertTrue(try XCTUnwrap(state.atlas).regions.contains { $0.name == region.name && $0.heart == region.hex })
+        }
     }
 
     /// A House's companies marching far afield take the chart no further

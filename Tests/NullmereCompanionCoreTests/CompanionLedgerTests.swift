@@ -134,6 +134,7 @@ final class CompanionLedgerTests: XCTestCase {
         _ = try state.perform(try XCTUnwrap(given.gifts.first).command, as: me)
         XCTAssertTrue(try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.first { $0.id == given.id }).gifts.isEmpty)
 
+        XCTAssertEqual(CompanionLedger.dealingsLine(ledger.dealings), "The \(others.count) Houses nearest", "Folded behind its line")
         let foe = try XCTUnwrap(ledger.dealings.first).id
         _ = try state.declareWar(by: me, on: foe)
         ledger = CompanionLedger(world: state, player: me)
@@ -152,6 +153,9 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(state.areAllied(me, ally))
         let sworn = try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.first { $0.id == ally })
         XCTAssertEqual(sworn.stance, "Sworn to your alliance")
+        XCTAssertEqual(CompanionLedger.dealingsLine(CompanionLedger(world: state, player: me).dealings),
+                       "The \(others.count) Houses nearest: 1 at war with yours, 1 of your alliance")
+        XCTAssertEqual(CompanionLedger.dealingsLine(Array(ledger.dealings.prefix(1))), "The House nearest: 1 at war with yours")
         if let war = sworn.war { assertTaken([war], in: state, as: me) }
         XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger)
     }
