@@ -539,11 +539,24 @@ public final class GameApp {
 
     @ObservationIgnored private var linkReport: Timer?
 
-    /// The companies of this Mac's House dug in, as it sees them.
+    /// What this Mac sees of its House, written for the smoke test.
     func writeLinkReport(to path: String) {
         guard let session else { return }
-        let dug = session.state.units(of: session.player).filter(\.fortified).map { String($0.id) }
-        try? ("dug in: " + dug.joined(separator: " ") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+        try? GameApp.linkReport(of: session.state, player: session.player).write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    /// What a Mac sees of its House, as the phone's smoke test reads it: its
+    /// companies dug in, what its holds are at work on (each as its hold and
+    /// the work raised or company mustered there), the watch, and the last
+    /// words said to the whole realm, a line each.
+    static func linkReport(of state: GameState, player: Int) -> String {
+        let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
+        let working = state.holds(of: player).flatMap { hold in
+            [hold.project.map { "\(hold.id):\($0.kind.rawValue)" }, hold.training.map { "\(hold.id):\($0.kind.rawValue)" }].compactMap { $0 }
+        }
+        let said = state.wordsSaid.filter { $0.alliance == nil && $0.removed != true }.suffix(5).map { "said: \($0.text)" }
+        return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + said)
+            .joined(separator: "\n") + "\n"
     }
 
     func stopLinkReport() {

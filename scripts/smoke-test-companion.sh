@@ -3,9 +3,12 @@
 # network: Nullmere Online (a debug build) enters the realm as a keeper and
 # offers a link; Nullmere Companion, built for the iOS Simulator by
 # scripts/build-companion.sh and run in one, takes the link as the phone's
-# camera would, comes in as the keeper, gives an order the realm carries
-# out, is set aside and comes in again by its own key; and the Mac sees the
-# phone's order. Then the phone takes counsel of a commander through its
+# camera would, comes in as the keeper, keeps their House from the phone (a
+# company dug in, words said to the realm, the keeper made ready so the watch
+# turns, a hold set to work), each carried out by the realm, is set aside and
+# comes in again by its own key; and the Mac sees the company dug in, hears
+# the words, sees the watch turned and the hold at work.
+# Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
 # unverified. Saves the companion's screens and the reports:
@@ -111,7 +114,9 @@ SIMCTL_CHILD_NULLMERE_COMPANION_LINK="$INVITE" SIMCTL_CHILD_NULLMERE_COMPANION_T
     xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
 DATA="$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data)"
 KEPT="$DATA/Documents/companion-report.txt"
-for _ in $(seq 1 150); do
+# Its steps take a minute or so, the watch turning when the keeper is ready
+# among them; the report ends with the word on them all once they are done.
+for _ in $(seq 1 240); do
     grep -qE "kept its keeper's House|^Broken" "$KEPT" 2>/dev/null && break
     sleep 1
 done
@@ -129,7 +134,37 @@ if [ -n "$COMPANY" ]; then
         sleep 1
     done
 fi
-echo "The Mac sees the phone's order: $SEEN ($(cat "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+echo "The Mac sees the phone's order: $SEEN ($(head -n 1 "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+
+# The Mac sees the hold the phone set to work, and hears the words it said.
+WORK="$(sed -n 's/^At work: //p' "$REPORT" | head -n 1)"
+WORKING=no
+if [ -n "$WORK" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qE "^at work: (.* )?$WORK( |$)" "$MAC_REPORT" 2>/dev/null; then WORKING=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the phone's work: $WORKING ($(grep '^at work: ' "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+WORDS="$(sed -n 's/^Said to the realm: //p' "$REPORT" | head -n 1)"
+HEARD=no
+if [ -n "$WORDS" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "said: $WORDS" "$MAC_REPORT" 2>/dev/null; then HEARD=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac hears the phone's words: $HEARD"
+TURNED_TO="$(sed -n 's/^Watch: //p' "$REPORT" | head -n 1)"
+TURNED=no
+if [ -n "$TURNED_TO" ]; then
+    for _ in $(seq 1 30); do
+        MAC_WATCH="$(sed -n 's/^watch: //p' "$MAC_REPORT" 2>/dev/null | head -n 1)"
+        if [ -n "$MAC_WATCH" ] && [ "$MAC_WATCH" -ge "$TURNED_TO" ]; then TURNED=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the watch the phone came to: $TURNED (the phone's watch ${TURNED_TO:-unknown}, the Mac's ${MAC_WATCH:-unknown})"
 
 # The phone's other screens, in again by its own key each time, and
 # counsel with the House's first free commander.
@@ -170,6 +205,18 @@ if ! grep -q "The companion kept its keeper's House." "$REPORT"; then
 fi
 if [ "$SEEN" != yes ]; then
     echo "error: the Mac never saw the order given on the phone" >&2
+    exit 1
+fi
+if [ "$WORKING" != yes ]; then
+    echo "error: the Mac never saw the hold the phone set to work" >&2
+    exit 1
+fi
+if [ "$HEARD" != yes ]; then
+    echo "error: the Mac never heard the words said on the phone" >&2
+    exit 1
+fi
+if [ "$TURNED" != yes ]; then
+    echo "error: the Mac never came to the watch the phone came to" >&2
     exit 1
 fi
 if [ "$PHONE_COUNSEL" = failed ]; then

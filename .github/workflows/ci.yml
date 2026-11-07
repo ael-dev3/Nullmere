@@ -289,8 +289,10 @@ jobs:
       # Nullmere Companion, the keeper's iPhone app, built for the iOS
       # Simulator from the same package, bundled and signed to run there.
       # Both real apps on the realm raised above: the Mac enters and offers
-      # a link; the phone, in the simulator, takes it, plays, is set aside
-      # and comes in again, and the Mac sees its order. Then the phone takes
+      # a link; the phone, in the simulator, takes it, digs a company in,
+      # speaks to the realm, makes its keeper ready so the watch turns and
+      # sets a hold to work, is set aside and comes in again, and the Mac
+      # sees each of them. Then the phone takes
       # counsel through its own on-device model: unverified where the
       # runner's model can't be asked, as so far it can't.
       - name: The keeper's phone beside their Mac
@@ -456,7 +458,7 @@ jobs:
           sed -n '1p;$p' build/counsel-report.txt 2>/dev/null || true
           # The keeper's phone beside their Mac: what it did, and what the Mac saw.
           cat build/companion-report.txt 2>/dev/null && echo || true
-          grep -h "^On \|^The Mac sees\|^The Mac said: \|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
+          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
           # Counsel taken on the phone, through its own model: whose, and its verdict.
           sed -n '1p;$p' build/counsel-phone-report.txt 2>/dev/null && echo || true
           # The ballad the runner's own model made, as a keeper's Mac makes one.

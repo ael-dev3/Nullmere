@@ -588,13 +588,22 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(try String(contentsOfFile: linkFile, encoding: .utf8), invite.url.absoluteString)
         let company = try XCTUnwrap(mac.session?.state.units(of: mac.session?.player ?? -1).first { $0.kind.isMilitary })
         XCTAssertTrue(mac.session?.perform(.fortify(unit: company.id)) == true)
+        // A work raised at the seat, and words said to the realm: the phone's smoke test sets both from the phone.
+        let seat = try XCTUnwrap(mac.session?.state.seat(of: mac.session?.player ?? -1))
+        let raised = try XCTUnwrap(BuildingKind.allCases.first { mac.session?.perform(.build(hold: seat.id, kind: $0)) == true })
+        XCTAssertTrue(mac.session?.perform(.say(words: "Heard on the Mac", toAlliance: false)) == true)
         mac.linkFromEnvironment(["NULLMERE_OFFER_LINK": linkFile, "NULLMERE_LINK_REPORT": reportFile], every: 0.05)
         try await until("the code offered from the environment") { mac.phoneLink != nil }
         try await until("this Mac's House reported") {
-            (try? String(contentsOfFile: reportFile, encoding: .utf8))?.contains("\(company.id)") == true
+            let report = (try? String(contentsOfFile: reportFile, encoding: .utf8)) ?? ""
+            return report.contains("\(company.id)") && report.contains("\(seat.id):\(raised.rawValue)") && report.contains("said: Heard on the Mac")
         }
         mac.stopLinkReport()
-        XCTAssertTrue(try String(contentsOfFile: reportFile, encoding: .utf8).hasPrefix("dug in: "))
+        let report = try String(contentsOfFile: reportFile, encoding: .utf8).split(separator: "\n").map(String.init)
+        XCTAssertTrue(report[0].hasPrefix("dug in: "), "\(report)")
+        XCTAssertTrue(report[1].hasPrefix("at work: ") && report[1].split(separator: " ").contains("\(seat.id):\(raised.rawValue)"), "\(report)")
+        XCTAssertEqual(report[2], "watch: \(mac.session?.state.watch ?? -1)")
+        XCTAssertEqual(report.last, "said: Heard on the Mac")
 
         // Out of reach: told so, both the offer and the letting go.
         mac.putPhoneLinkAway()
