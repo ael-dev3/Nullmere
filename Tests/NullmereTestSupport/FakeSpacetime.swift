@@ -29,6 +29,9 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The server's clock at the epoch's start, for its `Date` answers.
     private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
+    /// Each companion's keeper, by the companion's identity: whose view a
+    /// companion reads as its own.
+    public private(set) var companions: [String: String] = [:]
     private var viewParts: [String: [String: (version: UInt64, text: String)]] = [:] // by keeper, then name
     public private(set) var calls: [String] = []
     /// The largest call's body yet, in bytes.
@@ -80,10 +83,12 @@ public actor FakeSpacetime: SpacetimeTransport {
     private func rowsWatched(by identity: String) -> [String: [String: [JSONValue]]] {
         var tables: [String: [String: [JSONValue]]] = ["status": [:], "my_view": [:], "my_view_parts": [:], "my_replies": [:]]
         if let status { tables["status"]?["0"] = [.number(0), .number(Double(status.version)), .string(status.status)] }
-        if let view = views[identity] {
-            tables["my_view"]?[identity] = [.string(identity), .number(Double(view.version)), .string(view.view), .string(view.events)]
+        // A companion's view is its keeper's, as the module's `reader` has it.
+        let reader = reader(of: identity)
+        if let view = views[reader] {
+            tables["my_view"]?[reader] = [.string(reader), .number(Double(view.version)), .string(view.view), .string(view.events)]
         }
-        for keeper in Set([identity, AlikePages.keeper]) {
+        for keeper in Set([reader, AlikePages.keeper]) {
             for (name, part) in viewParts[keeper] ?? [:] {
                 let key = "\(keeper)/\(name)"
                 tables["my_view_parts"]?[key] = [.string(key), .string(keeper), .string(name), .number(Double(part.version)), .string(part.text)]
@@ -259,6 +264,11 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     public func setReachable(_ reachable: Bool) { self.reachable = reachable }
 
+    /// Reducers the server refuses the next so many calls of, as a call
+    /// lost or turned away would be, for a test of what follows.
+    private var refusing: [String: Int] = [:]
+    public func refuse(_ reducer: String, times: Int = 1) { refusing[reducer] = times }
+
     private func answering() throws {
         guard reachable else { throw URLError(.cannotConnectToHost) }
     }
@@ -295,6 +305,7 @@ public actor FakeSpacetime: SpacetimeTransport {
         status = nil
         stamp = nil
         views = [:]
+        companions = [:]
         lease = nil
         legacyWorld = nil
         nextID = 1
@@ -339,6 +350,9 @@ public actor FakeSpacetime: SpacetimeTransport {
         return identity
     }
 
+    /// Whose view an identity reads: its keeper's, for a companion.
+    private func reader(of identity: String) -> String { companions[identity] ?? identity }
+
     public func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         try answering()
         // The body as the link sends it: one the server can't take is refused
@@ -349,21 +363,26 @@ public actor FakeSpacetime: SpacetimeTransport {
             throw SpacetimeError("Failed to buffer the request body: length limit exceeded", status: 413)
         }
         let me = try sender(token)
+        if let left = refusing[reducer], left > 0 {
+            refusing[reducer] = left - 1
+            throw SpacetimeError("The server turned the call away, as a test asked.", status: 503)
+        }
         calls.append(reducer)
         func string(_ index: Int) throws -> String {
             guard arguments.indices.contains(index), case .string(let value) = arguments[index] else { throw SpacetimeError("bad arguments") }
             return value
         }
         switch reducer {
-        case "arrive", "order", "ready", "ready_in_watch", "here", "leave", "seal", "reclaim":
+        case "arrive", "order", "ready", "ready_in_watch", "here", "leave", "seal", "reclaim", "offer_link", "take_link", "unlink", "accompany":
             let nonce = try string(0)
             var payload = ""
             if reducer == "ready", case .bool(let ready)? = arguments.dropFirst().first { payload = ready ? "true" : "false" }
             else if reducer == "ready_in_watch", arguments.count == 3, case .bool(let ready) = arguments[1], case .integer(let watch) = arguments[2] {
                 payload = "\(ready)@\(watch)"
-            } else if ["arrive", "order", "seal", "reclaim"].contains(reducer) { payload = try string(1) }
-            // As the module asks it: readiness in a watch is a "ready" request.
-            let kind = reducer == "ready_in_watch" ? "ready" : reducer
+            } else if ["arrive", "order", "seal", "reclaim", "offer_link", "take_link"].contains(reducer) { payload = try string(1) }
+            // As the module asks it: readiness in a watch is a "ready"
+            // request, and a link's are named as the steward knows them.
+            let kind = ["ready_in_watch": "ready", "offer_link": "offerLink", "take_link": "takeLink"][reducer] ?? reducer
             // Its bounds, in bytes, as the module counts them.
             guard !nonce.isEmpty, nonce.utf8.count <= Self.maxNonce else {
                 throw SpacetimeError("A request needs a nonce of 1 to 64 characters.", status: 530)
@@ -401,6 +420,20 @@ public actor FakeSpacetime: SpacetimeTransport {
         case "hand_over":
             guard me == steward else { throw SpacetimeError("Only the steward hands over the realm.", status: 530) }
             steward = try string(0)
+        case "link_companions":
+            // As the module checks it, every check before anything is kept.
+            guard me == steward else { throw SpacetimeError("Only the steward links companions.", status: 530) }
+            guard arguments.count == 4, case .strings(let linked) = arguments[0], case .strings(let keepers) = arguments[1],
+                  case .strings(let unlinked) = arguments[2], case .string(let holder) = arguments[3]
+            else { throw SpacetimeError("bad arguments", status: 400) }
+            if let lease, lease.holder != holder, lease.until > time {
+                throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.", status: 530)
+            }
+            guard linked.count == keepers.count else { throw SpacetimeError("Every companion needs its keeper.", status: 530) }
+            lease = (holder, time + Self.leaseSeconds)
+            unlinked.forEach { companions[$0] = nil }
+            zip(linked, keepers).forEach { companions[$0] = $1 }
+            tellTheRows()
         case "publish":
             // A reducer that fails undoes all it did, its hold on the realm
             // with the rest: every check before anything is kept, in the
@@ -494,8 +527,10 @@ public actor FakeSpacetime: SpacetimeTransport {
         if sql.hasPrefix(partsPrefix), let since = UInt64(sql.dropFirst(partsPrefix.count)) {
             queryCounts[Self.viewPartsAsked, default: 0] += 1
             queryCounts[Self.viewPartsAsked + "\u{0}" + me, default: 0] += 1
-            // Their own, and the pages told alike, as the module's view gives them.
-            let mine = (viewParts[me] ?? [:]).merging(me == AlikePages.keeper ? [:] : viewParts[AlikePages.keeper] ?? [:]) { own, _ in own }
+            // Their own (their keeper's, for a companion), and the pages
+            // told alike, as the module's view gives them.
+            let reader = reader(of: me)
+            let mine = (viewParts[reader] ?? [:]).merging(reader == AlikePages.keeper ? [:] : viewParts[AlikePages.keeper] ?? [:]) { own, _ in own }
             let rows: [[JSONValue]] = mine.filter { $0.value.version > since }.sorted { $0.key < $1.key }
                 .map { [.string($0.key), .number(Double($0.value.version)), .string($0.value.text)] }
             viewPartsRead += rows.count
@@ -508,7 +543,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             let name = String(literal.dropFirst().dropLast()).replacingOccurrences(of: "''", with: "'")
             queryCounts[Self.viewPartAsked, default: 0] += 1
             queryCounts[Self.viewPartAsked + "\u{0}" + me, default: 0] += 1
-            let kept = viewParts[me]?[name] ?? viewParts[AlikePages.keeper]?[name]
+            let kept = viewParts[reader(of: me)]?[name] ?? viewParts[AlikePages.keeper]?[name]
             viewPartsRead += kept == nil ? 0 : 1
             return kept.map { [[.string(name), .number(Double($0.version)), .string($0.text)]] } ?? []
         }
@@ -551,15 +586,19 @@ public actor FakeSpacetime: SpacetimeTransport {
         case "SELECT version, at_micros FROM stamp":
             return stamp.map { [[.number(Double($0.version)), .number((epoch.timeIntervalSince1970 + $0.at) * 1_000_000)]] } ?? []
         case "SELECT version FROM my_view":
-            return views[me].map { [[.number(Double($0.version))]] } ?? []
+            return views[reader(of: me)].map { [[.number(Double($0.version))]] } ?? []
         case "SELECT * FROM my_view":
-            return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
+            let reader = reader(of: me)
+            return views[reader].map { [[.string(reader), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
+        case "SELECT identity, keeper FROM companion":
+            try ownerOnly()
+            return companions.sorted { $0.key < $1.key }.map { [.string($0.key), .string($0.value)] }
         case "SELECT nonce FROM my_requests":
             return requests.filter { $0.keeper == me }.map { [.string($0.nonce)] }
         case "SELECT * FROM my_replies":
             return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
         case "SELECT * FROM world", "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM view_part", "SELECT * FROM reply",
-             "SELECT * FROM request":
+             "SELECT * FROM request", "SELECT * FROM companion":
             try ownerOnly()
             return []
         default:

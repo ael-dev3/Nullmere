@@ -28,6 +28,28 @@ steward's answer). For development a realm can also be hosted in-process
   stop taking it. A key the server won't take is kept, never erased or made
   anew: the keeper is told so, plainly, and it is offered again as the realm
   is asked again.
+- **A keeper's phone.** A keeper's Mac offers to link a phone by the
+  digest of a code it shows (`offer_link`), never the code; the phone, by
+  an identity of its own, brings the code (`take_link`), within ten
+  minutes and once, and from then on speaks for the keeper as their
+  companion. The steward keeps who speaks for whom in the rules' own
+  record of the keeper, and writes it to the private `companion` table
+  (`link_companions`, the steward's alone) ahead of the publication that
+  answers the link; `my_view` and `my_view_parts` show a companion its
+  keeper's view, while its requests and answers stay its own. The steward
+  takes a companion's requests as its keeper's: a phone comes in as them
+  (`accompany`), gives their orders and their readiness, and lets itself
+  go (`unlink`, which from the keeper's own Mac lets every device go). It
+  refuses a companion what only the keeper's Mac may do: enter at the
+  door, seal or take up a keeper by words, or link another device. One
+  device leaving takes the keeper away only when none of their others has
+  been heard from lately. Codes are sixty bits, so no count of wrong
+  guesses is kept: one kept for the whole realm would let anyone stop
+  every keeper's linking by guessing. Every view written for the keeper
+  carries their record, so their Mac and their phones see the same
+  devices linked; a keeper taken to another Mac by their words leaves
+  every device linked to the old one behind. A phone needs a realm of
+  tongue 13 or later; a Mac of tongue 12 still plays on one.
 - **Private tables, views in parts.** The realm's tables are private:
   keepers write requests through reducers and read only their own view and
   replies, through SpacetimeDB views (`my_view`, `my_view_parts`,

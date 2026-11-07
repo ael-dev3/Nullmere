@@ -81,7 +81,9 @@ public enum Speech {
     /// paces stand. 11: what a keeper heard in parts of their view, each
     /// written once. 12: the rest of what every keeper is told alike, what
     /// is a keeper's own, and the words they hear, each apart from the head.
-    public static let current = 12
+    /// 13: a keeper's phone linked to them, reading their view as its own
+    /// and speaking for them.
+    public static let current = 13
     /// The oldest tongue a realm of this build still hears from a keeper's
     /// Mac: a Mac before the realm's settings went apart from the head
     /// would find the realm without them.

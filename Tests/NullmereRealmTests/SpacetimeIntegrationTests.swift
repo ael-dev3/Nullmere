@@ -567,6 +567,129 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await FrontierPlayThrough.playBounded(databases, token: token)
     }
 
+    /// A keeper's phone beside their Mac on a real server, each by its own
+    /// identity and its own connections: the Mac offers a link by the
+    /// code's digest, the phone brings the code and comes in as the keeper,
+    /// reading their view; an order from either is seen on the other, and
+    /// how long each took is said; the phone gone and back by its own key
+    /// sees what was done while it was away; one device leaving leaves the
+    /// keeper there while the other is; and let go from the Mac, the phone
+    /// is told the realm links it to no one. No stranger reads who speaks
+    /// for whom. A database of its own, fresh: CI sets
+    /// NULLMERE_STDB_COMPANION to it.
+    @MainActor
+    func testAKeepersPhonePlaysBesideTheirMacThroughSpacetime() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let text = environment["NULLMERE_STDB_COMPANION"], let url = URL(string: text), let transport = SpacetimeHTTP(address: url),
+              let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set NULLMERE_STDB_COMPANION and NULLMERE_STDB_TOKEN to play a keeper's phone beside their Mac on a SpacetimeDB server")
+        }
+        func own() -> any SpacetimeTransport { SpacetimeHTTP(address: url, session: URLSession(configuration: .ephemeral))! }
+        let steward = try await takeUp(transport, token, seats: 4, watchLength: 600)
+        Task { await steward.run() }
+        defer { Task { await steward.stop() } }
+        func device(_ store: MemoryStore) -> (NetworkRealmLink, Listener) {
+            let link = NetworkRealmLink(transport: own(), credentials: store, pollInterval: 0.5)
+            let ear = Listener()
+            ear.listen(to: link)
+            link.connect()
+            return (link, ear)
+        }
+        func waitedFor(_ what: String, timeout: Double = 60, _ condition: @MainActor () -> Bool) async throws -> Double {
+            let began = Date()
+            while !condition() {
+                if Date().timeIntervalSince(began) > timeout { throw SpacetimeError("Timed out waiting for \(what)") }
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+            return Date().timeIntervalSince(began)
+        }
+        let macStore = MemoryStore(), phoneStore = MemoryStore()
+        let (mac, macEar) = device(macStore)
+        _ = try await waitedFor("the realm's status on the Mac") { macEar.hasStatus }
+        let name = "Ama" + String(KeeperIdentity.make().filter(\.isLetter).prefix(6))
+        mac.arrive(name: name)
+        _ = try await waitedFor("the keeper to arrive on the Mac") { macEar.keeper != nil }
+        let keeper = try XCTUnwrap(macEar.keeper)
+        let house = try XCTUnwrap(keeper.house)
+
+        // The Mac offers a link by the code's digest alone.
+        let code = LinkCode.make()
+        let offered = Answered<Result<Int, LinkRefusal>>()
+        mac.offerLink(code: code) { offered.value = $0 }
+        _ = try await waitedFor("the realm to take the offer") { offered.value != nil }
+        XCTAssertEqual(try offered.value?.get(), 0)
+
+        // The phone, by its own identity, brings the code.
+        let (phone, phoneEar) = device(phoneStore)
+        _ = try await waitedFor("the realm's status on the phone") { phoneEar.hasStatus }
+        phone.takeLink(code: LinkCode.shown(code))
+        let linking = try await waitedFor("the phone to come in as the keeper") { phoneEar.keeper != nil }
+        XCTAssertEqual(phoneEar.keeper?.id, keeper.id, "The phone speaks for the keeper")
+        XCTAssertEqual(phoneEar.keeper?.name, name)
+        XCTAssertEqual(phoneEar.world?.houses[house].stock, macEar.world?.houses[house].stock, "and is shown their House as their Mac is")
+        let phoneIdentity = try XCTUnwrap(phone.credentials?.identity)
+        XCTAssertNotEqual(phoneIdentity, keeper.id, "Its own identity: the Mac's key never leaves the Mac")
+        let linked = try await transport.query("SELECT identity, keeper FROM companion", token: token)
+        XCTAssertEqual(linked.map { $0.compactMap(\.string) }, [[phoneIdentity, keeper.id]])
+        let stranger = try await transport.createIdentity()
+        let peeked = (try? await transport.query("SELECT * FROM companion", token: stranger.token)) ?? []
+        XCTAssertTrue(peeked.isEmpty, "No stranger reads who speaks for whom")
+        print(String(format: "REALM a keeper's phone took the link their Mac offered and came in as them in %.2f s", linking))
+
+        // An order from the phone, seen on the Mac; one from the Mac, on the phone.
+        let world = try XCTUnwrap(phoneEar.world)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        phone.send(.fortify(unit: spear.id))
+        let toMac = try await waitedFor("the phone's order seen on the Mac") { macEar.world?.unit(spear.id)?.fortified == true }
+        let stores = phoneEar.world?.houses[house].stock
+        mac.send(.barter(give: .timber, take: .stone, amount: 3))
+        let toPhone = try await waitedFor("the Mac's order seen on the phone") { phoneEar.world?.houses[house].stock != stores }
+        print(String(format: "REALM an order given on the phone was seen on the Mac in %.2f s, one on the Mac on the phone in %.2f s",
+                     toMac, toPhone))
+
+        // The phone gone and back by its own key, kept: what was done while
+        // it was away is what it sees.
+        phone.close()
+        let before = macEar.world?.houses[house].stock
+        mac.send(.barter(give: .timber, take: .stone, amount: 3))
+        _ = try await waitedFor("the Mac's order while the phone was away") { macEar.world?.houses[house].stock != before }
+        let (back, backEar) = device(phoneStore)
+        _ = try await waitedFor("the phone's status again") { backEar.hasStatus }
+        let returning = Date()
+        back.accompany()
+        _ = try await waitedFor("the phone in again as the keeper") { backEar.keeper?.id == keeper.id }
+        XCTAssertEqual(back.credentials?.identity, phoneIdentity, "By its own key, kept")
+        XCTAssertEqual(backEar.world?.houses[house].stock, macEar.world?.houses[house].stock, "Caught up with what was done meanwhile")
+        print(String(format: "REALM the phone, back, came in again and was shown what was done while it was away in %.2f s",
+                     Date().timeIntervalSince(returning)))
+
+        // Leaving on the phone leaves the keeper there, on their Mac.
+        back.leave()
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline {
+            let waiting = try await transport.query("SELECT nonce FROM request WHERE keeper = \(sqlString(phoneIdentity))", token: token)
+            if waiting.isEmpty { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        let online = await steward.state.keeper(keeper.id)?.isOnline
+        XCTAssertEqual(online, true, "Still there, on their Mac")
+
+        // Let go from the Mac: the phone is told the realm links it to no one.
+        let unlinked = Answered<String?>()
+        mac.unlinkDevices { unlinked.value = .some($0) }
+        _ = try await waitedFor("the devices let go") { unlinked.value != nil }
+        XCTAssertEqual(unlinked.value, .some(nil))
+        let left = try await transport.query("SELECT identity, keeper FROM companion", token: token)
+        XCTAssertTrue(left.isEmpty)
+        let (gone, goneEar) = device(phoneStore)
+        _ = try await waitedFor("the phone's status once let go") { goneEar.hasStatus }
+        gone.accompany()
+        _ = try await waitedFor("the phone told it speaks for no one") { goneEar.refusals.contains(RealmError.unknownKeeper.description) }
+        print("REALM a keeper's phone let go from their Mac was told the realm links it to no one")
+        gone.close()
+        mac.leave()
+    }
+
     /// Every seat of the widest realm taken at once, each by a keeper's own
     /// client, on a real server: all seated and shown the world, all ready
     /// and every client seeing the watch turn, one keeper heard by all. A

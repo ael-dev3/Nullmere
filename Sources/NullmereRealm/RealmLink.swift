@@ -50,6 +50,13 @@ public protocol RealmLink: AnyObject {
     /// Takes up the keeper the words seal, by their proof, as the identity
     /// this link speaks for, and arrives as them: heard as an arrival is.
     func reclaim(proof: String)
+    /// Offers to link a phone to the keeper this link speaks for, by the
+    /// code this Mac shows (only its digest goes to the realm); `done`
+    /// hears how many devices already speak for them, or why not.
+    func offerLink(code: String, done: @escaping @MainActor (Result<Int, LinkRefusal>) -> Void)
+    /// Lets go every device that speaks for the keeper; `done` hears
+    /// nothing when the realm has, or why it didn't.
+    func unlinkDevices(done: @escaping @MainActor (String?) -> Void)
     func send(_ command: Command)
     func setReady(_ ready: Bool)
     /// Leaves the realm, once what the keeper ordered has gone to it; after
@@ -73,4 +80,18 @@ extension RealmLink {
     public func reclaim(proof: String) {
         onEvent?(.refused(.unknownWords))
     }
+
+    /// A link to a realm that links no phones.
+    public func offerLink(code: String, done: @escaping @MainActor (Result<Int, LinkRefusal>) -> Void) {
+        done(.failure(LinkRefusal(RealmLinkNote.linksNoPhones)))
+    }
+
+    public func unlinkDevices(done: @escaping @MainActor (String?) -> Void) {
+        done(RealmLinkNote.linksNoPhones)
+    }
+}
+
+/// What a link says of what its realm doesn't do.
+public enum RealmLinkNote {
+    public static let linksNoPhones = "This realm links no phones: only a realm across the network does."
 }

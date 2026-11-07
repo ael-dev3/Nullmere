@@ -49,6 +49,12 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     /// What the realm keeps of the words they wrote down to carry their
     /// identity to another Mac (see `KeeperWords`); absent until they do.
     public internal(set) var seal: String?
+    /// The devices that speak for them besides the Mac they arrived by: a
+    /// phone's companion linked by a code their Mac showed (see `LinkCode`);
+    /// absent while none is.
+    public internal(set) var companions: [String]?
+    /// A link their Mac offered and no device has taken yet.
+    public internal(set) var linkOffer: LinkOffer?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -456,14 +462,18 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     /// A keeper brings their words to another Mac: the keeper they seal is
     /// known by this Mac's identity from now on, and arrives by it. The Mac
-    /// they left no longer speaks for them.
+    /// they left no longer speaks for them, nor any device linked to it: a
+    /// keeper who took their words to a new Mac because the old one was
+    /// lost links their phone again from the new.
     @discardableResult
     public mutating func reclaim(_ id: String, proof: String, now: Double) throws(RealmError) -> Keeper {
         guard KeeperWords.isProof(proof) else { throw .unknownWords }
-        guard !keepers.contains(where: { $0.id == id }) else { throw .keepsAnother }
+        guard keeperID(speakingFor: id) == nil else { throw .keepsAnother }
         let sealed = KeeperWords.seal(of: proof)
         guard let index = keepers.firstIndex(where: { $0.seal == sealed }) else { throw .unknownWords }
         keepers[index].id = id
+        keepers[index].companions = nil
+        keepers[index].linkOffer = nil
         return try arrive(id, name: nil, now: now)
     }
 

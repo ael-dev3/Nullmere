@@ -773,11 +773,56 @@ public final class NetworkRealmLink: RealmLink {
     public var compactAccepted: Int? = Compact.edition
 
     public func arrive(name: String?) {
-        enter("arrive", ArrivalPayload(name: name, compact: compactAccepted).encoded)
+        enter("arrive", [.string(ArrivalPayload(name: name, compact: compactAccepted).encoded)])
     }
 
     public func reclaim(proof: String) {
-        enter("reclaim", proof)
+        enter("reclaim", [.string(proof)])
+    }
+
+    // MARK: A keeper's phone
+
+    /// Offers to link a device to the keeper this link speaks for, by the
+    /// code this Mac shows: only the code's digest goes to the realm.
+    /// `done` hears how many devices already speak for the keeper when the
+    /// realm takes the offer, or why it didn't.
+    public func offerLink(code: String, done: @escaping @MainActor (Result<Int, LinkRefusal>) -> Void) {
+        Task {
+            do {
+                let reply = try await request("offer_link", [.string(LinkCode.digest(of: code))])
+                done(reply.ok ? .success(reply.keeper?.companions?.count ?? 0)
+                     : .failure(LinkRefusal(reply.refusal ?? "The realm wouldn't offer the link.")))
+            } catch {
+                done(.failure(LinkRefusal(RealmTrouble.words(for: error))))
+            }
+        }
+    }
+
+    /// Lets go every device that speaks for the keeper this link speaks for;
+    /// from a companion, itself. `done` hears nothing when the realm has,
+    /// or why it didn't.
+    public func unlinkDevices(done: @escaping @MainActor (String?) -> Void) {
+        Task {
+            do {
+                let reply = try await request("unlink", [])
+                done(reply.ok ? nil : reply.refusal ?? "The realm wouldn't let the devices go.")
+            } catch {
+                done(RealmTrouble.words(for: error))
+            }
+        }
+    }
+
+    /// Links this device to the keeper whose Mac shows `code`, and comes in
+    /// as them: heard as an arrival is.
+    public func takeLink(code: String) {
+        enter("take_link", [.string(code)])
+    }
+
+    /// Comes in as the keeper this device speaks for, as their companion:
+    /// heard as an arrival is; a device the realm no longer links to anyone
+    /// is refused as a keeper it doesn't know.
+    public func accompany() {
+        enter("accompany", [])
     }
 
     public func seal(proof: String, done: @escaping @MainActor (String?) -> Void) {
@@ -804,12 +849,12 @@ public final class NetworkRealmLink: RealmLink {
     /// turned away only because the realm took in its few new keepers just
     /// now is told so once, and asked in again as it takes in more, until
     /// it does, they ask anew or the link is closed.
-    private func enter(_ reducer: String, _ argument: String) {
+    private func enter(_ reducer: String, _ arguments: [ReducerArgument]) {
         enteringNumber += 1
         let number = enteringNumber
         Task {
             do {
-                var reply = try await request(reducer, [.string(argument)])
+                var reply = try await request(reducer, arguments)
                 var told = false
                 while !reply.ok, reply.refusal == RealmError.manyNewcomers.description {
                     guard number == enteringNumber else { return }
@@ -819,9 +864,15 @@ public final class NetworkRealmLink: RealmLink {
                     }
                     try await Task.sleep(nanoseconds: UInt64(Double.random(in: newcomerWait) * 1_000_000_000))
                     guard number == enteringNumber else { return }
-                    reply = try await request(reducer, [.string(argument)])
+                    reply = try await request(reducer, arguments)
                 }
                 guard number == enteringNumber else { return }
+                // A device the realm links to no keeper: told as a keeper it
+                // doesn't know, to be linked anew.
+                if !reply.ok, reply.unknownKeeper == true {
+                    onEvent?(.refused(.unknownKeeper))
+                    return
+                }
                 guard reply.ok, reply.keeper != nil else {
                     onEvent?(.refused(.refused(reply.refusal ?? "The realm wouldn't take you in.")))
                     return
@@ -1006,6 +1057,12 @@ public final class NetworkRealmLink: RealmLink {
     public static let unanswered = "An order sent as the realm went out of reach was never answered; the world shows whether it was carried out."
 }
 
+
+/// Why the realm wouldn't link a device, in its own words.
+public struct LinkRefusal: Error, Equatable, Sendable {
+    public let words: String
+    public init(_ words: String) { self.words = words }
+}
 
 /// What an arrival carries to the realm: the name a new keeper gives, and
 /// the edition of the compact they accepted. A payload with no edition (a

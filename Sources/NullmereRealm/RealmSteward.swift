@@ -109,8 +109,15 @@ public actor RealmSteward {
     public private(set) var state: RealmState
     public private(set) var version: UInt64
     private var lastStatus: RealmStatus?
-    /// When each keeper was last heard from.
+    /// When each keeper was last heard from, by any of their devices.
     private var heard: [String: Double] = [:]
+    /// When each device was last heard from, and the keeper it speaks for:
+    /// one device leaving takes its keeper away only when none of their
+    /// others has been heard from lately.
+    private var devicesHeard: [String: (keeper: String, at: Double)] = [:]
+    /// Who speaks for whom as SpacetimeDB keeps it, companion by companion:
+    /// nil until read back from the server, or once a call writing it failed.
+    private var keptLinks: [String: String]?
     /// When each keeper last left by their own request.
     private var left: [String: Double] = [:]
     /// How long after leaving a keeper's "here" is taken as one already on
@@ -323,22 +330,32 @@ public actor RealmSteward {
         }
         let waiting = Set(unanswered.map(\.id))
         for request in fair where !waiting.contains(request.id) {
-            heard[request.keeper] = now
+            // A companion speaks for the keeper it was linked to: its
+            // requests are theirs, its answers its own.
+            let keeper = state.keeperID(speakingFor: request.keeper) ?? request.keeper
+            heard[keeper] = now
+            devicesHeard[request.keeper] = (keeper, now)
             // A keeper taken to have left (by silence, or a steward
             // starting anew) who is still playing is back: any request but
-            // leaving says so, so their readiness counts again.
-            let justLeft = now - (left[request.keeper] ?? -.infinity) < RealmSteward.leavingGrace
-            if request.kind != "arrive", request.kind != "leave", !(request.kind == "here" && justLeft),
-               state.keeper(request.keeper)?.isOnline == false {
-                _ = try? state.arrive(request.keeper, name: nil, now: now, reseatsTheFallen: false)
+            // leaving says so, so their readiness counts again. Arriving,
+            // coming in by a companion and taking a link come in their own
+            // way.
+            let justLeft = now - (left[keeper] ?? -.infinity) < RealmSteward.leavingGrace
+            if !RealmSteward.comingIn.contains(request.kind), !(request.kind == "here" && justLeft),
+               state.keeper(keeper)?.isOnline == false {
+                _ = try? state.arrive(keeper, name: nil, now: now, reseatsTheFallen: false)
                 let raised = state.takeArrivals()
-                if !raised.isEmpty { pendingActs.append((request.keeper, raised)) }
+                if !raised.isEmpty { pendingActs.append((keeper, raised)) }
                 changed = true
             }
-            let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)
+            let (reply, didChange, turned) = handle(kind: request.kind, keeper: keeper, device: request.keeper, payload: request.payload,
+                                                    now: now)
             changed = changed || didChange
             pendingEvents += turned
-            unanswered.append(Answer(id: request.id, nonce: request.nonce, keeper: request.keeper, reply: reply))
+            // The view an answer goes with is the keeper's the device speaks
+            // for once it is carried out: a link just taken, theirs.
+            let answered = state.keeperID(speakingFor: request.keeper) ?? request.keeper
+            unanswered.append(Answer(id: request.id, nonce: request.nonce, keeper: answered, reply: reply))
         }
 
         // The silent have left.
@@ -353,6 +370,7 @@ public actor RealmSteward {
         if await hearBorders(now: now) { changed = true }
         let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
         heard = heard.filter { there.contains($0.key) }
+        devicesHeard = devicesHeard.filter { there.contains($0.value.keeper) && now - $0.value.at <= RealmSteward.silence }
         left = left.filter { now - $0.value < RealmSteward.leavingGrace }
         if let turned = state.tick(now: now) {
             pendingEvents += turned
@@ -432,7 +450,27 @@ public actor RealmSteward {
         }
     }
 
-    private func handle(kind: String, keeper: String, payload: String, now: Double) -> (RealmReply, Bool, [GameEvent]) {
+    /// Requests that come into the realm their own way, not taken as a
+    /// keeper still there coming back.
+    static let comingIn: Set<String> = ["arrive", "leave", "accompany", "takeLink"]
+    /// Requests only the keeper's own Mac may make: a companion doesn't
+    /// enter at the door, seal or take up a keeper by words, or link
+    /// another device.
+    static let theKeepersOwn: Set<String> = ["arrive", "seal", "reclaim", "offerLink"]
+    /// What a companion is told when it asks what only the keeper's Mac may.
+    public static let notForCompanions = "Only the keeper's own Mac can do that."
+    /// What a device linked to no keeper is told when it comes in as one.
+    public static let unlinkedDevice = "This device doesn't speak for a keeper of this realm. Link it from the keeper's Mac."
+    /// What a companion is told when its keeper hasn't accepted the
+    /// realm's compact as it now reads.
+    public static let compactOnTheMac = "The realm's compact has changed: accept it on your Mac, then come in here."
+
+    /// `keeper` is the keeper the request speaks for; `device`, the identity
+    /// that made it: the keeper's own, or a companion's.
+    private func handle(kind: String, keeper: String, device: String, payload: String, now: Double) -> (RealmReply, Bool, [GameEvent]) {
+        if device != keeper, RealmSteward.theKeepersOwn.contains(kind) {
+            return (.refused(.refused(RealmSteward.notForCompanions)), false, [])
+        }
         switch kind {
         case "arrive":
             do {
@@ -477,9 +515,56 @@ public actor RealmSteward {
             guard state.keeper(keeper) != nil else { return (.refused(.unknownKeeper), false, []) }
             return (.done, false, [])
         case "leave":
+            // One device leaving takes its keeper away only when none of
+            // their others has been heard from lately.
+            devicesHeard[device] = nil
+            if devicesHeard.values.contains(where: { $0.keeper == keeper && now - $0.at <= RealmSteward.silence }) {
+                return (.done, false, [])
+            }
             left[keeper] = now
             state.depart(keeper, now: now)
             return (.done, true, [])
+        case "offerLink":
+            // Answered with the keeper as they stand, so their Mac can say
+            // how many devices already speak for them.
+            do {
+                try state.offerLink(keeper, digest: payload, now: now)
+                return (RealmReply(ok: true, keeper: state.keeper(keeper), refusal: nil), true, [])
+            } catch {
+                return (.refused(error), false, [])
+            }
+        case "takeLink":
+            // A device bringing the code its keeper's Mac shows speaks for
+            // them from now on, and comes in as them at once, to be shown
+            // their view with the answer.
+            let linked: Keeper
+            do {
+                linked = try state.takeLink(device, code: payload, now: now)
+            } catch {
+                return (.refused(error), false, [])
+            }
+            return (accompanied(linked.id, now: now), true, [])
+        case "accompany":
+            guard device != keeper else {
+                let said = state.keeper(device) == nil ? RealmSteward.unlinkedDevice : "This is the keeper's own Mac: it comes in at the door."
+                return (RealmReply(ok: false, keeper: nil, refusal: said, unknownKeeper: state.keeper(device) == nil ? true : nil), false, [])
+            }
+            let reply = accompanied(keeper, now: now)
+            return (reply, reply.ok, [])
+        case "unlink":
+            // The keeper's Mac lets every device go; a companion, itself.
+            if device == keeper {
+                do {
+                    try state.unlinkCompanions(keeper)
+                    // The devices let go keep the keeper there no longer.
+                    devicesHeard = devicesHeard.filter { $0.value.keeper != keeper || $0.key == device }
+                    return (.done, true, [])
+                } catch {
+                    return (.refused(error), false, [])
+                }
+            }
+            devicesHeard[device] = nil
+            return (.done, state.unlink(companion: device), [])
         case "seal":
             do {
                 try state.seal(keeper, proof: payload)
@@ -499,6 +584,53 @@ public actor RealmSteward {
         default:
             return (.refused(.refused("The realm doesn't know that request.")), false, [])
         }
+    }
+
+    /// A companion comes in as the keeper it speaks for: as the keeper's own
+    /// Mac would come back, never taking up a new seat for a fallen House,
+    /// which is the keeper's to ask at the door.
+    private func accompanied(_ keeper: String, now: Double) -> RealmReply {
+        do {
+            let arrived = try state.arrive(keeper, name: nil, now: now, reseatsTheFallen: false, compact: nil)
+            let raised = state.takeArrivals()
+            if !raised.isEmpty { pendingActs.append((keeper, raised)) }
+            return RealmReply(ok: true, keeper: arrived, refusal: nil)
+        } catch {
+            // A keeper the realm knows is refused coming in only for a
+            // compact out of date, which only their Mac can accept.
+            return .refused(error == .compactUnaccepted ? .refused(RealmSteward.compactOnTheMac) : error)
+        }
+    }
+
+    /// Who speaks for whom as SpacetimeDB keeps it: each companion's keeper.
+    static func keptLinks(_ transport: any SpacetimeTransport, token: String) async throws -> [String: String] {
+        let rows = try await transport.query("SELECT identity, keeper FROM companion", token: token)
+        return Dictionary(rows.compactMap { row -> (String, String)? in
+            guard row.count == 2, let identity = row[0].string, let keeper = row[1].string else { return nil }
+            return (identity, keeper)
+        }, uniquingKeysWith: { $1 })
+    }
+
+    /// Writes who speaks for whom where it changed since SpacetimeDB last
+    /// kept it, ahead of the publication answering the change: a device
+    /// that hears its link was taken reads its keeper's view at once, and
+    /// one let go reads it no more.
+    private func writeLinks() async throws {
+        let links = Dictionary(state.companionsByKeeper.map { ($0.companion, $0.keeper) }, uniquingKeysWith: { first, _ in first })
+        if keptLinks == nil { keptLinks = try await RealmSteward.keptLinks(transport, token: token) }
+        let kept = keptLinks ?? [:]
+        let linked = links.filter { kept[$0.key] != $0.value }.sorted { $0.key < $1.key }
+        let unlinked = kept.keys.filter { links[$0] == nil }.sorted()
+        guard !linked.isEmpty || !unlinked.isEmpty else { return }
+        do {
+            try await transport.call("link_companions", [.strings(linked.map(\.key)), .strings(linked.map(\.value)), .strings(unlinked),
+                                                         .string(holder)], token: token)
+        } catch {
+            if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
+            keptLinks = nil
+            throw error
+        }
+        keptLinks = links
     }
 
     /// The world's parts as SpacetimeDB keeps them, by name.
@@ -578,6 +710,7 @@ public actor RealmSteward {
             lastAttempt = nil
             unsure = false
         }
+        try await writeLinks()
         // Keys in a fixed order, so a view unchanged encodes the same and
         // isn't sent again: unsorted, Foundation on Linux orders them anew
         // each time, and every view went out with every publication.

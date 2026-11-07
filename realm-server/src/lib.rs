@@ -7,7 +7,9 @@
 //! there is one set of rules, not two.
 //!
 //! A keeper's client adds requests (arrive, order, ready, here, leave), each
-//! carrying a nonce the client chose. The steward takes them in order,
+//! carrying a nonce the client chose. A keeper's phone, linked to them by a
+//! code their Mac shows, speaks for them as their companion under its own
+//! identity: it reads their view as its own, and its requests are theirs. The steward takes them in order,
 //! carries them out, answers each by its nonce, and publishes the realm:
 //! its status for everyone, and for each keeper their own view of the
 //! world, never the whole of it.
@@ -16,7 +18,8 @@
 //! tables. Everyone may read the realm's status; a keeper reads their own
 //! view, their own answers and their own requests still waiting through the
 //! `my_view`, `my_view_parts`, `my_replies` and `my_requests` views, which
-//! show each caller their rows alone. A keeper's view is kept in parts, as
+//! show each caller their rows alone: a companion, its keeper's view, and
+//! its own answers and requests. A keeper's view is kept in parts, as
 //! the world is, so a publication rewrites only the parts that changed.
 
 use spacetimedb::{reducer, table, view, ReducerContext, Table, ViewContext};
@@ -162,18 +165,42 @@ pub struct ViewPart {
     pub text: String,
 }
 
-/// The caller's own view of the realm.
-#[view(accessor = my_view, public)]
-fn my_view(ctx: &ViewContext) -> Option<KeeperView> {
-    ctx.db.keeper_view().keeper().find(ctx.sender().to_hex().to_string())
+/// A device that speaks for a keeper besides the Mac they arrived by: their
+/// phone's companion, linked by a code their Mac showed. A companion reads
+/// its keeper's view as its own; its requests and answers stay its own. The
+/// steward's alone to write, and to read.
+#[table(accessor = companion)]
+pub struct Companion {
+    /// The companion's identity, in hex.
+    #[primary_key]
+    pub identity: String,
+    /// The identity of the keeper it speaks for.
+    #[index(btree)]
+    pub keeper: String,
 }
 
-/// The parts of the caller's own view of the realm, and the pages every
-/// keeper is told alike (kept once, as no keeper's, under "~name#mark"),
-/// which their view names where it has them.
+/// Whose view the caller reads: the keeper they are, or the keeper whose
+/// companion they are.
+fn reader(ctx: &ViewContext) -> String {
+    let me = ctx.sender().to_hex().to_string();
+    match ctx.db.companion().identity().find(me.clone()) {
+        Some(companion) => companion.keeper,
+        None => me,
+    }
+}
+
+/// The caller's own view of the realm, or their keeper's, for a companion.
+#[view(accessor = my_view, public)]
+fn my_view(ctx: &ViewContext) -> Option<KeeperView> {
+    ctx.db.keeper_view().keeper().find(reader(ctx))
+}
+
+/// The parts of the caller's own view of the realm (their keeper's, for a
+/// companion), and the pages every keeper is told alike (kept once, as no
+/// keeper's, under "~name#mark"), which their view names where it has them.
 #[view(accessor = my_view_parts, public)]
 fn my_view_parts(ctx: &ViewContext) -> Vec<ViewPart> {
-    let me = ctx.sender().to_hex().to_string();
+    let me = reader(ctx);
     let alike = String::new();
     let mut parts: Vec<ViewPart> = ctx.db.view_part().keeper().filter(&me).collect();
     parts.extend(ctx.db.view_part().keeper().filter(&alike));
@@ -280,6 +307,32 @@ pub fn seal(ctx: &ReducerContext, nonce: String, proof: String) -> Result<(), St
 #[reducer]
 pub fn reclaim(ctx: &ReducerContext, nonce: String, proof: String) -> Result<(), String> {
     ask(ctx, "reclaim", nonce, proof)
+}
+
+/// A keeper's Mac offers to link a device to them, by the digest of the
+/// code it shows: never the code itself.
+#[reducer]
+pub fn offer_link(ctx: &ReducerContext, nonce: String, digest: String) -> Result<(), String> {
+    ask(ctx, "offerLink", nonce, digest)
+}
+
+/// A device brings the code its keeper's Mac showed, to speak for them as
+/// their companion from then on.
+#[reducer]
+pub fn take_link(ctx: &ReducerContext, nonce: String, code: String) -> Result<(), String> {
+    ask(ctx, "takeLink", nonce, code)
+}
+
+/// A keeper lets every device linked to them go; a companion, itself.
+#[reducer]
+pub fn unlink(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
+    ask(ctx, "unlink", nonce, String::new())
+}
+
+/// A companion comes in as the keeper it speaks for.
+#[reducer]
+pub fn accompany(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
+    ask(ctx, "accompany", nonce, String::new())
 }
 
 /// The steward forgets answers that have been read.
@@ -457,6 +510,35 @@ pub fn publish(
         ctx.db.request().id().delete(request);
         ctx.db.reply().nonce().delete(asked.nonce.clone());
         ctx.db.reply().insert(Reply { nonce: asked.nonce, keeper: asked.keeper, payload: reply });
+    }
+    Ok(())
+}
+
+/// The steward writes who speaks for whom: each companion linked anew or
+/// to another keeper, with its keeper, and the companions let go. Written
+/// before the publication answering a link, so a device reads its keeper's
+/// view as soon as it hears the answer.
+#[reducer]
+pub fn link_companions(
+    ctx: &ReducerContext,
+    companions: Vec<String>,
+    keepers: Vec<String>,
+    unlinked: Vec<String>,
+    holder: String,
+) -> Result<(), String> {
+    if !is_steward(ctx) {
+        return Err("Only the steward links companions.".into());
+    }
+    hold(ctx, holder)?;
+    if companions.len() != keepers.len() {
+        return Err("Every companion needs its keeper.".into());
+    }
+    for identity in unlinked {
+        ctx.db.companion().identity().delete(identity);
+    }
+    for (identity, keeper) in companions.into_iter().zip(keepers) {
+        ctx.db.companion().identity().delete(identity.clone());
+        ctx.db.companion().insert(Companion { identity, keeper });
     }
     Ok(())
 }
