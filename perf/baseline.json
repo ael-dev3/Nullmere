@@ -42,6 +42,18 @@
       "limit": 16.7,
       "note": "the world drawn in three dimensions, far out: the mean of CI's first two figures (cb5988b, 5b3b85c), which vary the most"
     },
+    "near.gpu.scale60.p50": {
+      "baseline": 8.28,
+      "gpu": true,
+      "limit": 16.7,
+      "note": "a seat close in, its holds and the land's furniture, with the moon's shadows, as CI's runner first measured it (run 649)"
+    },
+    "near.gpu.scale60.plain.p50": {
+      "baseline": 8.66,
+      "gpu": true,
+      "limit": 16.7,
+      "note": "the same seat close in without the moon's shadows, as CI's runner first measured it (run 649)"
+    },
     "pan.frame.p50": {
       "baseline": 8.96,
       "gpu": true,
