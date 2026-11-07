@@ -286,6 +286,31 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 0)
     }
 
+    /// What still waits for the keeper's orders on the phone, as the Mac's
+    /// top bar says it: companies that may still act this watch, on no march
+    /// and not dug in, and holds raising nothing; nothing said when none do.
+    func testThePhoneSaysWhatStillWaitsForOrders() throws {
+        var (state, me) = try world()
+        let companies = state.units(of: me).filter { $0.movesLeft > 0 && $0.destination == nil && !$0.fortified }
+        let idle = state.holds(of: me).filter { $0.project == nil }
+        XCTAssertFalse(companies.isEmpty)
+        XCTAssertFalse(idle.isEmpty)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).waiting, GameState.waitingSaid(companies: companies.count, holds: idle.count))
+        for company in companies {
+            let index = try XCTUnwrap(state.units.firstIndex { $0.id == company.id })
+            state.units[index].fortified = true
+        }
+        for hold in idle {
+            let index = try XCTUnwrap(state.holdIndex(hold.id))
+            state.holds[index].project = Hold.Project(kind: .granary, targetLevel: 2, watchesLeft: 3, watches: 3)
+        }
+        XCTAssertNil(CompanionLedger(world: state, player: me).waiting, "Every company dug in, every hold at work")
+        XCTAssertEqual(GameState.waitingSaid(companies: 2, holds: 1), "2 companies wait · 1 hold idle")
+        XCTAssertEqual(GameState.waitingSaid(companies: 1, holds: 0), "1 company waits")
+        XCTAssertEqual(GameState.waitingSaid(companies: 0, holds: 3), "3 holds idle")
+        XCTAssertNil(GameState.waitingSaid(companies: 0, holds: 0))
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

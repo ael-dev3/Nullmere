@@ -162,6 +162,23 @@ extension GameState {
     }
 
     /// The Houses standing, mightiest first.
+    /// What still waits for a keeper's orders, as the Mac's top bar and the
+    /// phone say it: "2 companies wait · 1 hold idle"; nil when nothing
+    /// does. A company waits while it may still act this watch, on no march
+    /// and not dug in; a hold is idle while it raises nothing.
+    public func waitingSaid(for house: Int) -> String? {
+        let companies = units(of: house).filter { $0.movesLeft > 0 && $0.destination == nil && !$0.fortified }.count
+        return GameState.waitingSaid(companies: companies, holds: holds(of: house).filter { $0.project == nil }.count)
+    }
+
+    /// The same, from the counts.
+    public static func waitingSaid(companies: Int, holds: Int) -> String? {
+        var parts: [String] = []
+        if companies > 0 { parts.append(companies == 1 ? "1 company waits" : "\(companies) companies wait") }
+        if holds > 0 { parts.append(holds == 1 ? "1 hold idle" : "\(holds) holds idle") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     public var byMight: [Int] {
         let might = houses.map { self.might(of: $0.id) }
         return livingHouses.map(\.id).sorted { (-might[$0], $0) < (-might[$1], $1) }

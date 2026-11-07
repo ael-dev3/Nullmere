@@ -187,7 +187,7 @@ struct EndWatchButton: View {
     var body: some View {
         let waiting = session.readyUnits.count
         let idle = session.idleHolds.count
-        let waits = waiting > 0 || idle > 0 ? waitingText(units: waiting, holds: idle) : nil
+        let waits = GameState.waitingSaid(companies: waiting, holds: idle)
         VStack(alignment: .trailing, spacing: 3) {
             if session.isReady {
                 QuietButton(title: "Waiting", size: 10.5) { session.cancelReady() }
@@ -244,12 +244,6 @@ struct EndWatchButton: View {
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
-    private func waitingText(units: Int, holds: Int) -> String {
-        var parts: [String] = []
-        if units > 0 { parts.append(units == 1 ? "1 company waits" : "\(units) companies wait") }
-        if holds > 0 { parts.append(holds == 1 ? "1 hold idle" : "\(holds) holds idle") }
-        return parts.joined(separator: " · ")
-    }
 }
 
 /// The watch, and beside it how long until it turns of itself and who is

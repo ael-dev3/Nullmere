@@ -249,7 +249,9 @@ invitations and Houses asking to join to answer, and allies' work to help.
   Chronicle tells of the House, and the caretaker's keeping of standing
   orders; Done puts it away.
 - **House.** The realm, its age and watch, the time until the watch turns
-  and how many keepers are there and ready; On the walls, the companies of
+  and how many keepers are there and ready, and what still waits for
+  orders, as the Mac's top bar says it ("2 companies wait · 1 hold idle");
+  On the walls, the companies of
   Houses at war gathered near the House's holds, as the Mac's watchmen
   tell it, and the veil of the Still as it stands (lying and until when,
   resting and when it may be drawn anew), with Draw the veil for its

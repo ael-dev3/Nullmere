@@ -153,6 +153,12 @@ struct HouseTab: View {
                                     .font(Night.small)
                                     .foregroundStyle(Night.ink.opacity(0.7))
                             }
+                            // What still waits for orders, as the Mac's top bar says it.
+                            if let waiting = ledger.waiting {
+                                Text(verbatim: waiting)
+                                    .font(Night.small)
+                                    .foregroundStyle(Night.moon)
+                            }
                         }
                         .padding(.vertical, 6)
                         .accessibilityElement(children: .combine)
