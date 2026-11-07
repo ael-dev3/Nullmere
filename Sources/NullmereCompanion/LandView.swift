@@ -89,10 +89,10 @@ struct PlaceSections: View {
             }
             if !place.gathers.isEmpty || !place.marches.isEmpty {
                 HStack(spacing: 10) {
-                    PlaceMenu(title: "Gather here", orders: place.gathers, label: "Send a company to gather here") { order in
+                    ListedOrdersMenu(title: "Gather here", orders: place.gathers, label: "Send a company to gather here") { order in
                         session.give(order.command, told: order.title)
                     }
-                    PlaceMenu(title: "March here", orders: place.marches, label: "March a company here") { order in
+                    ListedOrdersMenu(title: "March here", orders: place.marches, label: "March a company here") { order in
                         session.give(order.command, told: order.title)
                     }
                 }
@@ -118,7 +118,7 @@ struct PlaceSections: View {
 
 /// A menu of orders whose titles may be alike (two companies of one kind
 /// by the same hold), each told apart by its place in the list.
-struct PlaceMenu: View {
+struct ListedOrdersMenu: View {
     let title: String
     let orders: [CompanionLedger.Order]
     let label: String

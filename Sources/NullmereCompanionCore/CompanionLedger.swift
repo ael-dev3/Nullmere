@@ -77,6 +77,18 @@ public struct CompanionLedger: Equatable, Sendable {
         public let standing: String
         /// A commander held by another House speaks only to their captors.
         public let canCounsel: Bool
+        /// The House's companies of war they may take up now: unled, at or
+        /// beside one of the House's holds.
+        public let leads: [Order]
+        /// The companies they may ride second with now, beside their leader.
+        public let seconds: [Order]
+        /// Their company left, to ride home, while they lead or ride second.
+        public let home: Order?
+        /// The next ranks of their talents they may learn now, a point each.
+        public let talents: [Order]
+        /// The pieces of the House's armoury they may take up, from whoever
+        /// wears them.
+        public let gear: [Order]
     }
 
     /// An envoy waiting on the keeper's answer: whose, what it offers in
@@ -239,6 +251,8 @@ public struct CompanionLedger: Equatable, Sendable {
                            rallies: CompanionLedger.rallies(for: unit, in: world, player: player),
                            gates: CompanionLedger.gates(for: unit, in: world, player: player))
         }
+        let war = world.units(of: player).filter { $0.kind.isMilitary }.sorted { $0.id < $1.id }
+        let armoury = world.gear(of: player)
         commanders = world.commandersBoard(for: player).lines.map { line in
             let standing: String
             if let captor = line.heldBy {
@@ -250,8 +264,28 @@ public struct CompanionLedger: Equatable, Sendable {
             } else {
                 standing = "Free to lead a company of war"
             }
-            return Commander(id: line.commander.id, name: line.commander.name, title: "\(line.commander.archetype.title) · level \(line.level)",
-                             standing: standing, canCounsel: line.heldBy == nil)
+            // Each order where the rules would take it: a company taken up or
+            // ridden with, home again, a talent learned, a piece worn.
+            let id = line.commander.id
+            let leads = war.filter { world.assignRefusal(of: id, to: $0.id, as: player) == nil }.map { unit in
+                Order(title: "Lead the \(SpokenOrders.named(unit, in: world))", command: .assign(commander: id, unit: unit.id))
+            }
+            let seconds = war.filter { world.secondRefusal(of: id, to: $0.id, as: player) == nil }.map { unit in
+                Order(title: "Ride second with the \(SpokenOrders.named(unit, in: world))", command: .assignSecond(commander: id, unit: unit.id))
+            }
+            let riding = war.contains { $0.leader == id || $0.second == id }
+            let talents = Talent.allCases.filter { line.commander.learnRefusal(of: $0) == nil }.map { talent in
+                Order(title: "Learn \(talent.title) \(BuildingKind.numeral(line.commander.rank(of: talent) + 1))",
+                      command: .learnTalent(commander: id, talent: talent))
+            }
+            let gear: [Order] = line.heldBy != nil ? [] : armoury.filter { $0.wornBy != id }.map { piece in
+                let from = piece.wornBy.flatMap { world.commander($0)?.name }.map { ", from \($0)" } ?? ""
+                return Order(title: "Wear the \(piece.title)\(from)", command: .wear(gear: piece.id, commander: id))
+            }
+            return Commander(id: id, name: line.commander.name, title: "\(line.commander.archetype.title) · level \(line.level)",
+                             standing: standing, canCounsel: line.heldBy == nil, leads: leads, seconds: seconds,
+                             home: riding ? Order(title: "Ride home", command: .unassign(commander: id)) : nil,
+                             talents: talents, gear: gear)
         }
         self.holds = holds.map { hold in
             var work: [String] = []

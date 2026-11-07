@@ -291,8 +291,12 @@ been heard from lately.
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone
   orders the Mac sees, and the phone what the Mac orders. Below the
-  companies, the House's commanders, each with how they stand, and
-  Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
+  companies, the House's commanders, each with how they stand and the
+  orders the rules would take for them, as on the Mac's board: Lead a
+  company of war standing at or beside one of the House's holds, Ride
+  second beside a company's leader, Ride home, Learn the next rank of a
+  talent with a point to spend, and Wear a piece of the armoury, from
+  whoever wears it; and Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
   phone (an iPhone 15 Pro or later, with Apple Intelligence on), told of
   the realm from the House's view as the phone holds it. Each answer
   appears as it is spoken, Stop stops it, and an order the commander puts

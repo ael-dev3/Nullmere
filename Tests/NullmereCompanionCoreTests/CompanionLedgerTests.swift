@@ -107,6 +107,73 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger, "A commander's standing changes the ledger")
     }
 
+    /// The House's commanders kept from the phone as from the Mac's board,
+    /// each order offered one the rules take: a free commander taking up a
+    /// company of war by a hold, then riding home; a second sent to ride
+    /// beside the leader; the next rank of a talent, a point each; a piece
+    /// of the armoury worn, from whoever wore it. A prisoner is offered no
+    /// company, no second's place and no gear.
+    func testTheHousesCommandersAreKeptFromThePhone() throws {
+        var (state, me) = try world()
+        let first = try XCTUnwrap(state.commanders(of: me).first)
+        if state.company(ledBy: first.id) != nil { _ = try state.perform(.unassign(commander: first.id), as: me) }
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let spear = try XCTUnwrap(state.placeUnit(.spear, for: me, near: seat.position))
+        XCTAssertLessThanOrEqual(spear.position.distance(to: seat.position), 1)
+        var ledger = CompanionLedger(world: state, player: me)
+        var listed = try XCTUnwrap(ledger.commanders.first { $0.id == first.id })
+        let lead = try XCTUnwrap(listed.leads.first { $0.command == .assign(commander: first.id, unit: spear.id) }, "\(listed.leads.map(\.title))")
+        XCTAssertEqual(lead.title, "Lead the \(SpokenOrders.named(spear, in: state))")
+        XCTAssertNil(listed.home, "Free, with no company to leave")
+        XCTAssertTrue(listed.seconds.isEmpty, "No company led to ride second with")
+        assertTaken(listed.leads, in: state, as: me)
+        _ = try state.perform(lead.command, as: me)
+
+        ledger = CompanionLedger(world: state, player: me)
+        listed = try XCTUnwrap(ledger.commanders.first { $0.id == first.id })
+        XCTAssertTrue(listed.leads.isEmpty, "One company at a time")
+        XCTAssertEqual(listed.home, CompanionLedger.Order(title: "Ride home", command: .unassign(commander: first.id)))
+        assertTaken([try XCTUnwrap(listed.home)], in: state, as: me)
+
+        // A second commander sent to ride beside the first.
+        var random = SeededRandom(seed: 41)
+        let second = try XCTUnwrap(state.raiseCommander(for: me, using: &random))
+        let beside = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == second.id })
+        let ride = try XCTUnwrap(beside.seconds.first { $0.command == .assignSecond(commander: second.id, unit: spear.id) },
+                                 "\(beside.seconds.map(\.title))")
+        XCTAssertEqual(ride.title, "Ride second with the \(SpokenOrders.named(spear, in: state))")
+        assertTaken(beside.seconds + beside.leads, in: state, as: me)
+
+        // Talents: none without a point to spend, then the first ranks open.
+        XCTAssertTrue(beside.talents.isEmpty, "\(beside.talents.map(\.title))")
+        let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == second.id })
+        state.commanders?[index].experience = 100_000
+        let learned = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == second.id })
+        XCTAssertFalse(learned.talents.isEmpty)
+        assertTaken(learned.talents, in: state, as: me)
+        for order in learned.talents {
+            guard case .learnTalent(_, let talent) = order.command else { return XCTFail("\(order.title) is no talent") }
+            XCTAssertEqual(order.title, "Learn \(talent.title) I")
+        }
+
+        // Gear: a piece in the armoury, worn by the first, offered the second from them.
+        state.armoury = [Gear(id: 9_001, kind: .saltGlaive, quality: .fine, owner: me, wornBy: first.id)]
+        let armed = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == second.id })
+        let wear = try XCTUnwrap(armed.gear.first)
+        XCTAssertEqual(wear.title, "Wear the Fine Salt Glaive, from \(first.name)")
+        XCTAssertEqual(wear.command, .wear(gear: 9_001, commander: second.id))
+        assertTaken(armed.gear, in: state, as: me)
+        XCTAssertTrue(try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == first.id }).gear.isEmpty,
+                      "Not offered what they wear already")
+
+        // Held prisoner: no company, no second's place, no gear.
+        let captor = (me + 1) % state.houses.count
+        state.commanders?[index].captive = Captivity(by: captor, since: state.watch, questioned: 0)
+        let held = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == second.id })
+        XCTAssertTrue(held.leads.isEmpty && held.seconds.isEmpty && held.gear.isEmpty)
+        assertTaken(held.talents, in: state, as: me)
+    }
+
     /// What the phone offers the House's alliance, each the rules would
     /// take: help for an ally's works under way, a company sent to a rally
     /// of the House's side, and a company sent to keep an ally's gates.

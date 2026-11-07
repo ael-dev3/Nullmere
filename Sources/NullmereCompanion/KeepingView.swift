@@ -254,6 +254,7 @@ struct ArmyTab: View {
                                         .accessibilityHint(commander.canCounsel ? "Spoken by Apple's on-device model on this phone"
                                                                                 : "\(commander.name) is held prisoner.")
                                 }
+                                CommanderOrders(session: session, commander: commander)
                             }
                         }
                     }
@@ -663,6 +664,43 @@ struct CompanyRows: View {
                 OrdersMenu(title: "Keep gates", orders: company.gates,
                            label: "Send the \(company.name) to keep an ally's gates") { gates in
                     session.give(gates.command, told: "\(gates.title), the \(company.name)")
+                }
+            }
+            .font(Night.small)
+        }
+    }
+}
+
+/// What a commander may be ordered to now, each the rules would take: to
+/// take up a company of war, ride second beside its leader or ride home;
+/// to learn a talent's next rank; to wear a piece of the armoury.
+struct CommanderOrders: View {
+    let session: CompanionSession
+    let commander: CompanionLedger.Commander
+
+    var body: some View {
+        if !commander.leads.isEmpty || !commander.seconds.isEmpty || commander.home != nil {
+            HStack(spacing: 10) {
+                ListedOrdersMenu(title: "Lead", orders: commander.leads, label: "Give \(commander.name) a company to lead") { order in
+                    session.give(order.command, told: "\(commander.name): \(order.title)")
+                }
+                ListedOrdersMenu(title: "Ride second", orders: commander.seconds, label: "Send \(commander.name) to ride second") { order in
+                    session.give(order.command, told: "\(commander.name): \(order.title)")
+                }
+                if let home = commander.home {
+                    Button(home.title) { session.give(home.command, told: "\(commander.name): \(home.title)") }
+                        .accessibilityLabel("\(commander.name) rides home")
+                }
+            }
+            .font(Night.small)
+        }
+        if !commander.talents.isEmpty || !commander.gear.isEmpty {
+            HStack(spacing: 10) {
+                ListedOrdersMenu(title: "Learn", orders: commander.talents, label: "\(commander.name) learns a talent") { order in
+                    session.give(order.command, told: "\(commander.name): \(order.title)")
+                }
+                ListedOrdersMenu(title: "Wear", orders: commander.gear, label: "\(commander.name) wears a piece of the armoury") { order in
+                    session.give(order.command, told: "\(commander.name): \(order.title)")
                 }
             }
             .font(Night.small)
