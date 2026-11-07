@@ -100,6 +100,15 @@ struct CounselView: View {
             if let fresh = session.counsel(of: counsel.id) { counsel.renew(fresh.counsel) }
         }
         .onDisappear { counsel.stop() }
+        .onAppear {
+            #if DEBUG
+            // The smoke test's question, asked as the keeper would ask it.
+            if CompanionCheck.counselAsked, counsel.lines.isEmpty, counsel.unavailable == nil {
+                words = CompanionCheck.counselQuestion
+                ask()
+            }
+            #endif
+        }
     }
 
     private var leads: String {

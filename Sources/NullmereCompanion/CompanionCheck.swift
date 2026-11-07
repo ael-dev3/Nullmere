@@ -40,10 +40,20 @@ enum CompanionCheck {
     }
 
     /// Counsel opened with the House's first free commander, to be seen:
-    /// NULLMERE_COMPANION_TAB=counsel.
+    /// NULLMERE_COMPANION_TAB=counsel, or counsel-asked to ask them too.
     static var counselShown: Bool {
-        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "counsel"
+        ["counsel", "counsel-asked"].contains(ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"])
     }
+
+    /// Counsel opened and the commander asked a question, to be seen with
+    /// what came of it, the model's answer or why there was none:
+    /// NULLMERE_COMPANION_TAB=counsel-asked.
+    static var counselAsked: Bool {
+        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "counsel-asked"
+    }
+
+    /// What the smoke test asks the commander.
+    static let counselQuestion = "What do you see from where you stand?"
 
     /// Orders in the keeper's own words opened, a line of the order book
     /// read, to be seen: NULLMERE_COMPANION_TAB=words.
