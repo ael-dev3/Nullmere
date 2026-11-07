@@ -252,8 +252,11 @@ a vote on the realm's law to cast.
   orders; Done puts it away.
 - **House.** The realm, its age and watch, the time until the watch turns
   and how many keepers are there and ready, and what still waits for
-  orders, as the Mac's top bar says it ("2 companies wait · 1 hold idle");
-  On the walls, the companies of
+  orders, as the Mac's top bar says it ("2 companies wait · 1 hold idle"),
+  and beneath them, as on that bar, the House's four stores side by side,
+  each with what it gains as the watch turns (the grain less what the
+  companies eat, in red where it loses) and "full" where the holds can
+  keep no more; On the walls, the companies of
   Houses at war gathered near the House's holds, as the Mac's watchmen
   tell it, and the veil of the Still as it stands (lying and until when,
   resting and when it may be drawn anew), with Draw the veil for its
@@ -266,11 +269,8 @@ a vote on the realm's law to cast.
   tells them: the watch's labours, folded beneath how far the House has
   come with them and its vigour toward the moon's next chest, and the
   happening under way (until when, what counts in it, the House's points
-  toward its next mark and its place) or when the next begins; the House's
-  four stores side by side, as the Mac's top bar shows them, each with
-  what it gains as the watch turns (the grain less what the companies
-  eat, in red where it loses) and "full" where the holds can keep no
-  more, and beneath them the way to Barter, the Inn and the satchel,
+  toward its next mark and its place) or when the next begins; the way to
+  Barter, the Inn and the satchel,
   which says only what waits there now (the pedlar lying off a hold and
   how many of his wares the House may buy, its keys to spend at the Inn
   and a word before a silver one is lost, the items it may use now); its

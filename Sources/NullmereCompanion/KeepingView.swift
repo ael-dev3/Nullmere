@@ -162,6 +162,9 @@ struct HouseTab: View {
                         }
                         .padding(.vertical, 6)
                         .accessibilityElement(children: .combine)
+                        // The House's stores at its head, as on the Mac's top bar,
+                        // each with what it gains as the watch turns.
+                        StoresRow(stores: ledger.stores, room: ledger.storage)
                         Toggle(isOn: Binding(get: { session.isReady }, set: { session.setReady($0) })) {
                             Text(verbatim: "Ready for the watch to turn")
                                 .font(Night.body)
@@ -250,8 +253,7 @@ struct HouseTab: View {
                             }
                         }
                     }
-                    Section("Stores") {
-                        StoresRow(stores: ledger.stores, room: ledger.storage)
+                    Section {
                         // Barter, the pedlar, the Lantern Inn and the satchel on a
                         // page of their own, the way to it saying what waits there.
                         NavigationLink {
