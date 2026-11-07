@@ -274,8 +274,16 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 20
         # bash -eo pipefail: the script's own failure fails the step, not tee's success.
+        # Its errors are raised as annotations too, readable however long the log.
         shell: bash
-        run: mkdir -p build && scripts/build-companion.sh 2>&1 | tee build/companion-build.log
+        run: |
+          mkdir -p build
+          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
+              echo "::error title=Companion for iOS::${line}"
+            done
+            exit 1
+          fi
 
       # Both real apps on the realm raised above: the Mac enters and offers
       # a link; the phone, in the simulator, takes it, plays, is set aside
@@ -459,6 +467,11 @@ jobs:
           # Each pass of a frame's staging timed, its slowest frames named,
           # near the foot for when a staging figure is over its allowance.
           grep -h "PERF staging" build-test.log 2>/dev/null | tail -3 || true
+          # The companion's build for iOS, where it failed: its errors and its last lines.
+          if [ -s build/companion-build.log ] && ! grep -q "^Bundled " build/companion-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 || true
+            tail -n 15 build/companion-build.log || true
+          fi
           # Failures last, at the log's very foot, where its tail finds them.
           grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
           # A figure over its allowance among them, with the runner's pace it

@@ -23,7 +23,10 @@ while [ $# -gt 0 ]; do
 done
 
 BUNDLE_ID=online.nullmere.companion
-SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+if ! SDK="$(xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)"; then
+    echo "error: this Xcode has no iOS Simulator SDK: add the iOS platform in Xcode's Settings, Components (or: xcodebuild -downloadPlatform iOS)" >&2
+    exit 1
+fi
 SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 TRIPLE="$(uname -m)-apple-ios26.0-simulator"
 SCRATCH=.build/companion-simulator
@@ -98,6 +101,29 @@ cat > "$APP/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+# The icon: the Liquid Glass document the Mac app's is made from, compiled
+# by actool for the phone into an asset catalog, its keys added to the
+# Info.plist. Without actool the phone shows the system's blank icon.
+ICON_DIR=build/companion/icon
+rm -rf "$ICON_DIR"
+mkdir -p "$ICON_DIR"
+if xcrun --find actool >/dev/null 2>&1 && xcrun actool Packaging/AppIcon.icon \
+        --compile "$ICON_DIR" --platform iphonesimulator --minimum-deployment-target 26.0 \
+        --target-device iphone --target-device ipad --app-icon AppIcon \
+        --output-partial-info-plist "$ICON_DIR/icon-info.plist" \
+        --errors --warnings --output-format human-readable-text >"$ICON_DIR/actool.log" 2>&1 \
+        && [ -s "$ICON_DIR/Assets.car" ]; then
+    cp "$ICON_DIR"/Assets.car "$APP/"
+    for png in "$ICON_DIR"/*.png; do
+        [ -e "$png" ] && cp "$png" "$APP/"
+    done
+    /usr/libexec/PlistBuddy -c "Merge $ICON_DIR/icon-info.plist" "$APP/Info.plist" >/dev/null
+    echo "Compiled the Liquid Glass icon for the phone."
+else
+    echo "warning: could not compile Packaging/AppIcon.icon for the phone; it shows the system's blank icon" >&2
+    cat "$ICON_DIR/actool.log" >&2 2>/dev/null || true
+fi
 plutil -lint "$APP/Info.plist" >/dev/null
 codesign --force --sign - --timestamp=none "$APP"
 echo "Bundled $APP ($(du -sh "$APP" | cut -f1))."
