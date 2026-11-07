@@ -114,6 +114,9 @@ struct WordLine: View {
 /// stores and holds, readiness, and the realm's chronicle.
 struct HouseTab: View {
     let session: CompanionSession
+    /// The page of barter, the Inn and the satchel, opened for the smoke
+    /// test to see (the keeper opens it by its way beneath the stores).
+    @State private var marketOpen = false
 
     var body: some View {
         NavigationStack {
@@ -183,6 +186,24 @@ struct HouseTab: View {
                             }
                             .accessibilityElement(children: .combine)
                         }
+                        // Barter, the pedlar, the Lantern Inn and the satchel on a
+                        // page of their own, the way to it saying what waits there.
+                        NavigationLink {
+                            MarketPage(session: session)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(verbatim: MarketPage.way)
+                                    .font(Night.body)
+                                ForEach(ledger.errands, id: \.self) { errand in
+                                    Text(verbatim: errand)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.moon)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                            .accessibilityElement(children: .combine)
+                        }
                     }
                     Section("Holds") {
                         ForEach(ledger.holds) { hold in
@@ -226,39 +247,6 @@ struct HouseTab: View {
                         }
                         .font(Night.small)
                     }
-                    // The pedlar, while he lies off one of the House's holds.
-                    if let pedlar = ledger.pedlar {
-                        Section("The Pedlar of the Still") {
-                            Text(verbatim: pedlar.said)
-                                .font(Night.small)
-                                .foregroundStyle(Night.ink.opacity(0.8))
-                                .fixedSize(horizontal: false, vertical: true)
-                            ForEach(pedlar.wares) { ware in
-                                WareRow(session: session, ware: ware)
-                            }
-                        }
-                    }
-                    // The Lantern Inn: the House's keys, and the chests it may open,
-                    // what one held told in the realm's word on it.
-                    Section("The Lantern Inn") {
-                        Text(verbatim: ledger.inn.keys)
-                            .font(Night.small)
-                            .foregroundStyle(Night.ink.opacity(0.8))
-                            .fixedSize(horizontal: false, vertical: true)
-                        ForEach(Array(ledger.inn.opens.enumerated()), id: \.offset) { open in
-                            Button(open.element.title) { session.give(open.element.command, told: open.element.title) }
-                                .font(Night.body)
-                        }
-                    }
-                    BarterSection(session: session, ledger: ledger)
-                    // The satchel: each item, how many, what one does, and its uses now.
-                    if !ledger.satchel.isEmpty {
-                        Section("Satchel") {
-                            ForEach(ledger.satchel) { item in
-                                SatchelRow(session: session, item: item)
-                            }
-                        }
-                    }
                     // The chronicle, the latest first: three lines open, the
                     // earlier folded beneath them, the world first.
                     Section("The chronicle") {
@@ -287,11 +275,76 @@ struct HouseTab: View {
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("House")
+            .navigationDestination(isPresented: $marketOpen) { MarketPage(session: session) }
+        }
+        .onAppear {
+            #if DEBUG
+            if CompanionCheck.marketShown { marketOpen = true }
+            #endif
         }
     }
 
     static func clock(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+/// Barter, the pedlar, the Lantern Inn and the satchel, a page of their
+/// own off the House tab's stores: the pedlar while he lies off one of the
+/// House's holds, the Inn's keys and the chests it may open (what one held
+/// told in the realm's word on it), barter, and each item of the satchel
+/// with its uses now.
+struct MarketPage: View {
+    let session: CompanionSession
+
+    /// The House tab's way to it.
+    static let way = "Barter, the Inn and the satchel"
+
+    var body: some View {
+        List {
+            if let ledger = session.ledger {
+                if session.word != nil || session.outOfReach != nil {
+                    Section {
+                        WordLine(session: session)
+                    }
+                }
+                if let pedlar = ledger.pedlar {
+                    Section("The Pedlar of the Still") {
+                        Text(verbatim: pedlar.said)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(pedlar.wares) { ware in
+                            WareRow(session: session, ware: ware)
+                        }
+                    }
+                }
+                Section("The Lantern Inn") {
+                    Text(verbatim: ledger.inn.keys)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(Array(ledger.inn.opens.enumerated()), id: \.offset) { open in
+                        Button(open.element.title) { session.give(open.element.command, told: open.element.title) }
+                            .font(Night.body)
+                    }
+                }
+                BarterSection(session: session, ledger: ledger)
+                if !ledger.satchel.isEmpty {
+                    Section("Satchel") {
+                        ForEach(ledger.satchel) { item in
+                            SatchelRow(session: session, item: item)
+                        }
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Night.background)
+        .navigationTitle("Market and Inn")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }
 

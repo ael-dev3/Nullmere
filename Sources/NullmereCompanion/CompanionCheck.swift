@@ -19,7 +19,8 @@ import NullmereCounsel
 /// set aside and comes in again, and writes
 /// what it saw to Documents/companion-report.txt in its own container,
 /// ending with the word on it all once it is done. NULLMERE_COMPANION_TAB
-/// opens a tab to be seen, or counsel with the first free commander
+/// opens a tab to be seen, the page of barter, the Inn and the satchel
+/// (NULLMERE_COMPANION_TAB=market), or counsel with the first free commander
 /// (NULLMERE_COMPANION_TAB=counsel). And NULLMERE_COUNSEL_REPORT takes counsel of a
 /// commander through this phone's own on-device model, as the Mac's check
 /// does (CounselCheck), writing what was heard to
@@ -28,7 +29,14 @@ import NullmereCounsel
 enum CompanionCheck {
     static var tabShown: CompanionTab? {
         if counselShown || wordsShown { return .army }
+        if marketShown { return .house }
         return ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"].flatMap(CompanionTab.init(rawValue:))
+    }
+
+    /// The page of barter, the Inn and the satchel opened off the House tab,
+    /// to be seen: NULLMERE_COMPANION_TAB=market.
+    static var marketShown: Bool {
+        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "market"
     }
 
     /// Counsel opened with the House's first free commander, to be seen:

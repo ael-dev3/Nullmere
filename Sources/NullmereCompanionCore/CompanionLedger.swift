@@ -269,6 +269,10 @@ public struct CompanionLedger: Equatable, Sendable {
     public let inn: Inn
     /// The pedlar's wares, while he lies off one of the House's holds.
     public let pedlar: Wares?
+    /// What waits at the market, the Lantern Inn and in the satchel, a few
+    /// words each, for the House tab's way to them; none where nothing
+    /// waits there but barter.
+    public let errands: [String]
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -328,6 +332,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
+            && a.errands == b.errands
     }
 
     /// The House's stores as one stock.
@@ -520,6 +525,7 @@ public struct CompanionLedger: Equatable, Sendable {
         (letters, correspondents) = CompanionLedger.letters(in: world, player: player)
         pedlar = CompanionLedger.pedlar(in: world, player: player)
         spine = CompanionLedger.spine(in: world, player: player)
+        errands = CompanionLedger.errands(in: world, player: player, satchel: satchel)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -736,6 +742,38 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         let correspondents = ordered.prefix(CompanionLedger.dealtWith).map { Correspondent(id: $0, name: title($0)) }
         return (Array(letters), correspondents)
+    }
+
+    /// What waits at the market, the Inn and in the satchel, a few words
+    /// each: the pedlar while he lies off with wares unsold, and how many of
+    /// them the House may buy; the House's keys at the Inn while it holds
+    /// one, and a word where one more silver key would be lost; and the
+    /// satchel's items the House may use now.
+    static func errands(in world: GameState, player: Int, satchel: [Item]) -> [String] {
+        func opened(_ line: String) -> String { line.prefix(1).uppercased() + line.dropFirst() }
+        var errands: [String] = []
+        if let pedlar = world.pedlar(for: player), pedlar.wares.contains(where: { !$0.sold }) {
+            let buyable = pedlar.wares.filter { !$0.sold && world.buyRefusal($0.id, as: player) == nil }.count
+            let off = "The pedlar lies off \(world.hold(pedlar.hold)?.name ?? "your hold")"
+            errands.append(buyable == 0 ? off : "\(off): \(buyable == 1 ? "a ware" : "\(buyable) wares") you may buy")
+        }
+        let keys = world.innKeys(of: player)
+        if world.innRefusal(.silver, as: player) == nil || keys.gold > 0 {
+            func counted(_ count: Int, _ kind: String) -> String? {
+                count == 0 ? nil : count == 1 ? "a \(kind) key" : "\(count) \(kind) keys"
+            }
+            var line = [counted(keys.silver, "silver"), counted(keys.gold, "gold")].compactMap { $0 }.joined(separator: " and ")
+                + " to spend at the Inn"
+            if keys.silver >= InnKeys.mostKeys { line += ", before the next silver key is lost" }
+            errands.append(opened(line))
+        }
+        let ready = satchel.filter { !$0.uses.isEmpty }
+        if ready.count > 2 {
+            errands.append("\(ready.count) kinds of item in the satchel ready to use")
+        } else if !ready.isEmpty {
+            errands.append(opened(ready.map(\.count).joined(separator: " and ") + " ready to use"))
+        }
+        return errands
     }
 
     /// The House's keys at the Lantern Inn, five of each kind kept and more

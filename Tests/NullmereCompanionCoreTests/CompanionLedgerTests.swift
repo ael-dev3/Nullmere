@@ -115,6 +115,47 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertFalse(CompanionLedger(world: state, player: me).inn.keys.contains("lost"), "Room for the next key")
     }
 
+    /// The House tab's way to the market, the Inn and the satchel says only
+    /// what waits there now: nothing at first; the pedlar while he lies off
+    /// with wares unsold, and how many of them the House may buy; the
+    /// House's keys at the Inn, and a word before a silver key is lost; the
+    /// satchel's items it may use now, and none it can't.
+    func testTheHouseTabSaysWhatWaitsAtTheMarketAndTheInn() throws {
+        var (state, me) = try world()
+        XCTAssertEqual(CompanionLedger(world: state, player: me).errands, [], "Nothing waits but barter")
+
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.pedlars = [Pedlar(house: me, hold: seat.id, at: seat.position, came: state.watch,
+                                wares: GameState.pedlarWares(for: me, at: state.watch, firstID: state.takeID()))]
+        state.innBook = [me: InnKeys(silver: 2, gold: 1, sinceCommander: 0, opened: 0)]
+        _ = state.give(.hourglass, 2, to: me)
+        _ = state.give(.grainCache, to: me)
+        state.houses[me].stock = Stock(grain: 0, timber: 5_000, stone: 5_000, moonsalt: 500)
+        var ledger = CompanionLedger(world: state, player: me)
+        let buyable = try XCTUnwrap(ledger.pedlar).wares.filter { $0.buy != nil }.count
+        XCTAssertGreaterThan(buyable, 0)
+        XCTAssertEqual(ledger.errands, ["The pedlar lies off \(seat.name): \(buyable == 1 ? "a ware" : "\(buyable) wares") you may buy",
+                                        "2 silver keys and a gold key to spend at the Inn",
+                                        "A \(ItemKind.grainCache.title) ready to use"],
+                       "Nothing under way to hasten: the hourglasses wait unsaid")
+
+        // The stores gone and every key spent but five silver: the pedlar told
+        // without wares to buy, the Inn a word before the next key is lost.
+        state.houses[me].stock = Stock()
+        state.innBook = [me: InnKeys(silver: InnKeys.mostKeys, gold: 0, sinceCommander: 0, opened: 0)]
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.errands, ["The pedlar lies off \(seat.name)",
+                                        "\(InnKeys.mostKeys) silver keys to spend at the Inn, before the next silver key is lost",
+                                        "A \(ItemKind.grainCache.title) ready to use"])
+
+        // Every ware sold, no key, nothing to use: nothing waits.
+        let wares = try XCTUnwrap(state.pedlars?.first).wares.indices
+        for index in wares { state.pedlars?[0].wares[index].sold = true }
+        state.innBook = [:]
+        state.houses[me].stock = Stock(grain: state.storage(of: me), timber: 0, stone: 0, moonsalt: 0)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).errands, [])
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

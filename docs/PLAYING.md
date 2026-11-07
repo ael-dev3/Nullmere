@@ -248,7 +248,11 @@ keeper is on, wherever they have scrolled to give it.
   it; Envoys waiting, each offer in the words the Mac gives it, with the
   words its House sent, how long it waits, and Accept (while the keeper has
   what it asks) and Refuse, which asks again where refusing a steward's
-  demand is war; the House's stores; its holds,
+  demand is war; the House's stores, and beneath them the way to Barter,
+  the Inn and the satchel, which says only what waits there now (the
+  pedlar lying off a hold and how many of his wares the House may buy, its
+  keys to spend at the Inn and a word before a silver one is lost, the
+  items it may use now); its holds,
   each with what it raises and musters and how long each has to go, and
   Raise and Muster: the works it may raise a level and the companies it
   may muster at the first tier now, the House able to pay; While you are
@@ -256,22 +260,22 @@ keeper is on, wherever they have scrolled to give it.
   kind of company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace
   made with any House or none, tribute paid or none, and the House kept as
-  it sees fit); the Pedlar of the Still, while he lies off one of the
-  House's holds, when he poles away and his three wares, each with what he
-  asks and Buy where the House can pay, or why not; the Lantern Inn, the House's keys (a word when one more
-  silver would be lost) and its chests to open, a silver with a key and a
-  gold with one or for moonsalt, what a chest held said in the realm's word
-  on it; Barter, a
-  store for another, three to one and moonsalt as three of any other, with
-  what it costs or why the realm would refuse it, in the Mac's words; the
-  satchel,
-  each item the House keeps and what one does, with its uses now (an
-  hourglass to hasten a hold's work or muster, or the study; a cache to open
-  while the stores have room; a ward stone for a hold whose ward isn't
-  whole; a draught to share while a company is hurt); the realm's
-  chronicle, the latest first, three lines open and the earlier folded
-  beneath them; and Ready for the watch to turn, which
-  counts as the keeper's, Mac or phone.
+  it sees fit); the realm's chronicle, the latest first, three lines open
+  and the earlier folded beneath them; and Ready for the watch to turn,
+  which counts as the keeper's, Mac or phone.
+- **Barter, the Inn and the satchel.** A page of its own off the House's
+  stores: the Pedlar of the Still, while he lies off one of the House's
+  holds, when he poles away and his three wares, each with what he asks
+  and Buy where the House can pay, or why not; the Lantern Inn, the House's
+  keys (a word when one more silver would be lost) and its chests to open,
+  a silver with a key and a gold with one or for moonsalt, what a chest
+  held said in the realm's word on it; Barter, a store for another, three
+  to one and moonsalt as three of any other, with what it costs or why the
+  realm would refuse it, in the Mac's words; and the satchel, each item the
+  House keeps and what one does, with its uses now (an hourglass to hasten
+  a hold's work or muster, or the study; a cache to open while the stores
+  have room; a ward stone for a hold whose ward isn't whole; a draught to
+  share while a company is hurt).
 - **Land.** The chart of the House's land about its seat, as far as its
   holds and companies reach (eighteen hexes at most): each hex in its
   ground's colour as the House knows it, dimmed where the House doesn't
