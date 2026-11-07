@@ -509,6 +509,7 @@ struct ArmyTab: View {
     let session: CompanionSession
     @State private var counselling: Counselling?
     @State private var wording = false
+    @State private var venturesOpen = false
 
     var body: some View {
         NavigationStack {
@@ -620,6 +621,7 @@ struct ArmyTab: View {
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("Army")
+            .navigationDestination(isPresented: $venturesOpen) { VenturesPage(session: session) }
             .sheet(isPresented: $wording) {
                 OrdersInWordsView(session: session) { wording = false }
             }
@@ -637,6 +639,7 @@ struct ArmyTab: View {
                 openCounsel(with: first.id)
             }
             if CompanionCheck.wordsShown { wording = true }
+            if CompanionCheck.venturesShown { venturesOpen = true }
             #endif
         }
     }
