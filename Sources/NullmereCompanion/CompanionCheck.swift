@@ -9,9 +9,11 @@ import NullmereCounsel
 /// offered (NULLMERE_COMPANION_LINK, the link its QR code carries), comes
 /// in as the keeper, keeps their House as a keeper does from the phone (a
 /// company dug in, words said to the realm, an alliance's banner raised and
-/// words said to it and a study of it chosen and given toward, a commander
-/// given a company, another company marched from the chart of the House's
-/// land, the keeper made ready for the watch to turn, a hold set to work),
+/// words said to it and a study of it chosen and given toward, the
+/// caretaker's standing orders given, a commander given a company and one
+/// sent up the Spine, another company marched from the chart of the House's
+/// land, the keeper made ready for the watch to turn and the silver key it
+/// brings spent at the Lantern Inn, a hold set to work),
 /// hearing
 /// the realm's word on each, is
 /// set aside and comes in again, and writes
@@ -296,6 +298,12 @@ enum CompanionCheck {
         } else {
             lines.append("No commander free to take up a company by a hold")
         }
+        // A commander sent up the Spine from the phone, how it went in the realm's word.
+        if let venture = session.ledger?.spine.ventures.last {
+            await give(venture.command, told: venture.title, as: "Ventured")
+        } else {
+            lines.append("No commander to send up the Spine: \(session.ledger?.spine.said ?? "no ledger")")
+        }
         // The chart of the House's land, and another company marched from
         // it to open ground the House has explored near its seat.
         if let world = session.world, let house = session.keeper?.house {
@@ -349,6 +357,14 @@ enum CompanionCheck {
             lines.append("Made ready: the watch didn't turn in 90 s, a keeper there not yet ready")
         }
         lines.append("Watch: \(session.ledger?.watch ?? before)")
+        // The silver key the watch's turn brought, spent at the Lantern Inn
+        // from the phone, what the chest held in the realm's word: never the
+        // gold chest bought with moonsalt, which the hold's work may need.
+        if let open = session.ledger?.inn.opens.first(where: { $0.command == .openInnChest(.silver) }) {
+            await give(open.command, told: open.title, as: "Opened")
+        } else {
+            lines.append("No chest of the Lantern Inn to open: \(session.ledger?.inn.keys ?? "no ledger")")
+        }
         // A hold set to work: a work raised, or where none can be paid for, a company mustered.
         let now = session.ledger ?? ledger
         var raising: (hold: CompanionLedger.Hold, order: CompanionLedger.Order)?
