@@ -52,8 +52,8 @@ enum CompanionCheck {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "counsel-asked"
     }
 
-    /// What the smoke test asks the commander.
-    static let counselQuestion = "What do you see from where you stand?"
+    /// What the smoke test asks the commander, as the Mac's asks it.
+    static let counselQuestion = CounselCheck.shownQuestion
 
     /// Orders in the keeper's own words opened, a line of the order book
     /// read, to be seen: NULLMERE_COMPANION_TAB=words.

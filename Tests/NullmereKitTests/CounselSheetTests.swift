@@ -70,6 +70,48 @@ final class CounselSheetTests: XCTestCase {
         XCTAssertNil(session.commanderCounsel)
     }
 
+    /// Counsel opened for CI's screenshot (NULLMERE_SHOW=counsel, a debug
+    /// build's alone) is taken of the House's first commander free to
+    /// speak, passing over one held prisoner, as the Commanders offer it;
+    /// where the model can't be asked nothing is put to them, and the sheet
+    /// says why. Where it can, the question is put as the sheet's Ask puts
+    /// it, and the model's answer is heard on a real Mac.
+    func testCounselOpenedToBeSeenPassesOverAPrisonerAndAsksNothingThatCantBeAnswered() throws {
+        var state = GameState(settings: GameSettings(seedText: "counsel sheet", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        _ = state.commanderJoins(me, why: "answers the banner of")
+        let roster = state.commanders(of: me)
+        XCTAssertEqual(roster.count, 2)
+        let captor = try XCTUnwrap(state.houses.indices.first { $0 != me })
+        func hold(_ commander: Commander) throws {
+            let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == commander.id })
+            let held = Captivity(by: captor, since: state.watch, questioned: 0, lastQuestioned: nil)
+            state.commanders?[index].captive = held
+        }
+        func keeping() -> GameSession {
+            let keeping = GameSession(link: CounselLink(), house: me, world: state.view(for: me),
+                                      store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
+            keeping.dismissSeatBriefing()
+            keeping.counselAvailability = { .unavailable(.deviceNotEligible) }
+            return keeping
+        }
+        try hold(roster[0])
+        let opened = keeping()
+        opened.takeCounselToBeSeen()
+        let counsel = try XCTUnwrap(opened.commanderCounsel)
+        XCTAssertEqual(counsel.id, roster[1].id, "The prisoner is passed over")
+        XCTAssertEqual(counsel.unavailable, .unavailable(.deviceNotEligible))
+        XCTAssertTrue(counsel.lines.isEmpty, "Nothing is asked that can't be answered")
+        draw(CounselSheet(session: opened, counsel: counsel))
+        XCTAssertFalse(PressableButtons.press("Ask"), "Nothing to ask with while the model can't speak")
+        opened.closeCounsel()
+        // Every commander held: no counsel is opened at all.
+        try hold(roster[1])
+        let none = keeping()
+        none.takeCounselToBeSeen()
+        XCTAssertNil(none.commanderCounsel)
+    }
+
     /// What the commander remembers is kept for the age and picked up when
     /// counsel is taken again; the facts follow the world as it changes.
     func testWhatIsRememberedIsKeptAndTheFactsFollowTheWorld() throws {

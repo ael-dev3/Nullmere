@@ -6,7 +6,11 @@
 # selected and the Houses panel open; of the same realm eight watches on
 # as a keeper sees it most of the time, nothing chosen and no panel open;
 # and forty watches on, a steward having played the keeper's House, with
-# the larger type; and the Still from low over its deepest water.
+# the larger type; and the Still from low over its deepest water; and
+# counsel taken of the House's first free commander, a question put to
+# them as the keeper would put it, with what came of it: the answer of
+# Apple's on-device model where this Mac's can be asked, or why none came
+# where it can't, as on CI's virtual Macs.
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -86,6 +90,11 @@ if [ "${DEBUG_PASSES:-0}" = 1 ]; then
         NULLMERE_DEBUG_PASSES="$pass" run "build/game-lakes-no-$pass.png" 0 lake
     done
 fi
+# Counsel of a commander, asked a question as the keeper would ask it, and
+# what came of it half a minute after the launch.
+WAIT=30 run build/game-counsel.png 0 counsel
+WORLD_LOG="$WORLD_LOG
+$LOG"
 # The same realm later on, the keeper returning by identity alone, with the
 # larger type a reader can choose.
 NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch

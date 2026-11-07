@@ -584,6 +584,20 @@ public final class GameSession {
         commanderCounsel = nil
     }
 
+    #if DEBUG
+    /// Counsel opened with the House's first commander free to speak, none
+    /// held prisoner, and the question put to them as the keeper would put
+    /// it, where Apple's on-device model can be asked; where it can't,
+    /// nothing is asked and the sheet says why. For CI to photograph what
+    /// came of it (NULLMERE_SHOW=counsel).
+    func takeCounselToBeSeen(asking question: String = CounselCheck.shownQuestion) {
+        guard let commander = state.commanders(of: player).first(where: { $0.captive == nil }) else { return }
+        openCounsel(with: commander.id)
+        guard let counsel = commanderCounsel, counsel.unavailable == nil else { return }
+        counsel.ask(question)
+    }
+    #endif
+
     /// The keeper gives an order their commander put forward: carried out
     /// as any order is, and the realm's word taken as final.
     public func give(_ offer: CommanderCounselSession.Offer) {

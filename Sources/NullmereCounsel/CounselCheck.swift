@@ -22,6 +22,10 @@ public enum CounselCheck {
     public static let passed = "Counsel kept to its rules."
     /// The longest a stopped answer may take to stop.
     static let stopLimit = 10.0
+    /// What the apps' smoke tests ask a commander, as a keeper would, for
+    /// CI to photograph what came of it: the model's answer, or why there
+    /// was none.
+    public static let shownQuestion = "What do you see from where you stand?"
     /// The questions asked, in turn.
     static let questions = ["What do you see about you?",
                             "How does our House stand?",

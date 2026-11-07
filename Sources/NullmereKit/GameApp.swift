@@ -945,6 +945,10 @@ public final class GameApp {
         if show.contains("realm") { session?.panel = .realm }
         if show.contains("words") { session?.panel = .words }
         if show.contains("lake") { session?.focusOnLake() }
+        // "counsel" opens counsel with the House's first free commander and
+        // asks them a question as the keeper would, where the model can be
+        // asked: what came of it is photographed, its answer or why none.
+        if show.contains("counsel") { session?.takeCounselToBeSeen() }
         // "watch" makes the keeper ready a little before CI photographs the
         // screen, so the watch's card is on it.
         if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {
