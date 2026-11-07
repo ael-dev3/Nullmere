@@ -253,7 +253,9 @@ network comes back.
   kind of company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace
   made with any House or none, tribute paid or none, and the House kept as
-  it sees fit); the Lantern Inn, the House's keys (a word when one more
+  it sees fit); the Pedlar of the Still, while he lies off one of the
+  House's holds, when he poles away and his three wares, each with what he
+  asks and Buy where the House can pay, or why not; the Lantern Inn, the House's keys (a word when one more
   silver would be lost) and its chests to open, a silver with a key and a
   gold with one or for moonsalt, what a chest held said in the realm's word
   on it; Barter, a

@@ -179,6 +179,18 @@ struct HouseTab: View {
                         }
                         .font(Night.small)
                     }
+                    // The pedlar, while he lies off one of the House's holds.
+                    if let pedlar = ledger.pedlar {
+                        Section("The Pedlar of the Still") {
+                            Text(verbatim: pedlar.said)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.8))
+                                .fixedSize(horizontal: false, vertical: true)
+                            ForEach(pedlar.wares) { ware in
+                                WareRow(session: session, ware: ware)
+                            }
+                        }
+                    }
                     // The Lantern Inn: the House's keys, and the chests it may open,
                     // what one held told in the realm's word on it.
                     Section("The Lantern Inn") {
@@ -1001,5 +1013,35 @@ struct LetterLine: View {
             .font(Night.small)
             .foregroundStyle(Night.ink.opacity(letter.incoming ? 0.9 : 0.65))
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// One of the pedlar's wares: what it is and what he asks, Buy where the
+/// realm would sell it, or why not in its words.
+struct WareRow: View {
+    let session: CompanionSession
+    let ware: CompanionLedger.Ware
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: ware.title)
+                    .font(Night.body)
+                    .foregroundStyle(Night.ink.opacity(ware.buy == nil && ware.why == nil ? 0.5 : 0.9))
+                if let why = ware.why {
+                    Text(verbatim: why)
+                        .font(Night.small)
+                        .foregroundStyle(Night.bad)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            if let buy = ware.buy {
+                Button("Buy") { session.give(buy.command, told: buy.title) }
+                    .font(Night.body)
+                    .accessibilityLabel(buy.title)
+            }
+        }
     }
 }

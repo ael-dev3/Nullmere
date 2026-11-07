@@ -48,6 +48,31 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(CompanionLedger(world: state.view(for: near), player: near).letters.isEmpty, "No other keeper reads them")
     }
 
+    /// The pedlar on the phone, while he lies off one of the House's holds:
+    /// where and how long, each ware with its price, bought as the rules sell
+    /// it or why not; a ware bought told sold; none while none lies off.
+    func testThePhoneBuysOfThePedlar() throws {
+        var (state, me) = try world()
+        XCTAssertNil(CompanionLedger(world: state, player: me).pedlar, "None lies off")
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.pedlars = [Pedlar(house: me, hold: seat.id, at: seat.position, came: state.watch,
+                                wares: GameState.pedlarWares(for: me, at: state.watch, firstID: state.takeID()))]
+        var pedlar = try XCTUnwrap(CompanionLedger(world: state, player: me).pedlar)
+        XCTAssertEqual(pedlar.said, "The Pedlar of the Still lies off \(seat.name); he poles away in \(Pedlar.stays) watches.")
+        XCTAssertEqual(pedlar.wares.count, 3)
+        XCTAssertTrue(pedlar.wares.allSatisfy { $0.buy != nil && $0.why == nil }, "The House's stores cover all three")
+        assertTaken(pedlar.wares.compactMap(\.buy), in: state, as: me)
+        let bought = try XCTUnwrap(pedlar.wares.first?.buy)
+        _ = try state.perform(bought.command, as: me)
+        pedlar = try XCTUnwrap(CompanionLedger(world: state, player: me).pedlar)
+        XCTAssertTrue(pedlar.wares[0].title.hasSuffix(": sold"), pedlar.wares[0].title)
+        XCTAssertNil(pedlar.wares[0].buy)
+
+        state.houses[me].stock = Stock()
+        pedlar = try XCTUnwrap(CompanionLedger(world: state, player: me).pedlar)
+        XCTAssertTrue(pedlar.wares.dropFirst().allSatisfy { $0.buy == nil && $0.why != nil }, "Why not, in the realm's words")
+    }
+
     /// The Lantern Inn on the phone: the House's keys told, a word when one
     /// more silver would be lost; each chest offered one the rules open, a
     /// gold one for moonsalt where there's no gold key.

@@ -163,6 +163,22 @@ public struct CompanionLedger: Equatable, Sendable {
         public let name: String
     }
 
+    /// The Pedlar of the Still's wares, while he lies off one of the House's
+    /// holds: where he lies and when he poles away, and each ware.
+    public struct Wares: Equatable, Sendable {
+        public let said: String
+        public let wares: [Ware]
+    }
+
+    /// One of the pedlar's wares: what it is and what he asks, or that it is
+    /// sold; bought where the rules would sell it now, or why not.
+    public struct Ware: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let title: String
+        public let buy: Order?
+        public let why: String?
+    }
+
     /// The Lantern Inn: the House's keys, and the chests it may open now.
     public struct Inn: Equatable, Sendable {
         /// The keys the House holds, and a word where one more would be lost.
@@ -241,6 +257,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let standing: Standing
     /// The Lantern Inn's keys and the chests the House may open.
     public let inn: Inn
+    /// The pedlar's wares, while he lies off one of the House's holds.
+    public let pedlar: Wares?
     /// The House's letters with other keepers, the latest first.
     public let letters: [Letter]
     /// The keepers' Houses it may write to: those it has letters with, the
@@ -297,7 +315,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.leave == b.leave && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
-            && a.letters == b.letters && a.correspondents == b.correspondents
+            && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar
     }
 
     /// The House's stores as one stock.
@@ -488,6 +506,7 @@ public struct CompanionLedger: Equatable, Sendable {
         standing = CompanionLedger.standing(in: world, player: player)
         inn = CompanionLedger.inn(in: world, player: player)
         (letters, correspondents) = CompanionLedger.letters(in: world, player: player)
+        pedlar = CompanionLedger.pedlar(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -633,6 +652,24 @@ public struct CompanionLedger: Equatable, Sendable {
         if given.tribute != false { others.append(taken("Pay no tribute", .stand(.tribute(false)))) }
         if !given.isEmpty { others.append(taken("Keep the House as it sees fit", .standDown)) }
         return Standing(said: given.said, musters: musters, raises: raises, others: others.compactMap { $0 })
+    }
+
+    /// The pedlar lying off one of the House's holds, as the Mac's card tells
+    /// him: where he lies, when he poles away, and each ware with its price,
+    /// bought where the rules would sell it or why not; none, while none lies off.
+    static func pedlar(in world: GameState, player: Int) -> Wares? {
+        guard let pedlar = world.pedlar(for: player) else { return nil }
+        let left = max(1, pedlar.came + NullmereCore.Pedlar.stays - world.watch)
+        let said = "The Pedlar of the Still lies off \(world.hold(pedlar.hold)?.name ?? "your hold"); "
+            + "he poles away in \(left) watch\(left == 1 ? "" : "es")."
+        let wares = pedlar.wares.map { ware -> Ware in
+            guard !ware.sold else { return Ware(id: ware.id, title: "\(ware.goods.title): sold", buy: nil, why: nil) }
+            let refusal = world.buyRefusal(ware.id, as: player)
+            return Ware(id: ware.id, title: "\(ware.goods.title), for \(ware.price)",
+                        buy: refusal == nil ? Order(title: "Buy \(ware.goods.title)", command: .buyFromPedlar(ware: ware.id)) : nil,
+                        why: refusal?.description)
+        }
+        return Wares(said: said, wares: wares)
     }
 
     /// The House's letters, the latest first, lined as the Mac lines them;
