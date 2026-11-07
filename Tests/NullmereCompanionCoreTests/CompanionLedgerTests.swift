@@ -22,6 +22,27 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// The Lantern Inn on the phone: the House's keys told, a word when one
+    /// more silver would be lost; each chest offered one the rules open, a
+    /// gold one for moonsalt where there's no gold key.
+    func testThePhoneOpensTheInnsChests() throws {
+        var (state, me) = try world()
+        state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 0)
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.inn.opens.isEmpty, "No key and no moonsalt: no chest")
+        XCTAssertEqual(ledger.inn.keys, "0 silver keys and 0 gold keys, of \(InnKeys.mostKeys) of each kept")
+
+        state.innBook = [me: InnKeys(silver: InnKeys.mostKeys, gold: 0, sinceCommander: 0, opened: 0)]
+        state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 100)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.inn.opens.map(\.title), ["Open a silver chest", "Open the gold chest for \(InnKeys.goldPrice.moonsalt) moonsalt"])
+        XCTAssertTrue(ledger.inn.keys.hasSuffix("open a silver chest, or the next silver key is lost"), ledger.inn.keys)
+        assertTaken(ledger.inn.opens, in: state, as: me)
+        _ = try state.perform(ledger.inn.opens[0].command, as: me)
+        XCTAssertEqual(state.innKeys(of: me).silver, InnKeys.mostKeys - 1)
+        XCTAssertFalse(CompanionLedger(world: state, player: me).inn.keys.contains("lost"), "Room for the next key")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

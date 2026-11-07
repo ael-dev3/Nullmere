@@ -148,6 +148,15 @@ public struct CompanionLedger: Equatable, Sendable {
         public let others: [Order]
     }
 
+    /// The Lantern Inn: the House's keys, and the chests it may open now.
+    public struct Inn: Equatable, Sendable {
+        /// The keys the House holds, and a word where one more would be lost.
+        public let keys: String
+        /// A silver chest opened with a key; a gold one with a key, or for
+        /// moonsalt without one; each where the rules would open it.
+        public let opens: [Order]
+    }
+
     /// A question among the alliances waiting on the keeper's answer: an
     /// alliance's invitation to the House, or a House asking to join the
     /// alliance it leads, with the answers the rules take.
@@ -215,6 +224,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public static let dealtWith = 12
     /// The caretaker's standing orders, and the orders that would change them.
     public let standing: Standing
+    /// The Lantern Inn's keys and the chests the House may open.
+    public let inn: Inn
     /// The latest reports shown open; the earlier ones folded beneath them.
     public static let reportsOpen = 3
 
@@ -265,7 +276,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
-            && a.dealings == b.dealings && a.standing == b.standing
+            && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
     }
 
     /// The House's stores as one stock.
@@ -454,6 +465,7 @@ public struct CompanionLedger: Equatable, Sendable {
         // The alliance's studies, as the Mac's Alliance panel reads them.
         dealings = CompanionLedger.dealings(in: world, player: player)
         standing = CompanionLedger.standing(in: world, player: player)
+        inn = CompanionLedger.inn(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -599,6 +611,22 @@ public struct CompanionLedger: Equatable, Sendable {
         if given.tribute != false { others.append(taken("Pay no tribute", .stand(.tribute(false)))) }
         if !given.isEmpty { others.append(taken("Keep the House as it sees fit", .standDown)) }
         return Standing(said: given.said, musters: musters, raises: raises, others: others.compactMap { $0 })
+    }
+
+    /// The House's keys at the Lantern Inn, five of each kind kept and more
+    /// lost, and the chests the rules would open now.
+    static func inn(in world: GameState, player: Int) -> Inn {
+        let keys = world.innKeys(of: player)
+        func counted(_ count: Int, _ kind: String) -> String { "\(count) \(kind) key\(count == 1 ? "" : "s")" }
+        var said = "\(counted(keys.silver, "silver")) and \(counted(keys.gold, "gold")), of \(InnKeys.mostKeys) of each kept"
+        if keys.silver >= InnKeys.mostKeys { said += ": open a silver chest, or the next silver key is lost" }
+        let opens = InnChest.allCases.compactMap { chest -> Order? in
+            guard world.innRefusal(chest, as: player) == nil else { return nil }
+            let title = chest == .gold && keys.gold == 0
+                ? "Open the gold chest for \(InnKeys.goldPrice.moonsalt) moonsalt" : "Open a \(chest.named) chest"
+            return Order(title: title, command: .openInnChest(chest))
+        }
+        return Inn(keys: said, opens: opens)
     }
 
     static func strikes(for unit: Unit, in world: GameState, player: Int) -> [Order] {

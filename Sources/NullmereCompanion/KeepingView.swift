@@ -179,6 +179,18 @@ struct HouseTab: View {
                         }
                         .font(Night.small)
                     }
+                    // The Lantern Inn: the House's keys, and the chests it may open,
+                    // what one held told in the realm's word on it.
+                    Section("The Lantern Inn") {
+                        Text(verbatim: ledger.inn.keys)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(Array(ledger.inn.opens.enumerated()), id: \.offset) { open in
+                            Button(open.element.title) { session.give(open.element.command, told: open.element.title) }
+                                .font(Night.body)
+                        }
+                    }
                     BarterSection(session: session, ledger: ledger)
                     // The satchel: each item, how many, what one does, and its uses now.
                     if !ledger.satchel.isEmpty {

@@ -369,6 +369,28 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// A chest of the Lantern Inn opened from the phone: the realm's word on
+    /// it says what it held, as the Mac tells it, and the key is spent.
+    func testAChestOfTheInnOpenedFromThePhoneSaysWhatItHeld() async throws {
+        let (db, running, mac, keeper, steward) = try await realm()
+        defer { running.cancel() }
+        let house = try XCTUnwrap(keeper.house)
+        await steward.reshape { state in state.world.innBook = [house: InnKeys(silver: 1, gold: 0, sinceCommander: 0, opened: 0)] }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in, a silver key to spend") { phone.ledger?.inn.opens.contains { $0.command == .openInnChest(.silver) } == true }
+        let open = try XCTUnwrap(phone.ledger?.inn.opens.first { $0.command == .openInnChest(.silver) })
+        phone.give(open.command, told: open.title)
+        try await until("the realm's word on the chest") { phone.word?.awaited == false }
+        let word = try XCTUnwrap(phone.word?.text)
+        XCTAssertTrue(word.hasPrefix("Open a silver chest: carried out by the realm. The Inn's silver chest holds "), word)
+        try await until("the key spent") { phone.ledger?.inn.opens.contains { $0.command == .openInnChest(.silver) } == false }
+        phone.unlink()
+        mac.close()
+    }
+
     /// A phone with no network says so of itself, never of a Mac: the
     /// realm's troubles are told on the phone in the phone's own words.
     func testAPhoneWithNoNetworkSaysSoOfItself() async throws {

@@ -274,11 +274,11 @@ public final class CompanionSession {
         case .settled(let world, let events):
             show(world)
             file(events, in: world)
-            carriedOut()
-        case .answered:
+            carriedOut(events)
+        case .answered(let events):
             // Across the network, an order carried out is answered so, the
             // world it made told as it changed.
-            carriedOut()
+            carriedOut(events)
         case .orderRefused(let error, let world):
             show(world)
             word = Word(text: "\(given ?? "Your order"): the realm refused it. \(error.description)", refused: true, awaited: false)
@@ -297,9 +297,19 @@ public final class CompanionSession {
         }
     }
 
-    private func carriedOut() {
+    /// The realm's word on the order given here, and what a chest of the
+    /// Lantern Inn opened by it held, as the Mac tells it.
+    private func carriedOut(_ events: [GameEvent] = []) {
         guard word?.awaited == true else { return }
-        word = Word(text: "\(given ?? "Your order"): carried out by the realm.", refused: false, awaited: false)
+        var text = "\(given ?? "Your order"): carried out by the realm."
+        if let house = keeper?.house, let world,
+           let held = events.lazy.compactMap({ event -> String? in
+               guard case .innChestOpened(house, _, _) = event else { return nil }
+               return world.tidings(of: event, for: house)?.text
+           }).first {
+            text += " " + held
+        }
+        word = Word(text: text, refused: false, awaited: false)
     }
 
     private func show(_ world: GameState) {

@@ -253,7 +253,10 @@ network comes back.
   kind of company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace
   made with any House or none, tribute paid or none, and the House kept as
-  it sees fit); Barter, a
+  it sees fit); the Lantern Inn, the House's keys (a word when one more
+  silver would be lost) and its chests to open, a silver with a key and a
+  gold with one or for moonsalt, what a chest held said in the realm's word
+  on it; Barter, a
   store for another, three to one and moonsalt as three of any other, with
   what it costs or why the realm would refuse it, in the Mac's words; the
   satchel,
