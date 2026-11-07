@@ -617,6 +617,15 @@ public struct GameState: Codable, Equatable, Sendable {
         holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
     }
 
+    /// What each of a House's stores gains as the watch turns, as its top
+    /// bar tells it: its holds' income, and the grain less its companies'
+    /// upkeep, below nothing where they eat more than the land brings in.
+    public func gain(of house: Int, territory owners: [Int?]? = nil) -> [Resource: Int] {
+        let income = self.income(of: house, territory: owners ?? territory())
+        let upkeep = self.upkeep(of: house)
+        return Dictionary(uniqueKeysWithValues: Resource.allCases.map { ($0, income[$0] - ($0 == .grain ? upkeep : 0)) })
+    }
+
     /// How much of each resource a House can keep. Holds add storehouses,
     /// and its studies deeper cellars; whatever comes in beyond this is lost.
     public func storage(of house: Int) -> Int {

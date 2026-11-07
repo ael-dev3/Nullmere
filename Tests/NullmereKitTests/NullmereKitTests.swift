@@ -1123,8 +1123,9 @@ final class TextSizeTests: XCTestCase {
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "a ledger", keepers: 1)), store: LocalStore(directory: dir))
         let state = session.state, me = session.player
         let ledger = session.ledger
-        XCTAssertEqual(ledger.income, state.income(of: me))
-        XCTAssertEqual(ledger.upkeep, state.upkeep(of: me))
+        XCTAssertEqual(ledger.gain, state.gain(of: me))
+        XCTAssertEqual(ledger.gain[.grain], state.income(of: me).grain - state.upkeep(of: me), "The companies fed from the grain")
+        XCTAssertEqual(ledger.gain[.stone], state.income(of: me).stone)
         XCTAssertEqual(ledger.room, state.storage(of: me))
         for resource in Resource.allCases {
             XCTAssertEqual(ledger.summaries[resource],

@@ -251,17 +251,7 @@ struct HouseTab: View {
                         }
                     }
                     Section("Stores") {
-                        ForEach(ledger.stores, id: \.resource) { store in
-                            HStack {
-                                Text(verbatim: store.resource.title)
-                                    .font(Night.body)
-                                Spacer()
-                                Text(verbatim: "\(store.amount)")
-                                    .font(Night.figures)
-                                    .foregroundStyle(Night.moon)
-                            }
-                            .accessibilityElement(children: .combine)
-                        }
+                        StoresRow(stores: ledger.stores, room: ledger.storage)
                         // Barter, the pedlar, the Lantern Inn and the satchel on a
                         // page of their own, the way to it saying what waits there.
                         NavigationLink {
@@ -370,6 +360,51 @@ struct HouseTab: View {
 /// House's holds, the Inn's keys and the chests it may open (what one held
 /// told in the realm's word on it), barter, and each item of the satchel
 /// with its uses now.
+/// The House's four stores side by side, as the Mac's top bar shows them:
+/// each figure, what it gains or loses as the watch turns, and its name,
+/// full where the holds can keep no more of it; two by two where the type
+/// is too large for four abreast.
+struct StoresRow: View {
+    typealias Store = (resource: Resource, amount: Int, gain: Int)
+    let stores: [Store]
+    let room: Int
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(stores, id: \.resource) { cell($0) }
+            }
+            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
+                ForEach(Array(stride(from: 0, to: stores.count, by: 2)), id: \.self) { first in
+                    GridRow {
+                        ForEach(stores[first..<min(first + 2, stores.count)], id: \.resource) { cell($0) }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func cell(_ store: Store) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(verbatim: "\(store.amount)")
+                .font(Night.figures)
+                .foregroundStyle(store.amount >= room ? Night.ink : Night.moon)
+            Text(verbatim: Resource.gainSaid(store.gain))
+                .font(Night.small.monospacedDigit())
+                .foregroundStyle(store.gain < 0 ? Night.bad : Night.good)
+            Text(verbatim: store.resource.storeName(store.amount, room: room))
+                .font(Night.small)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .fixedSize()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(store.resource.storeSaid(store.amount, gain: store.gain, room: room))
+    }
+}
+
 struct MarketPage: View {
     let session: CompanionSession
 

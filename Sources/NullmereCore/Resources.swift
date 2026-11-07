@@ -24,6 +24,24 @@ public enum Resource: String, CaseIterable, Codable, Sendable, PlainCases {
     public func barterCost(of amount: Int, paidIn give: Resource) -> Int {
         (amount * 3 * worth + give.worth - 1) / give.worth
     }
+
+    /// A store's gain as the watch turns, as it is shown beside the store
+    /// on the Mac's top bar and the phone: "+12", or "−3" where it loses.
+    public static func gainSaid(_ gain: Int) -> String {
+        gain >= 0 ? "+\(gain)" : "−\(-gain)"
+    }
+
+    /// A store's name beneath its figure, and that it is full where the
+    /// holds can keep no more of it.
+    public func storeName(_ amount: Int, room: Int) -> String {
+        amount >= room ? "\(title) · full" : title
+    }
+
+    /// A store as it is read aloud: "Grain 60, gaining 12 each watch,
+    /// storage 400".
+    public func storeSaid(_ amount: Int, gain: Int, room: Int) -> String {
+        "\(title) \(amount), \(gain >= 0 ? "gaining" : "losing") \(abs(gain)) each watch, storage \(room)"
+    }
 }
 
 /// An amount of each resource. Arithmetic never goes below zero; storing

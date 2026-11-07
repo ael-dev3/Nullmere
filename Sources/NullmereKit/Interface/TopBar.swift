@@ -29,8 +29,7 @@ struct TopBar: View {
         let state = session.state
         let house = session.playerHouse
         let ledger = session.ledger
-        let income = ledger.income
-        let upkeep = ledger.upkeep
+        let gain = ledger.gain
         let room = ledger.room
 
         HStack(spacing: 0) {
@@ -53,8 +52,7 @@ struct TopBar: View {
 
             HStack(spacing: compact ? 14 : 18) {
                 ForEach(Resource.allCases, id: \.self) { resource in
-                    let net = income[resource] - (resource == .grain ? upkeep : 0)
-                    ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room, named: !compact,
+                    ResourceReadout(resource: resource, amount: house.stock[resource], net: gain[resource] ?? 0, room: room, named: !compact,
                                     summary: ledger.summaries[resource] ?? "",
                                     breakdown: { IncomeBreakdown(state: state, house: house.id, resource: resource, territory: session.territory) })
                 }
@@ -103,7 +101,7 @@ private struct ResourceReadout: View {
             .buttonStyle(.plain)
             .popover(isPresented: $showing, arrowEdge: .bottom) { IncomeCard(breakdown: breakdown()) }
             .help(summary)
-            .accessibilityLabel("\(resource.title) \(amount), \(net >= 0 ? "gaining" : "losing") \(abs(net)) each watch, storage \(room)")
+            .accessibilityLabel(resource.storeSaid(amount, gain: net, room: room))
             .accessibilityHint("Shows where it comes from.")
     }
 
@@ -115,12 +113,12 @@ private struct ResourceReadout: View {
                     Text(verbatim: "\(amount)")
                         .font(.nm(13, weight: .regular).monospacedDigit())
                         .foregroundStyle(amount >= room ? Palette.glow : Palette.ink)
-                    Text(verbatim: net >= 0 ? "+\(net)" : "−\(-net)")
+                    Text(verbatim: Resource.gainSaid(net))
                         .font(.nm(10, weight: .regular).monospacedDigit())
                         .foregroundStyle(net < 0 ? Palette.bad : Palette.good)
                 }
                 if named {
-                    Caps(amount >= room ? "\(resource.title) · full" : resource.title, size: 7.5, tracking: 0.26)
+                    Caps(resource.storeName(amount, room: room), size: 7.5, tracking: 0.26)
                         .foregroundStyle(Palette.text(0.45))
                 }
             }

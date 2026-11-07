@@ -311,6 +311,43 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(GameState.waitingSaid(companies: 0, holds: 0))
     }
 
+    /// The House's stores on the phone as the Mac's top bar shows them:
+    /// each with what it gains as the watch turns, the holds' income and
+    /// the grain less what the companies eat, and that gain is what each
+    /// store gains when the watch turns; a store losing told so, read aloud
+    /// in the same words as on the Mac.
+    func testThePhoneTellsWhatEachStoreGainsAsTheWatchTurns() throws {
+        var (state, me) = try world()
+        state.houses[me].stock = Stock(grain: 40, timber: 40, stone: 40, moonsalt: 10)
+        let ledger = CompanionLedger(world: state, player: me)
+        let income = state.income(of: me)
+        let upkeep = state.upkeep(of: me)
+        XCTAssertGreaterThan(upkeep, 0, "The House's companies eat")
+        XCTAssertEqual(ledger.stores.map(\.resource), Resource.allCases)
+        XCTAssertEqual(ledger.stores.map(\.amount), [40, 40, 40, 10])
+        XCTAssertEqual(ledger.stores.map(\.gain), Resource.allCases.map { income[$0] - ($0 == .grain ? upkeep : 0) })
+        XCTAssertEqual(ledger.stores.map(\.gain), Resource.allCases.map { state.gain(of: me)[$0] })
+        // The watch turns: each store gains what was told.
+        _ = state.endWatch()
+        XCTAssertEqual(Resource.allCases.map { state.houses[me].stock[$0] }, ledger.stores.map { $0.amount + $0.gain })
+        // Companies that eat more than the land brings in: the grain told losing.
+        let seat = try XCTUnwrap(state.seat(of: me))
+        for _ in 0..<40 {
+            state.units.append(Unit(id: state.takeID(), kind: .spear, owner: me, position: seat.position))
+        }
+        let starving = CompanionLedger(world: state, player: me)
+        let grain = try XCTUnwrap(starving.stores.first { $0.resource == .grain })
+        XCTAssertLessThan(grain.gain, 0)
+        XCTAssertEqual(grain.gain, state.income(of: me).grain - state.upkeep(of: me))
+        XCTAssertEqual(Resource.gainSaid(12), "+12")
+        XCTAssertEqual(Resource.gainSaid(0), "+0")
+        XCTAssertEqual(Resource.gainSaid(-3), "−3")
+        XCTAssertEqual(Resource.grain.storeName(40, room: 400), "Grain")
+        XCTAssertEqual(Resource.grain.storeName(400, room: 400), "Grain · full")
+        XCTAssertEqual(Resource.timber.storeSaid(60, gain: 12, room: 400), "Timber 60, gaining 12 each watch, storage 400")
+        XCTAssertEqual(Resource.grain.storeSaid(60, gain: -3, room: 400), "Grain 60, losing 3 each watch, storage 400")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

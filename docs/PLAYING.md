@@ -265,7 +265,10 @@ invitations and Houses asking to join to answer, and allies' work to help.
   come with them and its vigour toward the moon's next chest, and the
   happening under way (until when, what counts in it, the House's points
   toward its next mark and its place) or when the next begins; the House's
-  stores, and beneath them the way to Barter, the Inn and the satchel,
+  four stores side by side, as the Mac's top bar shows them, each with
+  what it gains as the watch turns (the grain less what the companies
+  eat, in red where it loses) and "full" where the holds can keep no
+  more, and beneath them the way to Barter, the Inn and the satchel,
   which says only what waits there now (the pedlar lying off a hold and
   how many of his wares the House may buy, its keys to spend at the Inn
   and a word before a silver one is lost, the items it may use now); its

@@ -245,12 +245,16 @@ final class InterfaceReviewTests: XCTestCase {
         for hold in session.state.holds {
             XCTAssertEqual(session.holdsByPosition[hold.position]?.id, hold.id)
         }
-        // The world changes: the ledger follows.
-        let before = session.ledger.income
+        // The world changes: the ledger follows, the spears' upkeep no
+        // longer taken from the grain.
+        let before = session.ledger.gain
         let spear = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .spear })
+        let eaten = session.state.upkeep(of: spear)
         session.perform(.disband(unit: spear.id))
-        XCTAssertEqual(session.ledger.upkeep, session.state.upkeep(of: session.player))
-        XCTAssertEqual(session.ledger.income, before)
+        XCTAssertEqual(session.ledger.gain, session.state.gain(of: session.player))
+        var fed = before
+        fed[.grain] = (before[.grain] ?? 0) + eaten
+        XCTAssertEqual(session.ledger.gain, fed)
     }
 
     func testTheGateLeadsBackToTheLauncher() throws {

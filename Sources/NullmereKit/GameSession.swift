@@ -2464,11 +2464,12 @@ public final class GameSession {
 /// word means a company in the field.
 typealias Unit = NullmereCore.Unit
 
-/// What the top bar shows of the keeper's stores: each resource's income,
-/// the companies' upkeep, the room to store, and where each comes from.
+/// What the top bar shows of the keeper's stores: what each gains as the
+/// watch turns, the room to store, and where each comes from.
 struct Ledger {
-    let income: Stock
-    let upkeep: Int
+    /// What each store gains as the watch turns, upkeep taken from the
+    /// grain (GameState.gain).
+    let gain: [Resource: Int]
     let room: Int
     let summaries: [Resource: String]
 }
@@ -2477,12 +2478,11 @@ extension GameSession {
     var ledger: Ledger {
         if let kept = ledgerKept, kept.version == tilesVersion { return kept.ledger }
         let house = player
-        let income = state.holds(of: house).reduce(Stock.zero) { $0 + state.income(of: $1, territory: territory) }
         var summaries: [Resource: String] = [:]
         for resource in Resource.allCases {
             summaries[resource] = IncomeBreakdown(state: state, house: house, resource: resource, territory: territory).summary
         }
-        let ledger = Ledger(income: income, upkeep: state.upkeep(of: house), room: state.storage(of: house), summaries: summaries)
+        let ledger = Ledger(gain: state.gain(of: house, territory: territory), room: state.storage(of: house), summaries: summaries)
         ledgerKept = (tilesVersion, ledger)
         return ledger
     }

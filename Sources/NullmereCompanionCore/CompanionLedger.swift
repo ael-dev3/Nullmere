@@ -271,7 +271,9 @@ public struct CompanionLedger: Equatable, Sendable {
     /// The studies the House may begin now, its stores able to pay: none
     /// while one is under way.
     public let studies: [Order]
-    public let stores: [(resource: Resource, amount: Int)]
+    /// Each store, and what it gains as the watch turns, as the Mac's top
+    /// bar tells it (GameState.gain): below nothing where it loses.
+    public let stores: [(resource: Resource, amount: Int, gain: Int)]
     /// How much of each store the House's holds keep, what barter can
     /// bring it up to.
     public let storage: Int
@@ -371,7 +373,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
             && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
-            && a.stores.map(\.amount) == b.stores.map(\.amount) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
+            && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave && a.calls == b.calls
@@ -506,7 +508,8 @@ public struct CompanionLedger: Equatable, Sendable {
         studying = pursuit.map { "Studying \($0.study.title) \(BuildingKind.numeral($0.grade)), " + CompanionLedger.watches($0.watchesLeft) }
         studies = CompanionLedger.studies(in: world, player: player)
         let stock = houses.indices.contains(player) ? houses[player].stock : .zero
-        stores = Resource.allCases.map { ($0, stock[$0]) }
+        let gain = houses.indices.contains(player) ? world.gain(of: player) : [:]
+        stores = Resource.allCases.map { ($0, stock[$0], gain[$0] ?? 0) }
         let room = world.storage(of: player)
         storage = room
         let hurt = world.units(of: player).contains { $0.health < 100 }
