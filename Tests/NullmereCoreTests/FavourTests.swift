@@ -40,6 +40,25 @@ final class FavourTests: XCTestCase {
         XCTAssertTrue(Favour.chest(level: 10).allSatisfy { $0.count == 1 })
     }
 
+    /// A keeper's favour as the Mac and the phone tell it: none yet and what
+    /// the first level asks; a level, what is won and what the next asks,
+    /// what it gives and the watches kept unbroken; the highest.
+    func testAKeepersFavourIsToldInOneWording() {
+        var keeper = Keeper(id: "k", name: "Ama", house: 0, isReady: false, isOnline: true, arrival: 0)
+        XCTAssertEqual(keeper.favourSaid, "No favour yet: 0 won; 60 more to I.")
+        XCTAssertEqual(keeper.favourGivesSaid, "It gives your House nothing yet.")
+        XCTAssertEqual(keeper.streakSaid, "0 watches kept unbroken: the next brings 10 favour, and a favour chest comes in 10 watches.")
+        keeper.favour = 300
+        keeper.streak = 9
+        XCTAssertEqual(keeper.favourSaid, "Favour II: 300 won; 100 more to III.")
+        XCTAssertEqual(keeper.favourGivesSaid, "It gives your House \(Favour.effect(level: 2)).")
+        XCTAssertEqual(keeper.streakSaid, "9 watches kept unbroken: the next brings 28 favour, and a favour chest comes in 1 watch.")
+        keeper.favour = 12_000
+        keeper.streak = 1
+        XCTAssertEqual(keeper.favourSaid, "Favour X: 12000 won, the highest there is.")
+        XCTAssertEqual(keeper.streakSaid, "1 watch kept unbroken: the next brings 12 favour, and a favour chest comes in 9 watches.")
+    }
+
     func testKeepersThereAsTheWatchTurnsKeepItAndRiseInFavour() throws {
         var realm = realm()
         let ilsen = try realm.arrive("id-ilsen", name: "Ilsen", now: 1)

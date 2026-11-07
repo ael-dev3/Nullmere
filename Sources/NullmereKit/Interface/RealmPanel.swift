@@ -249,11 +249,7 @@ struct RealmPanel: View {
     /// The keeper's favour: its level, what they have won, and what the
     /// next level asks.
     static func favourLine(_ keeper: Keeper) -> String {
-        let favour = keeper.favour ?? 0
-        let level = Favour.level(of: favour)
-        let standing = level > 0 ? "Favour \(BuildingKind.numeral(level))" : "No favour yet"
-        let next = Favour.next(after: favour).map { "; \($0 - favour) more to \(BuildingKind.numeral(level + 1))" } ?? ", the highest there is"
-        return "\(standing): \(favour) won\(next)."
+        keeper.favourSaid
     }
 
     /// How far the keeper's favour has come toward its next level, 0 to 1.
@@ -267,10 +263,7 @@ struct RealmPanel: View {
     /// The watches the keeper has kept unbroken: what the next brings, and
     /// when the next favour chest comes.
     static func streakLine(_ keeper: Keeper) -> String {
-        let streak = keeper.streak ?? 0
-        let chest = Favour.chestEvery - streak % Favour.chestEvery
-        return "\(streak) watch\(streak == 1 ? "" : "es") kept unbroken: the next brings \(Favour.earned(streak: streak)) favour, "
-            + "and a favour chest comes in \(chest) watch\(chest == 1 ? "" : "es")."
+        keeper.streakSaid
     }
 
     /// The Sundering: under way, how the shores stand and where the House
@@ -372,14 +365,13 @@ struct RealmPanel: View {
     /// The keeper's favour with the lake, won by keeping the watches.
     @ViewBuilder
     private func favour(_ keeper: Keeper) -> some View {
-        let level = Favour.level(of: keeper.favour ?? 0)
         Caps("Your favour", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
         VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: RealmPanel.favourLine(keeper))
                 .font(.nm(11, weight: .medium))
                 .foregroundStyle(Palette.ink)
             Meter(fraction: RealmPanel.favourProgress(keeper.favour ?? 0), label: "Toward the next")
-            Text(verbatim: "It gives your House \(Favour.effect(level: level)).")
+            Text(verbatim: keeper.favourGivesSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)

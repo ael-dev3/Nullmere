@@ -63,6 +63,32 @@ public enum Favour {
     }
 }
 
+extension Keeper {
+    /// Their favour as the Mac's Realm panel and the phone tell it: its
+    /// level, what they have won, and what the next level asks.
+    public var favourSaid: String {
+        let won = favour ?? 0
+        let level = Favour.level(of: won)
+        let standing = level > 0 ? "Favour \(BuildingKind.numeral(level))" : "No favour yet"
+        let next = Favour.next(after: won).map { "; \($0 - won) more to \(BuildingKind.numeral(level + 1))" } ?? ", the highest there is"
+        return "\(standing): \(won) won\(next)."
+    }
+
+    /// What their favour gives their House.
+    public var favourGivesSaid: String {
+        "It gives your House \(Favour.effect(level: Favour.level(of: favour ?? 0)))."
+    }
+
+    /// The watches they have kept unbroken: what the next brings, and when
+    /// the next favour chest comes.
+    public var streakSaid: String {
+        let kept = streak ?? 0
+        let chest = Favour.chestEvery - kept % Favour.chestEvery
+        return "\(kept) watch\(kept == 1 ? "" : "es") kept unbroken: the next brings \(Favour.earned(streak: kept)) favour, "
+            + "and a favour chest comes in \(chest) watch\(chest == 1 ? "" : "es")."
+    }
+}
+
 extension GameState {
     /// The favour level a House stands at: its keeper's; none for a
     /// steward's.

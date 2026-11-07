@@ -265,10 +265,12 @@ a vote on the realm's law to cast.
   keeper has what it asks) and Refuse, which asks again where refusing a
   steward's demand is war; the Lyceum while it sits, as the Mac's card
   sets it, its next question with its four answers, one at a time until
-  all five are given; Labours and happenings, as the Mac's Realm panel
-  tells them: the watch's labours, folded beneath how far the House has
-  come with them and its vigour toward the moon's next chest, and the
-  happening under way (until when, what counts in it, the House's points
+  all five are given; Labours, favour and happenings, as the Mac's Realm
+  panel tells them: the watch's labours, folded beneath how far the House
+  has come with them and its vigour toward the moon's next chest; the
+  keeper's favour ("Favour II: 300 won; 100 more to III."), folded beneath
+  it what it gives the House and the watches kept unbroken until the next
+  favour chest; and the happening under way (until when, what counts in it, the House's points
   toward its next mark and its place) or when the next begins; the way to
   Barter, the Inn and the satchel,
   which says only what waits there now (the pedlar lying off a hold and

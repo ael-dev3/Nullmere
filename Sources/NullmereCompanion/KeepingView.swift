@@ -215,10 +215,11 @@ struct HouseTab: View {
                             }
                         }
                     }
-                    // The watch's labours, folded beneath how they stand, and the
-                    // happening under way or the next, as the Mac's Realm panel tells them.
-                    if ledger.course.labours != nil || ledger.course.happening != nil {
-                        Section("Labours and happenings") {
+                    // The watch's labours, folded beneath how they stand, the
+                    // keeper's favour, and the happening under way or the next,
+                    // as the Mac's Realm panel tells them.
+                    if ledger.course.labours != nil || ledger.course.happening != nil || session.keeper != nil {
+                        Section("Labours, favour and happenings") {
                             if let labours = ledger.course.labours {
                                 DisclosureGroup {
                                     ForEach(Array(ledger.course.tasks.enumerated()), id: \.offset) { task in
@@ -234,6 +235,24 @@ struct HouseTab: View {
                                 } label: {
                                     Text(verbatim: labours)
                                         .font(Night.small)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            // The keeper's favour with the lake, won by keeping the
+                            // watches: what it gives and when the next chest comes,
+                            // folded beneath it.
+                            if let keeper = session.keeper {
+                                DisclosureGroup {
+                                    ForEach([keeper.favourGivesSaid, keeper.streakSaid], id: \.self) { line in
+                                        Text(verbatim: line)
+                                            .font(Night.small)
+                                            .foregroundStyle(Night.ink.opacity(0.75))
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                } label: {
+                                    Text(verbatim: keeper.favourSaid)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.moon)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
