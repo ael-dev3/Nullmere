@@ -10,6 +10,44 @@ current as the work goes; each line says what is there now, not what is
 planned, and what CI has shown of it. The rules of every system are in
 [PLAYING.md](PLAYING.md).
 
+## Acceptance matrix (November 7)
+
+What ael set as the release bar, each part with the evidence it needs and
+the evidence there is. **Passed** needs that evidence shown, in CI or on the
+hardware named; **Passed here** was shown on a real server in a working
+session and is wired into CI, awaiting its first run there; **Built** means
+the code is in the app and its tests pass, but the evidence it needs is not
+yet shown; **Unverified** means the evidence needs hardware, signing or a
+device CI hasn't got, so it is not passed; **Not met** is plainly short.
+
+| Area | Requirement | Evidence it needs | Evidence now | Status |
+|---|---|---|---|---|
+| Apple's on-device model | Commanders take counsel through real on-device inference | A run of `scripts/check-counsel.sh` on a Mac with Apple Intelligence: the model's own words, held to counsel's rules | The check runs on every CI push through the app, but CI's macOS runners are virtual Macs the framework reports `deviceNotEligible`, so it says so and exits as unverified. No run on supported hardware is recorded yet | **Unverified** |
+| | Grounded in the game's state | The briefing and the model's tools reading the keeper's own view | `CommanderCounsel` briefs the commander from the keeper's view (their company, the House's affairs, the watch); four tools look at a company, the land about it, the House's affairs, and put forward an order. Tested on Linux and the Mac (`CommanderCounselTests`, `CounselSessionTests`) | **Built** |
+| | Memory | What was said kept and recalled within the model's context | `CounselMemory`, twelve exchanges a commander, kept for the age by the Mac and recalled within the share of the context the briefing leaves (`CounselBudget`); tested | **Built** |
+| | Safe, validated actions | The model proposes, never orders; every proposal held to the rules | A proposal is read against the keeper's view into the order the realm would take or why it wouldn't; the keeper gives it or sets it aside; the realm judges it as every order. Tested (`CounselSheetTests`, `CounselSessionTests`) | **Built** |
+| | Streaming, cancellation, errors | Words shown as spoken; Stop stops; each failure said plainly | Streamed snapshots shown as they come, first words and the whole timed; Stop cancels the answer and says so; each of the framework's errors told in the game's words (refused, too long, busy, language, assets missing, slow) | **Built**; on-device timings **Unverified** |
+| | Honest unavailability | A Mac that can't run the model told why, nothing answered in its place | Every reason the model can't speak said plainly in the counsel sheet, its words field and Ask turned off, with no canned or cloud answer anywhere; shown on CI's virtual Macs on every run (`deviceNotEligible`, run 652) | **Passed** (CI) |
+| | What the hardware must be | Apple's own requirements | Apple Intelligence on a Mac with Apple silicon (M1 or later) running macOS 26 or later, Apple Intelligence turned on and its model downloaded; on iPhone, a 15 Pro or later; on iPad, M1 or later or the A17 Pro mini | Requirements stated |
+| Companion iOS app | Builds for iOS | A build for the iOS Simulator in CI | `scripts/build-companion.sh` builds it from the package and bundles it; wired into CI ("Build the companion for the iOS Simulator") | **Built**, CI run pending |
+| | Runs | Installed and launched in a simulator, its screens captured | `scripts/smoke-test-companion.sh` installs and launches it on the newest iPhone simulator CI has and captures its pairing, House, Army and Alliance screens (`build/companion-*.png`, kept with the run's screenshots) | **Built**, CI run pending |
+| | Same keeper, live realm, securely | Linked by the keeper's own Mac; its own key; the Mac's key never leaves the Mac | The Mac offers a code's digest; the phone brings the code under its own identity, kept in its keychain for that phone alone; a sixty-bit code, once and for ten minutes; four devices at most; no phone may seal, take up a keeper by words, or link another; a keeper taken to another Mac leaves the old phones behind; a phone links only over HTTPS or to a realm on the same machine. Tested (`CompanionLinkTests`, `CompanionRealmTests`, `CompanionSessionTests`) | **Passed here** |
+| | Useful realm, alliance and army management | The keeper's House kept from the phone | The realm, the watch and its time, readiness; stores, holds and what they raise; companies with Fortify, Halt, Recall, Drill and March to a hold; the alliance, its words and the realm's, and a line to say; the chronicle | **Built** |
+| | Mac and iPhone kept in step, and reconnection | Two devices of one keeper on a real SpacetimeDB server, each seeing the other's orders, the phone back after being away | On SpacetimeDB 2.13 here: the phone took the Mac's link and came in as the keeper in 0.10 s; an order given on the phone was seen on the Mac in 0.10 s, one on the Mac on the phone in 0.12 s; back by its own key, the phone was shown what was done while it was away in 0.08 s; let go from the Mac, it was told so (`testAKeepersPhonePlaysBesideTheirMacThroughSpacetime`, run in CI's realm job from now on). Both real apps together, the Mac's order report and the phone's own, in `scripts/smoke-test-companion.sh` | **Passed here**; CI pending |
+| | On a real iPhone | The app signed by a developer team, run on a device | Needs an Apple developer team's signing and a device; CI has neither | **Unverified** |
+| Rise of Kingdoms parity | Its systems, as shipped live | The parity list below, item by item | Scored 5 of 10 overall in Where it stands; every system of Rise of Kingdoms and Warpkeep listed below with what is there and what is not | **Not met** |
+| Visuals | Rendered gameplay on the level of RoK | Screenshots of the game as it runs, at the scales played | Every CI run photographs the launcher, the door, the world and the network realm, kept on the `ci-shots` branch; Blender-made models for every figure and work | **Not met** (5) |
+| Animation | Every figure moving as RoK's do | The motion itself, shown | Clips keyed in Blender and played bone by bone, shown in the trailer and the screenshots | **Not met** (6) |
+| Audio | A score and foley of RoK's standing | The sound, rendered and measured | An original score played on recorded instruments (CC0 timbres, credited), thirty-one cues, each rendered and measured in CI's sound tests | **Not met** (7) |
+| Gameplay and balance | Ages that end fairly and play long | Ages played out and measured | Ages measured by the hundred (how they end, who wins, by seat and temper), in the README and below | **Built**; no live players' balance yet |
+| Interface, onboarding, accessibility | RoK's onboarding; every screen accessible | The accessibility audit, the first hour taught | Every screen through the Mac's accessibility audit and the map walked by VoiceOver's tree in CI's UI job; the first hour taught in play; the companion's screens in SwiftUI's own controls, labelled | **Passed** (CI) for the Mac's audit; **Not met** for RoK's polish |
+| Networking, scale, security | A live realm for everyone, at scale, secure | Clients playing on a real server; a full realm at once; requests audited | Several shipped clients on a real server in CI; every seat of a ninety-six-seat realm taken at once; requests bounded and audited; the companion's linking above. The realm proper on maincloud waits on the maintainer's sign-in, and kingdoms of thousands are not reached | **Not met** (5) |
+| Performance | Frames in good time on the Macs keepers have | Frame and GPU times measured against a baseline | CI measures frame and GPU times on its virtual Macs against `perf/baseline.json` and fails a regression; `scripts/measure-mac.sh` adds real Macs' figures to `perf/mac/` | **Passed** (CI, virtual GPU); real Macs **Unverified** |
+| Tests and docs | The game tested and documented | The suites green; the docs current | 1,715 tests on the Mac and 1,218 on Linux before the companion's, coverage floors held per module; PLAYING, REALM and DEVELOPING kept with the code | **Passed** (CI) when the run is green |
+
+Nothing here is ten of ten, and none of it is called so until every area
+has the evidence it needs.
+
 ## Where it stands
 
 | | Requirement | Score now | What is there | What Rise of Kingdoms has that this lacks |
