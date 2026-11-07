@@ -714,6 +714,38 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(again.why, RuleError.prophecyOpen.description)
     }
 
+    /// The titles of the Spire on the phone, as the Mac's Realm panel tells
+    /// them: no broken Spire found, none told; held by the House, it names
+    /// them, each House among those offered named where the rules take it;
+    /// named, the title borne told to the House named and to the giver.
+    func testThePhoneNamesTheSpiresTitles() throws {
+        var (state, me) = try world()
+        XCTAssertFalse(CompanionLedger(world: state, player: me).titles.shown)
+        let ground = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.hold(at: hex) == nil
+        })
+        state.shrines = (state.shrines ?? []) + [Shrine(id: 99, kind: .brokenSpire, position: ground, holder: me, since: state.watch)]
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.titles.shown)
+        XCTAssertTrue(ledger.titles.mayName)
+        XCTAssertEqual(ledger.titles.giver, "Your House holds the broken Spire: you name the realm's titles.")
+        XCTAssertTrue(ledger.hasRealmMatters)
+        let others = state.houses.indices.filter { $0 != me }
+        let title = try XCTUnwrap(Title.allCases.first)
+        let naming = CompanionLedger.naming(title, among: others, in: state, player: me)
+        XCTAssertEqual(naming.map(\.title), others.map { "Name \(state.houses[$0].title) \(title.title)" })
+        assertTaken(naming, in: state, as: me)
+        _ = try state.perform(try XCTUnwrap(naming.first).command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.titles.borne.map(\.title), [title.title])
+        XCTAssertEqual(ledger.titles.borne.first?.house, state.houses[others[0]].title)
+        XCTAssertEqual(ledger.titles.borne.first?.isBoon, title.isBoon)
+        XCTAssertEqual(CompanionLedger.naming(title, among: [others[0]], in: state, player: me), [], "Borne already")
+        let named = CompanionLedger(world: state, player: others[0]).titles
+        XCTAssertEqual(named.borne.first?.house, "Your House")
+        XCTAssertFalse(named.mayName)
+    }
+
     /// Whispers on the water from the phone, as the Mac's Realm panel makes
     /// and tells them: nothing until a House is chosen; granaries low, one
     /// whisper for its moonsalt, taken by the rules; a host, one at each

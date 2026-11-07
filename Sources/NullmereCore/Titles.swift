@@ -110,6 +110,22 @@ extension GameState {
         return holder
     }
 
+    /// Who names the realm's titles, in a line, as the Mac's Realm panel and
+    /// the phone tell it to a keeper's House.
+    public func titleGiverSaid(to house: Int) -> String {
+        guard let spire = holySites.first(where: { $0.kind == .brokenSpire }) else {
+            return brokenSpireStands
+                ? "The broken Spire stands where your House has not yet been. A keeper's House that holds it names the realm's titles."
+                : "No broken Spire stands this age, and no titles are named."
+        }
+        guard let holder = spire.holder, houses.indices.contains(holder) else {
+            return "The broken Spire is held by none. A keeper's House that holds it names the realm's titles."
+        }
+        if titleGiver == house { return "Your House holds the broken Spire: you name the realm's titles." }
+        if titleGiver == holder { return "\(houses[holder].title) holds the broken Spire, and names the realm's titles." }
+        return "\(houses[holder].title) holds the broken Spire; its steward names no titles."
+    }
+
     /// Why a House can't name another to a title now, if it can't: it must
     /// be a keeper's House holding the broken Spire, the other a living
     /// House not its own and not bearing the title already, and the title

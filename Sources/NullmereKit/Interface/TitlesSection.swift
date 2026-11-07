@@ -22,17 +22,7 @@ struct TitlesSection: View {
 
     /// Who names the realm's titles, in a line.
     static func giverLine(_ state: GameState, player: Int) -> String {
-        guard let spire = state.holySites.first(where: { $0.kind == .brokenSpire }) else {
-            return state.brokenSpireStands
-                ? "The broken Spire stands where your House has not yet been. A keeper's House that holds it names the realm's titles."
-                : "No broken Spire stands this age, and no titles are named."
-        }
-        guard let holder = spire.holder, state.houses.indices.contains(holder) else {
-            return "The broken Spire is held by none. A keeper's House that holds it names the realm's titles."
-        }
-        if state.titleGiver == player { return "Your House holds the broken Spire: you name the realm's titles." }
-        if state.titleGiver == holder { return "\(state.houses[holder].title) holds the broken Spire, and names the realm's titles." }
-        return "\(state.houses[holder].title) holds the broken Spire; its steward names no titles."
+        state.titleGiverSaid(to: player)
     }
 
     var body: some View {

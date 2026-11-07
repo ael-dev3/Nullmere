@@ -602,6 +602,38 @@ struct RealmPage: View {
                         }
                     }
                 }
+                // The titles of the Spire, as the Mac's Realm panel tells them:
+                // who names them, each borne, and, for the House holding the
+                // broken Spire, a House named to a title.
+                if ledger.titles.shown {
+                    Section("Titles of the Spire") {
+                        Text(verbatim: ledger.titles.giver)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(Array(ledger.titles.borne.enumerated()), id: \.offset) { borne in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(verbatim: borne.element.title)
+                                        .font(Night.small)
+                                        .foregroundStyle(borne.element.isBoon ? Night.good : Night.bad)
+                                    Spacer()
+                                    Text(verbatim: borne.element.house)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.75))
+                                }
+                                Text(verbatim: borne.element.effect)
+                                    .font(Night.small)
+                                    .foregroundStyle(Night.ink.opacity(0.6))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                        if ledger.titles.mayName {
+                            TitleNamingRows(session: session, houses: ledger.dealings.map(\.id))
+                        }
+                    }
+                }
                 // Whispers on the water, as the Mac's Realm panel tells them:
                 // each heard, unsigned, and how it stands for the House; and
                 // one of its own let loose about another House.
@@ -1508,6 +1540,40 @@ struct ForetellRows: View {
                         .font(Night.small)
                         .foregroundStyle(Night.bad)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(Night.small)
+    }
+}
+
+/// A House named to one of the realm's titles by the House holding the
+/// broken Spire, as the Mac names one: the title chosen, then each House
+/// nearest the rules would let it name.
+struct TitleNamingRows: View {
+    let session: CompanionSession
+    let houses: [Int]
+    @State private var naming: Title?
+
+    var body: some View {
+        DisclosureGroup("Name a title…") {
+            Picker("The title", selection: $naming) {
+                Text(verbatim: "Choose").tag(Title?.none)
+                ForEach(Title.allCases, id: \.self) { title in
+                    Text(verbatim: title.title).tag(Title?.some(title))
+                }
+            }
+            if let naming, let world = session.world, let me = session.keeper?.house {
+                Text(verbatim: "\(naming.title), \(naming.effect).")
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(Array(CompanionLedger.naming(naming, among: houses, in: world, player: me).enumerated()), id: \.offset) { order in
+                    Button(order.element.title) {
+                        session.give(order.element.command, told: order.element.title)
+                        self.naming = nil
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
         }

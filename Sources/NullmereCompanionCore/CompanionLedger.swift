@@ -377,6 +377,33 @@ public struct CompanionLedger: Equatable, Sendable {
         public let standAgainst: Order?
     }
 
+    /// The titles of the Spire, as the Mac's Realm panel tells them: who
+    /// names them, each borne and by which House, and whether the House
+    /// names them itself.
+    public struct Titles: Equatable, Sendable {
+        public struct Borne: Equatable, Sendable {
+            public let title: String
+            public let house: String
+            public let effect: String
+            public let isBoon: Bool
+        }
+
+        public let giver: String
+        public let borne: [Borne]
+        /// The House holds the broken Spire and names the realm's titles.
+        public let mayName: Bool
+        /// Told in an age with a broken Spire found, or while any title is borne.
+        public let shown: Bool
+    }
+
+    /// The House's orders naming a House among `houses` to a title, each
+    /// where the rules would take it.
+    public static func naming(_ title: Title, among houses: [Int], in world: GameState, player: Int) -> [Order] {
+        houses.filter { world.bestowRefusal(title, on: $0, as: player) == nil }.map { house in
+            Order(title: "Name \(world.houses[house].title) \(title.title)", command: .bestow(title, on: house))
+        }
+    }
+
     /// A whisper heard on the water, as the Mac's Realm panel tells it,
     /// and how it stands for the House.
     public struct Heard: Equatable, Identifiable, Sendable {
@@ -534,7 +561,7 @@ public struct CompanionLedger: Equatable, Sendable {
     /// tell the House, or the House may foretell, so the way to their page
     /// is offered.
     public var hasRealmMatters: Bool {
-        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || !whispers.isEmpty || mayForetell
+        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || !whispers.isEmpty || titles.shown || mayForetell
     }
 
     /// What waits on the House among the realm's law, oaths and auguries,
@@ -632,6 +659,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let mayForetell: Bool
     /// The whispers heard on the water, the latest first.
     public let whispers: [Heard]
+    /// The titles of the Spire.
+    public let titles: Titles
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -692,7 +721,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers && a.titles == b.titles
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -1055,6 +1084,13 @@ public struct CompanionLedger: Equatable, Sendable {
                             standAgainst: open ? Order(title: "Stand against it with \(stake) moonsalt",
                                                        command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
         }
+        titles = Titles(giver: world.titleGiverSaid(to: player),
+                        borne: world.titlesBorne.map { borne in
+                            Titles.Borne(title: borne.title.title, house: borne.house == player ? "Your House" : title(borne.house),
+                                         effect: borne.title.effect, isBoon: borne.title.isBoon)
+                        },
+                        mayName: world.titleGiver == player,
+                        shown: world.holySites.contains { $0.kind == .brokenSpire } || !world.titlesBorne.isEmpty)
         whispers = world.whispersHeard.suffix(CompanionLedger.whispersShown).reversed().map { whisper in
             Heard(id: whisper.id, said: world.whisperSaid(whisper), standing: world.whisperStandingSaid(whisper, to: player),
                   unmasked: whisper.unmasked)

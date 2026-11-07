@@ -440,7 +440,12 @@ a vote on the realm's law to cast.
   tried by its Lanterns, or found false and its teller named); and
   Whisper…, one of the House's own about a House nearest it (a host
   gathered at one of its holds, granaries low, walls broken), let loose
-  for 10 moonsalt where the rules take it, or why not. The oaths between the House and others, as the Mac's
+  for 10 moonsalt where the rules take it, or why not. The titles of the
+  Spire, as the Mac's Realm panel tells them, in an age whose broken
+  Spire the House has found or while any title is borne: who names them,
+  each title borne and by which House, with what it gives or takes; and,
+  for the House holding the broken Spire, Name a title…, the title chosen
+  and then a House nearest it named where the rules take it. The oaths between the House and others, as the Mac's
   Houses tell them: the House's own ("Your oath to House Quell: peace
   until watch 40"), each with Renounce, asked first because it binds three
   watches more and the whole realm is told, and marked renounced once it
