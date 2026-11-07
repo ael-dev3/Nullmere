@@ -218,7 +218,12 @@ is there, and one device leaving takes them away only when neither has
 been heard from lately.
 
 - **House.** The realm, its age and watch, the time until the watch turns
-  and how many keepers are there and ready; the House's stores; its holds,
+  and how many keepers are there and ready; On the walls, the companies of
+  Houses at war gathered near the House's holds, as the Mac's watchmen tell
+  it; Envoys waiting, each offer in the words the Mac gives it, with the
+  words its House sent, how long it waits, and Accept (while the keeper has
+  what it asks) and Refuse, which asks again where refusing a steward's
+  demand is war; the House's stores; its holds,
   each with what it raises and musters and how long each has to go, and
   Raise and Muster: the works it may raise a level and the companies it
   may muster at the first tier now, the House able to pay; the realm's

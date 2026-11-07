@@ -827,7 +827,7 @@ struct EnvoyCards: View {
             }
             ForEach(heard.map { [$0] } ?? []) { envoy in
                 let house = state.houses[envoy.from]
-                let left = max(Envoy.patience - (state.watch - envoy.arrived), 1)
+                let left = state.watchesWaiting(of: envoy)
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
@@ -861,7 +861,7 @@ struct EnvoyCards: View {
                             QuietButton(title: muted ? "Show words" : "Hide words", size: 8.5) { session.setMuted(!muted, house: house) }
                                 .help(muted ? "Read \(house.name)'s words again." : "Hide \(house.name)'s words from now on, on this Mac.")
                         }
-                        if envoy.proposal == .tribute, !house.isPlayer {
+                        if state.refusingIsWar(envoy) {
                             // Refusing a steward's demand is war: asked twice, as war is.
                             ConfirmButton(title: "Refuse", confirm: "Refuse, and war?") {
                                 session.perform(.answer(envoy: envoy.id, accept: false))
@@ -885,35 +885,13 @@ struct EnvoyCards: View {
         }
     }
 
-    /// Whether the keeper can keep the terms: for a trade, what it asks of
-    /// them is in their stores. Accepting a trade they can't pay would only
-    /// send the envoy away.
+    /// Whether the keeper can keep the terms (see `GameState.canKeepTerms`).
     static func canAccept(_ envoy: Envoy, in state: GameState, player: Int) -> Bool {
-        guard envoy.proposal == .trade, let trade = envoy.trade else { return true }
-        return state.houses[player].stock[trade.take] >= trade.takeAmount
+        state.canKeepTerms(of: envoy, for: player)
     }
 
     static func words(for envoy: Envoy, from house: House, in state: GameState, player: Int) -> String {
-        switch envoy.proposal {
-        case .trade:
-            guard let trade = envoy.trade else { return "\(house.title) would trade, but its terms are lost." }
-            var line = "\(house.title) offers \(trade.given) for \(trade.taken) of yours. \(TradeComposer.note(asking: trade.asking))"
-            let have = state.houses[player].stock[trade.take]
-            if have < trade.takeAmount { line += " You have only \(have) \(trade.take.title.lowercased())." }
-            return line
-        case .peace:
-            return "\(house.title) asks for peace. Their companies would turn from yours, and yours from theirs."
-        case .pact:
-            return "\(house.title) offers a pact: shared sight across the water, and no blade between you."
-        case .fealty:
-            return "\(house.title) is beaten and bends the knee: it would be your vassal, its holds counted with yours, never to raise a blade against you."
-        case .tribute:
-            let price = state.tribute(from: player)
-            guard !house.isPlayer else {
-                return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and they can't ask again for \(GameState.tributeRespite) watches. Refuse, or send no answer, and war is theirs to choose."
-            }
-            return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and it keeps the peace for \(GameState.tributeRespite) watches, unless your Moonspire rises. Refuse, or send no answer, and it marches on you."
-        }
+        state.terms(of: envoy, for: player)
     }
 }
 
@@ -983,11 +961,7 @@ struct TradeComposer: View {
     /// How terms weigh, from the side of the House that would get `asking`
     /// percent of what it gives.
     static func note(asking: Int) -> String {
-        switch asking {
-        case ..<90: return "Generous: more given than asked, by barter worth."
-        case 90...110: return "Even terms, by barter worth."
-        default: return "More asked than given, by barter worth."
-        }
+        Trade.note(asking: asking)
     }
 
     static func line(for trade: Trade, stock: Stock, keeper: Bool) -> String {

@@ -101,6 +101,23 @@ struct HouseTab: View {
                         .tint(Night.moon)
                         WordLine(session: session)
                     }
+                    if !ledger.gatherings.isEmpty {
+                        Section("On the walls") {
+                            ForEach(ledger.gatherings, id: \.self) { gathering in
+                                Text(verbatim: gathering)
+                                    .font(Night.body)
+                                    .foregroundStyle(Night.bad)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    if !ledger.envoys.isEmpty {
+                        Section("Envoys waiting") {
+                            ForEach(ledger.envoys) { envoy in
+                                EnvoyRow(session: session, envoy: envoy)
+                            }
+                        }
+                    }
                     Section("Stores") {
                         ForEach(ledger.stores, id: \.resource) { store in
                             HStack {
@@ -367,6 +384,63 @@ struct AllianceTab: View {
             .background(Night.background)
             .navigationTitle("Alliance")
         }
+    }
+}
+
+/// An envoy waiting on the keeper: its offer as the Mac words it, the words
+/// its House sent, and the keeper's answer, which the realm carries out.
+struct EnvoyRow: View {
+    let session: CompanionSession
+    let envoy: CompanionLedger.Envoy
+    @State private var askingWar = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: "\(envoy.offer) from \(envoy.from)")
+                .font(Night.heading)
+            Text(verbatim: envoy.terms)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+            if let words = envoy.words {
+                Text(verbatim: "\u{201C}\(words)\u{201D}")
+                    .font(Night.small.italic())
+                    .foregroundStyle(Night.ink.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("\(envoy.from) writes: \(words)")
+            }
+            Text(verbatim: envoy.waits)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.5))
+            HStack(spacing: 10) {
+                if let accept = envoy.accept {
+                    Button(accept.title) { session.give(accept.command, told: "Accept the \(envoy.offer.lowercased()) of \(envoy.from)") }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityLabel("Accept the \(envoy.offer.lowercased()) of \(envoy.from)")
+                } else {
+                    Text(verbatim: "You haven't what it asks.")
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.5))
+                }
+                Button(envoy.refuse.title, role: envoy.refusingIsWar ? .destructive : nil) {
+                    if envoy.refusingIsWar { askingWar = true } else { refuse() }
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Refuse the \(envoy.offer.lowercased()) of \(envoy.from)")
+            }
+            .font(Night.small)
+        }
+        .padding(.vertical, 4)
+        .confirmationDialog("Refuse, and war?", isPresented: $askingWar, titleVisibility: .visible) {
+            Button("Refuse, and war", role: .destructive, action: refuse)
+            Button("Not yet", role: .cancel) {}
+        } message: {
+            Text(verbatim: "\(envoy.from) marches on a House that refuses its demand.")
+        }
+    }
+
+    private func refuse() {
+        session.give(envoy.refuse.command, told: "Refuse the \(envoy.offer.lowercased()) of \(envoy.from)")
     }
 }
 

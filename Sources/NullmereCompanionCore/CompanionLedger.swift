@@ -79,8 +79,30 @@ public struct CompanionLedger: Equatable, Sendable {
         public let canCounsel: Bool
     }
 
+    /// An envoy waiting on the keeper's answer: whose, what it offers in
+    /// the words the Mac tells it, the words its House sent with it, how
+    /// long it waits, and the answers the rules take.
+    public struct Envoy: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let from: String
+        public let offer: String
+        public let terms: String
+        public let words: String?
+        public let waits: String
+        /// Nil while the keeper hasn't what it asks.
+        public let accept: Order?
+        public let refuse: Order
+        /// A steward's demand of tribute, refused, is war at once.
+        public let refusingIsWar: Bool
+    }
+
     public let house: String
     public let watch: Int
+    /// Envoys waiting on the keeper, the first come first.
+    public let envoys: [Envoy]
+    /// Companies of Houses at war gathered near the House's holds, as the
+    /// walls' watchmen tell it.
+    public let gatherings: [String]
     public let companies: [Company]
     public let commanders: [Commander]
     /// Help for each ally with works, musters or study under way the
@@ -100,7 +122,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public static let linesShown = 30
 
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
-        a.house == b.house && a.watch == b.watch && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
+        a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
+            && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
             && a.holds == b.holds
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -112,6 +135,16 @@ public struct CompanionLedger: Equatable, Sendable {
         func title(_ house: Int) -> String { houses.indices.contains(house) ? houses[house].title : "The wilds" }
         house = title(player)
         watch = world.watch
+        envoys = world.envoys.filter { $0.to == player }.sorted { ($0.arrived, $0.id) < ($1.arrived, $1.id) }.map { envoy in
+            let left = world.watchesWaiting(of: envoy)
+            return Envoy(id: envoy.id, from: title(envoy.from), offer: envoy.proposal.title, terms: world.terms(of: envoy, for: player),
+                         words: envoy.words, waits: left == 1 ? "Leaves after this watch" : "Waits \(left) watches",
+                         accept: world.canKeepTerms(of: envoy, for: player)
+                            ? Order(title: "Accept", command: .answer(envoy: envoy.id, accept: true)) : nil,
+                         refuse: Order(title: "Refuse", command: .answer(envoy: envoy.id, accept: false)),
+                         refusingIsWar: world.refusingIsWar(envoy))
+        }
+        gatherings = world.gatherings(against: player).map(world.words(of:))
         let holds = world.holds(of: player).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
         companies = SpokenOrders.companies(in: world, player: player).map { unit in
             // Each order where it would do something: dig in a company of war

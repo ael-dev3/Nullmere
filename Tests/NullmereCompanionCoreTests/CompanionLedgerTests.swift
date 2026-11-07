@@ -143,6 +143,53 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// Envoys waiting on the keeper, the first come first, their terms as
+    /// the Mac words them and the answers the rules take; a trade the keeper
+    /// can't pay offered no acceptance; a steward's demand of tribute marked,
+    /// refusing it being war. And companies of a House at war gathered near
+    /// a hold, as the walls' watchmen tell it.
+    func testEnvoysWaitingAndGatheringsNearTheHoldsAreTold() throws {
+        var (state, me) = try world()
+        let others = state.houses.indices.filter { $0 != me }
+        let trader = others[0], demander = others[1], foe = others[2]
+        state.envoys.append(Envoy(id: state.takeID(), from: trader, to: me, proposal: .trade, arrived: state.watch,
+                                  words: "Fair winds to your House.",
+                                  trade: Trade(give: .grain, 40, for: .moonsalt, 9_000)))
+        state.envoys.append(Envoy(id: state.takeID(), from: demander, to: me, proposal: .tribute, arrived: state.watch))
+        state.envoys.append(Envoy(id: state.takeID(), from: trader, to: others[2], proposal: .pact, arrived: state.watch))
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.envoys.map(\.offer), ["Trade", "Tribute"], "Those waiting on this House alone")
+        let trade = try XCTUnwrap(ledger.envoys.first)
+        let tradeEnvoy = try XCTUnwrap(state.envoys.first { $0.id == trade.id })
+        XCTAssertEqual(trade.from, state.houses[trader].title)
+        XCTAssertEqual(trade.terms, state.terms(of: tradeEnvoy, for: me))
+        XCTAssertTrue(trade.terms.contains("You have only"), "Told what it lacks: \(trade.terms)")
+        XCTAssertNil(trade.accept, "Not offered what it can't pay")
+        XCTAssertEqual(trade.words, "Fair winds to your House.")
+        XCTAssertEqual(trade.waits, "Waits \(Envoy.patience) watches")
+        XCTAssertFalse(trade.refusingIsWar)
+        let tribute = ledger.envoys[1]
+        XCTAssertTrue(tribute.refusingIsWar, "A steward's demand refused is war")
+        let accept = try XCTUnwrap(tribute.accept)
+        assertTaken([accept, tribute.refuse, trade.refuse], in: state, as: me)
+
+        // Companies of a House at war gathered near the seat.
+        XCTAssertTrue(ledger.gatherings.isEmpty)
+        _ = try state.declareWar(by: me, on: foe)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        var placed = 0
+        for hex in seat.position.spiral(GameState.gatheringReach) where placed < GameState.gatheringCompanies {
+            guard hex.distance(to: seat.position) >= 2, state.map[hex]?.terrain.isPassable == true, state.unit(at: hex) == nil,
+                  state.hold(at: hex) == nil, state.wild(at: hex) == nil else { continue }
+            state.units.append(Unit(id: state.takeID(), kind: .spear, owner: foe, position: hex))
+            placed += 1
+        }
+        XCTAssertEqual(placed, GameState.gatheringCompanies)
+        let gathered = CompanionLedger(world: state, player: me).gatherings
+        XCTAssertEqual(gathered, ["\(GameState.gatheringCompanies) companies of \(state.houses[foe].title) gather near \(seat.name)."])
+        XCTAssertEqual(state.gatherings(against: me) { _ in false }, [], "Nothing gathers that isn't seen")
+    }
+
     func testACompanysStrikesAndGatheringAreThoseTheRulesTake() throws {
         var (state, me) = try world()
         // A company of war set beside a wild of the land, once the wilds rise.
