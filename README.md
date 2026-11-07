@@ -29,11 +29,14 @@ game alone. Envoys, a chronicler, a clerk who reads orders written in plain
 words and the House's own commanders, taking counsel with their keeper,
 speak through Apple's on-device model, on each keeper's own Mac. Nullmere
 Companion, its iPhone app, keeps the keeper's House from their phone beside
-their Mac, linked by a code the Mac shows: a chart of its land, its works,
-musters and companies sent from the chart, its commanders, its alliance's
-studies, help and rallies, its dealings with the Houses nearest, and
-counsel with its commanders and orders in the keeper's own words, read by
-the phone's own on-device model.
+their Mac, linked by a code the Mac shows: a chart of its land and its
+borders, its works, musters and companies sent from the chart, its
+commanders and the Spine, the caretaker's standing orders for while the
+keeper is away, the Lantern Inn and the pedlar, letters to other keepers,
+its alliance's studies, help and rallies, its dealings with the Houses
+nearest, and counsel with its commanders and orders in the keeper's own
+words, read by the phone's own on-device model. Out of reach, it says so
+and keeps the House; back, it takes up where it was.
 Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer
@@ -86,8 +89,8 @@ code changes: keepers' clients meet, trade, ally, speak and make war there,
 and the app enters a realm across the network. Going live takes five steps
 that need the maintainer's own accounts and ears, each a checklist in
 [GO-LIVE.md](docs/GO-LIVE.md). Measured honestly against Rise of Kingdoms,
-it scores 5 of 10 today; [GAPS.md](docs/GAPS.md) says what is there and what
-is still missing.
+it falls short of it today; [GAPS.md](docs/GAPS.md) says, area by area, what
+is there, what CI has shown of it and what is still missing.
 
 ## Documentation
 
