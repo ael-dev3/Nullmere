@@ -15,6 +15,9 @@ struct KeepingView: View {
             HouseTab(session: session)
                 .tabItem { Label("House", systemImage: "house") }
                 .tag(CompanionTab.house)
+            LandTab(session: session)
+                .tabItem { Label("Land", systemImage: "map") }
+                .tag(CompanionTab.land)
             ArmyTab(session: session)
                 .tabItem { Label("Army", systemImage: "shield") }
                 .tag(CompanionTab.army)
@@ -32,7 +35,7 @@ struct KeepingView: View {
 }
 
 enum CompanionTab: String, Hashable {
-    case house, army, alliance
+    case house, land, army, alliance
 }
 
 /// The realm's word on the last order, while it is news.
@@ -136,32 +139,7 @@ struct HouseTab: View {
                     }
                     Section("Holds") {
                         ForEach(ledger.holds) { hold in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(verbatim: hold.isSeat ? "\(hold.name), the seat" : hold.name)
-                                    .font(Night.body)
-                                ForEach(hold.work, id: \.self) { work in
-                                    Text(verbatim: work)
-                                        .font(Night.small)
-                                        .foregroundStyle(Night.ink.opacity(0.7))
-                                }
-                                if hold.work.isEmpty {
-                                    Text(verbatim: "Nothing raised or mustered")
-                                        .font(Night.small)
-                                        .foregroundStyle(Night.ink.opacity(0.5))
-                                }
-                            }
-                            .accessibilityElement(children: .combine)
-                            if !hold.works.isEmpty || !hold.musters.isEmpty {
-                                HStack(spacing: 10) {
-                                    OrdersMenu(title: "Raise", orders: hold.works, label: "Raise a work at \(hold.name)") { order in
-                                        session.give(order.command, told: "\(order.title) at \(hold.name)")
-                                    }
-                                    OrdersMenu(title: "Muster", orders: hold.musters, label: "Muster a company at \(hold.name)") { order in
-                                        session.give(order.command, told: "\(order.title) at \(hold.name)")
-                                    }
-                                }
-                                .font(Night.small)
-                            }
+                            HoldRows(session: session, hold: hold)
                         }
                     }
                     // The Archive's studies: the one under way, or those the House may begin.
@@ -247,55 +225,7 @@ struct ArmyTab: View {
                     }
                     ForEach(ledger.companies) { company in
                         Section {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(verbatim: company.name)
-                                    .font(Night.heading)
-                                Text(verbatim: "\(company.troops) troops\(company.leader.map { ", led by \($0)" } ?? "")")
-                                    .font(Night.small)
-                                    .foregroundStyle(Night.moon)
-                                Text(verbatim: company.doing)
-                                    .font(Night.small)
-                                    .foregroundStyle(Night.ink.opacity(0.75))
-                            }
-                            .accessibilityElement(children: .combine)
-                            if !company.orders.isEmpty || !company.marches.isEmpty {
-                                HStack(spacing: 10) {
-                                    ForEach(company.orders) { order in
-                                        Button(order.title) {
-                                            session.give(order.command, told: "\(order.title) the \(company.name)")
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .accessibilityLabel("\(order.title) the \(company.name)")
-                                    }
-                                    OrdersMenu(title: "March", orders: company.marches, label: "March the \(company.name) to a hold") { march in
-                                        session.give(march.command, told: "\(march.title), the \(company.name)")
-                                    }
-                                }
-                                .font(Night.small)
-                            }
-                            if !company.strikes.isEmpty || !company.gathers.isEmpty {
-                                HStack(spacing: 10) {
-                                    OrdersMenu(title: "Strike", orders: company.strikes, label: "Strike with the \(company.name)") { strike in
-                                        session.give(strike.command, told: "\(strike.title), the \(company.name)")
-                                    }
-                                    OrdersMenu(title: "Gather", orders: company.gathers, label: "Send the \(company.name) to gather") { gather in
-                                        session.give(gather.command, told: "\(gather.title), the \(company.name)")
-                                    }
-                                }
-                                .font(Night.small)
-                            }
-                            if !company.rallies.isEmpty || !company.gates.isEmpty {
-                                HStack(spacing: 10) {
-                                    OrdersMenu(title: "Rally", orders: company.rallies, label: "Send the \(company.name) to a rally") { rally in
-                                        session.give(rally.command, told: "\(rally.title), the \(company.name)")
-                                    }
-                                    OrdersMenu(title: "Keep gates", orders: company.gates,
-                                               label: "Send the \(company.name) to keep an ally's gates") { gates in
-                                        session.give(gates.command, told: "\(gates.title), the \(company.name)")
-                                    }
-                                }
-                                .font(Night.small)
-                            }
+                            CompanyRows(session: session, company: company)
                         }
                     }
                     if !ledger.commanders.isEmpty {
@@ -669,6 +599,103 @@ struct SatchelRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+/// A company of the House, as the Army tab and the Land tab list it: what
+/// it is about, and the orders it may be given now, each the realm's to
+/// decide.
+struct CompanyRows: View {
+    let session: CompanionSession
+    let company: CompanionLedger.Company
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: company.name)
+                .font(Night.heading)
+            Text(verbatim: "\(company.troops) troops\(company.leader.map { ", led by \($0)" } ?? "")")
+                .font(Night.small)
+                .foregroundStyle(Night.moon)
+            Text(verbatim: company.doing)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.75))
+        }
+        .accessibilityElement(children: .combine)
+        if !company.orders.isEmpty || !company.marches.isEmpty {
+            HStack(spacing: 10) {
+                ForEach(company.orders) { order in
+                    Button(order.title) {
+                        session.give(order.command, told: "\(order.title) the \(company.name)")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("\(order.title) the \(company.name)")
+                }
+                OrdersMenu(title: "March", orders: company.marches, label: "March the \(company.name) to a hold") { march in
+                    session.give(march.command, told: "\(march.title), the \(company.name)")
+                }
+            }
+            .font(Night.small)
+        }
+        if !company.strikes.isEmpty || !company.gathers.isEmpty {
+            HStack(spacing: 10) {
+                OrdersMenu(title: "Strike", orders: company.strikes, label: "Strike with the \(company.name)") { strike in
+                    session.give(strike.command, told: "\(strike.title), the \(company.name)")
+                }
+                OrdersMenu(title: "Gather", orders: company.gathers, label: "Send the \(company.name) to gather") { gather in
+                    session.give(gather.command, told: "\(gather.title), the \(company.name)")
+                }
+            }
+            .font(Night.small)
+        }
+        if !company.rallies.isEmpty || !company.gates.isEmpty {
+            HStack(spacing: 10) {
+                OrdersMenu(title: "Rally", orders: company.rallies, label: "Send the \(company.name) to a rally") { rally in
+                    session.give(rally.command, told: "\(rally.title), the \(company.name)")
+                }
+                OrdersMenu(title: "Keep gates", orders: company.gates,
+                           label: "Send the \(company.name) to keep an ally's gates") { gates in
+                    session.give(gates.command, told: "\(gates.title), the \(company.name)")
+                }
+            }
+            .font(Night.small)
+        }
+    }
+}
+
+/// A hold of the House, as the House tab and the Land tab list it: what it
+/// raises and musters, and the works and companies it may raise and muster
+/// now.
+struct HoldRows: View {
+    let session: CompanionSession
+    let hold: CompanionLedger.Hold
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: hold.isSeat ? "\(hold.name), the seat" : hold.name)
+                .font(Night.body)
+            ForEach(hold.work, id: \.self) { work in
+                Text(verbatim: work)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.7))
+            }
+            if hold.work.isEmpty {
+                Text(verbatim: "Nothing raised or mustered")
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.5))
+            }
+        }
+        .accessibilityElement(children: .combine)
+        if !hold.works.isEmpty || !hold.musters.isEmpty {
+            HStack(spacing: 10) {
+                OrdersMenu(title: "Raise", orders: hold.works, label: "Raise a work at \(hold.name)") { order in
+                    session.give(order.command, told: "\(order.title) at \(hold.name)")
+                }
+                OrdersMenu(title: "Muster", orders: hold.musters, label: "Muster a company at \(hold.name)") { order in
+                    session.give(order.command, told: "\(order.title) at \(hold.name)")
+                }
+            }
+            .font(Night.small)
+        }
     }
 }
 

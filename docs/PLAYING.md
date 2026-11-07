@@ -254,6 +254,20 @@ been heard from lately.
   whole; a draught to share while a company is hurt); the realm's
   chronicle, the latest first; and Ready for the watch to turn, which
   counts as the keeper's, Mac or phone.
+- **Land.** The chart of the House's land about its seat, as far as its
+  holds and companies reach (eighteen hexes at most): each hex in its
+  ground's colour as the House knows it, dimmed where the House doesn't
+  see it now and under fog where it hasn't explored, the lake's water
+  showing through; every hold of the realm in the colour of whose it is
+  (the House's own in moonlight, its allies' green, Houses at war red,
+  others grey), the companies and wilds the House sees, the lairs and
+  sites on ground it has explored, and the holy sites. Drag to look about
+  and pinch to look closer; Your seat turns the chart back. Tap a hex for
+  what lies there and the orders the rules would take there: a strike on
+  it from each company in reach, a rally called on it, Gather here and
+  March here with the House's nearest companies, six at most; the House's
+  own companies and hold there come with their orders, as on the Army and
+  House tabs. VoiceOver reads each mark on the chart and chooses it.
 - **Army.** Each company as the order book names it, its troops, its
   commander and what it is about, with the orders it may be given now:
   Fortify one not dug in, Halt one on the march, Recall one gathering or

@@ -311,7 +311,8 @@ extension GameState {
     }
 }
 
-func ordinal(_ number: Int) -> String {
+/// A number's ordinal in words to the tenth, and in figures past it.
+public func ordinal(_ number: Int) -> String {
     switch number {
     case 1: return "first"
     case 2: return "second"

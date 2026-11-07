@@ -9,8 +9,9 @@ import NullmereCounsel
 /// offered (NULLMERE_COMPANION_LINK, the link its QR code carries), comes
 /// in as the keeper, keeps their House as a keeper does from the phone (a
 /// company dug in, words said to the realm, an alliance's banner raised and
-/// words said to it, the keeper made ready for the watch to turn, a hold set
-/// to work), hearing
+/// words said to it, another company marched from the chart of the House's
+/// land, the keeper made ready for the watch to turn, a hold set to work),
+/// hearing
 /// the realm's word on each, is
 /// set aside and comes in again, and writes
 /// what it saw to Documents/companion-report.txt in its own container,
@@ -175,6 +176,29 @@ enum CompanionCheck {
             lines.append("Said to the alliance: \(toAllies)")
         } else {
             lines.append("Sworn to no alliance: nothing said to one")
+        }
+        // The chart of the House's land, and another company marched from
+        // it to open ground the House has explored near its seat.
+        if let world = session.world, let house = session.keeper?.house {
+            let chart = CompanionChart(world: world, player: house)
+            lines.append("Charted: \(chart.cells.count) hexes about \(world.seat(of: house)?.name ?? "the House"), "
+                         + "\(chart.cells.filter(\.explored).count) explored, \(chart.marks.count) marked, "
+                         + "\(chart.marks.filter { $0.side == .own }.count) the House's own")
+            let ground = chart.cells.filter { cell in
+                cell.explored && cell.terrain.isPassable && !cell.terrain.isWater && cell.hex.distance(to: chart.center) == 2
+                    && !chart.marks.contains { $0.hex == cell.hex }
+            }
+            let march = ground.lazy.compactMap { cell in
+                chart.place(at: cell.hex, in: world, player: house).marches.first { order in
+                    if case .move(let unit, _) = order.command { return unit != company.id }
+                    return false
+                }
+            }.first
+            if let march {
+                await give(march.command, told: march.title, as: "Marched from the chart")
+            } else {
+                lines.append("Nothing marched from the chart: no company but the one dug in could go")
+            }
         }
         write(done: false)
         // Ready for the watch to turn, from the phone: the watch turns once

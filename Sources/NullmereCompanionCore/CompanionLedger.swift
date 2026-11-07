@@ -356,7 +356,8 @@ public struct CompanionLedger: Equatable, Sendable {
     /// alliance, has called one already or has no Muster Hall; otherwise
     /// the nearest targets the rules would take (those it has found), at
     /// most six.
-    static func calls(in world: GameState, player: Int, holds: [NullmereCore.Hold]) -> [Order] {
+    /// `at`, a hex: the rally called on what lies there alone.
+    static func calls(in world: GameState, player: Int, holds: [NullmereCore.Hold], at hex: Hex? = nil) -> [Order] {
         let musters = holds.filter { $0.level(.musterHall) >= 1 }
         guard world.alliance(of: player) != nil, !musters.isEmpty,
               !world.ralliesStanding.contains(where: { $0.caller == player }) else { return [] }
@@ -366,6 +367,7 @@ public struct CompanionLedger: Equatable, Sendable {
             .map { ($0.id, $0.position, "the \($0.title)") }
         targets += world.holds.filter { $0.owner != player && world.isAtWar(player, $0.owner) }
             .map { ($0.id, $0.position, $0.name) }
+        if let hex { targets = targets.filter { $0.position == hex } }
         var offered: [(distance: Int, order: Order)] = []
         for target in targets {
             let muster = musters.min { ($0.position.distance(to: target.position), $0.id) < ($1.position.distance(to: target.position), $1.id) }!
