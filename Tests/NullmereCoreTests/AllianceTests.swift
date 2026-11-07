@@ -236,6 +236,29 @@ final class AllianceTests: XCTestCase {
         XCTAssertEqual(state.helpable(by: 5, for: me), 0)
     }
 
+    /// However great the alliance, its help takes four watches at most off
+    /// any one work: eleven allies on a lake of forty-eight seats take no
+    /// more off it than eight would, though each still helps.
+    func testAlliesTakeFourWatchesAtMostOffAWork() throws {
+        var state = RealmState(name: "The Wide Nullmere", seed: "the help of eleven", seats: 48, now: 0).world
+        let me = 20
+        let allies = Array(state.livingIDs.filter { $0 != me }.prefix(11))
+        var accord = Alliance(id: 1, name: "the Wide Accord", leader: me, founded: state.watch)
+        accord.members += allies
+        state.alliances = [accord]
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].project = Hold.Project(kind: .moonspire, targetLevel: 1, watchesLeft: 17, watches: 17)
+        var left: [Int] = []
+        for ally in allies {
+            _ = try state.perform(.help(house: me), as: ally)
+            left.append(try XCTUnwrap(state.holds[seat].project).watchesLeft)
+        }
+        XCTAssertEqual(left, [17, 16, 16, 15, 15, 14, 14, 13, 13, 13, 13], "A watch for every second help, four at most")
+        XCTAssertEqual(state.holds[seat].project?.helpers, allies, "Each ally helped it all the same")
+        XCTAssertEqual(try XCTUnwrap(state.holds[seat].project).progress, 4.0 / 17, accuracy: 1e-12, "Brought on four watches of seventeen")
+        XCTAssertEqual(GameState.mostWatchesHelped, 4)
+    }
+
     /// Allies know what each other has under way, so a keeper's own copy
     /// of the world can help it; no one else does.
     func testAlliesSeeWhatEachOtherHasUnderWay() throws {

@@ -70,6 +70,33 @@ final class HasteningWorksTests: XCTestCase {
         XCTAssertNil(BuildingKind.wayhouse.boostedResource)
     }
 
+    /// A work begun keeps the watches it was to take: hastened by the
+    /// Lodge it still begins from nothing, where it once began part risen,
+    /// and its watches and its allies' help bring it on alike; a work begun
+    /// before works kept their length is measured against the work's own.
+    func testAWorkBegunKeepsTheWatchesItWasToTake() throws {
+        var (state, me, seat) = try staged("a work's length")
+        state.holds[seat].levels[.lodge] = 5
+        state.holds[seat].project = nil
+        _ = try state.perform(.build(hold: state.holds[seat].id, kind: .moonspire), as: me)
+        var project = try XCTUnwrap(state.holds[seat].project)
+        XCTAssertEqual(project.watches, state.buildWatches(of: .moonspire, toLevel: 1, for: me))
+        XCTAssertEqual(project.watchesLeft, project.watches)
+        XCTAssertLessThan(project.watchesLeft, BuildingKind.moonspire.buildWatches(toLevel: 1), "Hastened")
+        XCTAssertEqual(project.progress, 0, "Begun, nothing risen yet")
+        project.watchesLeft -= 1
+        XCTAssertEqual(project.progress, 1 / Double(try XCTUnwrap(project.watches)), accuracy: 1e-12)
+
+        // Begun before works kept their length: the work's own stands in.
+        XCTAssertEqual(Hold.Project(kind: .walls, targetLevel: 1, watchesLeft: 1).progress,
+                       1 - 1 / Double(BuildingKind.walls.buildWatches(toLevel: 1)), accuracy: 1e-12)
+        XCTAssertEqual(Hold.Project(kind: .walls, targetLevel: 1, watchesLeft: 99).progress, 0, "Never below nothing")
+        let older = try JSONDecoder().decode(Hold.Project.self, from: Data(#"{"kind":"walls","targetLevel":1,"watchesLeft":1}"#.utf8))
+        XCTAssertNil(older.watches, "Older saves read as they were")
+        let kept = try JSONDecoder().decode(Hold.Project.self, from: JSONEncoder().encode(project))
+        XCTAssertEqual(kept, project, "Its length kept with it")
+    }
+
     /// The works are kept with the hold, and travel with the world.
     func testTheWorksAreKeptWithTheHold() throws {
         var (state, _, seat) = try staged("kept works")

@@ -11,8 +11,8 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         /// The allied Houses that have helped it, if any.
         public var helpers: [Int]? = nil
         /// The watches it was to take as it was begun, its House's hastening
-        /// and the realm's breadth counted (`GameState.buildWatches`);
-        /// absent in older saves, where the work's own length stands in.
+        /// counted (`GameState.buildWatches`); absent in older saves, where
+        /// the work's own length stands in.
         public var watches: Int? = nil
 
         public init(kind: BuildingKind, targetLevel: Int, watchesLeft: Int, helpers: [Int]? = nil, watches: Int? = nil) {

@@ -1321,11 +1321,7 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   at least ten, your vassals' counted with your own, or be the last House
   standing. Stewards fear every rising Moonspire and will march on it, and
   begin one only with the holds to store its last stage, or as the most
-  renowned House on the lake. The wider the lake, the longer each of the
-  Moonspire's stages takes to raise: as many times as long as the lake is
-  wider than one of twelve seats, twice on a lake of forty-eight and nearly
-  thrice on one of ninety-six, so the quickest of a hundred Houses doesn't
-  end the age before armies have grown and marched across it.
+  renowned House on the lake.
 - **The race.** The Houses panel shows each House's holds towards dominion
   and its Moonspire's stages, and the game warns you, once, whenever any
   House comes near the end of either road. At the end of an age, a chart
@@ -1371,18 +1367,18 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   more and drilled troops ate a quarter as much again, the armies came to
   1,980,000, the greatest battles to 89,500 and 163,800, over 100,000 in
   26 of the 96, and the ages ran 162 watches at the median and 257 at the
-  longest, the Moonspire deciding 91 and dominion 5. In a wider realm the
-  Moonspire's stages take longer and allies' help takes four watches at
-  most off a work: over 16 ages of ninety-six seats, against the same 16
-  before those two rules, the ages ran 150 watches at the median rather
-  than 125, and their greatest battles came to 150,856 troops at the
-  median rather than 133,649 (214,310 and 256,252 at the most), greater in
-  10 of the 16; the steadfast won 8, the wary 5, the cunning 2 and the
-  ambitious 1, against 5, 4, 5 and 2 before. Over two ages of 384 seats
-  the greatest battles came to 294,492 and 275,920 troops, the ages ending
-  at watches 248 and 251, against 152,392 and 139,408 at watches 111 and
-  110 before. A realm of twelve seats plays as it did: 16 of its ages,
-  measured so, ended alike, battle for battle.
+  longest, the Moonspire deciding 91 and dominion 5. In a realm of
+  ninety-six seats, over 32 ages played so, the Moonspire decided every
+  one: an age ran 130 watches at the median, and its greatest battles came
+  to 145,326 troops at the median and 237,744 at the most; the steadfast
+  won 12, the cunning 8, the ambitious 7 and the wary 5. Before allies'
+  help was held to four watches a work, the same ages ran 128 watches and
+  came to 147,159 and 256,252, the steadfast winning 13, the cunning 8, the
+  wary 7 and the ambitious 4, where 16 ages of twelve seats measured the
+  same way ran 134 watches at the median. Making each of the Moonspire's stages as many times longer as
+  the lake is wider than one of twelve seats was tried as well; it ran the
+  same ages to 151 watches with no greater battles (149,946 at the median),
+  the builders winning 26 of the 32, and was not kept.
 
 ## The screens and the voices
 
