@@ -40,6 +40,8 @@ public struct CompanionChart: Equatable, Sendable {
         public let name: String
         /// What the chart writes beside it, close enough: a hold's name.
         public var label: String? = nil
+        /// Where one of the House's own companies is bound, while it marches.
+        public var bound: Hex? = nil
     }
 
     /// What lies at a hex of the chart, and what the House may do there.
@@ -145,7 +147,8 @@ public struct CompanionChart: Equatable, Sendable {
         for unit in world.units where reached(unit.position) {
             marks.append(Mark(id: "company \(unit.id)", hex: unit.position, thing: .company, side: side(unit.owner),
                               name: "\(CompanionChart.capitalized(whose(unit.owner))) \(unit.kind.title) \(BuildingKind.numeral(unit.tier)), "
-                                + "\(GameState.counted(world.troops(of: unit))) troops"))
+                                + "\(GameState.counted(world.troops(of: unit))) troops",
+                              bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil))
         }
         self.marks = marks
         regions = (world.atlas?.regions ?? []).filter { reached($0.heart) }.map { ($0.name, $0.heart) }

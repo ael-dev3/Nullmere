@@ -254,6 +254,19 @@ struct ChartView: View {
             context.fill(placed, with: .color(Color(red: shade.red, green: shade.green, blue: shade.blue)))
             context.stroke(placed, with: .color(Night.background.opacity(0.55)), lineWidth: 0.5)
         }
+        // The House's marches: a line from each company to where it is bound.
+        for mark in chart.marks {
+            guard let bound = mark.bound else { continue }
+            let from = point(of: mark.hex, canvas: canvas, size: size)
+            let to = point(of: bound, canvas: canvas, size: size)
+            var march = Path()
+            march.move(to: from)
+            march.addLine(to: to)
+            context.stroke(march, with: .color(Night.moon.opacity(0.7)), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+            let ring = CGFloat(size * 0.35)
+            context.stroke(Path(ellipseIn: CGRect(x: to.x - ring, y: to.y - ring, width: ring * 2, height: ring * 2)),
+                           with: .color(Night.moon.opacity(0.7)), lineWidth: 1)
+        }
         // The regions' names, faint beneath what stands on the land.
         for region in chart.regions {
             let at = point(of: region.hex, canvas: canvas, size: size)

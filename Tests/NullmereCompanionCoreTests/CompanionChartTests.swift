@@ -323,7 +323,14 @@ final class CompanionChartTests: XCTestCase {
         }).hex, in: view, player: me).orders.first { if case .move = $0.command { return true }; return false })
         guard case .move(let id, _) = order.command else { return XCTFail() }
         let before = try XCTUnwrap(state.unit(id)).position
+        XCTAssertNil(chart.marks.first { $0.id == "company \(id)" }?.bound, "Standing, bound nowhere")
         _ = try state.perform(order.command, as: me)
+        // On the march, the line of its march drawn to where it is bound.
+        guard case .move(_, let target) = order.command else { return XCTFail() }
+        let marching = CompanionChart(world: state.view(for: me), player: me)
+        let line = marching.marks.first { $0.id == "company \(id)" }?.bound
+        XCTAssertTrue(state.unit(id)?.position == target ? line == nil : line == target,
+                      "Bound to its march's end while it marches, and to nowhere once there")
         _ = state.endWatch()
         let after = try XCTUnwrap(state.unit(id)).position
         XCTAssertNotEqual(after, before, "It marched")

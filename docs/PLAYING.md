@@ -262,7 +262,9 @@ been heard from lately.
   (the House's own in moonlight, its allies' green, Houses at war red,
   others grey), the companies and wilds the House sees, the lairs and
   sites on ground it has explored, and the holy sites, the names of the
-  shores' regions written faint beneath them. Drag to look about
+  shores' regions written faint beneath them, and from each of the
+  House's companies on the march a line to where it is bound. Drag to look
+  about
   and pinch to look closer; Your seat turns the chart back. Tap a hex for
   what lies there and the orders the rules would take there: a strike on
   it from each company in reach, a rally called on it, Gather here and
