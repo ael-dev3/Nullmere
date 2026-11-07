@@ -57,6 +57,16 @@ the keeper's realm last lay on, made as it plays.
   lake laid over it as a mirror of the stars and the moon. What the keeper
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
+- **The moon's shadows.** Close in, everything that stands on the land
+  (keeps, walls, works, trees, companies and townsfolk) casts its shadow
+  from the moon, high in the north, onto the land and onto each other:
+  what stands is drawn once more from the moon into a map of how near to
+  it each point in view is first met, and the moon lights only what
+  nothing nearer stands before, the starlight off the lake and the sky
+  still lighting what lies in shadow. What the keeper has never seen
+  casts none, and a work still rising casts only what stands of it.
+  Further out, where what stands is too small for its shadow to be told,
+  none is drawn.
 
 ### Every model, made in Blender
 

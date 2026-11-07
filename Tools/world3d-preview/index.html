@@ -31,18 +31,28 @@ const header = `#version 300 es
 precision highp float;
 precision highp int;
 precision highp sampler2D;
+precision highp sampler2DShadow;
 #define float2 vec2
 #define float3 vec3
 #define float4 vec4
 #define int2 ivec2
+#define float4x4 mat4
 #define NM_CONST const
 #define NM_TEXTURE_ARGUMENT
 #define NM_TEXTURE_PASS
 #define NM_TILE(cell) texelFetch(tiles, ivec2(cell), 0)
 #define NM_ATAN2(y, x) atan(y, x)
+#define NM_SHADOW_ARGUMENT
+#define NM_SHADOW_PASS
+#define NM_SHADOW_TEST(uv, depth) texture(shadows, vec3(uv, depth))
+#define NM_SHADOW_V 0.5
+#define NM_SHADOW_DEPTH(z) ((z) * 0.5 + 0.5)
 uniform sampler2D tiles;
 uniform sampler2D heights;
+uniform sampler2DShadow shadows;
 uniform mat4 viewProjection;
+uniform mat4 shadow;
+uniform vec4 still;
 uniform vec4 eye, moon, viewport, world, highlight, extent, haze, heightsGrid;
 uniform vec4 houses[128];
 uniform vec4 lights[8];
@@ -89,7 +99,8 @@ void main() {
       lit += house * line * 0.35;
     }
   }
-  lit += nm_light(albedo, n, moon.xyz, moon.w);
+  float moonlit = nm_moonlit(vWorld, n, shadow, still);
+  lit += nm_light(albedo, n, moon.xyz, moon.w * moonlit);
   for (int i = 0; i < 4; i++) { lit += nm_pointLight(albedo, vWorld, n, lights[i], lights[i + 4]); }
   for (int i = 0; i < 7; i++) {
     ivec2 toward = ivec2(0, 0);
@@ -215,16 +226,17 @@ void main() {
   vec3 toEye = normalize(eye.xyz - vWorld);
   if (dot(n, toEye) < 0.0) { n = -n; }
   vec3 albedo = nm_surface(vColour, vLocal, vLocalNormal, vSurface, length(fwidth(vLocal)));
-  vec3 lit = nm_light(albedo, n, moon.xyz, moon.w);
+  float moonlit = nm_moonlit(vWorld, n, shadow, still);
+  vec3 lit = nm_light(albedo, n, moon.xyz, moon.w * moonlit);
   for (int i = 0; i < 4; i++) { lit += nm_pointLight(albedo, vWorld, n, lights[i], lights[i + 4]); }
   float facing = 1.0 - max(dot(n, toEye), 0.0);
   float behind = max(dot(-toEye, moon.xyz), 0.0);
-  lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind) * moon.w;
+  lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * moon.w;
   if (vMaterial > 5.5) {
     vec3 halfway = normalize(toEye + moon.xyz);
-    lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * moon.w;
+    lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * moon.w * moonlit;
   } else if (vMaterial > 4.5) {
-    float glint = pow(max(dot(n, normalize(toEye + moon.xyz)), 0.0), 20.0);
+    float glint = pow(max(dot(n, normalize(toEye + moon.xyz)), 0.0), 20.0) * moonlit;
     lit += vColour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + vWorld.x * 5.0)) + vec3(0.6, 0.7, 0.9) * glint * 0.5;
   } else if (vMaterial > 1.5 && vMaterial < 2.5) {
     lit = vColour * (1.55 + 0.35 * nm_flicker(time + vWorld.x * 3.0 + vWorld.z * 2.0) * world.w);
@@ -235,6 +247,42 @@ void main() {
   lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
   outColour = vec4(nm_encode(lit * haze.z), 1.0);
 }`;
+
+// A model's vertex as the moon sees it, as the world's shadow vertex has it.
+const shadowVertex = header + `
+uniform sampler2D palette;
+in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in vec2 parts; in vec2 surfaceBlend;
+in vec4 m0; in vec4 m1; in vec4 m2; in vec4 m3; in vec4 iParams; in ivec2 iHex; in uint iPalette;
+in uint iFlags;
+void main() {
+  float material = normalMaterial.w;
+  float sway = colorSway.w / 255.0;
+  float time = eye.w + iParams.z;
+  vec3 local = position;
+  if (sway > 0.0) { local += nm_wind(local, sway, material, time) * world.w; }
+  int row = int(iPalette) + int(parts.x);
+  mat4 posing = mat4(texelFetch(palette, ivec2(0, row), 0), texelFetch(palette, ivec2(1, row), 0),
+                     texelFetch(palette, ivec2(2, row), 0), texelFetch(palette, ivec2(3, row), 0));
+  float blend = surfaceBlend.y / 255.0;
+  if (blend > 0.0) {
+    int second = int(iPalette) + int(parts.y);
+    mat4 other = mat4(texelFetch(palette, ivec2(0, second), 0), texelFetch(palette, ivec2(1, second), 0),
+                      texelFetch(palette, ivec2(2, second), 0), texelFetch(palette, ivec2(3, second), 0));
+    posing = posing * (1.0 - blend) + other * blend;
+  }
+  vec4 posed = posing * vec4(local, 1.0);
+  posed.y = min(posed.y, iParams.x);
+  vec4 place = mat4(m0, m1, m2, m3) * posed;
+  float watched = 1.0;
+  if ((iFlags & 1u) == 0u) {
+    vec2 knowledge = nm_knowledge(iHex, world.x);
+    watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
+  }
+  gl_Position = watched > 0.25 ? shadow * place : vec4(0.0, 0.0, 2.0, 1.0);
+}`;
+const shadowFragment = `#version 300 es
+precision highp float;
+void main() {}`;
 
 const moteVertex = header + `
 in vec4 place; in vec4 colour;
@@ -288,6 +336,9 @@ function uniforms(p) {
   gl.useProgram(p);
   const set = (name, f, value) => { const at = gl.getUniformLocation(p, name); if (at) f.call(gl, at, value); };
   set('viewProjection', (at, v) => gl.uniformMatrix4fv(at, false, v), new Float32Array(frame.viewProjection));
+  set('shadow', (at, v) => gl.uniformMatrix4fv(at, false, v), new Float32Array(frame.shadow || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]));
+  set('still', gl.uniform4fv, new Float32Array(frame.still || [0, 0, 0, 0]));
+  set('shadows', gl.uniform1i, 3);
   for (const name of ['eye', 'moon', 'viewport', 'world', 'highlight', 'extent', 'haze']) set(name, gl.uniform4fv, new Float32Array(frame[name]));
   set('heightsGrid', gl.uniform4fv, new Float32Array(frame.heights));
   set('houses', gl.uniform4fv, new Float32Array(frame.houses));
@@ -314,6 +365,95 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
+// The models: each kind's mesh and its instances, sent once, drawn from the
+// moon into its shadow map and then from the eye.
+const batches = [];
+if (frame.scene) {
+  const poses = decode(frame.scene.palette, Float32Array);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 4, frame.scene.poses, 0, gl.RGBA, gl.FLOAT, poses);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  for (const batch of frame.scene.batches) {
+    const mesh = data.models[batch.key];
+    if (!mesh || batch.count === 0) continue;
+    const buffer = (target, bytes) => { const b = gl.createBuffer(); gl.bindBuffer(target, b); gl.bufferData(target, bytes, gl.STATIC_DRAW); return b; };
+    batches.push({ count: batch.count, indexCount: mesh.count,
+                   vertices: buffer(gl.ARRAY_BUFFER, decode(mesh.vertices, Uint8Array)),
+                   instances: buffer(gl.ARRAY_BUFFER, decode(batch.instances, Uint8Array)),
+                   indices: buffer(gl.ELEMENT_ARRAY_BUFFER, decode(mesh.indices, Uint32Array)) });
+  }
+}
+function drawBatches(p) {
+  gl.uniform1i(gl.getUniformLocation(p, 'palette'), 2);
+  const at = (name) => gl.getAttribLocation(p, name);
+  for (const batch of batches) {
+    gl.bindVertexArray(gl.createVertexArray());
+    gl.bindBuffer(gl.ARRAY_BUFFER, batch.vertices);
+    const vertex = (name, size, type, offset, integer) => {
+      const index = at(name);
+      if (index < 0) return;
+      gl.enableVertexAttribArray(index);
+      if (integer) gl.vertexAttribIPointer(index, size, type, 24, offset);
+      else gl.vertexAttribPointer(index, size, type, false, 24, offset);
+    };
+    vertex('position', 3, gl.FLOAT, 0);
+    vertex('normalMaterial', 4, gl.BYTE, 12);
+    vertex('colorSway', 4, gl.UNSIGNED_BYTE, 16);
+    vertex('parts', 2, gl.UNSIGNED_BYTE, 20);
+    vertex('surfaceBlend', 2, gl.UNSIGNED_BYTE, 22);
+    gl.bindBuffer(gl.ARRAY_BUFFER, batch.instances);
+    const instance = (name, size, type, offset, integer) => {
+      const index = at(name);
+      if (index < 0) return;
+      gl.enableVertexAttribArray(index);
+      if (integer) gl.vertexAttribIPointer(index, size, type, 112, offset);
+      else gl.vertexAttribPointer(index, size, type, false, 112, offset);
+      gl.vertexAttribDivisor(index, 1);
+    };
+    ['m0', 'm1', 'm2', 'm3'].forEach((name, column) => instance(name, 4, gl.FLOAT, column * 16));
+    instance('iColour', 4, gl.FLOAT, 64);
+    instance('iParams', 4, gl.FLOAT, 80);
+    instance('iHex', 2, gl.INT, 96, true);
+    instance('iPalette', 1, gl.UNSIGNED_INT, 104, true);
+    instance('iFlags', 1, gl.UNSIGNED_INT, 108, true);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, batch.indices);
+    gl.drawElementsInstanced(gl.TRIANGLES, batch.indexCount, gl.UNSIGNED_INT, 0, batch.count);
+  }
+}
+
+// The moon's shadow map, drawn first: what stands on the land seen from the
+// moon, nearest kept; a texel when the moon casts none.
+const casts = batches.length > 0 && frame.still && frame.still[1] > 0.5;
+const shadowSide = casts ? 2048 : 1;
+const shadowMap = gl.createTexture();
+gl.activeTexture(gl.TEXTURE3);
+gl.bindTexture(gl.TEXTURE_2D, shadowMap);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F, shadowSide, shadowSide, 0, gl.DEPTH_COMPONENT, gl.FLOAT, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+gl.bindTexture(gl.TEXTURE_2D, null);
+const shadowBuffer = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, shadowBuffer);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, shadowMap, 0);
+gl.viewport(0, 0, shadowSide, shadowSide);
+gl.enable(gl.DEPTH_TEST);
+gl.depthFunc(gl.LEQUAL);
+gl.clear(gl.DEPTH_BUFFER_BIT);
+if (casts) {
+  const caster = program(shadowVertex, shadowFragment);
+  uniforms(caster);
+  drawBatches(caster);
+}
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.activeTexture(gl.TEXTURE3);
+gl.bindTexture(gl.TEXTURE_2D, shadowMap);
+
 gl.viewport(0, 0, width, height);
 gl.clearColor(0.06, 0.065, 0.09, 1);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -339,56 +479,10 @@ gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
 
 // The models: each kind's mesh, drawn once for each of its instances,
 // posed from the palette, as the Metal renderer draws them.
-if (frame.scene) {
+if (batches.length > 0) {
   const models = program(modelVertex, modelFragment);
   uniforms(models);
-  const poses = decode(frame.scene.palette, Float32Array);
-  gl.activeTexture(gl.TEXTURE2);
-  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 4, frame.scene.poses, 0, gl.RGBA, gl.FLOAT, poses);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.uniform1i(gl.getUniformLocation(models, 'palette'), 2);
-  const at = (name) => gl.getAttribLocation(models, name);
-  for (const batch of frame.scene.batches) {
-    const mesh = data.models[batch.key];
-    if (!mesh || batch.count === 0) continue;
-    const vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, decode(mesh.vertices, Uint8Array), gl.STATIC_DRAW);
-    const vertex = (name, size, type, offset, integer) => {
-      const index = at(name);
-      if (index < 0) return;
-      gl.enableVertexAttribArray(index);
-      if (integer) gl.vertexAttribIPointer(index, size, type, 24, offset);
-      else gl.vertexAttribPointer(index, size, type, false, 24, offset);
-    };
-    vertex('position', 3, gl.FLOAT, 0);
-    vertex('normalMaterial', 4, gl.BYTE, 12);
-    vertex('colorSway', 4, gl.UNSIGNED_BYTE, 16);
-    vertex('parts', 2, gl.UNSIGNED_BYTE, 20);
-    vertex('surfaceBlend', 2, gl.UNSIGNED_BYTE, 22);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, decode(batch.instances, Uint8Array), gl.STATIC_DRAW);
-    const instance = (name, size, type, offset, integer) => {
-      const index = at(name);
-      if (index < 0) return;
-      gl.enableVertexAttribArray(index);
-      if (integer) gl.vertexAttribIPointer(index, size, type, 112, offset);
-      else gl.vertexAttribPointer(index, size, type, false, 112, offset);
-      gl.vertexAttribDivisor(index, 1);
-    };
-    ['m0', 'm1', 'm2', 'm3'].forEach((name, column) => instance(name, 4, gl.FLOAT, column * 16));
-    instance('iColour', 4, gl.FLOAT, 64);
-    instance('iParams', 4, gl.FLOAT, 80);
-    instance('iHex', 2, gl.INT, 96, true);
-    instance('iPalette', 1, gl.UNSIGNED_INT, 104, true);
-    instance('iFlags', 1, gl.UNSIGNED_INT, 108, true);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, decode(mesh.indices, Uint32Array), gl.STATIC_DRAW);
-    gl.drawElementsInstanced(gl.TRIANGLES, mesh.count, gl.UNSIGNED_INT, 0, batch.count);
-  }
+  drawBatches(models);
 }
 
 const water = program(waterVertex, waterFragment);

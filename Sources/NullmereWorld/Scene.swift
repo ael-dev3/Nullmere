@@ -67,7 +67,7 @@ extension FrameUniforms {
                             exposure: Float = 1) -> FrameUniforms {
         let eye = camera.eye(in: size)
         let low = terrain.low, high = terrain.high
-        return FrameUniforms(
+        var frame = FrameUniforms(
             viewProjection: camera.viewProjection(in: size),
             eye: Vec4(eye.x, eye.y, eye.z, time),
             moon: Vec4(Sky.moon.x, Sky.moon.y, Sky.moon.z, Sky.moonStrength),
@@ -79,5 +79,22 @@ extension FrameUniforms {
             haze: Sky.haze(eyeDistance: (eye - camera.focus).length, exposure: exposure, spacing: terrain.spacing),
             heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)),
             houses: [Vec4(0.6, 0.6, 0.6, 1)] + houses)
+        frame.cast(MoonShadow.matrix(camera: camera, size: size))
+        return frame
     }
+
+    /// The frame with the moon casting shadows by its matrix, or none.
+    public mutating func cast(_ shadow: Mat4?) {
+        guard let shadow else {
+            still.y = 0
+            return
+        }
+        self.shadow = shadow
+        still.y = 1
+        still.z = MoonShadow.texel(of: shadow)
+        still.w = 1 / Float(MoonShadow.side)
+    }
+
+    /// Whether the moon casts shadows in this frame.
+    public var casts: Bool { still.y > 0.5 }
 }

@@ -28,8 +28,13 @@ public struct FrameUniforms: Equatable, Sendable {
     public var houses: InlineArray<128, Vec4>
     /// The world's own lights: four places and reaches, then their four colours.
     public var lights: (Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4)
-    /// The Still's calm, none to deepest (0 to 1), and three kept spare.
+    /// The Still's calm, none to deepest (0 to 1); whether the moon casts
+    /// shadows (1) or not (0); and a texel of its shadow map, in world units
+    /// and in the map's own (see `MoonShadow`).
     public var still: Vec4 = .zero
+    /// The moon's view and projection, from the world to its shadow map's
+    /// clip space, where it casts shadows.
+    public var shadow: Mat4 = .identity
 
     public static let houseSlots = 128
     public static let lightSlots = 4

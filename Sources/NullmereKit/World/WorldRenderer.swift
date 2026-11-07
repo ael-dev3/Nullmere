@@ -67,7 +67,7 @@ final class WorldRenderer {
     static let sampleCount = 4
 
     /// The passes a debug build leaves out, named in NULLMERE_DEBUG_PASSES
-    /// (land, furniture, models, water, motes), to see which draws what.
+    /// (land, furniture, models, water, motes, shadows), to see which draws what.
     /// The land shader's own parts a debug build leaves out, from the same
     /// list: haze (the distance haze), fog (what the keeper knows), light
     /// (the moon and lamps), grain (the ground's grain): each named NM_NO_<PART> to the compiler.
@@ -96,6 +96,11 @@ final class WorldRenderer {
     private let waterPipeline: any MTLRenderPipelineState
     private let motePipeline: any MTLRenderPipelineState
     private let skyPipeline: any MTLRenderPipelineState
+    /// What stands on the land drawn from the moon, its depth alone.
+    private let shadowPipeline: any MTLRenderPipelineState
+    /// The moon's shadow map: how near the moon what stands on the land
+    /// is first met, texel by texel, drawn afresh each frame it casts.
+    private let shadows: any MTLTexture
     private let solid: any MTLDepthStencilState
     private let glassy: any MTLDepthStencilState
     private let pixelFormat: MTLPixelFormat
@@ -141,6 +146,18 @@ final class WorldRenderer {
         modelPipeline = try pipeline("Nullmere models", WorldShaders.modelVertex, WorldShaders.modelFragment, blends: false, coverage: true)
         motePipeline = try pipeline("Nullmere motes", WorldShaders.moteVertex, WorldShaders.moteFragment, blends: true, premultiplied: true)
         skyPipeline = try pipeline("Nullmere sky", WorldShaders.skyVertex, WorldShaders.skyFragment, blends: false)
+        let shadowDescriptor = MTLRenderPipelineDescriptor()
+        shadowDescriptor.label = "Nullmere moon's shadows"
+        shadowDescriptor.vertexFunction = try function(WorldShaders.shadowVertex)
+        shadowDescriptor.depthAttachmentPixelFormat = WorldRenderer.depthFormat
+        shadowPipeline = try device.makeRenderPipelineState(descriptor: shadowDescriptor)
+        let map = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: WorldRenderer.depthFormat, width: MoonShadow.side,
+                                                           height: MoonShadow.side, mipmapped: false)
+        map.usage = [.renderTarget, .shaderRead]
+        map.storageMode = .private
+        guard let shadows = device.makeTexture(descriptor: map) else { throw Failure.noTexture }
+        shadows.label = "Nullmere moon's shadows"
+        self.shadows = shadows
         guard let commandQueue = device.makeCommandQueue() else { throw Failure.noCommandQueue }
         commandQueue.label = "Nullmere world"
         let solidDescriptor = MTLDepthStencilDescriptor()
@@ -244,18 +261,64 @@ final class WorldRenderer {
     var onFault: (@MainActor @Sendable () -> Void)?
 
     private func encode(_ frame: FrameUniforms, scene: SceneFrame, in pass: MTLRenderPassDescriptor) -> (any MTLCommandBuffer)? {
-        guard let tiles, let land,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass)
-        else { return nil }
+        guard let tiles, let land, let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         var uniforms = frame
         let uniformLength = MemoryLayout<FrameUniforms>.stride
+
+        // What stands on the land, kind by kind: what stands still from the
+        // buffer kept for it, the rest sent afresh, with the poses of all.
+        if scene.fixed.isEmpty {
+            fixed = nil
+        } else if fixed?.version != scene.fixedVersion {
+            let still = scene.fixed.flatMap(\.instances)
+            fixed = device.makeBuffer(bytes: still, length: still.count * MemoryLayout<ModelInstance>.stride,
+                                      options: .storageModeShared).map { ($0, scene.fixedVersion) }
+            fixed?.buffer.label = "Nullmere furniture"
+        }
+        let instances = scene.batches.flatMap(\.instances)
+        let palette = !instances.isEmpty || fixed != nil
+            ? device.makeBuffer(bytes: scene.palette, length: scene.palette.count * MemoryLayout<Mat4>.stride, options: .storageModeShared)
+            : nil
+        let moving = instances.isEmpty ? nil
+            : device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride, options: .storageModeShared)
+
+        // The moon's shadows first, where it casts them: whatever stands on
+        // the land, drawn from the moon, its plain work alone; the frame
+        // casts none where nothing was drawn.
+        let casting = uniforms.casts && palette != nil && !WorldRenderer.leftOut.contains("shadows")
+        if casting, let palette {
+            let shadowPass = MTLRenderPassDescriptor()
+            shadowPass.depthAttachment.texture = shadows
+            shadowPass.depthAttachment.loadAction = .clear
+            shadowPass.depthAttachment.clearDepth = 1
+            shadowPass.depthAttachment.storeAction = .store
+            guard let caster = commandBuffer.makeRenderCommandEncoder(descriptor: shadowPass) else { return nil }
+            caster.label = "Nullmere moon's shadows"
+            caster.setRenderPipelineState(shadowPipeline)
+            caster.setDepthStencilState(solid)
+            caster.setCullMode(.none)
+            caster.setVertexBytes(&uniforms, length: uniformLength, index: 3)
+            caster.setVertexBuffer(palette, offset: 0, index: 2)
+            caster.setVertexTexture(tiles, index: 0)
+            if let fixed, !WorldRenderer.leftOut.contains("furniture") {
+                draw(scene.fixed, from: fixed.buffer, fine: false, runs: scene.fixedRegions?.runs(seenBy: uniforms.shadow), with: caster)
+            }
+            if let moving, !WorldRenderer.leftOut.contains("models") {
+                draw(scene.batches, from: moving, fine: false, with: caster)
+            }
+            caster.endEncoding()
+        } else {
+            uniforms.cast(nil)
+        }
+
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
         encoder.setCullMode(.none)
         encoder.setDepthStencilState(solid)
         encoder.setVertexBytes(&uniforms, length: uniformLength, index: 3)
         encoder.setFragmentBytes(&uniforms, length: uniformLength, index: 0)
         encoder.setVertexTexture(tiles, index: 0)
         encoder.setFragmentTexture(tiles, index: 0)
+        encoder.setFragmentTexture(shadows, index: 2)
 
         // The land: only its chunks in view.
         if !WorldRenderer.leftOut.contains("land") {
@@ -267,30 +330,15 @@ final class WorldRenderer {
             }
         }
 
-        // What stands on it, kind by kind: what stands still from the
-        // buffer kept for it, the rest sent afresh.
-        if scene.fixed.isEmpty {
-            fixed = nil
-        } else if fixed?.version != scene.fixedVersion {
-            let still = scene.fixed.flatMap(\.instances)
-            fixed = device.makeBuffer(bytes: still, length: still.count * MemoryLayout<ModelInstance>.stride,
-                                      options: .storageModeShared).map { ($0, scene.fixedVersion) }
-            fixed?.buffer.label = "Nullmere furniture"
-        }
-        let instances = scene.batches.flatMap(\.instances)
-        if !instances.isEmpty || fixed != nil,
-           let paletteBuffer = device.makeBuffer(bytes: scene.palette, length: scene.palette.count * MemoryLayout<Mat4>.stride,
-                                                 options: .storageModeShared) {
+        // What stands on it: only the furniture of the regions in view.
+        if let palette {
             encoder.setRenderPipelineState(modelPipeline)
-            encoder.setVertexBuffer(paletteBuffer, offset: 0, index: 2)
+            encoder.setVertexBuffer(palette, offset: 0, index: 2)
             if let fixed, !WorldRenderer.leftOut.contains("furniture") {
-                // Only the regions of the land in view.
                 draw(scene.fixed, from: fixed.buffer, fine: scene.fine, runs: scene.fixedRegions?.runs(seenBy: frame.viewProjection),
                      with: encoder)
             }
-            if !instances.isEmpty, !WorldRenderer.leftOut.contains("models"),
-               let moving = device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride,
-                                              options: .storageModeShared) {
+            if let moving, !WorldRenderer.leftOut.contains("models") {
                 draw(scene.batches, from: moving, fine: scene.fine, with: encoder)
             }
         }

@@ -22,13 +22,14 @@ public enum WorldShaders {
     public static let waterFragment = "nm_water_fragment"
     public static let modelVertex = "nm_model_vertex"
     public static let modelFragment = "nm_model_fragment"
+    public static let shadowVertex = "nm_shadow_vertex"
     public static let moteVertex = "nm_mote_vertex"
     public static let moteFragment = "nm_mote_fragment"
     public static let skyVertex = "nm_sky_vertex"
     public static let skyFragment = "nm_sky_fragment"
 
     public static let functions = [landVertex, landFragment, waterVertex, waterFragment, modelVertex, modelFragment,
-                                   moteVertex, moteFragment, skyVertex, skyFragment]
+                                   shadowVertex, moteVertex, moteFragment, skyVertex, skyFragment]
 
     public static let source = #"""
     #include <metal_stdlib>
@@ -39,6 +40,16 @@ public enum WorldShaders {
     #define NM_TEXTURE_PASS , tiles
     #define NM_TILE(cell) tiles.read(uint2(cell))
     #define NM_ATAN2(y, x) atan2(y, x)
+    // The moon's shadow map, felt through a sampler that compares as it
+    // filters: 1 where the point is no further from the moon than what the
+    // map holds there, 0 where something nearer stands between. Its rows run
+    // down where the clip space's y runs up; its depth is the clip space's.
+    #define NM_SHADOW_ARGUMENT , depth2d<float> shadows
+    #define NM_SHADOW_PASS , shadows
+    #define NM_SHADOW_TEST(uv, depth) shadows.sample_compare(nm_shadowSampler, uv, depth)
+    #define NM_SHADOW_V -0.5
+    #define NM_SHADOW_DEPTH(z) (z)
+    constexpr sampler nm_shadowSampler(coord::normalized, filter::linear, address::clamp_to_edge, compare_func::less_equal);
 
     // BEGIN SCENE
     NM_CONST float kRoot3 = 1.7320508;
@@ -282,6 +293,33 @@ public enum WorldShaders {
         return albedo * (kMoonColour * moonLight + kFillColour * fill + sky);
     }
 
+    // How much of the moon's light reaches a point of the world facing `n`,
+    // 0 none to 1 all, by the moon's shadow map (`moonView` takes the world
+    // to its clip space; `casting.y` is 1 where the moon casts shadows,
+    // `casting.z` a texel's width in world units and `casting.w` in the
+    // map's own): what
+    // stands nearer the moon on the same line keeps it off. The point is
+    // taken a texel and a half out from its face, so no face shadows itself,
+    // and the map felt at four points a texel apart, each filtered, so a
+    // shadow's edge falls soft; toward the map's edge it fades to full light.
+    float nm_moonlit(float3 p, float3 n, float4x4 moonView, float4 casting NM_SHADOW_ARGUMENT) {
+        if (casting.y < 0.5) {
+            return 1.0;
+        }
+        float4 s = moonView * float4(p + n * casting.z * 1.5, 1.0);
+        float2 uv = float2(s.x * 0.5 + 0.5, s.y * NM_SHADOW_V + 0.5);
+        float2 inside = min(uv, 1.0 - uv);
+        float edge = smoothstep(0.0, 0.08, min(inside.x, inside.y));
+        if (edge <= 0.0) {
+            return 1.0;
+        }
+        float depth = NM_SHADOW_DEPTH(s.z) - 0.0004;
+        float t = casting.w;
+        float lit = NM_SHADOW_TEST(uv + float2(-0.75, -0.25) * t, depth) + NM_SHADOW_TEST(uv + float2(0.25, -0.75) * t, depth)
+                  + NM_SHADOW_TEST(uv + float2(0.75, 0.25) * t, depth) + NM_SHADOW_TEST(uv + float2(-0.25, 0.75) * t, depth);
+        return mix(1.0, lit * 0.25, edge);
+    }
+
     // Remembered, not watched: as it was last seen, greyed and dim.
     // One of the world's own lights, a fire or a blow, falling on a point
     // of colour `albedo` facing `n`: `place` is where it is and how far it
@@ -392,7 +430,8 @@ public enum WorldShaders {
         float4 heights;    // the heights grid's corner (x, z), columns, rows
         float4 houses[128]; // each House's colour, by sigil plus one
         float4 lights[8];  // the world's own lights: where and how far, then colour
-        float4 still;      // the Still's calm, 0 to 1; three spare
+        float4 still;      // the Still's calm, 0 to 1; whether the moon casts shadows; a shadow texel, in world units and in the map's
+        float4x4 shadow;   // the moon's view and projection, from the world to its shadow map
     };
 
     struct ModelVertex {
@@ -456,7 +495,8 @@ public enum WorldShaders {
 
     fragment float4 nm_land_fragment(LandOut in [[stage_in]],
                                      constant FrameUniforms &frame [[buffer(0)]],
-                                     texture2d<float, access::read> tiles [[texture(0)]]) {
+                                     texture2d<float, access::read> tiles [[texture(0)]],
+                                     depth2d<float> shadows [[texture(2)]]) {
         float time = frame.eye.w;
         float radius = frame.world.x;
         float3 n = normalize(in.normal);
@@ -510,7 +550,9 @@ public enum WorldShaders {
         // face can never stand pale against the flats beside it; the fine
         // grain of the ground still shades within it.
         float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
-        lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55) * shown;
+        // What stands on the land keeps the moon off the ground behind it.
+        float moonlit = nm_moonlit(in.world, n, frame.shadow, frame.still NM_SHADOW_PASS);
+        lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55 * moonlit) * shown;
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
@@ -784,7 +826,46 @@ public enum WorldShaders {
         return out;
     }
 
-    fragment float4 nm_model_fragment(ModelOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]]) {
+    // A model's vertex as the moon sees it, for its shadow map: placed as the
+    // model vertex places it (posed, skinned, swaying), what the keeper has
+    // never seen casting nothing, and a work being raised casting only what
+    // stands of it, the rest drawn down to its newest course.
+    vertex float4 nm_shadow_vertex(uint vid [[vertex_id]],
+                                   uint iid [[instance_id]],
+                                   const device ModelVertex *vertices [[buffer(0)]],
+                                   const device ModelInstance *instances [[buffer(1)]],
+                                   const device float4x4 *palette [[buffer(2)]],
+                                   constant FrameUniforms &frame [[buffer(3)]],
+                                   texture2d<float, access::read> tiles [[texture(0)]]) {
+        ModelVertex v = vertices[vid];
+        ModelInstance instance = instances[iid];
+        char4 packedNormal = char4(v.normalMaterial);
+        uchar4 packedColour = uchar4(v.colorSway);
+        float material = float(packedNormal.w);
+        float sway = float(packedColour.w) / 255.0;
+        float time = frame.eye.w + instance.params.z;
+        float3 local = float3(v.position);
+        if (sway > 0.0) {
+            local += nm_wind(local, sway, material, time) * frame.world.w;
+        }
+        float4x4 part = palette[instance.palette + uint(v.part)];
+        if (v.blend > 0) {
+            float w = float(v.blend) / 255.0;
+            part = part * (1.0 - w) + palette[instance.palette + uint(v.part2)] * w;
+        }
+        float4 posed = part * float4(local, 1.0);
+        posed.y = min(posed.y, instance.params.x);
+        float4 world = instance.model * posed;
+        float watched = 1.0;
+        if ((instance.flags & 1u) == 0u) {
+            float2 knowledge = nm_knowledge(instance.hex, frame.world.x, tiles);
+            watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
+        }
+        return watched > 0.25 ? frame.shadow * world : float4(0.0, 0.0, 2.0, 1.0);
+    }
+
+    fragment float4 nm_model_fragment(ModelOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]],
+                                      depth2d<float> shadows [[texture(2)]]) {
         if (in.localY > in.params.x) {
             discard_fragment();
         }
@@ -795,19 +876,22 @@ public enum WorldShaders {
             n = -n;
         }
         float3 albedo = nm_surface(in.colour, in.local, in.localNormal, in.surface, length(fwidth(in.local)));
-        float3 lit = nm_light(albedo, n, frame.moon.xyz, frame.moon.w);
+        // What stands nearer the moon keeps its light off: its glints and
+        // its outline with it.
+        float moonlit = nm_moonlit(in.world, n, frame.shadow, frame.still NM_SHADOW_PASS);
+        float3 lit = nm_light(albedo, n, frame.moon.xyz, frame.moon.w * moonlit);
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
         float facing = 1.0 - max(dot(n, toEye), 0.0);
         // The moon behind outlines what stands against it.
         float behind = max(dot(-toEye, frame.moon.xyz), 0.0);
-        lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind) * frame.moon.w;
+        lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * frame.moon.w;
         if (in.material > 5.5) {
             float3 halfway = normalize(toEye + frame.moon.xyz);
-            lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * frame.moon.w;
+            lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * frame.moon.w * moonlit;
         } else if (in.material > 4.5) {
-            float glint = pow(max(dot(n, normalize(toEye + frame.moon.xyz)), 0.0), 20.0);
+            float glint = pow(max(dot(n, normalize(toEye + frame.moon.xyz)), 0.0), 20.0) * moonlit;
             lit += in.colour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + in.world.x * 5.0)) + float3(0.6, 0.7, 0.9) * glint * 0.5;
         } else if (in.material > 1.5 && in.material < 2.5) {
             lit = in.colour * (1.55 + 0.35 * nm_flicker(time + in.world.x * 3.0 + in.world.z * 2.0) * frame.world.w);

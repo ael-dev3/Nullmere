@@ -89,6 +89,58 @@ final class WorldPerformanceTests: XCTestCase {
         XCTAssertLessThan(wider.culled, 16.7, "and well inside one")
     }
 
+    /// Close in on a seat, its holds' keeps and works standing and the land's
+    /// furniture about them, the moon casts the shadows of all of it: the
+    /// frame, its shadow map drawn first, fits a 60 Hz frame with room to
+    /// spare, and is measured beside the same frame casting none.
+    func testTheMoonsShadowsFitAFrameAtSixtyHertz() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = GameState(settings: GameSettings(seedText: "moonlit and measured", keepers: 1))
+        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
+        try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
+        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        let terrain = try XCTUnwrap(renderer.land).terrain
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        var scene = SceneFrame()
+        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(WorldView.houseColours, sigil: state.houses[$0.owner].sigil)) }
+        let holds = stage.holds(sights, time: 20, into: &scene)
+        scene.batches = holds.batches
+        scene.fixed = stage.furnish(occupied: [], holds: Set(state.holds.map(\.position)))
+        scene.fixedVersion = stage.furnitureVersion
+        scene.fixedRegions = stage.furnitureRegions
+        let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        let scale = 60.0
+        let fraction = WorldMetalView.renderScale(forCameraScale: scale)
+        let target = try renderer.makeTarget(width: Int((Double(Self.width) * fraction).rounded()),
+                                             height: Int((Double(Self.height) * fraction).rounded()))
+        var camera = Camera(scale: scale)
+        camera.focus(on: seat)
+        let size = CGSize(width: Double(Self.width) / 2, height: Double(Self.height) / 2)
+        var medians: [Bool: Double] = [:]
+        for casting in [true, false] {
+            var times: [Double] = []
+            for frame in 0..<85 {
+                var uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
+                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
+                                                  houses: WorldView.houseColours)
+                XCTAssertTrue(uniforms.casts, "Close in, the moon casts shadows")
+                if !casting { uniforms.cast(nil) }
+                if let ms = renderer.measureFrame(uniforms, scene: scene, into: target) { times.append(ms) }
+            }
+            let settled = Array(times.dropFirst(5)).sorted()
+            medians[casting] = settled[settled.count / 2]
+        }
+        let shadowed = try XCTUnwrap(medians[true]), plain = try XCTUnwrap(medians[false])
+        print("PERFMETRIC near.gpu.scale60.p50 \(String(format: "%.3f", shadowed))")
+        print("PERFMETRIC near.gpu.scale60.plain.p50 \(String(format: "%.3f", plain))")
+        print("PERF a seat close in on \(device.name): \(String(format: "%.2f", shadowed)) ms with the moon's shadows, "
+              + "\(String(format: "%.2f", plain)) ms without")
+        XCTAssertLessThan(shadowed, 1000.0 / 60 * 0.85, "The frame with its shadows fits a 60 Hz frame with room to spare")
+    }
+
     /// The GPU's median time for a frame near a realm's seat, every hex
     /// known, drawing only the regions in view; and, `wholeToo`, drawing
     /// the whole land, as was done before.

@@ -14,7 +14,7 @@ final class WorldPreviewTests: XCTestCase {
         let size = viewport
         let eye = camera.eye(in: size)
         let low = terrain.low, high = terrain.high
-        return FrameUniforms(
+        var frame = FrameUniforms(
             viewProjection: camera.viewProjection(in: size),
             eye: Vec4(eye.x, eye.y, eye.z, time),
             moon: Vec4(Sky.moon.x, Sky.moon.y, Sky.moon.z, Sky.moonStrength),
@@ -28,6 +28,9 @@ final class WorldPreviewTests: XCTestCase {
                 let hue = Double(index) / 16 * 6.283
                 return Vec4(Float(0.35 + 0.3 * cos(hue)), Float(0.3 + 0.25 * cos(hue + 2.1)), Float(0.3 + 0.25 * cos(hue + 4.2)), 1)
             })
+        // Close in, the moon casts shadows, as the app's frames have it.
+        frame.cast(MoonShadow.matrix(camera: camera, size: size))
+        return frame
     }
 
     static func uniforms(_ frame: FrameUniforms) -> [String: Any] {
@@ -35,7 +38,8 @@ final class WorldPreviewTests: XCTestCase {
         func v(_ x: Vec4) -> [Float] { [x.x, x.y, x.z, x.w] }
         return ["viewProjection": m(frame.viewProjection), "eye": v(frame.eye), "moon": v(frame.moon), "viewport": v(frame.viewport),
                 "world": v(frame.world), "highlight": v(frame.highlight), "extent": v(frame.extent), "haze": v(frame.haze),
-                "heights": v(frame.heights), "houses": frame.houseColours.flatMap(v), "lights": frame.lightValues.flatMap(v)]
+                "heights": v(frame.heights), "houses": frame.houseColours.flatMap(v), "lights": frame.lightValues.flatMap(v),
+                "shadow": m(frame.shadow), "still": v(frame.still)]
     }
 
     /// Every model a world's keeper sees, staged as the app stages them:
