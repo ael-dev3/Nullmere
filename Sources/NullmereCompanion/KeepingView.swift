@@ -357,6 +357,8 @@ struct AllianceTab: View {
     @State private var toAlliance = true
     @State private var banner = ""
     @State private var leaving = false
+    @State private var letter = ""
+    @State private var writingTo: Int?
 
     var body: some View {
         NavigationStack {
@@ -479,6 +481,38 @@ struct AllianceTab: View {
                             } label: {
                                 Text(verbatim: CompanionLedger.dealingsLine(ledger.dealings))
                                     .font(Night.body)
+                            }
+                        }
+                    }
+                    // Letters to one keeper alone, read by them and the keeper:
+                    // the latest three, the earlier folded beneath them.
+                    if !ledger.letters.isEmpty || !ledger.correspondents.isEmpty {
+                        Section("Letters") {
+                            ForEach(ledger.letters.prefix(CompanionLedger.reportsOpen)) { letter in
+                                LetterLine(letter: letter)
+                            }
+                            if ledger.letters.count > CompanionLedger.reportsOpen {
+                                DisclosureGroup("\(ledger.letters.count - CompanionLedger.reportsOpen) earlier") {
+                                    ForEach(ledger.letters.dropFirst(CompanionLedger.reportsOpen)) { letter in
+                                        LetterLine(letter: letter)
+                                    }
+                                }
+                                .font(Night.small)
+                            }
+                            if let first = ledger.correspondents.first {
+                                let reader = writingTo.flatMap { id in ledger.correspondents.first { $0.id == id } } ?? first
+                                Picker("To", selection: Binding(get: { reader.id }, set: { writingTo = $0 })) {
+                                    ForEach(ledger.correspondents) { Text(verbatim: $0.name).tag($0.id) }
+                                }
+                                .font(Night.body)
+                                TextField("A letter for \(reader.name)", text: $letter, axis: .vertical)
+                                    .font(Night.body)
+                                    .lineLimit(1...4)
+                                Button("Send the letter") {
+                                    session.give(.writeLetter(to: reader.id, words: letter), told: "A letter to \(reader.name)")
+                                    letter = ""
+                                }
+                                .disabled(letter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             }
                         }
                     }
@@ -955,5 +989,17 @@ struct SaidLines: View {
             }
             .accessibilityElement(children: .combine)
         }
+    }
+}
+
+/// A letter as the phone lists it, those written to the House brighter.
+struct LetterLine: View {
+    let letter: CompanionLedger.Letter
+
+    var body: some View {
+        Text(verbatim: letter.line)
+            .font(Night.small)
+            .foregroundStyle(Night.ink.opacity(letter.incoming ? 0.9 : 0.65))
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

@@ -357,7 +357,10 @@ network comes back.
   where the rules would carry it, Send a gift of any store, as much as a
   House takes in gifts in a watch (a hundred, or twenty-five moonsalt),
   to any House not at war with the keeper's, and Declare war, asked once
-  more first.
+  more first. Letters: those between the keeper's House and other keepers',
+  the latest first, three open and the earlier folded, and a letter written
+  to any keeper's House, those it has letters with first, then the nearest,
+  read by that keeper alone.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.

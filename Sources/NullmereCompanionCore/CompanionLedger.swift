@@ -148,6 +148,21 @@ public struct CompanionLedger: Equatable, Sendable {
         public let others: [Order]
     }
 
+    /// A letter between the keeper's House and another keeper's, as the Mac
+    /// lines it: "From House Seris: …", or "To House Seris: …".
+    public struct Letter: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let line: String
+        /// Written to the keeper's House, not by it.
+        public let incoming: Bool
+    }
+
+    /// Another keeper's House the keeper's may write to.
+    public struct Correspondent: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let name: String
+    }
+
     /// The Lantern Inn: the House's keys, and the chests it may open now.
     public struct Inn: Equatable, Sendable {
         /// The keys the House holds, and a word where one more would be lost.
@@ -226,6 +241,11 @@ public struct CompanionLedger: Equatable, Sendable {
     public let standing: Standing
     /// The Lantern Inn's keys and the chests the House may open.
     public let inn: Inn
+    /// The House's letters with other keepers, the latest first.
+    public let letters: [Letter]
+    /// The keepers' Houses it may write to: those it has letters with, the
+    /// latest first, then the nearest, at most `dealtWith`.
+    public let correspondents: [Correspondent]
     /// The latest reports shown open; the earlier ones folded beneath them.
     public static let reportsOpen = 3
 
@@ -277,6 +297,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.leave == b.leave && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
+            && a.letters == b.letters && a.correspondents == b.correspondents
     }
 
     /// The House's stores as one stock.
@@ -466,6 +487,7 @@ public struct CompanionLedger: Equatable, Sendable {
         dealings = CompanionLedger.dealings(in: world, player: player)
         standing = CompanionLedger.standing(in: world, player: player)
         inn = CompanionLedger.inn(in: world, player: player)
+        (letters, correspondents) = CompanionLedger.letters(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -611,6 +633,32 @@ public struct CompanionLedger: Equatable, Sendable {
         if given.tribute != false { others.append(taken("Pay no tribute", .stand(.tribute(false)))) }
         if !given.isEmpty { others.append(taken("Keep the House as it sees fit", .standDown)) }
         return Standing(said: given.said, musters: musters, raises: raises, others: others.compactMap { $0 })
+    }
+
+    /// The House's letters, the latest first, lined as the Mac lines them;
+    /// and the keepers it may write to, those it has letters with first.
+    static func letters(in world: GameState, player: Int) -> ([Letter], [Correspondent]) {
+        let houses = world.houses
+        func title(_ house: Int) -> String { houses.indices.contains(house) ? houses[house].title : "a fallen House" }
+        let mail = world.letters(of: player).reversed()
+        let letters = mail.map { letter in
+            let other = letter.from == player ? letter.to : letter.from
+            return Letter(id: letter.id, line: "\(letter.from == player ? "To" : "From") \(title(other)): \(letter.text)",
+                          incoming: letter.to == player)
+        }
+        let keepers = Set(houses.indices.filter { $0 != player && houses[$0].isPlayer && !houses[$0].isEliminated })
+        var ordered: [Int] = []
+        for letter in mail {
+            let other = letter.from == player ? letter.to : letter.from
+            if keepers.contains(other), !ordered.contains(other) { ordered.append(other) }
+        }
+        if let home = world.seat(of: player)?.position {
+            let nearest = keepers.subtracting(ordered).map { house in (house, world.seat(of: house)?.position.distance(to: home) ?? Int.max) }
+                .sorted { ($0.1, $0.0) < ($1.1, $1.0) }.map(\.0)
+            ordered += nearest
+        }
+        let correspondents = ordered.prefix(CompanionLedger.dealtWith).map { Correspondent(id: $0, name: title($0)) }
+        return (Array(letters), correspondents)
     }
 
     /// The House's keys at the Lantern Inn, five of each kind kept and more

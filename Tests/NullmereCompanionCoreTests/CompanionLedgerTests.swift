@@ -22,6 +22,32 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// Letters on the phone: the House's own, the latest first, lined as the
+    /// Mac lines them; the keepers it may write to, never a steward's House,
+    /// those it has letters with first; a letter written taken by the rules.
+    func testThePhoneReadsAndWritesLetters() throws {
+        var (state, me) = try world()
+        let others = state.houses.indices.filter { $0 != me }
+        XCTAssertTrue(CompanionLedger(world: state, player: me).correspondents.isEmpty, "No other keeper, none to write to")
+        let friend = try XCTUnwrap(others.last), near = try XCTUnwrap(others.first)
+        state.houses[friend].isPlayer = true
+        state.houses[near].isPlayer = true
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(Set(ledger.correspondents.map(\.id)), [friend, near], "Keepers alone")
+        XCTAssertTrue(ledger.letters.isEmpty)
+
+        let write = Command.writeLetter(to: friend, words: "Hold the ford.")
+        XCTAssertNil(state.refusal(of: write, as: me))
+        _ = try state.perform(write, as: me)
+        _ = try state.perform(.writeLetter(to: me, words: "It is held."), as: friend)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.letters.map(\.line), ["From \(state.houses[friend].title): It is held.",
+                                                    "To \(state.houses[friend].title): Hold the ford."], "The latest first")
+        XCTAssertEqual(ledger.letters.map(\.incoming), [true, false])
+        XCTAssertEqual(ledger.correspondents.map(\.id), [friend, near], "Those it has letters with first")
+        XCTAssertTrue(CompanionLedger(world: state.view(for: near), player: near).letters.isEmpty, "No other keeper reads them")
+    }
+
     /// The Lantern Inn on the phone: the House's keys told, a word when one
     /// more silver would be lost; each chest offered one the rules open, a
     /// gold one for moonsalt where there's no gold key.
