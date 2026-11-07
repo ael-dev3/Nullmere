@@ -245,8 +245,8 @@ enum CompanionCheck {
         /// An order given from the phone, the realm's word on it heard and
         /// written under `what`: never a name the smoke test reads a line by
         /// (Fortified company, Said to the realm, Raised the banner of, Said
-        /// to the alliance, Watch, At work), or it reads the realm's word for
-        /// what was done.
+        /// to the alliance, Standing orders, Watch, At work), or it reads the
+        /// realm's word for what was done.
         func give(_ command: Command, told: String, as what: String) async {
             let asked = Date()
             session.give(command, told: told)
@@ -278,6 +278,17 @@ enum CompanionCheck {
             lines.append("Said to the alliance: \(toAllies)")
         } else {
             lines.append("Sworn to no alliance: nothing said to one")
+        }
+        // The caretaker's standing orders, set from the phone: the one kind of
+        // company it musters while the keeper is away.
+        if let muster = session.ledger?.standing.musters.first, let house = session.keeper?.house {
+            let unset = StandingOrders(house: house).said
+            await give(muster.command, told: muster.title, as: "Stood")
+            if await until(30, { session.ledger.map { $0.standing.said != unset } == true }), let said = session.ledger?.standing.said {
+                lines.append("Standing orders: \(said)")
+            } else {
+                broken.append("the standing orders given from the phone never stood")
+            }
         }
         // A commander given a company of war from the phone, where one is free.
         if let commander = session.ledger?.commanders.first(where: { !$0.leads.isEmpty }), let lead = commander.leads.first {

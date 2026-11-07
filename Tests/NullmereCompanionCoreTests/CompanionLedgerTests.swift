@@ -22,6 +22,34 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// The caretaker's standing orders on the phone: told as they stand,
+    /// every order offered one the rules take; given, told so and offered no
+    /// more, the other way offered; cleared, the House kept as it sees fit.
+    func testThePhoneSetsTheCaretakersStandingOrders() throws {
+        var (state, me) = try world()
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.standing.said, StandingOrders(house: me).said, "None given: as it sees fit")
+        assertTaken(ledger.standing.musters + ledger.standing.raises + ledger.standing.others, in: state, as: me)
+        XCTAssertFalse(ledger.standing.musters.isEmpty)
+        XCTAssertFalse(ledger.standing.raises.isEmpty)
+        XCTAssertFalse(ledger.standing.others.contains { $0.command == .standDown }, "Nothing to clear")
+        let spears = try XCTUnwrap(ledger.standing.musters.first { $0.command == .stand(.muster(.spear)) })
+        _ = try state.perform(spears.command, as: me)
+        let peace = try XCTUnwrap(ledger.standing.others.first { $0.command == .stand(.peace(true)) })
+        _ = try state.perform(peace.command, as: me)
+
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.standing.said.contains("musters only Spears"), ledger.standing.said)
+        XCTAssertTrue(ledger.standing.said.contains("makes peace with any House"), ledger.standing.said)
+        XCTAssertFalse(ledger.standing.musters.contains { $0.command == .stand(.muster(.spear)) }, "Offered no more")
+        XCTAssertFalse(ledger.standing.others.contains { $0.command == .stand(.peace(true)) })
+        XCTAssertTrue(ledger.standing.others.contains { $0.command == .stand(.peace(false)) }, "The other way offered")
+        assertTaken(ledger.standing.musters + ledger.standing.raises + ledger.standing.others, in: state, as: me)
+        let clear = try XCTUnwrap(ledger.standing.others.first { $0.command == .standDown })
+        _ = try state.perform(clear.command, as: me)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).standing.said, StandingOrders(house: me).said, "Cleared")
+    }
+
     /// Two of the House's companies that would be named alike (the same
     /// kind and tier about the same place) are told apart on the phone,
     /// numbered in the order they were raised; a name no other shares is

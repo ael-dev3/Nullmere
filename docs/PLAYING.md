@@ -248,7 +248,12 @@ network comes back.
   demand is war; the House's stores; its holds,
   each with what it raises and musters and how long each has to go, and
   Raise and Muster: the works it may raise a level and the companies it
-  may muster at the first tier now, the House able to pay; Barter, a
+  may muster at the first tier now, the House able to pay; While you are
+  away, the caretaker's standing orders as they stand, with Muster (the one
+  kind of company of war it musters), Raise first (the work it raises first
+  wherever it can) and More (every company kept on the House's land, peace
+  made with any House or none, tribute paid or none, and the House kept as
+  it sees fit); Barter, a
   store for another, three to one and moonsalt as three of any other, with
   what it costs or why the realm would refuse it, in the Mac's words; the
   satchel,

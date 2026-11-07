@@ -156,6 +156,29 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // While the keeper is away: the caretaker's standing orders,
+                    // and the orders that would change them.
+                    Section("While you are away") {
+                        Text(verbatim: ledger.standing.said)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 14) {
+                            ListedOrdersMenu(title: "Muster", orders: ledger.standing.musters,
+                                             label: "The one kind of company your caretaker musters") { order in
+                                session.give(order.command, told: order.title)
+                            }
+                            ListedOrdersMenu(title: "Raise first", orders: ledger.standing.raises,
+                                             label: "The work your caretaker raises first") { order in
+                                session.give(order.command, told: order.title)
+                            }
+                            ListedOrdersMenu(title: "More", orders: ledger.standing.others,
+                                             label: "Your caretaker's other standing orders") { order in
+                                session.give(order.command, told: order.title)
+                            }
+                        }
+                        .font(Night.small)
+                    }
                     BarterSection(session: session, ledger: ledger)
                     // The satchel: each item, how many, what one does, and its uses now.
                     if !ledger.satchel.isEmpty {

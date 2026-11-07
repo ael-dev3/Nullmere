@@ -5,7 +5,8 @@
 # scripts/build-companion.sh and run in one, takes the link as the phone's
 # camera would, comes in as the keeper, keeps their House from the phone (a
 # company dug in, words said to the realm, an alliance raised and words
-# said to it, the keeper made ready so the watch turns, a hold set to work), each
+# said to it, the caretaker's standing orders given, the keeper made ready
+# so the watch turns, a hold set to work), each
 # carried out by the realm, is set aside and comes in again by its own key;
 # and the Mac sees the company dug in, hears the words, sees the alliance
 # raised, the watch turned and the hold at work; and, seeing the company dug
@@ -217,6 +218,15 @@ if [ -n "$ALLIED_WORDS" ]; then
     done
 fi
 echo "The Mac hears the phone's words to the alliance: $ALLIES_HEARD"
+STANDING="$(sed -n 's/^Standing orders: //p' "$REPORT" | head -n 1)"
+STOOD=no
+if [ -n "$STANDING" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "standing: $STANDING" "$MAC_REPORT" 2>/dev/null; then STOOD=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the standing orders the phone gave: $STOOD${STANDING:+ ($STANDING)}"
 TURNED_TO="$(sed -n 's/^Watch: //p' "$REPORT" | head -n 1)"
 TURNED=no
 if [ -n "$TURNED_TO" ]; then
@@ -327,6 +337,10 @@ if [ "$RAISED" != yes ]; then
 fi
 if [ "$ALLIES_HEARD" != yes ]; then
     echo "error: the Mac never heard the words said to the alliance on the phone" >&2
+    exit 1
+fi
+if [ "$STOOD" != yes ]; then
+    echo "error: the Mac never saw the standing orders given on the phone" >&2
     exit 1
 fi
 if [ "$TURNED" != yes ]; then

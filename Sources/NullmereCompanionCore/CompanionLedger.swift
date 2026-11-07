@@ -133,6 +133,21 @@ public struct CompanionLedger: Equatable, Sendable {
         public let war: Order?
     }
 
+    /// The caretaker's standing orders, kept by the realm for while the
+    /// keeper is away: what it does by them as the keeper is told it, and
+    /// the orders that would change them, each one the rules take.
+    public struct Standing: Equatable, Sendable {
+        /// "While you are away, your caretaker musters only Spears."
+        public let said: String
+        /// The one kind of company of war it musters, each kind it doesn't now.
+        public let musters: [Order]
+        /// The work it raises first wherever it can, each it doesn't now.
+        public let raises: [Order]
+        /// Every company kept home; peace made or none; tribute paid or
+        /// none; and the orders cleared, the House kept as it sees fit.
+        public let others: [Order]
+    }
+
     /// A question among the alliances waiting on the keeper's answer: an
     /// alliance's invitation to the House, or a House asking to join the
     /// alliance it leads, with the answers the rules take.
@@ -198,6 +213,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let dealings: [Dealing]
     /// The most Houses the phone deals with at once: the nearest.
     public static let dealtWith = 12
+    /// The caretaker's standing orders, and the orders that would change them.
+    public let standing: Standing
     /// The latest reports shown open; the earlier ones folded beneath them.
     public static let reportsOpen = 3
 
@@ -248,7 +265,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
-            && a.dealings == b.dealings
+            && a.dealings == b.dealings && a.standing == b.standing
     }
 
     /// The House's stores as one stock.
@@ -436,6 +453,7 @@ public struct CompanionLedger: Equatable, Sendable {
         calls = CompanionLedger.calls(in: world, player: player, holds: holds)
         // The alliance's studies, as the Mac's Alliance panel reads them.
         dealings = CompanionLedger.dealings(in: world, player: player)
+        standing = CompanionLedger.standing(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -557,6 +575,32 @@ public struct CompanionLedger: Equatable, Sendable {
     /// What a company may strike now from where it stands, by the rules'
     /// own reach: the wilds, which any House may strike, and the companies
     /// and holds of Houses at war with this one.
+    /// The House's standing orders as the keeper is told them, and every
+    /// order the rules would take to change them: a kind of company of war
+    /// to muster or a work to raise first other than those given, every
+    /// company kept home unless it is, peace and tribute each way not
+    /// given, and the orders cleared while any stand.
+    static func standing(in world: GameState, player: Int) -> Standing {
+        let given = world.standingOrders(of: player)
+        func taken(_ title: String, _ command: Command) -> Order? {
+            world.refusal(of: command, as: player) == nil ? Order(title: title, command: command) : nil
+        }
+        let musters = UnitKind.allCases.filter { $0.isMilitary && $0 != given.muster }.compactMap { kind in
+            taken("Muster only \(kind.title)", .stand(.muster(kind)))
+        }
+        let raises = BuildingKind.allCases.filter { $0 != given.raise }.compactMap { kind in
+            taken("Raise the \(kind.title) first", .stand(.raise(kind)))
+        }
+        var others: [Order?] = []
+        if given.home != true { others.append(taken("Keep every company on your land", .stand(.home))) }
+        if given.peace != true { others.append(taken("Make peace with any House that offers it", .stand(.peace(true)))) }
+        if given.peace != false { others.append(taken("Make peace with no House", .stand(.peace(false)))) }
+        if given.tribute != true { others.append(taken("Pay any tribute demanded", .stand(.tribute(true)))) }
+        if given.tribute != false { others.append(taken("Pay no tribute", .stand(.tribute(false)))) }
+        if !given.isEmpty { others.append(taken("Keep the House as it sees fit", .standDown)) }
+        return Standing(said: given.said, musters: musters, raises: raises, others: others.compactMap { $0 })
+    }
+
     static func strikes(for unit: Unit, in world: GameState, player: Int) -> [Order] {
         guard unit.kind.isMilitary, unit.movesLeft > 0 else { return [] }
         let reach = unit.kind.range
