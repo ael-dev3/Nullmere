@@ -45,6 +45,21 @@ final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        // scripts/check-counsel.sh: counsel taken of a commander through this
+        // Mac's own model, as a keeper takes it, held to counsel's rules; the
+        // report written, the app goes.
+        if let path = ProcessInfo.processInfo.environment["NULLMERE_COUNSEL_REPORT"], !path.isEmpty {
+            Task { @MainActor in
+                let opened = Date()
+                while !OnDeviceVoice.isAvailable, Date().timeIntervalSince(opened) < 30 {
+                    try? await Task.sleep(for: .seconds(1))
+                }
+                let report = await CounselCheck.run()
+                try? report.text.write(toFile: path, atomically: true, encoding: .utf8)
+                exit(report.failures.isEmpty ? 0 : 1)
+            }
+            return
+        }
         #endif
         // A copy already running: it comes forward, and this one goes.
         if SingleInstance.handOver() {

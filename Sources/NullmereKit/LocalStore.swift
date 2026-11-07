@@ -1,4 +1,5 @@
 import Foundation
+import NullmereCore
 import os
 
 /// What this Mac keeps for its keeper, in Application Support: the words
@@ -70,5 +71,26 @@ public struct LocalStore: Sendable {
     public func loadVoices() -> [String: String] {
         guard let data = try? Data(contentsOf: voicesURL) else { return [:] }
         return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
+
+    // MARK: Counsel
+
+    /// Where what a commander remembers of counsel with the keeper is kept.
+    func counselURL(commander: Int) -> URL {
+        directory.appendingPathComponent("counsel-\(commander).json")
+    }
+
+    public func saveCounsel(_ memory: CounselMemory) {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try JSONEncoder().encode(memory).write(to: counselURL(commander: memory.commander), options: .atomic)
+        } catch {
+            LocalStore.logger.error("Keeping counsel failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    public func loadCounsel(commander: Int) -> CounselMemory? {
+        guard let data = try? Data(contentsOf: counselURL(commander: commander)) else { return nil }
+        return try? JSONDecoder().decode(CounselMemory.self, from: data)
     }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import FoundationModels
 import LauncherCore
 import NullmereCore
 import NullmereModels
@@ -8,6 +9,7 @@ import NullmereSound
 import NullmereWorld
 import Observation
 import SwiftUI
+import NullmereCounsel
 
 /// A keeper in the world, and everything the interface needs: what is
 /// selected, where the camera looks, what just happened. The realm holds the
@@ -553,6 +555,46 @@ public final class GameSession {
         rememberSeen()
         link.onEvent = { [weak self] event in self?.hear(event) }
         link.connect()
+    }
+
+    // MARK: Counsel
+
+    /// The counsel the keeper is taking of one of their commanders, spoken
+    /// by Apple's on-device model on this Mac; nil while none is open.
+    public private(set) var counsel: CommanderCounselSession?
+    /// Whether Apple's on-device model can be asked, for tests to set: nil
+    /// asks the Foundation Models framework, as the app always does.
+    @ObservationIgnored var counselAvailability: (() -> SystemLanguageModel.Availability)?
+
+    /// Opens counsel with one of the keeper's commanders, who remembers what
+    /// was said in earlier counsel this age.
+    public func openCounsel(with commander: Int) {
+        guard let grounded = CommanderCounsel(state: state, player: player, commander: commander) else { return }
+        counsel?.stop()
+        let memory = store.loadCounsel(commander: commander) ?? CounselMemory(commander: commander, age: realmStatus?.age ?? 0)
+        let opened = CommanderCounselSession(counsel: grounded, memory: memory, availability: counselAvailability)
+        let store = self.store
+        opened.onRemember = { store.saveCounsel($0) }
+        opened.prewarm()
+        counsel = opened
+    }
+
+    public func closeCounsel() {
+        counsel?.stop()
+        counsel = nil
+    }
+
+    /// The keeper gives an order their commander put forward: carried out
+    /// as any order is, and the realm's word taken as final.
+    public func give(_ offer: CommanderCounselSession.Offer) {
+        guard let command = counsel?.give(offer) else { return }
+        perform(command)
+    }
+
+    /// The commander's looks tell the world as it now stands.
+    private func renewCounsel() {
+        guard let open = counsel, let grounded = CommanderCounsel(state: state, player: player, commander: open.id) else { return }
+        open.renew(grounded)
     }
 
     public var playerHouse: House { state.houses[player] }
@@ -1381,6 +1423,7 @@ public final class GameSession {
     // MARK: Bookkeeping
 
     private func refreshWorld() {
+        renewCounsel()
         counselNewCharge()
         visible = state.visibility(for: player)
         threatened = Set(Sentinel.threats(in: state, player: player, visible: visible).map(\.hold))

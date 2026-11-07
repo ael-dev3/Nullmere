@@ -217,6 +217,18 @@ jobs:
         run: |
           scripts/check-voices.sh || [ $? -eq 2 ]
 
+      # Counsel taken of a commander through the runner's own model, as on a
+      # keeper's Mac: three questions answered with the counsel's looks, an
+      # order put forward, an answer stopped. CI's virtual runners aren't
+      # eligible for Apple Intelligence, so here it is told unverified (2),
+      # never passed; a real Mac verifies it (docs/GAPS.md).
+      - name: Commanders' counsel, from the runner's own model
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          app="build/voices/Nullmere Online.app"
+          if [ -d "$app" ]; then scripts/check-counsel.sh --app "$app" || [ $? -eq 2 ]; else scripts/check-counsel.sh || [ $? -eq 2 ]; fi
+
       # Opens the debug build of the launcher as if the model were ready
       # (only debug builds allow that), to photograph its menu, News and
       # Settings, which the requirement screen otherwise hides on CI.
@@ -400,6 +412,8 @@ jobs:
           cat build/perf-check.log 2>/dev/null || true
           # Whose voices were heard, and their verdict.
           sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 || true
+          # Whose counsel was taken, and its verdict.
+          sed -n '1p;$p' build/counsel-report.txt 2>/dev/null || true
           # The ballad the runner's own model made, as a keeper's Mac makes one.
           grep -h "^ballad of " build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true

@@ -568,6 +568,25 @@ full screen at launch as chosen.
   wallbreaker's, each with its light on the ground. A commander takes up a company of war at or beside one of
   its House's holds; if the company falls, it is carried home wounded for
   four watches.
+- **Counsel.** Take counsel, beside each commander in the Commanders, opens
+  a conversation with them, spoken by Apple's on-device model on your own
+  Mac and nowhere else. Ask in your own words; the commander answers as
+  themself, grave and brief, in the bent of their archetype (a warden
+  counsels patience and the walls, a vanguard the bold stroke), and knows
+  what your House knows and no more: as they answer they may look at a
+  company of yours by its handle, about the company they lead (only what
+  your House sees), or at your House's stores and wars, and each look is
+  shown as they take it. They may put an order to you (a company to march,
+  strike, fortify, halt or drill), weighed as the order book weighs a line:
+  only one the realm would take is put forward, and you give it or set it
+  aside; the realm decides what comes of it, as of any order. Answers appear
+  as they are spoken and can be stopped; one that doesn't begin within
+  twenty-five seconds is given up. A commander remembers the last dozen
+  exchanges of the age, kept on your Mac, and is told what you did with
+  what they put forward. Where the model can't be asked (a Mac that can't
+  run it, Apple Intelligence turned off, the model still downloading), the
+  conversation says exactly that and nothing is answered in its place;
+  everything else plays as ever.
 - **Talents.** A commander gains a talent point at each level past the
   first, twenty-nine at the thirtieth, to spend a rank at a time in three
   trees of five talents: Steel (Keen Edge, Hunter's Mark, Ramming Drill,

@@ -87,17 +87,25 @@ private struct CommanderRow: View {
         let commander = line.commander
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 10) {
-                Portrait(key: .commander(variant: Archetype.allCases.firstIndex(of: commander.archetype) ?? 0),
-                         colour: Portrait.colour(of: commander.owner, in: session.state), size: 44)
-                VStack(alignment: .leading, spacing: 3) {
-                    Caps(commander.name, size: 10, weight: .medium).foregroundStyle(Palette.ink)
-                    Text(verbatim: "\(commander.archetype.title) · level \(line.level)")
-                        .font(.nm(10.5))
-                        .foregroundStyle(Palette.text(0.65))
+                HStack(alignment: .center, spacing: 10) {
+                    Portrait(key: .commander(variant: Archetype.allCases.firstIndex(of: commander.archetype) ?? 0),
+                             colour: Portrait.colour(of: commander.owner, in: session.state), size: 44)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Caps(commander.name, size: 10, weight: .medium).foregroundStyle(Palette.ink)
+                        Text(verbatim: "\(commander.archetype.title) · level \(line.level)")
+                            .font(.nm(10.5))
+                            .foregroundStyle(Palette.text(0.65))
+                    }
                 }
+                .accessibilityElement(children: .combine)
                 Spacer()
+                // Counsel, spoken by Apple's on-device model: a commander held
+                // by another House speaks only to their captors.
+                QuietButton(title: "Take counsel", size: 8.5, enabled: line.heldBy == nil, name: "Take counsel of \(commander.name)",
+                            why: line.heldBy == nil ? nil : "\(commander.name) is held prisoner.") {
+                    session.openCounsel(with: commander.id)
+                }
             }
-            .accessibilityElement(children: .combine)
             if let span = line.span {
                 HStack(spacing: 8) {
                     Meter(fraction: Double(line.progress) / Double(max(span, 1)))
