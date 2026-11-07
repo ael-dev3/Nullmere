@@ -1071,6 +1071,24 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(link.sent.last, .propose(.tribute, to: other))
     }
 
+    /// Of a steward's House it is asked twice, as war is, for a steward
+    /// that refuses is at war with the keeper at once.
+    func testAStrongerKeeperDemandsTributeOfAStewardAskedTwice() throws {
+        var state = GameState(settings: GameSettings(seedText: "tribute of a steward", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let other = (me + 1) % state.houses.count
+        state.units.removeAll { $0.owner == other }
+        let seat = try XCTUnwrap(state.seat(of: me))
+        for _ in 0..<4 { _ = state.placeUnit(.spear, for: me, near: seat.position) }
+        let (session, link) = session(state)
+        let house = session.state.houses[other]
+        XCTAssertFalse(house.isPlayer, "A steward's House")
+        XCTAssertTrue(session.canDemandTribute(from: other), "At peace, and clearly the stronger")
+        draw(HouseRow(session: session, house: house, draft: OfferDraft(for: house)))
+        XCTAssertTrue(PressableButtons.press("Demand tribute"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .propose(.tribute, to: other))
+    }
+
     /// A steward's demand refused is war at once, as its words said; a
     /// keeper's, refused, leaves war theirs to choose.
     func testRefusingTributeIsWarWithAStewardAndAChoiceForAKeeper() throws {
