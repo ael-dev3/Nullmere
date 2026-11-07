@@ -138,7 +138,10 @@ enum CompanionCheck {
         }
         lines.append("Fortified company: \(company.id)")
         write(done: false)
-        /// An order given from the phone, the realm's word on it heard.
+        /// An order given from the phone, the realm's word on it heard and
+        /// written under `what`: never a name the smoke test reads a line by
+        /// (Fortified company, Said to the realm, Said to the alliance,
+        /// Watch, At work), or it reads the realm's word for what was done.
         func give(_ command: Command, told: String, as what: String) async {
             let asked = Date()
             session.give(command, told: told)
@@ -156,7 +159,7 @@ enum CompanionCheck {
         // And to the keeper's alliance, where their House is sworn to one.
         if let alliance = session.ledger?.alliance {
             let toAllies = "Sworn to \(alliance), from \(session.keeper?.name ?? "a keeper")'s phone."
-            await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to the alliance")
+            await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to allies")
             lines.append("Said to the alliance: \(toAllies)")
         } else {
             lines.append("Sworn to no alliance: nothing said to one")

@@ -38,6 +38,16 @@ final class CompanionRealmTests: XCTestCase {
         return (link, listener)
     }
 
+    /// What a House's keeper said, as a device heard it: each line with
+    /// where it was said, to the realm or to the House's alliance.
+    @MainActor
+    private static func said(by house: Int, on ear: Listener) -> [String] {
+        guard let world = ear.world else { return [] }
+        let sworn = world.alliance(of: house)?.id
+        return world.wordsSaid.filter { $0.from == house }
+            .map { ($0.alliance == nil ? "realm: " : $0.alliance == sworn ? "alliance: " : "elsewhere: ") + $0.text }
+    }
+
     func testAPhoneLinkedByItsKeepersCodePlaysBesideTheirMac() async throws {
         let db = FakeSpacetime()
         let key = try await db.createIdentity()
@@ -97,6 +107,21 @@ final class CompanionRealmTests: XCTestCase {
         await MainActor.run { phone.send(.fortify(unit: first.id)) }
         try await until("the phone's order carried out, on the phone") { phoneEar.world?.unit(first.id)?.fortified == true }
         try await until("and seen on the Mac") { macEar.world?.unit(first.id)?.fortified == true }
+
+        // Words the phone says, to the realm and to the alliance Ama raised
+        // on her Mac, are heard on the Mac, each where it was said, as hers.
+        await MainActor.run { mac.send(.foundAlliance(name: "The Phone's Accord")) }
+        try await until("Ama's alliance, on the phone") { phoneEar.world?.alliance(of: house) != nil }
+        await MainActor.run { phone.send(.say(words: "Kept from Ama's phone", toAlliance: false)) }
+        try await until("the phone's words to the realm, on the Mac") {
+            CompanionRealmTests.said(by: house, on: macEar).contains("realm: Kept from Ama's phone")
+        }
+        await MainActor.run { phone.send(.say(words: "Sworn, from Ama's phone", toAlliance: true)) }
+        try await until("the phone's words to the alliance, on the Mac") {
+            CompanionRealmTests.said(by: house, on: macEar).contains("alliance: Sworn, from Ama's phone")
+        }
+        let onTheMac = await MainActor.run { CompanionRealmTests.said(by: house, on: macEar) }
+        XCTAssertEqual(onTheMac, ["realm: Kept from Ama's phone", "alliance: Sworn, from Ama's phone"])
 
         // And one from the Mac on the phone: stores bartered.
         let stores = await MainActor.run { phoneEar.world?.houses[house].stock }
