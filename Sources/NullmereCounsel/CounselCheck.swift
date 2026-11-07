@@ -20,6 +20,8 @@ public enum CounselCheck {
     static let forbidden = ["game", "player", "turn", "rule", "model", "tool", "ai", "artificial", "assistant"]
     /// The verdict a report ends with when counsel kept every rule.
     public static let passed = "Counsel kept to its rules."
+    /// The longest a stopped answer may take to stop.
+    static let stopLimit = 10.0
     /// The questions asked, in turn.
     static let questions = ["What do you see about you?",
                             "How does our House stand?",
@@ -143,10 +145,18 @@ public enum CounselCheck {
         while session.answering, session.partial?.isEmpty != false, Date().timeIntervalSince(asked) < 20 {
             try? await Task.sleep(for: .milliseconds(20))
         }
+        // Timed from the keeper's Stop to the answer's end, and waited on
+        // ten seconds at most: an answer that never stops fails the check
+        // rather than holding it up for good.
         session.stop()
-        while session.answering { try? await Task.sleep(for: .milliseconds(20)) }
-        let stopped = session.lines.dropFirst(before).contains { $0.kind == .trouble && $0.text == "Stopped." }
-        text.append(stopped ? "Stopped as it began: it stopped." : "Stopped as it began: it did not stop.")
+        let stopping = Date()
+        while session.answering, Date().timeIntervalSince(stopping) < Self.stopLimit {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        let tookToStop = Date().timeIntervalSince(stopping)
+        let stopped = !session.answering && session.lines.dropFirst(before).contains { $0.kind == .trouble && $0.text == "Stopped." }
+        text.append(stopped ? String(format: "Stopped as it began: it stopped in %.2f s.", tookToStop)
+                            : String(format: "Stopped as it began: it did not stop in %.0f s.", tookToStop))
         if !stopped { failures.append("a stopped answer did not stop") }
         text.append("")
         text.append(failures.isEmpty ? passed : "Broken: \(failures.count)")

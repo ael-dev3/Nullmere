@@ -393,13 +393,15 @@ struct AllianceTab: View {
                                 .font(Night.small)
                             }
                         }
+                        // The Houses the alliance may invite, nearest first, in one
+                        // menu rather than a button each down the tab.
                         if !ledger.invites.isEmpty {
-                            Section("Invite a House") {
-                                ForEach(ledger.invites) { invite in
-                                    Button(invite.title) { session.give(invite.command, told: invite.title) }
-                                        .buttonStyle(.bordered)
-                                        .font(Night.small)
+                            Section {
+                                ListedOrdersMenu(title: "Invite a House…", orders: ledger.invites,
+                                                 label: "Invite a House to your alliance") { invite in
+                                    session.give(invite.command, told: invite.title)
                                 }
+                                .font(Night.body)
                             }
                         }
                         if let leave = ledger.leave {

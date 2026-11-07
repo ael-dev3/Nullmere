@@ -188,10 +188,26 @@ final class CommanderCounselTests: XCTestCase {
     func testTroubleIsToldPlainly() {
         let all: [CounselTrouble] = [.unavailable(.deviceNotEligible), .unavailable(.appleIntelligenceOff), .unavailable(.modelNotReady),
                                      .unavailable(.systemTooOld), .refused, .language, .busy, .tooLong, .garbled, .assetsMissing, .slow,
-                                     .failed("the stars are wrong")]
+                                     .silent, .failed("the stars are wrong")]
         XCTAssertEqual(Set(all.map(\.said)).count, all.count)
         XCTAssertTrue(CounselTrouble.unavailable(.deviceNotEligible).said.contains("Everything else plays as ever"))
         XCTAssertTrue(CounselTrouble.unavailable(.appleIntelligenceOff).said.contains("System Settings"))
         XCTAssertTrue(CounselTrouble.failed("the stars are wrong").said.hasSuffix("the stars are wrong"))
+    }
+
+    /// What the system says of a failure is told where a keeper can read
+    /// it; its stock words for an error it has nothing to say of, which
+    /// name a type and a code, never are.
+    func testTheSystemsStockWordsAreNeverShown() {
+        let stock = ["The operation couldn’t be completed. (FoundationModels.LanguageModelSession.GenerationError error -1.)",
+                     "The operation couldn't be completed. (FoundationModels.LanguageModelSession.GenerationError error -1.)", ""]
+        for said in stock {
+            XCTAssertEqual(CounselTrouble.told(said), .silent, said)
+        }
+        XCTAssertEqual(CounselTrouble.told("The stars are wrong."), .failed("The stars are wrong."))
+        for told in [CounselTrouble.silent.said, CounselTrouble.silent.unreadOrders, CounselTrouble.silent.ordersReadAsWritten] {
+            XCTAssertFalse(told.contains("error"), told)
+            XCTAssertFalse(told.contains("("), told)
+        }
     }
 }

@@ -61,6 +61,27 @@ public enum SpokenOrders {
         "\(unit.kind.title) \(BuildingKind.numeral(unit.tier)) \(state.placeName(of: unit.position))"
     }
 
+    /// Each of a House's companies by name, told apart where two would be
+    /// named alike (the same kind and tier about the same place): numbered
+    /// in the order they were raised, "Spears I at Tirford (1)" and "Spears
+    /// I at Tirford (2)"; a name no other shares, as it is.
+    public static func distinctNames(in state: GameState, player: Int) -> [Int: String] {
+        let named = state.units(of: player).sorted { $0.id < $1.id }.map { (id: $0.id, name: Self.named($0, in: state)) }
+        var count: [String: Int] = [:]
+        for company in named { count[company.name, default: 0] += 1 }
+        var seen: [String: Int] = [:]
+        var names: [Int: String] = [:]
+        for company in named {
+            guard count[company.name, default: 0] > 1 else {
+                names[company.id] = company.name
+                continue
+            }
+            seen[company.name, default: 0] += 1
+            names[company.id] = "\(company.name) (\(seen[company.name, default: 1]))"
+        }
+        return names
+    }
+
     /// The places a keeper may name: the holds their House knows, the holy
     /// sites, the lairs and the Crown's gates, and the shores' regions.
     public static func places(in state: GameState) -> [(name: String, at: Hex)] {

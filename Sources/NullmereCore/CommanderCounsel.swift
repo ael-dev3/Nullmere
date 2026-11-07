@@ -287,8 +287,20 @@ public enum CounselTrouble: Equatable, Sendable, Error {
     case assetsMissing
     /// No answer came in time.
     case slow
+    /// No answer came, and the system said nothing of why: only its stock
+    /// words for an error, which name a type and a code.
+    case silent
     /// Anything else, as the system told it.
     case failed(String)
+
+    /// A failure as the system described it: its own words where it said
+    /// something a keeper can read, or silent where it gave only its stock
+    /// words, "The operation couldn't be completed (… error -1.)", which
+    /// are never shown.
+    public static func told(_ described: String) -> CounselTrouble {
+        let stock = (described.hasPrefix("The operation couldn’t be completed") || described.hasPrefix("The operation couldn't be completed"))
+        return stock || described.isEmpty ? .silent : .failed(described)
+    }
 
     public enum Unavailability: Equatable, Sendable {
         case deviceNotEligible, appleIntelligenceOff, modelNotReady, systemTooOld
@@ -316,6 +328,7 @@ public enum CounselTrouble: Equatable, Sendable, Error {
         case .garbled: return "The commander's answer came out garbled. Ask again."
         case .assetsMissing: return "Apple's on-device model isn't ready on this device yet. Try again once it has finished downloading."
         case .slow: return "No answer came in time. Ask again, or more simply."
+        case .silent: return "The commander gave no counsel, and Apple's on-device model said nothing of why. Ask again in a while."
         case .failed(let reason): return "The commander gave no counsel: \(reason)"
         }
     }

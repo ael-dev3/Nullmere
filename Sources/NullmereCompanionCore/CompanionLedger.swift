@@ -275,6 +275,9 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         gatherings = world.gatherings(against: player).map(world.words(of:))
         let holds = world.holds(of: player).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
+        // The House's companies told apart where two would be named alike.
+        let names = SpokenOrders.distinctNames(in: world, player: player)
+        func named(_ unit: Unit) -> String { names[unit.id] ?? SpokenOrders.named(unit, in: world) }
         companies = SpokenOrders.companies(in: world, player: player).map { unit in
             // Each order where it would do something: dig in a company of war
             // not dug in, halt one on the march, call home one gathering or
@@ -291,7 +294,7 @@ public struct CompanionLedger: Equatable, Sendable {
             let marches = holds.filter { $0.position != unit.position && unit.destination != $0.position }.map { hold in
                 Order(title: "March to \(hold.name)", command: .move(unit: unit.id, to: hold.position))
             }
-            return Company(id: unit.id, name: SpokenOrders.named(unit, in: world), troops: GameState.counted(world.troops(of: unit)),
+            return Company(id: unit.id, name: named(unit), troops: GameState.counted(world.troops(of: unit)),
                            leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world),
                            orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
                            gathers: CompanionLedger.gathers(for: unit, in: world, player: player),
@@ -307,7 +310,7 @@ public struct CompanionLedger: Equatable, Sendable {
             } else if let wounded = line.woundedFor {
                 standing = wounded == 1 ? "Wounded: whole again next watch" : "Wounded: whole again in \(wounded) watches"
             } else if let unit = line.leads {
-                standing = "Leads the \(SpokenOrders.named(unit, in: world))"
+                standing = "Leads the \(named(unit))"
             } else {
                 standing = "Free to lead a company of war"
             }
@@ -315,10 +318,10 @@ public struct CompanionLedger: Equatable, Sendable {
             // ridden with, home again, a talent learned, a piece worn.
             let id = line.commander.id
             let leads = war.filter { world.assignRefusal(of: id, to: $0.id, as: player) == nil }.map { unit in
-                Order(title: "Lead the \(SpokenOrders.named(unit, in: world))", command: .assign(commander: id, unit: unit.id))
+                Order(title: "Lead the \(named(unit))", command: .assign(commander: id, unit: unit.id))
             }
             let seconds = war.filter { world.secondRefusal(of: id, to: $0.id, as: player) == nil }.map { unit in
-                Order(title: "Ride second with the \(SpokenOrders.named(unit, in: world))", command: .assignSecond(commander: id, unit: unit.id))
+                Order(title: "Ride second with the \(named(unit))", command: .assignSecond(commander: id, unit: unit.id))
             }
             let riding = war.contains { $0.leader == id || $0.second == id }
             let talents = Talent.allCases.filter { line.commander.learnRefusal(of: $0) == nil }.map { talent in

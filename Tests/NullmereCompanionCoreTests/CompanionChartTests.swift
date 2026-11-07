@@ -180,7 +180,9 @@ final class CompanionChartTests: XCTestCase {
         XCTAssertTrue(place.companies.isEmpty, "None of the House's own there")
         XCTAssertNil(place.hold)
         let strike = try XCTUnwrap(place.strikes.first { $0.command == .attack(unit: spear.id, target: beside) }, "\(place.orders.map(\.title))")
-        XCTAssertEqual(strike.title, "Strike \(state.houses[foe].title)'s \(SpokenOrders.named(theirs, in: view)) with the \(SpokenOrders.named(spear, in: view))")
+        // The House's company by its name told apart from its others'.
+        let ours = try XCTUnwrap(SpokenOrders.distinctNames(in: view, player: me)[spear.id])
+        XCTAssertEqual(strike.title, "Strike \(state.houses[foe].title)'s \(SpokenOrders.named(theirs, in: view)) with the \(ours)")
         assertTaken(place.orders, in: view, as: me)
         for march in place.marches {
             guard case .move(let id, let to) = march.command else { return XCTFail("\(march.title) is no march") }
@@ -266,7 +268,8 @@ final class CompanionChartTests: XCTestCase {
         let gathers = place.gathers
         XCTAssertTrue(gathers.allSatisfy { if case .gather = $0.command { return true }; return false })
         let gather = try XCTUnwrap(gathers.first { $0.command == .gather(unit: spear.id, site: site.id) }, "\(place.orders.map(\.title))")
-        XCTAssertEqual(gather.title, "Gather \(site.store.title.lowercased()) here with the \(SpokenOrders.named(spear, in: view))")
+        let ours = try XCTUnwrap(SpokenOrders.distinctNames(in: view, player: me)[spear.id])
+        XCTAssertEqual(gather.title, "Gather \(site.store.title.lowercased()) here with the \(ours)")
         XCTAssertLessThanOrEqual(gathers.count, CompanionChart.offered)
         assertTaken(place.orders, in: view, as: me)
         if chart.contains(site.position) {

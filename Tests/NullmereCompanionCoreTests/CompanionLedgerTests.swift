@@ -22,6 +22,51 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// Two of the House's companies that would be named alike (the same
+    /// kind and tier about the same place) are told apart on the phone,
+    /// numbered in the order they were raised; a name no other shares is
+    /// kept as it is; and the orders that name them name them so.
+    func testCompaniesNamedAlikeAreToldApart() throws {
+        var (state, me) = try world()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let first = Unit(id: state.takeID(), kind: .spear, owner: me, position: seat.position)
+        let second = Unit(id: state.takeID(), kind: .spear, owner: me, position: seat.position)
+        state.units.append(first)
+        state.units.append(second)
+        let plain = SpokenOrders.named(first, in: state)
+        XCTAssertEqual(plain, SpokenOrders.named(second, in: state), "Alike by kind, tier and place")
+
+        let names = SpokenOrders.distinctNames(in: state, player: me)
+        XCTAssertEqual(Set(names.values).count, names.count, "Each of the House's companies its own name")
+        XCTAssertEqual(names.count, state.units(of: me).count)
+        let alike = state.units(of: me).filter { SpokenOrders.named($0, in: state) == plain }.sorted { $0.id < $1.id }
+        XCTAssertGreaterThanOrEqual(alike.count, 2)
+        for (index, unit) in alike.enumerated() {
+            XCTAssertEqual(names[unit.id], "\(plain) (\(index + 1))", "Numbered in the order they were raised")
+        }
+        let counted = Dictionary(grouping: state.units(of: me)) { SpokenOrders.named($0, in: state) }
+        for (name, units) in counted where units.count == 1 {
+            XCTAssertEqual(names[units[0].id], name, "A name no other shares, as it is")
+        }
+
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(Set(ledger.companies.map(\.name)).count, ledger.companies.count, "Told apart on the phone")
+        XCTAssertEqual(ledger.companies.first { $0.id == second.id }?.name, names[second.id])
+        if let commander = ledger.commanders.first(where: { !$0.leads.isEmpty }) {
+            XCTAssertEqual(Set(commander.leads.map(\.title)).count, commander.leads.count, "\(commander.leads.map(\.title))")
+        }
+        // On the chart, marched elsewhere by the same names.
+        let view = state.view(for: me)
+        let ground = try XCTUnwrap(seat.position.neighbors.first { view.map[$0]?.terrain.isPassable == true && view.map[$0]?.terrain.isWater == false })
+        let place = CompanionChart(world: view, player: me).place(at: ground, in: view, player: me)
+        let viewNames = SpokenOrders.distinctNames(in: view, player: me)
+        for march in place.marches {
+            guard case .move(let unit, _) = march.command, let name = viewNames[unit] else { return XCTFail("\(march.title)") }
+            XCTAssertEqual(march.title, "March the \(name) here")
+        }
+        XCTAssertEqual(Set(place.marches.map(\.title)).count, place.marches.count)
+    }
+
     /// The House's studies on the phone: none before it has an Archive;
     /// then each it may begin, at its next grade, one the rules take as
     /// offered; and one under way said with how long it has to go, none

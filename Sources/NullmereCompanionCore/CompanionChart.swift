@@ -182,12 +182,15 @@ public struct CompanionChart: Equatable, Sendable {
             lines = [explored ? "Nothing your House knows of stands here." : "Your House hasn't explored this ground."]
         }
         let own = world.units(of: player).sorted { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }
+        // The House's companies told apart where two would be named alike.
+        let names = SpokenOrders.distinctNames(in: world, player: player)
+        func named(_ unit: NullmereCore.Unit) -> String { names[unit.id] ?? SpokenOrders.named(unit, in: world) }
         // What may strike what lies here, by the rules' own reach.
         var strikes: [CompanionLedger.Order] = []
         for unit in own {
             for strike in CompanionLedger.strikes(for: unit, in: world, player: player) {
                 guard case .attack(_, let target) = strike.command, target == hex else { continue }
-                strikes.append(CompanionLedger.Order(title: "\(strike.title) with the \(SpokenOrders.named(unit, in: world))", command: strike.command))
+                strikes.append(CompanionLedger.Order(title: "\(strike.title) with the \(named(unit))", command: strike.command))
             }
         }
         // The House's Lanterns in reach sent to scout another House's hold here.
@@ -195,7 +198,7 @@ public struct CompanionChart: Equatable, Sendable {
         if let hold, hold.owner != player {
             scouts = own.lazy.filter { $0.kind == .lantern }
                 .map { unit in
-                    CompanionLedger.Order(title: "Scout \(hold.name) with the \(SpokenOrders.named(unit, in: world))",
+                    CompanionLedger.Order(title: "Scout \(hold.name) with the \(named(unit))",
                                           command: .scout(unit: unit.id, hold: hold.id))
                 }
                 .filter { world.refusal(of: $0.command, as: player) == nil }
@@ -206,14 +209,14 @@ public struct CompanionChart: Equatable, Sendable {
         var gathers: [CompanionLedger.Order] = []
         if let site = world.site(at: hex) {
             gathers = own.lazy.filter { world.gatherRefusal($0.id, at: site.id, as: player) == nil }.prefix(CompanionChart.offered).map { unit in
-                CompanionLedger.Order(title: "Gather \(site.store.title.lowercased()) here with the \(SpokenOrders.named(unit, in: world))",
+                CompanionLedger.Order(title: "Gather \(site.store.title.lowercased()) here with the \(named(unit))",
                                       command: .gather(unit: unit.id, site: site.id))
             }
         }
         // And marched here, the nearest first, as the realm would march them.
         let marches = own.lazy.filter { $0.position != hex && $0.destination != hex }
             .map { unit in
-                CompanionLedger.Order(title: "March the \(SpokenOrders.named(unit, in: world)) here", command: .move(unit: unit.id, to: hex))
+                CompanionLedger.Order(title: "March the \(named(unit)) here", command: .move(unit: unit.id, to: hex))
             }
             .filter { world.refusal(of: $0.command, as: player) == nil }
             .prefix(CompanionChart.offered)

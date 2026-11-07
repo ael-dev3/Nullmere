@@ -58,7 +58,7 @@ final class OrdersReadTests: XCTestCase {
 
         let troubles: [CounselTrouble] = [.unavailable(.deviceNotEligible), .unavailable(.appleIntelligenceOff), .unavailable(.modelNotReady),
                                           .unavailable(.systemTooOld), .refused, .language, .busy, .tooLong, .garbled, .assetsMissing,
-                                          .slow, .failed("the system's own words")]
+                                          .slow, .silent, .failed("the system's own words")]
         XCTAssertEqual(Set(troubles.map(\.unreadOrders)).count, troubles.count, "Each told as itself")
         for trouble in troubles {
             XCTAssertTrue(trouble.unreadOrders.hasSuffix(", so your words were read as the order book's lines, as written."), trouble.unreadOrders)

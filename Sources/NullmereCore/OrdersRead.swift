@@ -97,6 +97,7 @@ extension CounselTrouble {
         case .garbled: why = "Apple's on-device model's answer came out in no shape to read"
         case .assetsMissing: why = "Apple's on-device model's files are not yet on this device"
         case .slow: why = "No answer came from Apple's on-device model in time"
+        case .silent: why = "Apple's on-device model gave no answer, and said nothing of why"
         case .failed(let what): why = "Apple's on-device model couldn't read them (\(what))"
         }
         return why

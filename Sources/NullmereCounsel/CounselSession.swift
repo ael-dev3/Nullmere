@@ -272,12 +272,15 @@ public final class CommanderCounselSession: ObservableObject {
             if case .concurrentRequests = error { return .busy }
             if case .decodingFailure = error { return .garbled }
             if case .unsupportedGuide = error { return .garbled }
-            return .failed(error.localizedDescription)
+            return .told(error.localizedDescription)
         }
         if let error = error as? LanguageModelSession.ToolCallError {
-            return .failed("a look failed: \(error.localizedDescription)")
+            if case .failed(let said) = CounselTrouble.told(error.localizedDescription) {
+                return .failed("a look failed: \(said)")
+            }
+            return .failed("a look failed")
         }
-        return .failed(error.localizedDescription)
+        return .told(error.localizedDescription)
     }
 
     /// What the model is told: the commander, the briefing, and what they

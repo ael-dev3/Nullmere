@@ -277,7 +277,9 @@ network comes back.
   March here with the House's nearest companies, six at most; the House's
   own companies and hold there come with their orders, as on the Army and
   House tabs. VoiceOver reads each mark on the chart and chooses it.
-- **Army.** Each company as the order book names it, its troops, its
+- **Army.** Each company as the order book names it (two alike in kind,
+  tier and place numbered, (1) and (2), in the order they were raised, here
+  and in every order that names them), its troops, its
   commander and what it is about, with the orders it may be given now:
   Fortify one not dug in, Halt one on the march, Recall one gathering or
   carrying, Drill one by a Muster Hall, March to any of the House's holds,
@@ -328,8 +330,9 @@ network comes back.
   keeper's), and for its leader, each House asking to join, to admit or
   refuse. Sworn to none, Ask to join the alliances that would take the
   House, those whose leaders' seats are nearest first, or Raise a banner
-  of the keeper's own naming; its leader may Invite the nearest Houses that
-  could join, and any of its Houses Leave it, asked once more first.
+  of the keeper's own naming; its leader may Invite a House…, the nearest
+  that could join listed first in one menu, and any of its Houses Leave it,
+  asked once more first.
   Studies together: the study the alliance pursues and what is still to
   give toward its next grade, or that it pursues none, and what it has
   learned; Give all the grade still needs, or as much of each store it

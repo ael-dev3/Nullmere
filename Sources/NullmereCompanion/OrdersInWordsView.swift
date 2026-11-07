@@ -114,8 +114,9 @@ struct OrdersInWordsView: View {
     /// The House's companies as the briefing numbers them: C1, C2 and on.
     private var handles: [String] {
         guard let world = session.world, let house = session.keeper?.house else { return [] }
+        let names = SpokenOrders.distinctNames(in: world, player: house)
         return SpokenOrders.companies(in: world, player: house).prefix(SpokenOrders.briefedCompanies).enumerated().map { index, unit in
-            "C\(index + 1): \(SpokenOrders.named(unit, in: world))"
+            "C\(index + 1): \(names[unit.id] ?? SpokenOrders.named(unit, in: world))"
         }
     }
 
