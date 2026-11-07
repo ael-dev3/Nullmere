@@ -1,6 +1,7 @@
 import AppKit
 import LauncherCore
 import LauncherKit
+import NullmereCounsel
 import NullmereKit
 import SwiftUI
 

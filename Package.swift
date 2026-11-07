@@ -21,6 +21,11 @@ var targets: [Target] = [
     .target(name: "NullmereRealm", dependencies: ["NullmereCore"]),
     // The steward's command-line entry point.
     .executableTarget(name: "NullmereSteward", dependencies: ["NullmereRealm", "NullmereCore"]),
+    // A keeper's phone on their realm, apart from its screens: linked by the
+    // code their Mac shows, in as the keeper, their House as the phone
+    // lists it and the orders it gives. Foundation only, so tested on Linux.
+    .target(name: "NullmereCompanionCore", dependencies: ["NullmereCore", "NullmereRealm"]),
+    .testTarget(name: "NullmereCompanionCoreTests", dependencies: ["NullmereCompanionCore", "NullmereCore", "NullmereRealm", "NullmereTestSupport"]),
     .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
     // The world's shapes: the land's relief and mesh, and every model in
     // it, built from solids in code, with the rigs that move them. Pure
@@ -64,11 +69,15 @@ targets += [
     .testTarget(name: "NullmereCounselTests", dependencies: ["NullmereCounsel", "NullmereCore"]),
     // The world's interface: the front door, the Metal world, the panels.
     .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel",
-                                                "LauncherCore", "LauncherKit"]),
+                                                "NullmereCompanionCore", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
-    .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit"]),
+    .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit", "NullmereCounsel"]),
+    // Nullmere Companion, the keeper's iPhone app: its SwiftUI screens over
+    // the companion's core. Built for iOS by scripts/build-companion.sh,
+    // which bundles it; on the Mac it builds too, to be checked as the rest is.
+    .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereCompanionCore", "NullmereCore", "NullmereRealm"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "NullmereCompanionCore", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 // The trailer drawn by the game's own renderers and written to a film,
 // built only when scripts/render-trailer.sh asks for it: then the trailer's
@@ -90,6 +99,8 @@ let package = Package(
     // built for Apple silicon only.
     platforms: [
         .macOS("26.0"),
+        // The keeper's companion on their iPhone.
+        .iOS("26.0"),
     ],
     products: products,
     targets: targets

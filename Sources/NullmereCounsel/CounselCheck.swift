@@ -1,7 +1,6 @@
 import Foundation
 import FoundationModels
 import NullmereCore
-import NullmereCounsel
 
 /// Counsel heard from this Mac's own model, as a keeper takes it: a lake
 /// some watches on, the keeper's first commander at the head of their first

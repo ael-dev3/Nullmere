@@ -1,6 +1,7 @@
 import AppKit
 import LauncherCore
 import LauncherKit
+import NullmereCompanionCore
 import NullmereCore
 import NullmereRealm
 import Observation
@@ -424,6 +425,124 @@ public final class GameApp {
         carryProblem = nil
     }
 
+    // MARK: A keeper's phone
+
+    /// The link offered to the keeper's phone while it is shown: the realm
+    /// and the code, together in the link its QR code carries; when it
+    /// lapses; why the realm wouldn't offer one, or let the phones go, if
+    /// it wouldn't; how many devices spoke for the keeper as it was
+    /// offered; and whether the realm is being asked.
+    public private(set) var phoneLink: CompanionInvite?
+    public private(set) var phoneLinkLapses: Date?
+    public private(set) var phoneProblem: String?
+    public private(set) var phonesLinked: Int?
+    public private(set) var isAskingForLink = false
+
+    /// Whether a phone could be linked here at all: a keeper the realm
+    /// knows, on a realm across the network (a realm in this Mac links none).
+    public var offersPhoneLink: Bool {
+        guard keeperName != nil, case .network = address else { return false }
+        return true
+    }
+
+    /// Whether the keeper's phone can be linked now: a phone could be, the
+    /// line to the realm is there, and the realm is not being asked.
+    public var canLinkPhone: Bool {
+        offersPhoneLink && link != nil && !isAskingForLink
+    }
+
+    /// Makes a code and offers the realm a link by its digest alone, good
+    /// for ten minutes and once; a link offered before is let go.
+    public func linkPhone() {
+        guard canLinkPhone, let link, case .network(let realm) = address else { return }
+        guard CompanionInvite.isAcceptable(realm) else {
+            phoneProblem = Self.phoneNeedsHTTPS
+            return
+        }
+        let code = LinkCode.make()
+        isAskingForLink = true
+        phoneProblem = nil
+        phoneLink = nil
+        link.offerLink(code: code) { [weak self] taken in
+            guard let self else { return }
+            self.isAskingForLink = false
+            switch taken {
+            case .success(let linked):
+                self.phonesLinked = linked
+                self.phoneLink = CompanionInvite(realm: realm, code: code)
+                self.phoneLinkLapses = Date().addingTimeInterval(RealmState.linkLasts)
+                #if DEBUG
+                if let invite = self.phoneLink { Self.tellLink(invite, to: ProcessInfo.processInfo.environment["NULLMERE_OFFER_LINK"]) }
+                #endif
+            case .failure(let why):
+                self.phoneProblem = why.words
+            }
+        }
+    }
+
+    /// The code put away; it lapses in its time all the same.
+    public func putPhoneLinkAway() {
+        phoneLink = nil
+        phoneLinkLapses = nil
+        phoneProblem = nil
+    }
+
+    /// Lets every device that speaks for the keeper go, and any link offered.
+    public func unlinkPhones() {
+        guard keeperName != nil, let link, !isAskingForLink else { return }
+        isAskingForLink = true
+        phoneProblem = nil
+        link.unlinkDevices { [weak self] problem in
+            guard let self else { return }
+            self.isAskingForLink = false
+            self.phoneProblem = problem
+            if problem == nil {
+                self.phonesLinked = 0
+                self.phoneLink = nil
+                self.phoneLinkLapses = nil
+            }
+        }
+    }
+
+    /// What a realm reached in the clear is told: a phone links only over HTTPS.
+    static let phoneNeedsHTTPS = "This realm is reached in the clear, so no phone is linked to it: a phone links only to a realm over HTTPS."
+
+    #if DEBUG
+    /// For scripts/smoke-test-companion.sh: the link offered, written where
+    /// the script reads it to give the phone in the simulator.
+    static func tellLink(_ invite: CompanionInvite, to path: String?) {
+        guard let path, !path.isEmpty else { return }
+        try? invite.url.absoluteString.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    /// For the same script: as the keeper comes in, a link offered when
+    /// NULLMERE_OFFER_LINK names where to write it, and what this Mac sees
+    /// of its House written every so often where NULLMERE_LINK_REPORT names,
+    /// so the script sees an order given on the phone reach this Mac.
+    func linkFromEnvironment(_ environment: [String: String] = ProcessInfo.processInfo.environment, every seconds: Double = 1) {
+        if let path = environment["NULLMERE_OFFER_LINK"], !path.isEmpty, phoneLink == nil { linkPhone() }
+        if let path = environment["NULLMERE_LINK_REPORT"], !path.isEmpty, linkReport == nil {
+            linkReport = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.writeLinkReport(to: path) }
+            }
+        }
+    }
+
+    @ObservationIgnored private var linkReport: Timer?
+
+    /// The companies of this Mac's House dug in, as it sees them.
+    func writeLinkReport(to path: String) {
+        guard let session else { return }
+        let dug = session.state.units(of: session.player).filter(\.fortified).map { String($0.id) }
+        try? ("dug in: " + dug.joined(separator: " ") + "\n").write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    func stopLinkReport() {
+        linkReport?.invalidate()
+        linkReport = nil
+    }
+    #endif
+
     /// At the door, words being brought from another Mac.
     public private(set) var isBringingWords = false
     /// The proof of words brought, waiting on the compact.
@@ -594,6 +713,9 @@ public final class GameApp {
         session.onReturnHome = home == nil ? nil : { [weak self] in self?.returnHome() }
         play(session)
         showFromEnvironment()
+        #if DEBUG
+        linkFromEnvironment()
+        #endif
     }
 
     private func startWaiting() {

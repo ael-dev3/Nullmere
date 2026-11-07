@@ -39,6 +39,30 @@ on the Mac that built it. To sign with a Developer ID instead, set
 secure timestamp, ready to notarize. `VERSION` sets the marketing version
 (default `0.3.0`).
 
+### Nullmere Companion, the keeper's iPhone app
+
+The companion is built from the same package: its screens in
+`Sources/NullmereCompanion` (SwiftUI), over `Sources/NullmereCompanionCore`
+(the link, the session and what the phone lists of a House, Foundation
+only, so tested on Linux too).
+
+- **For the iOS Simulator:** `scripts/build-companion.sh` builds it with
+  `swift build --triple arm64-apple-ios26.0-simulator`, bundles
+  `build/companion/Nullmere Companion.app` with its Info.plist (the
+  `nullmere` link scheme its QR codes open, and local networking for a
+  realm raised on the Mac), puts its entitlements in the binary as Xcode
+  does for a simulator build, and signs it to run there. Then
+  `xcrun simctl install booted "build/companion/Nullmere Companion.app"`.
+- **On the keeper's iPhone:** open `Package.swift` in Xcode, choose the
+  **NullmereCompanion** scheme and the phone, and set an Apple developer
+  team to sign it. A phone needs iOS 26.
+- **Both apps at once:** `scripts/smoke-test-companion.sh`, with a realm
+  raised on this Mac (`STEWARD=background scripts/raise-realm.sh local`),
+  enters it with a debug build of the Mac app, which offers a link, and
+  runs the companion in a simulator, which takes it, gives an order, is
+  set aside and comes in again; the Mac must see the phone's order. CI
+  runs it on every push and keeps the companion's screens.
+
 ## Releasing
 
 **A release is one command.** `scripts/release.sh` builds the app and
@@ -136,6 +160,15 @@ builds also take:
 | `NULLMERE_SHOW` | With `NULLMERE_KEEPER`: `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
 | `NULLMERE_AUTOPLAY` | With `NULLMERE_KEEPER`, in a hosted realm: let a steward play the keeper's House this many watches first |
 | `NULLMERE_VOICEOVER` | `1`: the map offers its orders to the accessibility tree as when VoiceOver runs, for the UI tests |
+| `NULLMERE_OFFER_LINK` | With `NULLMERE_KEEPER`: offer a phone a link as the keeper comes in, and write the link its QR code carries to this file |
+| `NULLMERE_LINK_REPORT` | With `NULLMERE_KEEPER`: write the companies of the keeper's House dug in, as this Mac sees them, to this file every second |
+| `NULLMERE_COUNSEL_REPORT` | Take counsel of a commander through this Mac's own model, held to counsel's rules, write the report to this file and quit (scripts/check-counsel.sh) |
+
+The companion's debug builds take `NULLMERE_COMPANION_LINK` (a link as the
+Mac's QR code carries it: taken at once, then an order given, the phone set
+aside and back, and a report written to its Documents) and
+`NULLMERE_COMPANION_TAB` (`house`, `army` or `alliance`), passed to the
+simulator as `SIMCTL_CHILD_` variables.
 
 Release builds ignore them all and always require the model.
 
@@ -342,8 +375,11 @@ Sources/
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The world's interface: front door, Metal world, panels, the audio engine
+  NullmereCounsel/    Counsel of a House's commanders through Apple's on-device model (Foundation Models), and its check on a real Mac
+  NullmereCompanionCore/ The keeper's phone apart from its screens: the link, the session, what it lists of a House. Foundation only
+  NullmereCompanion/  Nullmere Companion, the keeper's iPhone app (SwiftUI); built for iOS by scripts/build-companion.sh
   NullmereSteward/    The steward's command-line entry point
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a SpacetimeDB in memory)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereCounselTests, NullmereCompanionCoreTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a SpacetimeDB in memory)
 realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
 Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
 news/                 news.json, the launcher's news feed

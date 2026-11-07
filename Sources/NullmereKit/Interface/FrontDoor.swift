@@ -1,5 +1,7 @@
 import AppKit
+import CoreImage.CIFilterBuiltins
 import LauncherKit
+import NullmereCompanionCore
 import NullmereCore
 import SwiftUI
 
@@ -53,6 +55,13 @@ struct FrontDoor: View {
         if app.carriedWords != nil {
             return [Choice(title: "Written down", hint: "Puts the words away: they are shown only now") { goBack() }]
         }
+        if app.phoneLink != nil {
+            return [
+                Choice(title: "Done", hint: "Puts the code away; it lapses in its time all the same") { goBack() },
+                Choice(title: "Let every phone go", enabled: !app.isAskingForLink,
+                       hint: "No phone speaks for you from now on, this code's included") { app.unlinkPhones() },
+            ]
+        }
         if app.isBringingWords {
             var choices = [Choice(title: app.isEntering ? "Taking it up…" : "Take it up",
                                   enabled: app.canBringWords && KeeperWords.read(words) != nil,
@@ -95,6 +104,8 @@ struct FrontDoor: View {
             app.closeCompact()
         } else if app.carriedWords != nil {
             app.putWordsAway()
+        } else if app.phoneLink != nil {
+            app.putPhoneLinkAway()
         } else if app.isBringingWords {
             leaving = false
             app.stopBringingWords()
@@ -212,6 +223,8 @@ struct FrontDoor: View {
             Group {
                 if let words = app.carriedWords {
                     carrying(words, unit: unit)
+                } else if let invite = app.phoneLink {
+                    linking(invite, unit: unit)
                 } else if app.isBringingWords {
                     bringing(unit: unit)
                 } else {
@@ -219,6 +232,18 @@ struct FrontDoor: View {
                 }
             }
             .padding(.top, 26 * unit)
+
+            if let problem = app.phoneProblem {
+                Text(verbatim: problem)
+                    .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.bad)
+                    .frame(maxWidth: 460 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
+                    .padding(.top, 14 * unit)
+                    .accessibilityLabel("Problem: \(problem)")
+            }
 
             if let problem = app.carryProblem {
                 Text(verbatim: problem)
@@ -279,13 +304,20 @@ struct FrontDoor: View {
                         .frame(maxWidth: 420 * unit)
                         .fixedSize(horizontal: false, vertical: true)
                         .onNight()
-                    if !app.isBringingWords, app.carriedWords == nil {
+                    if !app.isBringingWords, app.carriedWords == nil, app.phoneLink == nil {
                         HStack(spacing: 22 * unit) {
                             if app.keeperName != nil {
                                 aside(app.isSealing ? "Making your words…" : "Carry this identity to another Mac", unit: unit,
                                       enabled: app.canMakeWords,
                                       hint: "Makes sixteen words to write down: brought to another Mac, they take up your House there") {
                                     app.makeWords()
+                                }
+                            }
+                            if app.offersPhoneLink {
+                                aside(app.isAskingForLink ? "Asking the realm…" : "Link your phone", unit: unit,
+                                      enabled: app.canLinkPhone,
+                                      hint: "Shows a code your phone's Nullmere Companion scans or types, to keep your House from the phone") {
+                                    app.linkPhone()
                                 }
                             }
                             aside("Words from another Mac? Bring them", unit: unit,
@@ -526,6 +558,52 @@ struct FrontDoor: View {
             .accessibilityLabel("Your sixteen words: " + words.enumerated().map { "\($0.offset + 1), \($0.element)" }.joined(separator: "; "))
             .accessibilityAddTraits(.isStaticText)
         }
+    }
+
+    /// The code that links the keeper's phone: shown in three fours, with
+    /// the QR code that carries it and the realm for the phone's camera, and
+    /// what it is for.
+    private func linking(_ invite: CompanionInvite, unit: CGFloat) -> some View {
+        VStack(spacing: 14 * unit) {
+            Text(verbatim: "On your phone, open Nullmere Companion and scan this with its camera, or type the code there. Your phone keeps your House beside this Mac under a key of its own; this Mac's key never leaves it. The code serves once, and lapses in ten minutes.")
+                .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
+                .lineSpacing(4 * unit)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Palette.text(0.85))
+                .frame(maxWidth: 460 * unit)
+                .fixedSize(horizontal: false, vertical: true)
+                .onNight()
+            if let code = Self.qrCode(for: invite.url) {
+                Image(decorative: code, scale: 1)
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 150 * unit, height: 150 * unit)
+                    .padding(8 * unit)
+                    .background(Color.white)
+                    .accessibilityHidden(true)
+            }
+            Text(verbatim: LinkCode.shown(invite.code))
+                .font(.system(size: .launcherType(22, unit: unit), weight: .light, design: .monospaced))
+                .foregroundStyle(Palette.ink)
+                .onNight()
+                .accessibilityLabel("Your phone's code: " + invite.code.map(String.init).joined(separator: " "))
+                .accessibilityAddTraits(.isStaticText)
+            if let linked = app.phonesLinked, linked > 0 {
+                Text(verbatim: linked == 1 ? "One device already speaks for you." : "\(linked) devices already speak for you.")
+                    .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
+                    .foregroundStyle(Palette.text(0.7))
+                    .onNight()
+            }
+        }
+    }
+
+    /// The QR code carrying a link, drawn a module to a pixel.
+    static func qrCode(for url: URL) -> CGImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(url.absoluteString.utf8)
+        filter.correctionLevel = "M"
+        guard let image = filter.outputImage else { return nil }
+        return CIContext().createCGImage(image, from: image.extent)
     }
 
     /// A quiet way aside from the door, underlined beneath its choices.

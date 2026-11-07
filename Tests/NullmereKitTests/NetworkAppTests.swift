@@ -1,5 +1,6 @@
 import Foundation
 @testable import LauncherKit
+import NullmereCompanionCore
 import NullmereRealm
 import NullmereTestSupport
 import SwiftUI
@@ -35,10 +36,10 @@ final class NetworkAppTests: XCTestCase {
         return Task { await steward.run(clock: { 1 }) }
     }
 
-    private func app(_ db: FakeSpacetime, identity: MemoryStore, realm: String, accepted: Bool = true) -> GameApp {
+    private func app(_ db: FakeSpacetime, identity: MemoryStore, realm: String, accepted: Bool = true, scheme: String = "https") -> GameApp {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         dirs.append(dir)
-        let address = GameApp.RealmAddress.network(URL(string: "https://realm.test/\(realm)")!)
+        let address = GameApp.RealmAddress.network(URL(string: "\(scheme)://realm.test/\(realm)")!)
         UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
         // A Mac whose keeper has accepted the realm's compact, or, for the
         // compact's own tests, never has.
@@ -515,5 +516,107 @@ final class NetworkAppTests: XCTestCase {
         await db.setReachable(true)
         try await until("the order gone to the realm") { app.ordersWaiting == 0 }
         app.leaveWorld()
+    }
+
+    /// A keeper links their phone from the realm's door: the Mac shows a
+    /// code in three fours with the QR code carrying it and the realm, the
+    /// realm keeping only its digest; a phone bringing it comes in as the
+    /// keeper; a code offered again says how many devices speak for them;
+    /// the code put away, and every phone let go. A realm out of reach is
+    /// told so, and one reached in the clear links no phone. In debug, the
+    /// link and what this Mac sees are written where the smoke test of the
+    /// phone reads them.
+    func testAKeepersPhoneIsLinkedFromTheDoor() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+        let mac = app(db, identity: MemoryStore(), realm: "phone-link")
+        mac.open()
+        try await until("the door") { if case .open = mac.door { return true } else { return false } }
+        XCTAssertFalse(mac.canLinkPhone, "No keeper yet, no phone")
+        XCTAssertFalse(mac.offersPhoneLink)
+        mac.enterWorld(name: "Ama")
+        try await until("Ama in the world") { mac.session != nil }
+        XCTAssertTrue(mac.offersPhoneLink)
+        XCTAssertTrue(mac.canLinkPhone)
+        draw(FrontDoor(app: mac))
+        XCTAssertTrue(PressableButtons.press("Link your phone"))
+        XCTAssertTrue(mac.isAskingForLink)
+        XCTAssertFalse(mac.canLinkPhone, "One asking at a time")
+        try await until("the code shown") { mac.phoneLink != nil }
+        let invite = try XCTUnwrap(mac.phoneLink)
+        XCTAssertEqual(invite.realm.absoluteString, "https://realm.test/phone-link")
+        XCTAssertEqual(CompanionInvite(url: invite.url), invite, "The QR code's link, read back whole")
+        XCTAssertEqual(mac.phonesLinked, 0)
+        XCTAssertNotNil(mac.phoneLinkLapses)
+        let code = try XCTUnwrap(FrontDoor.qrCode(for: invite.url))
+        XCTAssertGreaterThan(code.width, 20, "A QR code drawn")
+        draw(FrontDoor(app: mac))
+
+        // A phone, by its own identity, brings the code and comes in as Ama.
+        let phone = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05)
+        var arrived: Keeper?
+        phone.onEvent = { if case .arrived(let keeper, _) = $0 { arrived = keeper } }
+        phone.connect()
+        phone.takeLink(code: invite.code)
+        try await until("the phone in as Ama") { arrived != nil }
+        XCTAssertEqual(arrived?.name, "Ama")
+        defer { phone.close() }
+
+        // Put away, then offered again: one device speaks for her.
+        XCTAssertTrue(PressableButtons.press("Done"))
+        XCTAssertNil(mac.phoneLink)
+        mac.linkPhone()
+        try await until("a second code") { mac.phoneLink != nil }
+        XCTAssertNotEqual(mac.phoneLink?.code, invite.code)
+        XCTAssertEqual(mac.phonesLinked, 1)
+        draw(FrontDoor(app: mac))
+        XCTAssertTrue(PressableButtons.press("Let every phone go"))
+        try await until("every phone let go") { mac.phonesLinked == 0 && !mac.isAskingForLink }
+        XCTAssertNil(mac.phoneLink)
+        XCTAssertNil(mac.phoneProblem)
+
+        // In debug: the link, and what this Mac sees, written for the smoke test.
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        dirs.append(dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let linkFile = dir.appendingPathComponent("link").path, reportFile = dir.appendingPathComponent("report").path
+        GameApp.tellLink(invite, to: nil)
+        GameApp.tellLink(invite, to: linkFile)
+        XCTAssertEqual(try String(contentsOfFile: linkFile, encoding: .utf8), invite.url.absoluteString)
+        let company = try XCTUnwrap(mac.session?.state.units(of: mac.session?.player ?? -1).first { $0.kind.isMilitary })
+        XCTAssertTrue(mac.session?.perform(.fortify(unit: company.id)) == true)
+        mac.linkFromEnvironment(["NULLMERE_OFFER_LINK": linkFile, "NULLMERE_LINK_REPORT": reportFile], every: 0.05)
+        try await until("the code offered from the environment") { mac.phoneLink != nil }
+        try await until("this Mac's House reported") {
+            (try? String(contentsOfFile: reportFile, encoding: .utf8))?.contains("\(company.id)") == true
+        }
+        mac.stopLinkReport()
+        XCTAssertTrue(try String(contentsOfFile: reportFile, encoding: .utf8).hasPrefix("dug in: "))
+
+        // Out of reach: told so, both the offer and the letting go.
+        mac.putPhoneLinkAway()
+        await db.setReachable(false)
+        mac.linkPhone()
+        try await until("the offer told out of reach", timeout: 40) { mac.phoneProblem != nil && !mac.isAskingForLink }
+        draw(FrontDoor(app: mac))
+        mac.unlinkPhones()
+        XCTAssertFalse(mac.canLinkPhone, "Asking")
+        try await until("the letting go told out of reach", timeout: 40) { mac.phoneProblem != nil && !mac.isAskingForLink }
+        await db.setReachable(true)
+        mac.leaveWorld()
+
+        // A realm reached in the clear links no phone.
+        let clear = app(db, identity: MemoryStore(), realm: "in-the-clear", scheme: "http")
+        clear.open()
+        try await until("the clear realm's door") { if case .open = clear.door { return true } else { return false } }
+        clear.enterWorld(name: "Bel")
+        try await until("Bel in the world") { clear.session != nil }
+        clear.linkPhone()
+        XCTAssertEqual(clear.phoneProblem, GameApp.phoneNeedsHTTPS)
+        XCTAssertNil(clear.phoneLink)
+        clear.leaveWorld()
     }
 }

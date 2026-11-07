@@ -1,0 +1,259 @@
+import Foundation
+import NullmereCore
+import NullmereRealm
+import Observation
+
+/// Where a phone keeps the realm it was linked to, so it comes back in as
+/// its keeper when it opens: the address alone, never a key.
+public protocol CompanionMemory: AnyObject {
+    var realm: URL? { get set }
+}
+
+/// A memory kept for the life of the process: for tests.
+public final class PassingMemory: CompanionMemory {
+    public var realm: URL?
+    public init(realm: URL? = nil) { self.realm = realm }
+}
+
+/// A keeper's phone on their realm. Linked once by the code their Mac shows,
+/// under an identity of its own (the Mac's key never leaves the Mac), it
+/// comes in as the keeper whenever it opens, reading their view of the
+/// world as their Mac does, and gives orders for their House. The realm
+/// alone decides each order: one the rules would refuse from this view is
+/// refused here, with their reason, and sent nowhere; one sent is carried
+/// out here at once as the realm will, and the realm's word follows, the
+/// world as it truly stands with it.
+@MainActor
+@Observable
+public final class CompanionSession {
+    public enum Phase: Equatable, Sendable {
+        /// Linked to no keeper: the code their Mac shows is wanted.
+        case pairing
+        /// Bringing the code, or coming in as the keeper.
+        case entering
+        /// In as the keeper, their House shown.
+        case keeping
+        /// Set aside, still linked: in again as the keeper when it comes back.
+        case away
+    }
+
+    /// The realm's word on an order, or why it went nowhere.
+    public struct Word: Equatable, Sendable {
+        public let text: String
+        public let refused: Bool
+        /// Sent, the realm's answer still to come.
+        public let awaited: Bool
+    }
+
+    public private(set) var phase: Phase = .pairing
+    /// Why linking or coming in failed, for the keeper to read.
+    public private(set) var problem: String?
+    /// The realm this phone goes to.
+    public private(set) var realm: URL?
+    public private(set) var status: RealmStatus?
+    /// When the status was heard, to count its watch down from.
+    public private(set) var statusHeard: Date?
+    public private(set) var keeper: Keeper?
+    public private(set) var world: GameState?
+    public private(set) var ledger: CompanionLedger?
+    /// The realm's word on the last order given here.
+    public private(set) var word: Word?
+    public private(set) var isReady = false
+    /// The realm can't be reached just now, and why.
+    public private(set) var outOfReach: String?
+
+    /// What a phone the realm no longer links to anyone is told.
+    public static let unlinked = "This phone no longer speaks for a keeper of this realm. Link it again from the keeper's Mac."
+    /// What a realm too old to link phones is said to be.
+    public static let tooOld = "This realm doesn't link phones yet: its steward keeps an older Nullmere Online."
+    /// The tongue a realm must speak to link a phone.
+    public static let linkingSpeech = 13
+
+    private var link: NetworkRealmLink?
+    private let memory: CompanionMemory
+    private let makeLink: @MainActor (URL) -> NetworkRealmLink?
+    private let clock: () -> Date
+    /// The last order given here, as it was told, for the realm's word on it.
+    private var given: String?
+
+    /// `makeLink` reaches a realm at an address under this phone's own
+    /// identity for it; nil for an address it can't reach.
+    public init(memory: CompanionMemory, clock: @escaping () -> Date = Date.init,
+                makeLink: @escaping @MainActor (URL) -> NetworkRealmLink?) {
+        self.memory = memory
+        self.makeLink = makeLink
+        self.clock = clock
+        realm = memory.realm
+    }
+
+    /// Comes in as the keeper of the realm this phone was linked to last,
+    /// if it was: when it opens, and when it comes back to the front.
+    public func resume() {
+        guard let realm = memory.realm else { return }
+        guard phase != .entering else { return }
+        if phase == .keeping, let link {
+            link.wake()
+            return
+        }
+        guard let link = open(realm) else { return }
+        phase = .entering
+        problem = nil
+        link.accompany()
+    }
+
+    /// Brings the code the keeper's Mac shows, to speak for them from now on.
+    public func take(_ invite: CompanionInvite) {
+        guard let link = open(invite.realm) else { return }
+        phase = .entering
+        problem = nil
+        link.takeLink(code: invite.code)
+    }
+
+    /// Lets this phone go: it speaks for the keeper no more, and forgets
+    /// the realm.
+    public func unlink() {
+        link?.unlinkDevices { _ in }
+        forget(nil)
+    }
+
+    /// The phone set aside: the realm hears no more of it until it comes
+    /// back. Its keeper stays while their Mac is there.
+    public func pause() {
+        guard let link, phase == .keeping else { return }
+        link.leave()
+        self.link = nil
+        phase = .away
+    }
+
+    /// Gives an order for the keeper's House: refused here with the rules'
+    /// reason if they wouldn't take it from this view, else carried out
+    /// here as the realm will and sent, its word to follow.
+    public func give(_ command: Command, told: String) {
+        guard phase == .keeping, let link, let house = keeper?.house, var copy = world else { return }
+        do {
+            _ = try copy.perform(command, as: house)
+        } catch {
+            word = Word(text: "\(told): \(error)", refused: true, awaited: false)
+            return
+        }
+        given = told
+        show(copy)
+        word = Word(text: "\(told): sent to the realm.", refused: false, awaited: true)
+        link.send(command)
+    }
+
+    /// Ready for the watch to turn, or not.
+    public func setReady(_ ready: Bool) {
+        guard phase == .keeping, let link else { return }
+        isReady = ready
+        link.setReady(ready)
+    }
+
+    /// Words to the keeper's alliance, or to the whole realm.
+    public func say(_ words: String, toAlliance: Bool) {
+        let said = words.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !said.isEmpty else { return }
+        give(.say(words: said, toAlliance: toAlliance), told: toAlliance ? "Said to your alliance" : "Said to the realm")
+    }
+
+    /// Seconds until the watch turns of its own accord, by the status heard.
+    public func secondsLeft(at now: Date) -> Int? {
+        guard let status, let heard = statusHeard else { return nil }
+        return max(0, status.secondsLeft - Int(now.timeIntervalSince(heard)))
+    }
+
+    // MARK: The realm's word
+
+    private func open(_ address: URL) -> NetworkRealmLink? {
+        link?.close()
+        guard let made = makeLink(address) else {
+            problem = "This phone can't reach a realm at \(address.absoluteString)."
+            phase = .pairing
+            return nil
+        }
+        realm = address
+        link = made
+        made.onEvent = { [weak self, weak made] event in
+            guard let self, let made, made === self.link else { return }
+            self.hear(event)
+        }
+        made.connect()
+        return made
+    }
+
+    func hear(_ event: RealmEvent) {
+        switch event {
+        case .status(let status):
+            self.status = status
+            statusHeard = clock()
+            outOfReach = nil
+            if phase == .entering, (status.speech ?? 0) < Self.linkingSpeech {
+                forget(Self.tooOld)
+            }
+        case .arrived(let keeper, let world):
+            self.keeper = keeper
+            phase = .keeping
+            problem = nil
+            outOfReach = nil
+            memory.realm = realm
+            show(world)
+        case .refused(let error):
+            if error == .unknownKeeper {
+                forget(Self.unlinked)
+            } else if phase == .entering {
+                link?.close()
+                link = nil
+                problem = error.description
+                phase = .pairing
+            } else {
+                word = Word(text: error.description, refused: true, awaited: false)
+            }
+        case .settled(let world, _):
+            show(world)
+            carriedOut()
+        case .answered:
+            // Across the network, an order carried out is answered so, the
+            // world it made told as it changed.
+            carriedOut()
+        case .orderRefused(let error, let world):
+            show(world)
+            word = Word(text: "\(given ?? "Your order"): the realm refused it. \(error.description)", refused: true, awaited: false)
+        case .changed(let world):
+            show(world)
+        case .watchTurned(let world, _):
+            isReady = false
+            show(world)
+        case .readiness(let ready):
+            isReady = ready
+        case .unreachable(let why):
+            outOfReach = why
+        case .heard:
+            break
+        }
+    }
+
+    private func carriedOut() {
+        guard word?.awaited == true else { return }
+        word = Word(text: "\(given ?? "Your order"): carried out by the realm.", refused: false, awaited: false)
+    }
+
+    private func show(_ world: GameState) {
+        self.world = world
+        ledger = keeper?.house.map { CompanionLedger(world: world, player: $0) }
+    }
+
+    /// Linked to no one, or to a realm that can't link: back to pairing,
+    /// the realm forgotten, and why.
+    private func forget(_ why: String?) {
+        link?.close()
+        link = nil
+        memory.realm = nil
+        keeper = nil
+        world = nil
+        ledger = nil
+        word = nil
+        isReady = false
+        phase = .pairing
+        problem = why
+    }
+}

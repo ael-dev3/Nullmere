@@ -126,7 +126,21 @@ full screen at launch as chosen.
   from another Mac? Bring them takes the words, reads the compact if that
   Mac never has, and takes the House up there; the Mac left no longer
   speaks for it. A Mac that already keeps a House as itself may leave its
-  identity for a new one, asked twice. The front door, set on the water as the launcher's panels
+  identity for a new one, asked twice. Link your phone, beside them, shows
+  a code of twelve letters and figures in three fours (none that could be
+  taken for another: no 0 or O, no 1 or I) with a QR code carrying it and
+  the realm: scanned by the phone's camera, or typed into Nullmere
+  Companion, the keeper's iPhone app, it links the phone to the keeper.
+  The realm keeps only the code's digest, takes it once and for ten
+  minutes, and links four devices to a keeper at most; shown again, the
+  door says how many already speak for them, and Let every phone go lets
+  them all go. The phone speaks for the keeper under a key of its own,
+  kept in its keychain for that phone alone: the Mac's key never leaves
+  the Mac. It can't enter at the door, seal the keeper with words, take
+  one up by them, or link another device; and a keeper taken to another
+  Mac by their words leaves every phone linked to the old one behind. A
+  phone links only to a realm over HTTPS, or one on the same machine
+  raised to test. The front door, set on the water as the launcher's panels
   are, shows the realm's state: its age and watch, how many keepers are
   there, and how many seats are open. Its choices are the launcher's: one
   lit at a time, the one Return takes, the arrows moving along them and
@@ -192,6 +206,36 @@ full screen at launch as chosen.
   the words your own view of the world would give, so a refusal never
   tells of a company out of your sight: one you can't see is, to an order,
   not there, and a strike where you can't see finds nothing to strike.
+
+## Your phone
+
+Nullmere Companion keeps the keeper's House from their iPhone, beside
+their Mac, on the same realm and as the same keeper. Linked once by the
+code the Mac shows at the realm's door (see Entering the realm), it comes
+in as the keeper whenever it opens, and is set aside as it goes to the
+background: the keeper stays in the realm while their Mac or their phone
+is there, and one device leaving takes them away only when neither has
+been heard from lately.
+
+- **House.** The realm, its age and watch, the time until the watch turns
+  and how many keepers are there and ready; the House's stores; its holds,
+  each with what it raises and musters and how long each has to go; the
+  realm's chronicle, the latest first; and Ready for the watch to turn,
+  which counts as the keeper's, Mac or phone.
+- **Army.** Each company as the order book names it, its troops, its
+  commander and what it is about, with the orders it may be given now:
+  Fortify one not dug in, Halt one on the march, Recall one gathering or
+  carrying, Drill one by a Muster Hall, and March to any of the House's
+  holds. An order the rules wouldn't take from the keeper's view is
+  refused on the phone with their reason and sent nowhere; one sent is
+  carried out on the phone at once, as the realm will, and the realm's
+  word follows, the world as it truly stands with it. What the phone
+  orders the Mac sees, and the phone what the Mac orders.
+- **Alliance.** The alliance and its Houses, the leader first; what was
+  said in it lately, and to the whole realm; and a line to say to either.
+- **Letting go.** Let this phone go, at the foot of House, unlinks it; the
+  Mac's Let every phone go unlinks them all. A phone the realm no longer
+  links is told so as it next comes in, and asks for a new code.
 
 ## The watch
 

@@ -25,8 +25,11 @@ drowned beneath the next age's lake, for new keepers to find.
 
 It is a native Mac app for Apple silicon: SwiftUI and AppKit, every frame
 drawn with Metal, every model, sound and note of music made in code for this
-game alone. Envoys, a chronicler and a clerk who reads orders written in
-plain words speak through Apple's on-device model, on each keeper's own Mac.
+game alone. Envoys, a chronicler, a clerk who reads orders written in plain
+words and the House's own commanders, taking counsel with their keeper,
+speak through Apple's on-device model, on each keeper's own Mac. Nullmere
+Companion, its iPhone app, keeps the keeper's House from their phone beside
+their Mac, linked by a code the Mac shows.
 Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer
@@ -65,9 +68,11 @@ open "build/Nullmere Online.app"
 ```
 
 The public realm on SpacetimeDB's maincloud is not raised yet, so for now a
-realm of your own is the way in. [DEVELOPING.md](docs/DEVELOPING.md) covers
-Xcode, the tests, releases and the previews; [REALM.md](docs/REALM.md)
-raising a realm on a SpacetimeDB server.
+realm of your own is the way in. `scripts/build-companion.sh` builds Nullmere
+Companion for the iOS Simulator; signed by a developer team in Xcode, it
+runs on an iPhone with iOS 26. [DEVELOPING.md](docs/DEVELOPING.md) covers
+Xcode, the tests, releases, the companion and the previews;
+[REALM.md](docs/REALM.md) raising a realm on a SpacetimeDB server.
 
 ## Where it stands
 
