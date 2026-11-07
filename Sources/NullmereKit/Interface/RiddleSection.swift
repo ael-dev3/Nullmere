@@ -20,13 +20,7 @@ struct RiddleSection: View {
 
     /// How the riddle stands, in a line.
     static func standing(_ riddle: Riddle) -> String {
-        guard let answered = riddle.answered else {
-            return "Set at watch \(riddle.set): answer it rightly before the next half moon for \(GameState.riddleReward)."
-        }
-        // The answer is the realm's to tell; until it does, it weighs.
-        guard let answer = riddle.answer else { return "You said \(answered); the lake weighs your answer." }
-        if riddle.isRight { return "Rightly remembered: it was \(answered)." }
-        return "You said \(answered); it was \(answer)."
+        riddle.standingSaid
     }
 
     var body: some View {

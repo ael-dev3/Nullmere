@@ -652,6 +652,34 @@ final class CompanionLedgerTests: XCTestCase {
         assertTaken(laid.takeBack, in: state, as: me)
     }
 
+    /// The Remembering on the phone, as the Mac's Realm panel sets it: no
+    /// riddle, nothing; set, how it stands, its line and each name to
+    /// answer, taken by the rules and counted on the House tab; answered
+    /// rightly, told so, none to answer; answered wrongly, the name it was.
+    func testThePhoneAnswersTheRemembering() throws {
+        var (state, me) = try world()
+        XCTAssertNil(CompanionLedger(world: state, player: me).remembering)
+        let before = CompanionLedger(world: state, player: me).houseWaiting
+        let names = state.houses.map(\.title)
+        state.riddles = [Riddle(house: me, set: state.watch, line: "——— raises its first hold by the reeds.",
+                                choices: names, answer: names[1])]
+        var ledger = CompanionLedger(world: state, player: me)
+        let riddle = try XCTUnwrap(ledger.remembering)
+        XCTAssertEqual(riddle.standing, "Set at watch \(state.watch): answer it rightly before the next half moon for \(GameState.riddleReward).")
+        XCTAssertEqual(riddle.line, "——— raises its first hold by the reeds.")
+        XCTAssertEqual(riddle.answers.map(\.title), names)
+        assertTaken(riddle.answers, in: state, as: me)
+        XCTAssertEqual(ledger.houseWaiting, before + 1, "An unanswered riddle waits on the House tab")
+        var wrong = state
+        _ = try wrong.perform(.answerRiddle(names[0]), as: me)
+        XCTAssertEqual(CompanionLedger(world: wrong, player: me).remembering?.standing, "You said \(names[0]); it was \(names[1]).")
+        _ = try state.perform(try XCTUnwrap(riddle.answers.first { $0.title == names[1] }).command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.remembering?.standing, "Rightly remembered: it was \(names[1]).")
+        XCTAssertEqual(ledger.remembering?.answers, [])
+        XCTAssertEqual(ledger.houseWaiting, before)
+    }
+
     /// A commander's stars on the phone, in the words of the Mac's
     /// Commanders: one of five and what the next asks, nothing offered
     /// without the sculptures; with them, Raise a star, taken by the rules

@@ -239,7 +239,8 @@ seconds at the foot of whichever tab the keeper is on, wherever they have
 scrolled to give it; an order still unanswered when the phone is set aside
 is said to have been. The House, Army and Alliance tabs carry a count of
 what waits on the keeper there: envoys to answer, foes gathered near the
-House's holds, wounded it may heal and the Lyceum sitting; commanders with
+House's holds, wounded it may heal, the Lyceum sitting and the
+Remembering's riddle unanswered; commanders with
 a talent to learn or a star to raise, the watch's venture up the Spine not
 yet made and prisoners to question;
 invitations and Houses asking to join to answer, allies' work to help, and
@@ -265,7 +266,11 @@ a vote on the realm's law to cast.
   keeper has what it asks) and Refuse, which asks again where refusing a
   steward's demand is war; the Lyceum while it sits, as the Mac's card
   sets it, its next question with its four answers, one at a time until
-  all five are given; Labours, favour and happenings, as the Mac's Realm
+  all five are given; the Remembering, the half moon's riddle of the
+  realm's own past as the Mac's Realm panel sets it: how it stands and
+  what it brings, its line with a House's name taken out, and the four
+  names to answer, once, then whether it was rightly remembered;
+  Labours, favour and happenings, as the Mac's Realm
   panel tells them: the watch's labours, folded beneath how far the House
   has come with them and its vigour toward the moon's next chest; the
   keeper's favour ("Favour II: 300 won; 100 more to III."), folded beneath

@@ -215,6 +215,27 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The Remembering: the half moon's riddle of the realm's own
+                    // past, as the Mac's Realm panel sets it, answered once.
+                    if let riddle = ledger.remembering {
+                        Section("The Remembering") {
+                            Text(verbatim: riddle.standing)
+                                .font(Night.small)
+                                .foregroundStyle(riddle.answers.isEmpty ? Night.ink.opacity(0.7) : Night.moon)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(verbatim: riddle.line)
+                                .font(Night.body)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ForEach(Array(riddle.answers.enumerated()), id: \.offset) { answer in
+                                Button(answer.element.title) {
+                                    session.give(answer.element.command, told: "Answered the riddle: \(answer.element.title)")
+                                }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel("Answer \(answer.element.title)")
+                            }
+                        }
+                    }
                     // The watch's labours, folded beneath how they stand, the
                     // keeper's favour, and the happening under way or the next,
                     // as the Mac's Realm panel tells them.

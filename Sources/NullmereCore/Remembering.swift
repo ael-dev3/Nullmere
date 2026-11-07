@@ -35,6 +35,18 @@ public struct Riddle: Codable, Equatable, Sendable {
 
     /// Whether it was answered rightly.
     public var isRight: Bool { answered != nil && answered == answer }
+
+    /// How it stands, in a line, on the Mac and the phone: set and what it
+    /// brings, weighed, rightly remembered, or not.
+    public var standingSaid: String {
+        guard let answered else {
+            return "Set at watch \(set): answer it rightly before the next half moon for \(GameState.riddleReward)."
+        }
+        // The answer is the realm's to tell; until it does, it weighs.
+        guard let answer else { return "You said \(answered); the lake weighs your answer." }
+        if isRight { return "Rightly remembered: it was \(answered)." }
+        return "You said \(answered); it was \(answer)."
+    }
 }
 
 extension GameState {

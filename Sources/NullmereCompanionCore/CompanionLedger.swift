@@ -366,6 +366,15 @@ public struct CompanionLedger: Equatable, Sendable {
         public let answers: [Order]
     }
 
+    /// The riddle the lake has set the House at the half moon, as the Mac's
+    /// Realm panel sets it: how it stands, the line with its name taken
+    /// out, and each name to answer while it may.
+    public struct Remembering: Equatable, Sendable {
+        public let standing: String
+        public let line: String
+        public let answers: [Order]
+    }
+
     /// The watch's labours and the happening, as the Mac's Realm panel
     /// tells them: what counts, how far the House has come, what is next.
     public struct Course: Equatable, Sendable {
@@ -530,6 +539,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let course: Course
     /// The Lyceum's next question for the House, while it sits.
     public let lyceum: Asked?
+    /// The riddle of the Remembering, while the House has one.
+    public let remembering: Remembering?
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -590,15 +601,16 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
     /// answer, companies of Houses at war gathered near its holds, holds
-    /// with wounded in their beds the House may pay to heal, and the
-    /// Lyceum's questions while it sits.
+    /// with wounded in their beds the House may pay to heal, the Lyceum's
+    /// questions while it sits, and the Remembering's riddle unanswered.
     public var houseWaiting: Int {
         envoys.count + gatherings.count + holds.filter { $0.heal != nil }.count + (lyceum == nil ? 0 : 1)
+            + (remembering?.answers.isEmpty == false ? 1 : 0)
     }
 
     /// What waits on them on the Alliance tab, for its badge: invitations
@@ -943,6 +955,12 @@ public struct CompanionLedger: Equatable, Sendable {
         errands = CompanionLedger.errands(in: world, player: player, satchel: satchel)
         course = CompanionLedger.course(in: world, player: player)
         lyceum = CompanionLedger.lyceum(in: world, player: player)
+        remembering = world.riddle(of: player).map { riddle in
+            Remembering(standing: riddle.standingSaid, line: riddle.line,
+                        answers: riddle.choices.filter { world.riddleRefusal($0, as: player) == nil }.map {
+                            Order(title: $0, command: .answerRiddle($0))
+                        })
+        }
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
