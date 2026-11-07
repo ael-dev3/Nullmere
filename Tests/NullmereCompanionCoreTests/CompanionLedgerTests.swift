@@ -48,6 +48,27 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(CompanionLedger(world: state.view(for: near), player: near).letters.isEmpty, "No other keeper reads them")
     }
 
+    /// The Spine on the phone: its next stage told as the Mac tells it; a line
+    /// of the House's strongest free commanders and each alone offered, each
+    /// one the rules send; once ventured, none until the watch turns.
+    func testThePhoneSendsCommandersUpTheSpine() throws {
+        var (state, me) = try world()
+        var ledger = CompanionLedger(world: state, player: me)
+        let first = try XCTUnwrap(ExpeditionStage.stage(1))
+        XCTAssertTrue(ledger.spine.said.hasPrefix("The Spine, \(first.name) (1 of \(ExpeditionStage.count)): its host weighs \(first.strength)"),
+                      ledger.spine.said)
+        let free = state.commanders(of: me).filter { $0.captive == nil && ($0.woundedUntil ?? 0) <= state.watch }
+        XCTAssertFalse(free.isEmpty, "A House begins with a commander")
+        XCTAssertEqual(ledger.spine.ventures.count, free.count + (free.count > 1 ? 1 : 0), "\(ledger.spine.ventures.map(\.title))")
+        assertTaken(ledger.spine.ventures, in: state, as: me)
+        let alone = try XCTUnwrap(ledger.spine.ventures.last)
+        _ = try state.perform(alone.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.spine.ventures.isEmpty, "Once a watch")
+        XCTAssertTrue(ledger.spine.said.hasSuffix("Your House has ventured this watch.") || ledger.spine.said == "Every stage of the Spine is yours.",
+                      ledger.spine.said)
+    }
+
     /// The pedlar on the phone, while he lies off one of the House's holds:
     /// where and how long, each ware with its price, bought as the rules sell
     /// it or why not; a ware bought told sold; none while none lies off.

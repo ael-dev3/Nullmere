@@ -332,7 +332,10 @@ network comes back.
   phone gives. What a commander remembers of counsel taken on the phone
   stays on the phone, for the age, and is forgotten when the phone is let
   go. A phone that can't run the model says so, and why, and everything
-  else plays as ever.
+  else plays as ever. The Spine: the House's next stage, what its host
+  weighs and its spoils, and Send up the Spine, a line of its strongest free
+  commanders or any one alone, once a watch, how it went said in the realm's
+  word on it.
 - **Alliance.** The alliance and its Houses, the leader first, with Help
   for each ally with works, musters or study under way the House hasn't
   helped yet; what was said in it lately, and to the whole realm; and a

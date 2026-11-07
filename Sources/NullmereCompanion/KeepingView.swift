@@ -322,6 +322,20 @@ struct ArmyTab: View {
                             }
                         }
                     }
+                    // The Spine: its next stage, and a line or one commander sent up it.
+                    if !ledger.commanders.isEmpty {
+                        Section("The Spine") {
+                            Text(verbatim: ledger.spine.said)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.8))
+                                .fixedSize(horizontal: false, vertical: true)
+                            ListedOrdersMenu(title: "Send up the Spine", orders: ledger.spine.ventures,
+                                             label: "Send your commanders up the Spine") { order in
+                                session.give(order.command, told: order.title)
+                            }
+                            .font(Night.body)
+                        }
+                    }
                 }
             }
             .scrollContentBackground(.hidden)

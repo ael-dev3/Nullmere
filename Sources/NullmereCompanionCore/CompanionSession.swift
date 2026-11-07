@@ -297,15 +297,19 @@ public final class CompanionSession {
         }
     }
 
-    /// The realm's word on the order given here, and what a chest of the
-    /// Lantern Inn opened by it held, as the Mac tells it.
+    /// The realm's word on the order given here, and what came of it where
+    /// it is told at once, as the Mac tells it: what a chest of the Lantern
+    /// Inn opened by it held, how a venture up the Spine went.
     private func carriedOut(_ events: [GameEvent] = []) {
         guard word?.awaited == true else { return }
         var text = "\(given ?? "Your order"): carried out by the realm."
         if let house = keeper?.house, let world,
            let held = events.lazy.compactMap({ event -> String? in
-               guard case .innChestOpened(house, _, _) = event else { return nil }
-               return world.tidings(of: event, for: house)?.text
+               switch event {
+               case .innChestOpened(house, _, _): return world.tidings(of: event, for: house)?.text
+               case .expedition(let result) where result.house == house: return world.tidings(of: event, for: house)?.text
+               default: return nil
+               }
            }).first {
             text += " " + held
         }

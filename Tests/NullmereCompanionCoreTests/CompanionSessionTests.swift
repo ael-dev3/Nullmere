@@ -391,6 +391,27 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// A commander sent up the Spine from the phone: the realm's word on it
+    /// says how it went, as the Mac tells it, and no other goes this watch.
+    func testAVentureUpTheSpineFromThePhoneSaysHowItWent() async throws {
+        let (db, running, mac, _, _) = try await realm()
+        defer { running.cancel() }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in, a commander to send") { phone.ledger?.spine.ventures.isEmpty == false }
+        let venture = try XCTUnwrap(phone.ledger?.spine.ventures.last)
+        phone.give(venture.command, told: venture.title)
+        try await until("the realm's word on the venture") { phone.word?.awaited == false }
+        let word = try XCTUnwrap(phone.word?.text)
+        XCTAssertTrue(word.hasPrefix("\(venture.title): carried out by the realm. "), word)
+        XCTAssertTrue(word.contains(" takes the Scree Gate, stage 1 of the Spine") || word.contains(" is thrown back from the Scree Gate"), word)
+        try await until("none sent again this watch") { phone.ledger?.spine.ventures.isEmpty == true }
+        phone.unlink()
+        mac.close()
+    }
+
     /// A phone with no network says so of itself, never of a Mac: the
     /// realm's troubles are told on the phone in the phone's own words.
     func testAPhoneWithNoNetworkSaysSoOfItself() async throws {

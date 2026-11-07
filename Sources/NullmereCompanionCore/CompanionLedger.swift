@@ -163,6 +163,16 @@ public struct CompanionLedger: Equatable, Sendable {
         public let name: String
     }
 
+    /// The Spine: the House's next stage, and who may venture up it now.
+    public struct Spine: Equatable, Sendable {
+        /// Its next stage, what its host weighs and its spoils, and whether
+        /// the House has ventured this watch; or every stage the House's.
+        public let said: String
+        /// A line of the House's strongest free commanders, then each alone,
+        /// each where the rules would send it.
+        public let ventures: [Order]
+    }
+
     /// The Pedlar of the Still's wares, while he lies off one of the House's
     /// holds: where he lies and when he poles away, and each ware.
     public struct Wares: Equatable, Sendable {
@@ -259,6 +269,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let inn: Inn
     /// The pedlar's wares, while he lies off one of the House's holds.
     public let pedlar: Wares?
+    /// The Spine's next stage, and who may venture up it now.
+    public let spine: Spine
     /// The House's letters with other keepers, the latest first.
     public let letters: [Letter]
     /// The keepers' Houses it may write to: those it has letters with, the
@@ -315,7 +327,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.leave == b.leave && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
-            && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar
+            && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
     }
 
     /// The House's stores as one stock.
@@ -507,6 +519,7 @@ public struct CompanionLedger: Equatable, Sendable {
         inn = CompanionLedger.inn(in: world, player: player)
         (letters, correspondents) = CompanionLedger.letters(in: world, player: player)
         pedlar = CompanionLedger.pedlar(in: world, player: player)
+        spine = CompanionLedger.spine(in: world, player: player)
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore
         pursuits = studied.pursuits
@@ -652,6 +665,33 @@ public struct CompanionLedger: Equatable, Sendable {
         if given.tribute != false { others.append(taken("Pay no tribute", .stand(.tribute(false)))) }
         if !given.isEmpty { others.append(taken("Keep the House as it sees fit", .standDown)) }
         return Standing(said: given.said, musters: musters, raises: raises, others: others.compactMap { $0 })
+    }
+
+    /// The Spine as the Mac's commanders panel tells it: the House's next
+    /// stage, what its host weighs and its spoils; a line of its strongest
+    /// free commanders, up to three, and each alone, as the rules would send
+    /// them, none once it has ventured this watch.
+    static func spine(in world: GameState, player: Int) -> Spine {
+        guard let stage = ExpeditionStage.stage(world.expeditionStage(of: player) + 1) else {
+            return Spine(said: "Every stage of the Spine is yours.", ventures: [])
+        }
+        var said = "The Spine, \(stage.name) (\(stage.number) of \(ExpeditionStage.count)): its host weighs \(stage.strength); "
+            + "its spoils \(stage.spoils)" + (stage.sculptures > 0 ? " and \(stage.sculptures) sculptures." : ".")
+        if world.hasVentured(player) { said += " Your House has ventured this watch." }
+        let free = world.commanders(of: player).filter { $0.captive == nil && ($0.woundedUntil ?? 0) <= world.watch }
+            .sorted { (world.ringWeight(of: $0), -$0.id) > (world.ringWeight(of: $1), -$1.id) }
+        var ventures: [Order] = []
+        let line = Array(free.prefix(GameState.expeditionLine))
+        if line.count > 1, world.expeditionRefusal(line.map(\.id), as: player) == nil {
+            let names = line.map(\.name)
+            let listed = names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1]
+            ventures.append(Order(title: "Send a line of \(line.count) up the Spine: \(listed)", command: .ventureLine(commanders: line.map(\.id), stage: nil)))
+        }
+        for commander in free where world.expeditionRefusal(commander.id, as: player) == nil {
+            ventures.append(Order(title: "Send \(commander.name) alone, weighing \(world.ringWeight(of: commander))",
+                                  command: .venture(commander: commander.id)))
+        }
+        return Spine(said: said, ventures: ventures)
     }
 
     /// The pedlar lying off one of the House's holds, as the Mac's card tells
