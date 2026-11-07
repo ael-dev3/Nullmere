@@ -37,7 +37,7 @@ final class MoonShadowTests: XCTestCase {
             for heading in [0.0, 0.9, 2.4, 4.0] {
                 let eye = camera(scale: scale, heading: heading)
                 let matrix = try XCTUnwrap(MoonShadow.matrix(camera: eye, size: size))
-                for corner in [CGPoint.zero, CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height),
+                for corner in [CGPoint(x: 0, y: 0), CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height),
                                CGPoint(x: size.width, y: size.height), CGPoint(x: size.width / 2, y: size.height / 2)] {
                     let ground = eye.world(at: corner, in: size)
                     for height in [Float(0), MoonShadow.tallest] {

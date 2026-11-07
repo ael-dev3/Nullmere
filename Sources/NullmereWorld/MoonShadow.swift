@@ -37,7 +37,7 @@ public enum MoonShadow {
         // The ground in view: where the view's corners meet the water's
         // level, held within the reach.
         var furthest: Float = 0
-        for corner in [CGPoint.zero, CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height), CGPoint(x: size.width, y: size.height)] {
+        for corner in [CGPoint(x: 0, y: 0), CGPoint(x: size.width, y: 0), CGPoint(x: 0, y: size.height), CGPoint(x: size.width, y: size.height)] {
             let ground = camera.world(at: corner, in: size)
             furthest = max(furthest, (Vec3(Float(ground.x), 0, Float(ground.y)) - focus).length)
         }
