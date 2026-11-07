@@ -364,6 +364,10 @@ public struct CompanionLedger: Equatable, Sendable {
     /// and Houses asking to join to answer, and allies' work to help.
     public var allianceWaiting: Int { invitations.count + requests.count + helps.count }
 
+    /// What waits on them on the Army tab, for its badge: commanders with a
+    /// talent to learn, and the watch's venture up the Spine not yet made.
+    public var armyWaiting: Int { commanders.filter { !$0.talents.isEmpty }.count + (spine.ventures.isEmpty ? 0 : 1) }
+
     /// The House's stores as one stock.
     public var stock: Stock {
         var stock = Stock()

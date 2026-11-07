@@ -237,10 +237,11 @@ phone, each its own however many wait together, and what came of it where
 it is told at once (a chest's contents, a venture's end), stays a few
 seconds at the foot of whichever tab the keeper is on, wherever they have
 scrolled to give it; an order still unanswered when the phone is set
-aside is said to have been. The House and Alliance tabs carry a count of
-what waits on the keeper there: envoys to answer and foes gathered near
-the House's holds; invitations and Houses asking to join to answer, and
-allies' work to help.
+aside is said to have been. The House, Army and Alliance tabs carry a
+count of what waits on the keeper there: envoys to answer and foes
+gathered near the House's holds; commanders with a talent to learn and
+the watch's venture up the Spine not yet made; invitations and Houses
+asking to join to answer, and allies' work to help.
 
 - **While you were away.** Coming in again after the phone was set aside,
   what happened to the House meanwhile, as the Mac tells a keeper come back

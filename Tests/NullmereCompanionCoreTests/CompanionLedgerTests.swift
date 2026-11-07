@@ -60,11 +60,13 @@ final class CompanionLedgerTests: XCTestCase {
         let free = state.commanders(of: me).filter { $0.captive == nil && ($0.woundedUntil ?? 0) <= state.watch }
         XCTAssertFalse(free.isEmpty, "A House begins with a commander")
         XCTAssertEqual(ledger.spine.ventures.count, free.count + (free.count > 1 ? 1 : 0), "\(ledger.spine.ventures.map(\.title))")
+        XCTAssertEqual(ledger.armyWaiting, 1, "The Army tab's badge: the watch's venture up the Spine")
         assertTaken(ledger.spine.ventures, in: state, as: me)
         let alone = try XCTUnwrap(ledger.spine.ventures.last)
         _ = try state.perform(alone.command, as: me)
         ledger = CompanionLedger(world: state, player: me)
         XCTAssertTrue(ledger.spine.ventures.isEmpty, "Once a watch")
+        XCTAssertEqual(ledger.armyWaiting, 0, "Ventured: nothing waits")
         XCTAssertTrue(ledger.spine.said.hasSuffix("Your House has ventured this watch.") || ledger.spine.said == "Every stage of the Spine is yours.",
                       ledger.spine.said)
     }
@@ -488,10 +490,13 @@ final class CompanionLedgerTests: XCTestCase {
 
         // Talents: none without a point to spend, then the first ranks open.
         XCTAssertTrue(beside.talents.isEmpty, "\(beside.talents.map(\.title))")
+        let waiting = CompanionLedger(world: state, player: me).armyWaiting
         let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == second.id })
         state.commanders?[index].experience = 100_000
         let learned = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == second.id })
         XCTAssertFalse(learned.talents.isEmpty)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).armyWaiting, waiting + 1,
+                       "The Army tab's badge: a commander with a talent to learn")
         assertTaken(learned.talents, in: state, as: me)
         for order in learned.talents {
             guard case .learnTalent(_, let talent) = order.command else { return XCTFail("\(order.title) is no talent") }

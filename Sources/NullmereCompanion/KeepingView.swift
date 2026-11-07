@@ -29,6 +29,8 @@ struct KeepingView: View {
             ArmyTab(session: session)
                 .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("Army", systemImage: "shield") }
+                // Commanders with a talent to learn, the Spine's venture to make.
+                .badge(session.ledger?.armyWaiting ?? 0)
                 .tag(CompanionTab.army)
             AllianceTab(session: session)
                 .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
