@@ -26,7 +26,7 @@ struct AugurySection: View {
     /// How many watches ahead a prophecy made here looks, and the moonsalt
     /// each stake laid here is.
     static let span = 12
-    static let stake = 10
+    static let stake = Prophecy.stakeLaid
 
     @State private var composing: Bool
     @State private var kind: Kind?
@@ -58,13 +58,7 @@ struct AugurySection: View {
     /// How a prophecy stands, in a line: what is laid on each side, and
     /// until when; or how the realm judged it.
     static func standing(_ prophecy: Prophecy, at watch: Int) -> String {
-        let laid = "\(prophecy.laid(backing: true)) moonsalt backing it, \(prophecy.laid(backing: false)) against"
-        switch prophecy.cameToPass {
-        case true?: return "Came to pass. \(laid)."
-        case false?: return "Failed. \(laid)."
-        case nil:
-            return watch <= prophecy.stakesClose ? "\(laid); stakes close at watch \(prophecy.stakesClose)." : "\(laid); stakes are closed."
-        }
+        prophecy.standingSaid(at: watch)
     }
 
     var body: some View {
@@ -100,10 +94,9 @@ struct AugurySection: View {
     /// A prophecy: who foretold what and by when, how it stands, and the
     /// stakes the keeper may lay on it.
     private func line(_ prophecy: Prophecy, in state: GameState, player me: Int) -> some View {
-        let prophet = prophecy.by == me ? "You foretold" : "\(state.houses[prophecy.by].title) foretells"
         let open = prophecy.isOpen && state.stakeRefusal(on: prophecy.id, moonsalt: AugurySection.stake, as: me) == nil
         return VStack(alignment: .leading, spacing: 3) {
-            Text(verbatim: "\(prophet) that \(state.told(prophecy.claim)) by watch \(prophecy.until).")
+            Text(verbatim: state.prophecySaid(prophecy, to: me))
                 .font(.nm(11))
                 .foregroundStyle(Palette.text(prophecy.isOpen ? 0.88 : 0.6))
                 .fixedSize(horizontal: false, vertical: true)

@@ -423,7 +423,11 @@ a vote on the realm's law to cast.
   closes) and the House's vote, or Aye and Nay while it may cast one; the
   edicts holding the realm and for how long; and, folded until asked for,
   the edicts the House may put to it now, each with what it would forbid
-  and its cost. The oaths between the House and others, as the Mac's
+  and its cost. The Augury, as the Mac's Realm panel tells it: each
+  prophecy, who foretold what and by when, how it stands (what is laid
+  on each side, and until when; or how the realm judged it), and, while
+  stakes are open to the House, Back it and Stand against it, 10 moonsalt
+  each, once. The oaths between the House and others, as the Mac's
   Houses tell them: the House's own ("Your oath to House Quell: peace
   until watch 40"), each with Renounce, asked first because it binds three
   watches more and the whole realm is told, and marked renounced once it

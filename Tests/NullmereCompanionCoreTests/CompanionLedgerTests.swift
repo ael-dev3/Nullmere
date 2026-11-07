@@ -652,6 +652,37 @@ final class CompanionLedgerTests: XCTestCase {
         assertTaken(laid.takeBack, in: state, as: me)
     }
 
+    /// The Augury on the phone, as the Mac's Realm panel tells it: no
+    /// prophecy, nothing; another keeper's, told with how it stands and a
+    /// stake offered on either side, taken by the rules; staked, told
+    /// anew and offered no more; the House's own, told as its own.
+    func testThePhoneStakesOnTheAugury() throws {
+        var (state, me) = try world()
+        XCTAssertTrue(CompanionLedger(world: state, player: me).prophecies.isEmpty)
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        let third = try XCTUnwrap(state.houses.last { $0.id != me && $0.id != other }?.id)
+        state.houses[other].isPlayer = true
+        state.houses[other].stock.moonsalt = 100
+        _ = try state.perform(.prophesy(.falls(house: third), until: state.watch + 12, moonsalt: 20), as: other)
+        let prophecy = try XCTUnwrap(state.prophecies.first)
+        var ledger = CompanionLedger(world: state, player: me)
+        let told = try XCTUnwrap(ledger.prophecies.first)
+        XCTAssertEqual(told.said, "\(state.houses[other].title) foretells that \(state.told(prophecy.claim)) by watch \(prophecy.until).")
+        XCTAssertEqual(told.standing, "20 moonsalt backing it, 0 against; stakes close at watch \(prophecy.stakesClose).")
+        let back = try XCTUnwrap(told.back), against = try XCTUnwrap(told.standAgainst)
+        XCTAssertEqual(back.title, "Back it with \(Prophecy.stakeLaid) moonsalt")
+        XCTAssertEqual(against.title, "Stand against it with \(Prophecy.stakeLaid) moonsalt")
+        assertTaken([back, against], in: state, as: me)
+        _ = try state.perform(against.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let staked = try XCTUnwrap(ledger.prophecies.first)
+        XCTAssertEqual(staked.standing, "20 moonsalt backing it, \(Prophecy.stakeLaid) against; stakes close at watch \(prophecy.stakesClose).")
+        XCTAssertNil(staked.back, "Staked once")
+        XCTAssertNil(staked.standAgainst)
+        // To its prophet, its own.
+        XCTAssertTrue(CompanionLedger(world: state, player: other).prophecies.first?.said.hasPrefix("You foretold that ") == true)
+    }
+
     /// The Remembering on the phone, as the Mac's Realm panel sets it: no
     /// riddle, nothing; set, how it stands, its line and each name to
     /// answer, taken by the rules and counted on the House tab; answered

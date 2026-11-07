@@ -57,6 +57,20 @@ public struct Prophecy: Codable, Equatable, Identifiable, Sendable {
     }
 
     public var isOpen: Bool { cameToPass == nil }
+
+    /// The moonsalt of a stake laid from the Mac's Augury or the phone.
+    public static let stakeLaid = 10
+
+    /// How it stands, in a line, on the Mac and the phone: what is laid on
+    /// each side, and until when; or how the realm judged it.
+    public func standingSaid(at watch: Int) -> String {
+        let laid = "\(laid(backing: true)) moonsalt backing it, \(laid(backing: false)) against"
+        switch cameToPass {
+        case true?: return "Came to pass. \(laid)."
+        case false?: return "Failed. \(laid)."
+        case nil: return watch <= stakesClose ? "\(laid); stakes close at watch \(stakesClose)." : "\(laid); stakes are closed."
+        }
+    }
     /// The last watch a stake may be laid on it: halfway through its span.
     public var stakesClose: Int { spoken + (until - spoken) / 2 }
     /// Every stake laid on it.
@@ -190,6 +204,14 @@ extension GameState {
     }
 
     /// What a prophecy foretells, as a sentence says it after "that".
+    /// A prophecy as the Mac's Augury and the phone tell it: who foretold
+    /// what, and by when.
+    public func prophecySaid(_ prophecy: Prophecy, to house: Int) -> String {
+        let prophet = prophecy.by == house ? "You foretold"
+            : "\(houses.indices.contains(prophecy.by) ? houses[prophecy.by].title : "A fallen House") foretells"
+        return "\(prophet) that \(told(prophecy.claim)) by watch \(prophecy.until)."
+    }
+
     public func told(_ claim: Prophecy.Claim) -> String {
         func name(_ house: Int) -> String { houses.indices.contains(house) ? houses[house].title : "a fallen House" }
         switch claim {

@@ -366,6 +366,17 @@ public struct CompanionLedger: Equatable, Sendable {
         public let answers: [Order]
     }
 
+    /// A prophecy of the Augury, as the Mac's Realm panel tells it: who
+    /// foretold what and by when, how it stands, and a stake to lay
+    /// backing it or against it where the rules take one.
+    public struct Foretold: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let said: String
+        public let standing: String
+        public let back: Order?
+        public let standAgainst: Order?
+    }
+
     /// The riddle the lake has set the House at the half moon, as the Mac's
     /// Realm panel sets it: how it stands, the line with its name taken
     /// out, and each name to answer while it may.
@@ -541,6 +552,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let lyceum: Asked?
     /// The riddle of the Remembering, while the House has one.
     public let remembering: Remembering?
+    /// The Augury's prophecies, the latest first.
+    public let prophecies: [Foretold]
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -601,7 +614,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -955,6 +968,15 @@ public struct CompanionLedger: Equatable, Sendable {
         errands = CompanionLedger.errands(in: world, player: player, satchel: satchel)
         course = CompanionLedger.course(in: world, player: player)
         lyceum = CompanionLedger.lyceum(in: world, player: player)
+        prophecies = world.prophecies.reversed().map { prophecy in
+            let stake = Prophecy.stakeLaid
+            let open = prophecy.isOpen && world.stakeRefusal(on: prophecy.id, moonsalt: stake, as: player) == nil
+            return Foretold(id: prophecy.id, said: world.prophecySaid(prophecy, to: player), standing: prophecy.standingSaid(at: world.watch),
+                            back: open ? Order(title: "Back it with \(stake) moonsalt",
+                                               command: .stake(prophecy: prophecy.id, backs: true, moonsalt: stake)) : nil,
+                            standAgainst: open ? Order(title: "Stand against it with \(stake) moonsalt",
+                                                       command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
+        }
         remembering = world.riddle(of: player).map { riddle in
             Remembering(standing: riddle.standingSaid, line: riddle.line,
                         answers: riddle.choices.filter { world.riddleRefusal($0, as: player) == nil }.map {

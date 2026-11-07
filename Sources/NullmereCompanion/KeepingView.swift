@@ -797,6 +797,15 @@ struct AllianceTab: View {
                             OathRows(session: session, oaths: ledger.oathsSworn + ledger.oathsToUs)
                         }
                     }
+                    // The Augury, as the Mac's Realm panel tells it: each
+                    // prophecy, how it stands, and a stake laid on either side.
+                    if !ledger.prophecies.isEmpty {
+                        Section("The Augury") {
+                            ForEach(ledger.prophecies) { prophecy in
+                                ProphecyRows(session: session, prophecy: prophecy)
+                            }
+                        }
+                    }
                     if !ledger.invitations.isEmpty || !ledger.requests.isEmpty {
                         Section("Awaiting your answer") {
                             ForEach(ledger.invitations + ledger.requests) { answer in
@@ -1350,6 +1359,40 @@ struct CommanderOrders: View {
                 .buttonStyle(.bordered)
                 .font(Night.small)
                 .accessibilityLabel("Ransom \(commander.name) home, for \(ransom.title.replacingOccurrences(of: "Ransom for ", with: ""))")
+        }
+    }
+}
+
+/// A prophecy of the Augury: who foretold what and by when, how it stands,
+/// and, while stakes are open to the House, Back it and Stand against it.
+struct ProphecyRows: View {
+    let session: CompanionSession
+    let prophecy: CompanionLedger.Foretold
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: prophecy.said)
+                .font(Night.small)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: prophecy.standing)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            if prophecy.back != nil || prophecy.standAgainst != nil {
+                HStack(spacing: 10) {
+                    if let back = prophecy.back {
+                        Button("Back it") { session.give(back.command, told: back.title) }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel(back.title)
+                    }
+                    if let against = prophecy.standAgainst {
+                        Button("Stand against it") { session.give(against.command, told: against.title) }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel(against.title)
+                    }
+                }
+                .font(Night.small)
+            }
         }
     }
 }
