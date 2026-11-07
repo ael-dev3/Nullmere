@@ -270,6 +270,43 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// The realm lost while the phone keeps the House: it says so, keeps the
+    /// House as it last stood and stays in; when the realm answers again it
+    /// says no more of it, and an order given then is carried out by the
+    /// realm, without the phone set aside or linked again.
+    func testTheRealmLostAndFoundAgainThePhoneKeepsTheHouse() async throws {
+        let (db, running, mac, keeper, _) = try await realm()
+        defer { running.cancel() }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping }
+        let company = try XCTUnwrap(phone.ledger?.companies.first { $0.orders.contains { $0.title == "Fortify" } })
+
+        await db.setReachable(false)
+        try await until("the realm said out of reach", timeout: 30) { phone.outOfReach != nil }
+        XCTAssertEqual(phone.phase, .keeping, "Still in, the House as it last stood")
+        XCTAssertNotNil(phone.ledger)
+        XCTAssertEqual(phone.keeper?.id, keeper.id)
+
+        var macWorld: GameState?
+        mac.onEvent = { event in
+            switch event {
+            case .changed(let world), .watchTurned(let world, _), .settled(let world, _): macWorld = world
+            default: break
+            }
+        }
+        await db.setReachable(true)
+        try await until("the realm in reach again", timeout: 30) { phone.outOfReach == nil }
+        phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
+        try await until("the realm's word on the order", timeout: 30) { phone.word?.awaited == false }
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): carried out by the realm.")
+        try await until("the order seen on the Mac, in reach again too", timeout: 60) { macWorld?.unit(company.id)?.fortified == true }
+        phone.unlink()
+        mac.close()
+    }
+
     /// A realm too old to link phones is said to be, and the phone asks for
     /// nothing more of it; one that can't be reached is told so.
     func testARealmThatCantLinkIsSaidToBe() async throws {
