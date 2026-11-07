@@ -65,6 +65,14 @@ public final class CompanionSession {
     public private(set) var keeper: Keeper?
     public private(set) var world: GameState?
     public private(set) var ledger: CompanionLedger?
+    /// The House's reports while the phone is linked, the latest first, as
+    /// the Mac files them: each battle and hunt it had a part in, each field
+    /// of battle as it ended, each hold its Lanterns scouted, each lair it
+    /// assaulted.
+    public private(set) var reports: [BattleReport] = []
+    /// The most reports the phone keeps.
+    public static let reportsKept = 20
+    private var reportsFiled = 0
     /// The realm's word on the last order given here.
     public private(set) var word: Word?
     /// What happened to the House while the phone was set aside, told as it
@@ -254,8 +262,9 @@ public final class CompanionSession {
             } else {
                 word = Word(text: error.description, refused: true, awaited: false)
             }
-        case .settled(let world, _):
+        case .settled(let world, let events):
             show(world)
+            file(events, in: world)
             carriedOut()
         case .answered:
             // Across the network, an order carried out is answered so, the
@@ -266,15 +275,16 @@ public final class CompanionSession {
             word = Word(text: "\(given ?? "Your order"): the realm refused it. \(error.description)", refused: true, awaited: false)
         case .changed(let world):
             show(world)
-        case .watchTurned(let world, _):
+        case .watchTurned(let world, let events):
             isReady = false
             show(world)
+            file(events, in: world)
         case .readiness(let ready):
             isReady = ready
         case .unreachable(let why):
             outOfReach = why
-        case .heard:
-            break
+        case .heard(let events):
+            if let world { file(events, in: world) }
         }
     }
 
@@ -286,6 +296,15 @@ public final class CompanionSession {
     private func show(_ world: GameState) {
         self.world = world
         ledger = keeper?.house.map { CompanionLedger(world: world, player: $0) }
+    }
+
+    /// Files the House's reports of what the realm told, as the Mac does.
+    private func file(_ events: [GameEvent], in world: GameState) {
+        guard let house = keeper?.house else { return }
+        let filed = world.reports(of: events, for: house, after: reportsFiled)
+        guard !filed.isEmpty else { return }
+        reportsFiled += filed.count
+        reports = Array((filed.reversed() + reports).prefix(Self.reportsKept))
     }
 
     /// Linked to no one, or to a realm that can't link: back to pairing,
@@ -300,6 +319,7 @@ public final class CompanionSession {
         keeper = nil
         world = nil
         ledger = nil
+        reports = []
         word = nil
         isReady = false
         phase = .pairing

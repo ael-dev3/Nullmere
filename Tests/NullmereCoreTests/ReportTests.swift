@@ -54,6 +54,29 @@ final class ReportTests: XCTestCase {
         XCTAssertEqual(state.placeName(of: Hex(999, 0)), "in the field")
     }
 
+    /// The reports of a turn filed from its events, on the Mac and the phone
+    /// alike: each the House had a part in, numbered on in the order they
+    /// came, a blow within a field of battle left to the field's report.
+    func testATurnsReportsAreFiledFromItsEvents() throws {
+        let state = Scene.world("filed reports")
+        let me = state.player
+        let foe = (me + 1) % state.houses.count
+        let other = (me + 2) % state.houses.count
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let field = try XCTUnwrap(state.map.hexes.first { state.hold(at: $0) == nil && $0.distance(to: seat.position) == 2 })
+        let won = battle(attacker: me, defender: foe, at: field, defenderFell: true)
+        let elsewhere = battle(attacker: foe, defender: other, at: field)
+        var within = battle(attacker: me, defender: foe, at: field)
+        within.field = 7
+        let struck = battle(attacker: foe, defender: me, at: field, defenderFell: true)
+        let filed = state.reports(of: [.battle(won), .battle(elsewhere), .battle(within), .buildingStarted(hold: seat.id, kind: .granary, level: 1), .battle(struck)], for: me, after: 4)
+        XCTAssertEqual(filed.map(\.id), [5, 6])
+        XCTAssertEqual(filed, [try XCTUnwrap(state.report(of: won, id: 5, for: me)), try XCTUnwrap(state.report(of: struck, id: 6, for: me))])
+        XCTAssertEqual(filed.map(\.outcome), [.won, .lost])
+        XCTAssertTrue(state.reports(of: [.battle(elsewhere)], for: me).isEmpty)
+        XCTAssertEqual(state.reports(of: [.battle(won)], for: me).first?.id, 1, "Numbered from one")
+    }
+
     func testAHuntIsToldWithItsSpoils() throws {
         let state = Scene.world("hunt reports")
         let me = state.player

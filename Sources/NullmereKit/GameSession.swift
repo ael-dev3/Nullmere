@@ -2171,25 +2171,13 @@ public final class GameSession {
     /// Files a report of each battle and hunt the House had a part in, each
     /// field of battle as it ends, and of each hold its Lanterns scouted.
     func fileReports(_ events: [GameEvent]) {
-        var filed: [BattleReport] = []
-        for event in events {
-            let report: BattleReport?
-            switch event {
-            // A blow in a field of battle is told in the field's report, as it ends.
-            case .battle(let battle) where battle.field == nil: report = state.report(of: battle, id: reportCounter + 1, for: player)
-            case .fieldEnded(let field): report = state.report(of: field, id: reportCounter + 1, for: player)
-            case .hunted(let hunt): report = state.report(of: hunt, id: reportCounter + 1, for: player)
-            case .holdScouted(let scouting):
-                report = state.report(of: scouting, id: reportCounter + 1, for: player)
-                if scouting.by == player { scoutings[scouting.hold] = scouting }
-            case .lairAssaulted(let assault): report = state.report(of: assault, id: reportCounter + 1, for: player)
-            default: report = nil
-            }
-            guard let report else { continue }
-            reportCounter += 1
-            filed.append(report)
+        for case .holdScouted(let scouting) in events where scouting.by == player {
+            scoutings[scouting.hold] = scouting
         }
+        // As the phone files them: the rules' own reading of the events.
+        let filed = state.reports(of: events, for: player, after: reportCounter)
         guard !filed.isEmpty else { return }
+        reportCounter += filed.count
         reports = Array((filed.reversed() + reports).prefix(Self.reportsKept))
     }
 

@@ -232,6 +232,15 @@ struct ArmyTab: View {
                             CompanyRows(session: session, company: company)
                         }
                     }
+                    // The House's reports, as the Mac files them: battles,
+                    // hunts, fields of battle, scoutings and lairs assaulted.
+                    if !session.reports.isEmpty {
+                        Section("Reports") {
+                            ForEach(session.reports.prefix(CompanionLedger.linesShown)) { report in
+                                ReportRow(report: report)
+                            }
+                        }
+                    }
                     if !ledger.commanders.isEmpty {
                         Section("Commanders") {
                             ForEach(ledger.commanders) { commander in
@@ -697,6 +706,50 @@ struct CompanyRows: View {
                 }
             }
             .font(Night.small)
+        }
+    }
+}
+
+/// A report of a battle, a hunt, a field of battle, a scouting or a lair
+/// assaulted: how it went, where and when, and each side's part when opened.
+struct ReportRow: View {
+    let report: BattleReport
+
+    var body: some View {
+        DisclosureGroup {
+            ForEach(Array(report.lines.enumerated()), id: \.offset) { line in
+                Text(verbatim: line.element)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: report.title)
+                    .font(Night.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: "\(outcome) · \(report.place) · watch \(report.watch)")
+                    .font(Night.small)
+                    .foregroundStyle(tint)
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var outcome: String {
+        switch report.outcome {
+        case .won: return "Won"
+        case .lost: return "Lost"
+        case .held: return "Both stood"
+        case .scouted: return "Scouted"
+        }
+    }
+
+    private var tint: Color {
+        switch report.outcome {
+        case .won: return Night.good
+        case .lost: return Night.bad
+        case .held, .scouted: return Night.ink.opacity(0.7)
         }
     }
 }

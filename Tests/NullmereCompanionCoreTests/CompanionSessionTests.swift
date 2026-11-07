@@ -266,7 +266,27 @@ final class CompanionSessionTests: XCTestCase {
         let before = phone.ledger
         phone.hear(.heard([]))
         XCTAssertEqual(phone.ledger, before, "News alone changes nothing")
+
+        // Battles the House had a part in filed as reports, as the Mac files
+        // them, the latest first; none of battles it had no part in.
+        let me = try XCTUnwrap(phone.keeper?.house)
+        let foe = (me + 1) % world.houses.count
+        let other = (me + 2) % world.houses.count
+        let seat = try XCTUnwrap(world.seat(of: me))
+        func battle(_ attacker: Int, _ defender: Int, fell: Bool) -> Battle {
+            Battle(attacker: 90, attackerOwner: attacker, attackerKind: .rider, defender: 91, defenderOwner: defender, defenderKind: .spear,
+                   hold: nil, at: seat.position, damageDealt: 30, damageTaken: 10, attackerFell: false, defenderFell: fell)
+        }
+        XCTAssertTrue(phone.reports.isEmpty)
+        phone.hear(.settled(world, [.battle(battle(me, foe, fell: true)), .battle(battle(foe, other, fell: true))]))
+        XCTAssertEqual(phone.reports.map(\.outcome), [.won], "None for a battle the House had no part in")
+        XCTAssertEqual(phone.reports.first, world.report(of: battle(me, foe, fell: true), id: 1, for: me))
+        phone.hear(.heard([.battle(battle(foe, me, fell: false))]))
+        phone.hear(.watchTurned(world, [.battle(battle(foe, me, fell: true))]))
+        XCTAssertEqual(phone.reports.map(\.id), [3, 2, 1], "The latest first")
+        XCTAssertEqual(phone.reports.first?.outcome, .lost)
         phone.unlink()
+        XCTAssertTrue(phone.reports.isEmpty, "Forgotten with the link")
         mac.close()
     }
 

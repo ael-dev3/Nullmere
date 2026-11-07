@@ -291,7 +291,11 @@ been heard from lately.
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone
   orders the Mac sees, and the phone what the Mac orders. Below the
-  companies, the House's commanders, each with how they stand and the
+  companies, the House's reports, the latest first, as the Mac files them:
+  each battle and hunt it had a part in, each field of battle as it ended,
+  each hold its Lanterns scouted and each lair it assaulted, opened for
+  each side's part (kept while the phone stays linked). Then the
+  House's commanders, each with how they stand and the
   orders the rules would take for them, as on the Mac's board: Lead a
   company of war standing at or beside one of the House's holds, Ride
   second beside a company's leader, Ride home, Learn the next rank of a

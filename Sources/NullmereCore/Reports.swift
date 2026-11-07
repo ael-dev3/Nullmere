@@ -212,3 +212,29 @@ extension GameState {
                             place: placeName(of: assault.at), outcome: outcome, lines: lines)
     }
 }
+
+extension GameState {
+    /// The reports a House is filed from the events of a turn, a pace or an
+    /// order, read against this world as it stands after them, on the Mac
+    /// and the phone alike: each battle and hunt the House had a part in,
+    /// each field of battle as it ends (a blow struck within one is told in
+    /// the field's report), each hold its Lanterns scouted and each lair it
+    /// assaulted; numbered on from `after`, in the order they came.
+    public func reports(of events: [GameEvent], for viewer: Int, after: Int = 0) -> [BattleReport] {
+        var filed: [BattleReport] = []
+        for event in events {
+            let id = after + filed.count + 1
+            let report: BattleReport?
+            switch event {
+            case .battle(let battle) where battle.field == nil: report = self.report(of: battle, id: id, for: viewer)
+            case .fieldEnded(let field): report = self.report(of: field, id: id, for: viewer)
+            case .hunted(let hunt): report = self.report(of: hunt, id: id, for: viewer)
+            case .holdScouted(let scouting): report = self.report(of: scouting, id: id, for: viewer)
+            case .lairAssaulted(let assault): report = self.report(of: assault, id: id, for: viewer)
+            default: report = nil
+            }
+            if let report { filed.append(report) }
+        }
+        return filed
+    }
+}
