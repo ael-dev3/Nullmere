@@ -243,6 +243,16 @@ enum CompanionCheck {
             lines.append("Read in the keeper's words: " + reading.summary + (reading.trouble.map { " " + $0 } ?? ""))
         }
         write(done: false)
+        // The Mac's answer: seeing the company dug in, it says so to the
+        // realm (NULLMERE_ANSWER_PHONE), and the phone hears it come back.
+        let answered = "Seen on the Mac: "
+        if await until(45, { session.ledger?.realmWords.contains { $0.text.hasPrefix(answered) } == true }),
+           let heard = session.ledger?.realmWords.last(where: { $0.text.hasPrefix(answered) }) {
+            lines.append("Heard from the Mac: \(heard.text)")
+        } else {
+            lines.append("Nothing heard from the Mac in 45 s")
+        }
+        write(done: false)
         // Ready for the watch to turn, from the phone: the watch turns once
         // every keeper there is ready, and a third of it has passed while a
         // keeper whose House stands is away. The House's holds may be at

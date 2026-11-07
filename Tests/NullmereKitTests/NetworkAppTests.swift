@@ -587,7 +587,16 @@ final class NetworkAppTests: XCTestCase {
         GameApp.tellLink(invite, to: linkFile)
         XCTAssertEqual(try String(contentsOfFile: linkFile, encoding: .utf8), invite.url.absoluteString)
         let company = try XCTUnwrap(mac.session?.state.units(of: mac.session?.player ?? -1).first { $0.kind.isMilitary })
+        // Asked to answer the phone, this Mac takes its House as it first
+        // looks, then answers the first company it sees newly dug in, once.
+        mac.answerPhone()
         XCTAssertTrue(mac.session?.perform(.fortify(unit: company.id)) == true)
+        mac.answerPhone()
+        mac.answerPhone()
+        let answer = "Seen on the Mac: the \(company.kind.title) \(BuildingKind.numeral(company.tier)) dug in."
+        try await until("the Mac's answer said") { mac.session?.state.wordsSaid.contains { $0.text == answer } == true }
+        XCTAssertEqual(mac.session?.state.wordsSaid.filter { $0.text.hasPrefix("Seen on the Mac: ") }.count, 1, "Answered once")
+        XCTAssertNil(GameApp.answer(toDug: [], in: try XCTUnwrap(mac.session?.state)))
         // A work raised at the seat, and words said to the realm: the phone's smoke test sets both from the phone.
         let seat = try XCTUnwrap(mac.session?.state.seat(of: mac.session?.player ?? -1))
         let raised = try XCTUnwrap(BuildingKind.allCases.first { mac.session?.perform(.build(hold: seat.id, kind: $0)) == true })

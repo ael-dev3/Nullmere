@@ -8,7 +8,8 @@
 # said to it, the keeper made ready so the watch turns, a hold set to work), each
 # carried out by the realm, is set aside and comes in again by its own key;
 # and the Mac sees the company dug in, hears the words, sees the alliance
-# raised, the watch turned and the hold at work.
+# raised, the watch turned and the hold at work; and, seeing the company dug
+# in, the Mac says so to the realm and the phone hears its answer come back.
 # Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
@@ -90,7 +91,7 @@ xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 started="$(date '+%Y-%m-%d %H:%M:%S')"
 echo "Opening Nullmere Online and entering $REALM as ${KEEPER}, to offer a link…"
 NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$REALM" NULLMERE_IDENTITY_FILE="$IDENTITY" \
-    NULLMERE_KEEPER="$KEEPER" NULLMERE_OFFER_LINK="$LINK" NULLMERE_LINK_REPORT="$MAC_REPORT" \
+    NULLMERE_KEEPER="$KEEPER" NULLMERE_OFFER_LINK="$LINK" NULLMERE_LINK_REPORT="$MAC_REPORT" NULLMERE_ANSWER_PHONE=1 \
     "$MAC" >build/companion-mac-stdout.log 2>&1 &
 mac=$!
 for _ in $(seq 1 90); do
@@ -156,6 +157,12 @@ if [ -n "$WORDS" ]; then
     done
 fi
 echo "The Mac hears the phone's words: $HEARD"
+# And back: the Mac, seeing the company the phone dug in, says so to the
+# realm, and the phone hears it.
+ANSWER="$(sed -n 's/^Heard from the Mac: //p' "$REPORT" | head -n 1)"
+ANSWERED=no
+[[ "$ANSWER" == "Seen on the Mac: "* ]] && ANSWERED=yes
+echo "The phone hears the Mac's answer: $ANSWERED${ANSWER:+ ($ANSWER)}"
 BANNER="$(sed -n 's/^Raised the banner of: //p' "$REPORT" | head -n 1)"
 RAISED=no
 if [ -n "$BANNER" ]; then
@@ -232,6 +239,10 @@ if [ "$WORKING" != yes ]; then
 fi
 if [ "$HEARD" != yes ]; then
     echo "error: the Mac never heard the words said on the phone" >&2
+    exit 1
+fi
+if [ "$ANSWERED" != yes ]; then
+    echo "error: the phone never heard the Mac's answer to its order" >&2
     exit 1
 fi
 if [ "$RAISED" != yes ]; then

@@ -529,20 +529,51 @@ public final class GameApp {
     /// should their House be sworn to none; a link offered when
     /// NULLMERE_OFFER_LINK names where to write it; and what this Mac sees
     /// of its House written every so often where NULLMERE_LINK_REPORT names,
-    /// so the script sees an order given on the phone reach this Mac.
+    /// so the script sees an order given on the phone reach this Mac; and,
+    /// NULLMERE_ANSWER_PHONE set, this Mac's answer to it said to the realm
+    /// (`answerPhone`), so the script sees the Mac's word reach the phone.
     func linkFromEnvironment(_ environment: [String: String] = ProcessInfo.processInfo.environment, every seconds: Double = 1) {
         if let name = environment["NULLMERE_FOUND_ALLIANCE"], !name.isEmpty, let session, session.state.alliance(of: session.player) == nil {
             session.perform(.foundAlliance(name: name))
         }
         if let path = environment["NULLMERE_OFFER_LINK"], !path.isEmpty, phoneLink == nil { linkPhone() }
         if let path = environment["NULLMERE_LINK_REPORT"], !path.isEmpty, linkReport == nil {
+            let answers = environment["NULLMERE_ANSWER_PHONE"] != nil
             linkReport = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated { self?.writeLinkReport(to: path) }
+                MainActor.assumeIsolated {
+                    self?.writeLinkReport(to: path)
+                    if answers { self?.answerPhone() }
+                }
             }
         }
     }
 
     @ObservationIgnored private var linkReport: Timer?
+    /// The House's companies dug in as this Mac first looked, and whether it
+    /// has answered the phone.
+    @ObservationIgnored private var dugInAtFirst: Set<Int>?
+    @ObservationIgnored private var answeredPhone = false
+
+    /// The first time this Mac sees a company of its House dug in that
+    /// wasn't as it first looked (the phone's order reaching it), it says
+    /// so to the whole realm, once, for the phone to hear come back to it.
+    func answerPhone() {
+        guard !answeredPhone, let session else { return }
+        let dug = Set(session.state.units(of: session.player).filter(\.fortified).map(\.id))
+        guard let before = dugInAtFirst else {
+            dugInAtFirst = dug
+            return
+        }
+        guard let words = GameApp.answer(toDug: dug.subtracting(before), in: session.state) else { return }
+        answeredPhone = true
+        session.perform(.say(words: words, toAlliance: false))
+    }
+
+    /// What this Mac says of a company newly dug in, the first of those seen.
+    static func answer(toDug companies: Set<Int>, in state: GameState) -> String? {
+        guard let id = companies.min(), let unit = state.unit(id) else { return nil }
+        return "Seen on the Mac: the \(unit.kind.title) \(BuildingKind.numeral(unit.tier)) dug in."
+    }
 
     /// What this Mac sees of its House, written for the smoke test.
     func writeLinkReport(to path: String) {
