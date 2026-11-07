@@ -376,6 +376,10 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(rising.work, .building(.granary))
         XCTAssertEqual(rising.level, 3)
         XCTAssertEqual(rising.progress, 1 - 1 / Float(BuildingKind.granary.buildWatches(toLevel: 3)), accuracy: 1e-5)
+        var measured = hold
+        measured.project?.watches = 4
+        XCTAssertEqual(try XCTUnwrap(HoldLayout.Plan(hold: measured).rising).progress, 0.75, accuracy: 1e-5,
+                       "Risen against the watches it was to take when begun")
         XCTAssertEqual(HoldLayout.Plan(hold: hold, progress: 0.3).rising?.progress, 0.3)
         let pieces = HoldLayout.pieces(hold: hold, relief: relief, study: 2, progress: 0.3)
         PlacementTests.check(pieces, plan, relief)

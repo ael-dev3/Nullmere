@@ -756,9 +756,23 @@ extension GameState {
         GameState.lessened(kind.cost(toLevel: level), by: bonus(.buildCost, for: house))
     }
 
-    /// Watches raising a work to a level takes a House.
+    /// Watches raising a work to a level takes a House: the Moonspire's
+    /// stages longer in a realm of more Houses (`moonspireSpan`).
     public func buildWatches(of kind: BuildingKind, toLevel level: Int, for house: Int) -> Int {
-        GameState.hastened(kind.buildWatches(toLevel: level), by: bonus(.buildSpeed, for: house))
+        var watches = kind.buildWatches(toLevel: level)
+        if kind == .moonspire { watches = Int((Double(watches) * GameState.moonspireSpan(seats: houses.count)).rounded()) }
+        return GameState.hastened(watches, by: bonus(.buildSpeed, for: house))
+    }
+
+    /// How many times longer each stage of the Moonspire takes to raise in a
+    /// realm of more than twelve seats: as many times as its lake is wider
+    /// than a lake of twelve (`RealmState.radius(forSeats:)`), so the
+    /// quickest of a hundred Houses to raise one doesn't end the age before
+    /// armies have grown and marched across it. Once in a realm of twelve or
+    /// fewer; twice in one of forty-eight, nearly thrice in one of
+    /// ninety-six, some nine times in one of a thousand and twenty-four.
+    public static func moonspireSpan(seats: Int) -> Double {
+        max(1, (Double(seats) / Double(RealmState.defaultSeats)).squareRoot())
     }
 
     private mutating func build(_ kind: BuildingKind, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
@@ -774,7 +788,8 @@ extension GameState {
         guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
         houses[house].stock.debit(cost)
-        holds[index].project = Hold.Project(kind: kind, targetLevel: level, watchesLeft: buildWatches(of: kind, toLevel: level, for: house))
+        let watches = buildWatches(of: kind, toLevel: level, for: house)
+        holds[index].project = Hold.Project(kind: kind, targetLevel: level, watchesLeft: watches, watches: watches)
         return [.buildingStarted(hold: holdID, kind: kind, level: level)]
     }
 

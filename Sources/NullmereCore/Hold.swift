@@ -10,12 +10,25 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         public var watchesLeft: Int
         /// The allied Houses that have helped it, if any.
         public var helpers: [Int]? = nil
+        /// The watches it was to take as it was begun, its House's hastening
+        /// and the realm's breadth counted (`GameState.buildWatches`);
+        /// absent in older saves, where the work's own length stands in.
+        public var watches: Int? = nil
 
-        public init(kind: BuildingKind, targetLevel: Int, watchesLeft: Int, helpers: [Int]? = nil) {
+        public init(kind: BuildingKind, targetLevel: Int, watchesLeft: Int, helpers: [Int]? = nil, watches: Int? = nil) {
             self.kind = kind
             self.targetLevel = targetLevel
             self.watchesLeft = watchesLeft
             self.helpers = helpers
+            self.watches = watches
+        }
+
+        /// How much of it is done, from nothing as it was begun to the
+        /// whole: its watches bring it on, and so do its allies' help and
+        /// hourglasses, which take watches off it.
+        public var progress: Double {
+            let whole = max(watches ?? kind.buildWatches(toLevel: targetLevel), watchesLeft, 1)
+            return 1 - Double(watchesLeft) / Double(whole)
         }
     }
 

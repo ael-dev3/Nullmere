@@ -118,8 +118,7 @@ public enum HoldLayout {
             }
             var rising: Rising?
             if let project = hold.project {
-                let watches = Float(project.kind.buildWatches(toLevel: project.targetLevel))
-                let done = progress ?? (1 - Float(project.watchesLeft) / max(watches, 1))
+                let done = progress ?? Float(project.progress)
                 rising = Rising(work: Work(project.kind), level: project.targetLevel, progress: min(max(done, 0), 1))
             }
             var places: [Work: Int] = [:]

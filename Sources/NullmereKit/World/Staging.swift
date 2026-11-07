@@ -325,8 +325,7 @@ extension GameSession {
     /// the share of its watches done, or a work just finished rising its last.
     func rising(of hold: Hold, at now: Date, animated: Bool) -> (progress: Float?, finishing: HoldLayout.Plan.Rising?) {
         if let project = hold.project {
-            let total = Float(project.kind.buildWatches(toLevel: project.targetLevel))
-            let target = min(max(1 - Float(project.watchesLeft) / max(total, 1), 0), 1)
+            let target = Float(project.progress)
             guard animated else {
                 risings[hold.id] = nil
                 return (target, nil)

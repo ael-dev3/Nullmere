@@ -223,6 +223,11 @@ extension GameState {
 
     /// Helps a work, a muster or a study had of a House: one from each ally.
     public static let helpsPerWatch = 2
+    /// The most watches allies' help takes off any one work, muster or
+    /// study: the help of eight. An alliance on a lake of twelve seats,
+    /// four Houses at most, never reaches it; one of a third of a thousand
+    /// would otherwise raise each of a Moonspire's stages in a watch.
+    public static let mostWatchesHelped = 4
 
     /// The works, musters and study of an ally's a House could still help.
     public func helpable(by helper: Int, for house: Int) -> Int {
@@ -237,14 +242,19 @@ extension GameState {
     }
 
     /// A House helps every work, muster and study of an ally's it hasn't yet:
-    /// every second help on one takes a watch off it, never its last.
+    /// every second help on one takes a watch off it, never its last, and
+    /// never more than `mostWatchesHelped` in all, however great the
+    /// alliance.
     mutating func help(_ ally: Int, by house: Int) throws(RuleError) -> [GameEvent] {
         guard areAllied(house, ally) else { throw .notAnAlly }
         let count = helpable(by: house, for: ally)
         guard count > 0 else { throw .nothingToHelp }
         func hasten(_ helpers: inout [Int]?, _ watchesLeft: inout Int) {
             helpers = (helpers ?? []) + [house]
-            if helpers!.count % GameState.helpsPerWatch == 0, watchesLeft > 1 { watchesLeft -= 1 }
+            let helped = helpers!.count
+            if helped % GameState.helpsPerWatch == 0, helped / GameState.helpsPerWatch <= GameState.mostWatchesHelped, watchesLeft > 1 {
+                watchesLeft -= 1
+            }
         }
         for index in holds.places(of: ally) {
             if var project = holds[index].project, !(project.helpers ?? []).contains(house) {

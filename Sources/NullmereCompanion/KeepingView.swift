@@ -357,7 +357,7 @@ struct AllianceTab: View {
                                 .foregroundStyle(Night.ink.opacity(0.75))
                             // Alliance help: each of an ally's works, musters
                             // and study helped once, every second help taking
-                            // a watch off it.
+                            // a watch off it, four at most.
                             ForEach(ledger.helps) { help in
                                 Button(help.title) { session.give(help.command, told: help.title) }
                                     .buttonStyle(.bordered)

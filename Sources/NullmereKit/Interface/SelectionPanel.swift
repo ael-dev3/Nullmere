@@ -176,7 +176,7 @@ struct OwnHoldDetails: View {
                 ProgressLine(
                     title: "\(project.kind.title) \(Narration.roman(project.targetLevel))",
                     detail: project.watchesLeft == 1 ? "Done next watch" : "\(project.watchesLeft) watches left",
-                    fraction: 1 - Double(project.watchesLeft) / Double(project.kind.buildWatches(toLevel: project.targetLevel))
+                    fraction: project.progress
                 )
             }
             if let training = hold.training {

@@ -100,7 +100,7 @@ enum Guide {
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
         Section(title: "Alliances and rallies", lines: [
-            "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off.",
+            "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off, four at most.",
             "Words (7) carry a line to every keeper of the realm, or to your alliance alone: plain words, with no addresses.",
             "Raise standards of your alliance on open ground near its holds, from that ground's panel, for timber, stone and moonsalt: the land two tiles about each is the alliance's, where its companies stand a tenth firmer, mend sooner and gather a fifth more, and its Houses' holds on it yield a tenth more of everything. An alliance keeps one standard, and one more for each of its Houses. A House at war with the one that raised it can strike a standard down.",
             "An alliance's leader begins its hall on the alliance's land, from that ground's panel, for great stores; it rises over four watches. Whole, the land three tiles about it is the alliance's, its companies keeping it stand a quarter firmer, the rallies its Houses call take two more companies and it may keep two more standards. Only its companies enter it; a House at war with one of its Houses can strike it down when none keeps it.",
@@ -127,7 +127,7 @@ enum Guide {
             "The omen on the realm is shown under the top bar, with the watches it has left.",
         ]),
         Section(title: "Winning", lines: [
-            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): five of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
+            "Raise the five stages of the Moonspire at your seat (ascendancy; the wider the lake, the longer each stage takes), or rule the lake (dominion): five of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a steward's seat while it has four holds or fewer left and no vassals of its own, and, if you are sworn to no one, it swears you fealty; beaten Houses may offer it too. A vassal's holds count with yours, and it can never turn on you, nor win, nor raise its Moonspire while it serves: the works on it stop when it bends the knee. Turn on it, and it is free; it goes free, too, if you fall.",
             "Stewards fear a rising Moonspire, and will march on it.",
             "Each hold stores more: the Moonspire's last stage asks for \(BuildingKind.moonspire.cost(toLevel: BuildingKind.moonspire.maxLevel).stone) stone, more than a House of fewer than \(Guide.holdsForTheLastSpire) holds can keep.",
