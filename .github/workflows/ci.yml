@@ -687,11 +687,15 @@ jobs:
       # The macOS job skips these, with no server to play through; here they
       # must run, every one: a skip would pass for a play-through.
       - name: Play through SpacetimeDB
-        # A play-through takes two or three minutes. One that stops
-        # answering fails here in its own time, its output written line by
-        # line so the log shows the test it stopped in, not at the job's limit.
+        # A play-through takes six or seven minutes, most of them the crowd:
+        # every seat of a realm of 192 taken at once by its own keeper's
+        # client (some four minutes in a debug build on four cores). One
+        # that stops answering fails here in its own time, its output
+        # written line by line so the log shows the test it stopped in, not
+        # at the job's limit.
         timeout-minutes: 15
         env:
+          NULLMERE_STDB_CROWD_SEATS: "192"
           NULLMERE_STDB: http://127.0.0.1:3000/nullmere
           NULLMERE_STDB_FRONTIER: http://127.0.0.1:3000/frontier-west,http://127.0.0.1:3000/frontier-east,http://127.0.0.1:3000/frontier
           NULLMERE_STDB_FRONTIER_PLAY: http://127.0.0.1:3000/play-west,http://127.0.0.1:3000/play-east,http://127.0.0.1:3000/play-frontier
