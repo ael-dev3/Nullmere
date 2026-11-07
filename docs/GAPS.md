@@ -243,7 +243,7 @@ To build, reimagined:
 - [x] A crash met by a page that says what happened and opens the world again: a fault caught as it strikes, and the next launch opening on where the keeper was, when, and what stopped it, with Open the world again, Report it (a new issue, written out) and Back
 
 Left out by design, with what stands in their place:
-- Play in a browser, on phones and tablets, and as a Farcaster Mini App: Nullmere Online is a native Mac game on Apple silicon (the on-device model is part of it); Sign In With Farcaster becomes the keychain identity and its recovery phrase
+- Play in a browser and as a Farcaster Mini App: Nullmere Online is a native Mac game on Apple silicon (the on-device model is part of it), and on the phone Nullmere Companion keeps the keeper's House beside their Mac (above), not a game of its own; Sign In With Farcaster becomes the keychain identity and its recovery phrase, and a phone links by a code its keeper's Mac shows
 - One keep for good: a seat lasts an age, and renown, favour, titles and deeds carry across ages
 - Hand-curated admission: admission is open, with a queue
 - Time passing with nobody in the realm: an empty realm sleeps, and a caretaker keeps an absent keeper's House

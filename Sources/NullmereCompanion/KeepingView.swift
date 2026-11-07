@@ -1149,17 +1149,37 @@ struct SaidLines: View {
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.5))
         }
-        ForEach(lines.reversed()) { said in
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: "\(said.from) · watch \(said.watch)")
-                    .font(Night.small)
-                    .foregroundStyle(said.isOwn ? Night.moon : Night.ink.opacity(0.6))
-                Text(verbatim: said.text)
-                    .font(Night.body)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
+        // The latest three open, the earlier folded beneath them, as the
+        // chronicle, the letters and the reports are.
+        let latest = Array(lines.reversed())
+        ForEach(latest.prefix(CompanionLedger.reportsOpen)) { said in
+            SaidLine(said: said)
         }
+        if latest.count > CompanionLedger.reportsOpen {
+            DisclosureGroup("\(latest.count - CompanionLedger.reportsOpen) earlier") {
+                ForEach(latest.dropFirst(CompanionLedger.reportsOpen)) { said in
+                    SaidLine(said: said)
+                }
+            }
+            .font(Night.small)
+        }
+    }
+}
+
+/// A line said, who said it and when, the keeper's own brighter.
+struct SaidLine: View {
+    let said: CompanionLedger.Said
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: "\(said.from) · watch \(said.watch)")
+                .font(Night.small)
+                .foregroundStyle(said.isOwn ? Night.moon : Night.ink.opacity(0.6))
+            Text(verbatim: said.text)
+                .font(Night.body)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
