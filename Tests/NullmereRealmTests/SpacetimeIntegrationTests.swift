@@ -35,7 +35,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         do {
             try await transport.call("publish", [.integer(999_999), .strings(["head"]), .strings(["{}"]), .strings([]), .string("{}"),
                                                  .strings([]), .strings([]), .strings([]), .integers([]), .strings([]), .string("stranger"),
-                                                 .strings([]), .strings([]), .strings([])],
+                                                 .strings([]), .strings([]), .strings([]), .strings([])],
                                      token: stranger.token)
             XCTFail("A stranger wrote the world")
         } catch {
@@ -112,7 +112,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         do {
             try await transport.call("publish", [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]),
                                                  .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold"),
-                                                 .strings([]), .strings([]), .strings([])],
+                                                 .strings([]), .strings([]), .strings([]), .strings([])],
                                      token: token)
             XCTFail("A publication for a version passed was kept")
         } catch {
@@ -585,5 +585,94 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let timings = try await CrowdPlayThrough.play(own(), token: token, seats: seats, watchLength: 20, newcomerWait: 2...4,
                                                       timeout: 600, clients: own, log: TimedTransport.Log())
         print("REALM \(seats) keepers' clients took every seat of the widest realm at once on SpacetimeDB: \(timings)")
+    }
+
+    /// A realm whose every world is too big for one call of a publication,
+    /// as a realm of hundreds of keepers' is: it goes ahead of the call that
+    /// publishes it, and keepers' clients, each by its own connections, are
+    /// seated, shown it, see the watch turn and hear each other as ever;
+    /// the world as the server keeps it reads whole, every keeper seated in
+    /// it, and nothing is left aside.
+    func testAWorldSentAheadIsPublishedWhole() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let text = environment["NULLMERE_STDB_AHEAD"], let url = URL(string: text), let transport = SpacetimeHTTP(address: url),
+              let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set NULLMERE_STDB_AHEAD and NULLMERE_STDB_TOKEN to send a realm's world ahead on a SpacetimeDB server")
+        }
+        func own() -> any SpacetimeTransport { SpacetimeHTTP(address: url, session: URLSession(configuration: .ephemeral))! }
+        let seats = 12
+        let timings = try await CrowdPlayThrough.play(own(), token: token, seats: seats, watchLength: 6, newcomerWait: 0.5...1,
+                                                      timeout: 240, budget: 16_000, clients: own)
+        XCTAssertGreaterThan(timings.callsSentAhead, 1, "The world sent ahead of the call that publishes it")
+        let world = try RealmState(parts: try await RealmSteward.keptParts(transport, token: token))
+        XCTAssertEqual(world.keepers.filter { $0.house != nil }.count, seats, "Every keeper seated in the world as kept")
+        let aside = try await transport.query("SELECT name FROM world_ahead", token: token)
+        XCTAssertTrue(aside.isEmpty, "Nothing left aside")
+        print("REALM \(seats) keepers' clients on a realm whose world goes ahead of its publications: \(timings)")
+    }
+
+    /// The module's own rules for the world sent ahead, on a database of
+    /// their own, as `ModuleRulesTests` holds the fake to them: none of the
+    /// world until the call that publishes it names it; one named that was
+    /// never sent ahead, or was sent ahead of another publication, and
+    /// nothing of it is kept; those it doesn't name let go with it, and
+    /// those sent ahead of a publication that never came let go by the next
+    /// sent ahead of another; none sent ahead but by the steward, or ahead
+    /// of a publication passed.
+    func testTheWorldSentAheadIsNoneOfItUntilPublished() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let text = environment["NULLMERE_STDB_AHEAD_RULES"], let url = URL(string: text), let transport = SpacetimeHTTP(address: url),
+              let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set NULLMERE_STDB_AHEAD_RULES and NULLMERE_STDB_TOKEN to hold a SpacetimeDB server to the world sent ahead")
+        }
+        let hold = ReducerArgument.string("a test's hold")
+        func publish(_ version: UInt64, ahead: [String]) -> [ReducerArgument] {
+            [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]), .strings([]), .strings([]),
+             .integers([]), .strings([]), hold, .strings([]), .strings([]), .strings([]), .strings(ahead)]
+        }
+        func refusal(_ reducer: String, _ arguments: [ReducerArgument], token: String) async -> String? {
+            do {
+                try await transport.call(reducer, arguments, token: token)
+                return nil
+            } catch {
+                return "\(error)"
+            }
+        }
+        func aside() async throws -> [String] {
+            try await transport.query("SELECT name FROM world_ahead", token: token).compactMap { $0.first?.string }.sorted()
+        }
+        let sent = await refusal("send_ahead", [.integer(5), .strings(["map.0", "spare"]), .strings(["{\"m\":1}", "{}"]), hold], token: token)
+        XCTAssertNil(sent)
+        let none = try await RealmSteward.keptParts(transport, token: token)
+        XCTAssertEqual(none, [:], "None of the world until published")
+        let sentAside = try await aside()
+        XCTAssertEqual(sentAside, ["map.0", "spare"])
+
+        let unsent = await refusal("publish", publish(5, ahead: ["map.0", "map.9"]), token: token)
+        XCTAssertTrue(unsent?.contains("The part map.9 was never sent ahead.") == true, "\(unsent ?? "kept")")
+        let other = await refusal("publish", publish(6, ahead: ["map.0"]), token: token)
+        XCTAssertTrue(other?.contains("The part map.0 was sent ahead of another publication.") == true, "\(other ?? "kept")")
+        let refused = try await RealmSteward.keptParts(transport, token: token)
+        XCTAssertEqual(refused, [:], "Nothing of a publication refused kept")
+
+        let published = await refusal("publish", publish(5, ahead: ["map.0"]), token: token)
+        XCTAssertNil(published)
+        let kept = try await RealmSteward.keptParts(transport, token: token)
+        XCTAssertEqual(kept, ["map.0": "{\"m\":1}"], "The part named published, the one it didn't let go")
+        let gone = try await aside()
+        XCTAssertEqual(gone, [])
+
+        for (version, name) in [(UInt64(7), "map.1"), (8, "map.2")] {
+            let ahead = await refusal("send_ahead", [.integer(version), .strings([name]), .strings(["{}"]), hold], token: token)
+            XCTAssertNil(ahead)
+        }
+        let left = try await aside()
+        XCTAssertEqual(left, ["map.2"], "Those sent ahead of a publication that never came let go")
+        let passed = await refusal("send_ahead", [.integer(5), .strings([]), .strings([]), hold], token: token)
+        XCTAssertTrue(passed?.contains("Version 5 is not after 5.") == true, "\(passed ?? "kept")")
+        let stranger = try await transport.createIdentity()
+        let strange = await refusal("send_ahead", [.integer(9), .strings([]), .strings([]), .string("x")], token: stranger.token)
+        XCTAssertTrue(strange?.contains("Only the steward writes the world.") == true, "\(strange ?? "kept")")
+        print("REALM the world sent ahead is none of it until published")
     }
 }

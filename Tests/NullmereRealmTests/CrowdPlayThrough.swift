@@ -56,10 +56,12 @@ enum CrowdPlayThrough {
         var publications = 0
         var publicationCalls = 0
         var publicationBytes = 0
+        /// Calls that sent a publication's world ahead of it.
+        var callsSentAhead = 0
 
         var description: String {
-            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; every keeper's order, given at once, carried out in their view in %.1f s; %d publications in %d calls, %.1f MB",
-                   seated, turned, heard, ordered, publications, publicationCalls, Double(publicationBytes) / 1_048_576)
+            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; every keeper's order, given at once, carried out in their view in %.1f s; %d publications in %d calls (%d sending the world ahead), %.1f MB",
+                   seated, turned, heard, ordered, publications, publicationCalls, callsSentAhead, Double(publicationBytes) / 1_048_576)
         }
     }
 
@@ -122,8 +124,8 @@ enum CrowdPlayThrough {
             log.map { TimedTransport(transport, who: who, log: $0) } ?? transport
         }
         let steward = try await RealmSteward(transport: timed(transport, "steward"), token: token, name: "The Nullmere", seed: "a crowd at the door",
-                                             seats: seats, watchLength: watchLength, now: Date().timeIntervalSince1970)
-        if let budget { await steward.setPublicationBudget(budget) }
+                                             seats: seats, watchLength: watchLength, budget: budget ?? RealmSteward.publicationBudget,
+                                             now: Date().timeIntervalSince1970)
         // What the steward says of its rounds, as whoever runs the realm hears it.
         await steward.setReporter { print("CROWD the steward: \($0)") }
         let running = Task.detached { await steward.run() }
@@ -232,6 +234,7 @@ enum CrowdPlayThrough {
         timings.publications = await steward.publications
         timings.publicationCalls = await steward.publicationCalls
         timings.publicationBytes = await steward.publicationBytes
+        timings.callsSentAhead = await steward.callsSentAhead
         print("CROWD \(seats) keepers' clients at once: \(timings)")
         await steward.stop()
         await running.value
@@ -261,6 +264,7 @@ final class CrowdPlayThroughTests: XCTestCase {
         let timings = try await CrowdPlayThrough.play(db, token: steward.token, seats: 12, watchLength: 4, newcomerWait: 0.3...0.6,
                                                       timeout: 90, budget: 20_000)
         XCTAssertGreaterThan(timings.publicationCalls, timings.publications, "Publications in more calls than one")
+        XCTAssertGreaterThan(timings.callsSentAhead, 1, "The world, too big for one call, sent ahead of the call that publishes it")
     }
 
     /// The same over a realm that pushes the rows each keeper reads, as

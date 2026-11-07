@@ -99,6 +99,19 @@ pub struct WorldPart {
     pub text: String,
 }
 
+/// The world's parts of a publication too big to go in one call with its
+/// answers, sent ahead in calls of their own and kept aside here, never
+/// read as the world, until the call that publishes it takes them: the
+/// steward's alone to read.
+#[table(accessor = world_ahead)]
+pub struct WorldAhead {
+    #[primary_key]
+    pub name: String,
+    /// The version of the publication it was sent ahead of.
+    pub version: u64,
+    pub text: String,
+}
+
 /// What anyone may know of the realm: its age, watch, keepers and seats.
 #[table(accessor = status, public)]
 pub struct Status {
@@ -281,13 +294,60 @@ pub fn forget(ctx: &ReducerContext, nonces: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
+/// The steward's hold on the realm, taken or kept by a call that writes the
+/// world: refused while another steward's has yet to lapse. A call that
+/// fails afterwards undoes it with the rest.
+fn hold(ctx: &ReducerContext, holder: String) -> Result<(), String> {
+    let now = ctx.timestamp.to_micros_since_unix_epoch();
+    if let Some(lease) = ctx.db.lease().id().find(0) {
+        if lease.holder != holder && lease.until_micros > now {
+            let seconds = (lease.until_micros - now) / 1_000_000 + 1;
+            return Err(format!("Another steward holds the realm for {seconds} s more."));
+        }
+        ctx.db.lease().id().delete(0);
+    }
+    ctx.db.lease().insert(Lease { id: 0, holder, until_micros: now + LEASE_MICROS });
+    Ok(())
+}
+
+/// The steward sends the world's parts of a publication too big to go in
+/// one call with its answers ahead of it, in calls of their own: they are
+/// kept aside, none of them the world, until the call that publishes it
+/// takes them, so a steward stopped between these calls leaves the world
+/// as it was. Parts sent ahead of another publication, one that never came,
+/// are let go.
+#[reducer]
+pub fn send_ahead(ctx: &ReducerContext, version: u64, parts: Vec<String>, texts: Vec<String>, holder: String) -> Result<(), String> {
+    if !is_steward(ctx) {
+        return Err("Only the steward writes the world.".into());
+    }
+    hold(ctx, holder)?;
+    if parts.len() != texts.len() {
+        return Err("Every part of the world needs its name.".into());
+    }
+    let last = ctx.db.status().id().find(0).map(|s| s.version).unwrap_or(0);
+    if version <= last {
+        return Err(format!("Version {version} is not after {last}."));
+    }
+    let other: Vec<String> = ctx.db.world_ahead().iter().filter(|part| part.version != version).map(|part| part.name).collect();
+    for name in other {
+        ctx.db.world_ahead().name().delete(name);
+    }
+    for (name, text) in parts.into_iter().zip(texts) {
+        ctx.db.world_ahead().name().delete(name.clone());
+        ctx.db.world_ahead().insert(WorldAhead { name, version, text });
+    }
+    Ok(())
+}
+
 /// The steward publishes the realm as it now stands, and answers the
 /// requests it carried out, in one transaction: the world is never kept
 /// without its answers, nor an answer given for a world not kept. It sends
 /// the world's parts that changed and the names of those now gone, the
 /// status, for each keeper whose view changed the names of its parts with
 /// the events they heard, and its answers; then the parts of those views
-/// that changed, each with its keeper and its name.
+/// that changed, each with its keeper and its name; and the names of the
+/// world's parts it sent ahead, which it publishes with the rest.
 #[reducer]
 #[allow(clippy::too_many_arguments)]
 pub fn publish(
@@ -306,19 +366,13 @@ pub fn publish(
     part_keepers: Vec<String>,
     part_names: Vec<String>,
     part_texts: Vec<String>,
+    ahead: Vec<String>,
 ) -> Result<(), String> {
     if !is_steward(ctx) {
         return Err("Only the steward writes the world.".into());
     }
     let now = ctx.timestamp.to_micros_since_unix_epoch();
-    if let Some(lease) = ctx.db.lease().id().find(0) {
-        if lease.holder != holder && lease.until_micros > now {
-            let seconds = (lease.until_micros - now) / 1_000_000 + 1;
-            return Err(format!("Another steward holds the realm for {seconds} s more."));
-        }
-        ctx.db.lease().id().delete(0);
-    }
-    ctx.db.lease().insert(Lease { id: 0, holder, until_micros: now + LEASE_MICROS });
+    hold(ctx, holder)?;
     if keepers.len() != views.len() || keepers.len() != events.len() {
         return Err("Every view needs its keeper and its events.".into());
     }
@@ -340,6 +394,24 @@ pub fn publish(
     }
     for name in gone {
         ctx.db.world_part().name().delete(name);
+    }
+    // The parts sent ahead of this publication, each by its name: one not
+    // sent, or sent ahead of another, and nothing of it is kept.
+    for name in ahead {
+        let Some(part) = ctx.db.world_ahead().name().find(name.clone()) else {
+            return Err(format!("The part {name} was never sent ahead."));
+        };
+        if part.version != version {
+            return Err(format!("The part {name} was sent ahead of another publication."));
+        }
+        ctx.db.world_part().name().delete(name.clone());
+        ctx.db.world_part().insert(WorldPart { name, version, text: part.text });
+    }
+    // Whatever else was sent ahead, of a publication that never came, is
+    // let go with them.
+    let sent: Vec<String> = ctx.db.world_ahead().iter().map(|part| part.name).collect();
+    for name in sent {
+        ctx.db.world_ahead().name().delete(name);
     }
     for (name, text) in parts.into_iter().zip(texts) {
         ctx.db.world_part().name().delete(name.clone());

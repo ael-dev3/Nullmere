@@ -21,6 +21,9 @@ public actor FakeSpacetime: SpacetimeTransport {
     private var nextID: UInt64 = 1
     private var replies: [String: (keeper: String, payload: String)] = [:] // by nonce
     private var parts: [String: String] = [:] // the world's, by name
+    /// The world's parts sent ahead of a publication, kept aside until the
+    /// call that publishes them, by name: none of them the world till then.
+    public private(set) var sentAhead: [String: (version: UInt64, text: String)] = [:]
     private var status: (version: UInt64, status: String)?
     private var stamp: (version: UInt64, at: Double)?
     /// The server's clock at the epoch's start, for its `Date` answers.
@@ -377,6 +380,24 @@ public actor FakeSpacetime: SpacetimeTransport {
             guard me == steward else { throw SpacetimeError("Only the steward forgets answers.", status: 530) }
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
             tellTheRows()
+        case "send_ahead":
+            // As the module checks it, every check before anything is kept.
+            guard me == steward else { throw SpacetimeError("Only the steward writes the world.", status: 530) }
+            guard case .integer(let version)? = arguments.first, arguments.count == 4, case .strings(let names) = arguments[1],
+                  case .strings(let texts) = arguments[2], case .string(let holder) = arguments[3]
+            else { throw SpacetimeError("bad arguments", status: 400) }
+            if let lease, lease.holder != holder, lease.until > time {
+                throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.", status: 530)
+            }
+            guard names.count == texts.count else { throw SpacetimeError("Every part of the world needs its name.", status: 530) }
+            let last = status?.version ?? 0
+            guard version > last else { throw SpacetimeError("Version \(version) is not after \(last).", status: 530) }
+            lease = (holder, time + Self.leaseSeconds)
+            // Those sent ahead of another publication, one that never came,
+            // are let go.
+            sentAhead = sentAhead.filter { $0.value.version == version }
+            zip(names, texts).forEach { sentAhead[$0] = (version, $1) }
+            partsSent += names.count
         case "hand_over":
             guard me == steward else { throw SpacetimeError("Only the steward hands over the realm.", status: 530) }
             steward = try string(0)
@@ -385,13 +406,13 @@ public actor FakeSpacetime: SpacetimeTransport {
             // with the rest: every check before anything is kept, in the
             // module's own order.
             guard me == steward else { throw SpacetimeError("Only the steward writes the world.", status: 530) }
-            guard case .integer(let version)? = arguments.first, arguments.count == 14, case .string(let holder) = arguments[10],
+            guard case .integer(let version)? = arguments.first, arguments.count == 15, case .string(let holder) = arguments[10],
                   case .strings(let names) = arguments[1], case .strings(let texts) = arguments[2], case .strings(let gone) = arguments[3],
                   case .string(let said) = arguments[4],
                   case .strings(let keepers) = arguments[5], case .strings(let shown) = arguments[6], case .strings(let heard) = arguments[7],
                   case .integers(let ids) = arguments[8], case .strings(let answers) = arguments[9],
                   case .strings(let partKeepers) = arguments[11], case .strings(let partNames) = arguments[12],
-                  case .strings(let partTexts) = arguments[13]
+                  case .strings(let partTexts) = arguments[13], case .strings(let ahead) = arguments[14]
             else { throw SpacetimeError("bad arguments", status: 400) }
             if let lease, lease.holder != holder, lease.until > time {
                 throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.", status: 530)
@@ -411,10 +432,22 @@ public actor FakeSpacetime: SpacetimeTransport {
             guard version > last else { throw SpacetimeError("Version \(version) is not after \(last).", status: 530) }
             var kept = parts
             gone.forEach { kept[$0] = nil }
+            // The parts sent ahead of it, each by its name: one not sent, or
+            // sent ahead of another, and nothing of it is kept.
+            for name in ahead {
+                guard let part = sentAhead[name] else { throw SpacetimeError("The part \(name) was never sent ahead.", status: 530) }
+                guard part.version == version else {
+                    throw SpacetimeError("The part \(name) was sent ahead of another publication.", status: 530)
+                }
+                kept[name] = part.text
+            }
             zip(names, texts).forEach { kept[$0] = $1 }
             guard !kept.isEmpty else { throw SpacetimeError("The first publication holds the world.", status: 530) }
             lease = (holder, time + Self.leaseSeconds)
             parts = kept
+            // Whatever else was sent ahead, of a publication that never
+            // came, is let go with them.
+            sentAhead = [:]
             partsSent += names.count
             status = (version, said)
             stamp = (version, time)

@@ -188,6 +188,8 @@ public actor RealmSteward {
     private(set) var publications = 0
     private(set) var publicationCalls = 0
     private(set) var publicationBytes = 0
+    /// Calls that sent a publication's world ahead of it, for tests.
+    private(set) var callsSentAhead = 0
     /// Keepers the steward keeps anything of, for tests: those there alone.
     var keepersRemembered: Int { Set(heard.keys).union(left.keys).union(published.keys).union(recentlyHeard.keys).count }
 
@@ -210,11 +212,14 @@ public actor RealmSteward {
     public static let forgottenAtOnce = 512
 
     /// Takes up the realm where SpacetimeDB holds it, or begins a new one:
-    /// the Frontier where the realms meet, when `frontier`.
+    /// the Frontier where the realms meet, when `frontier`. Each call of a
+    /// publication carries `budget` bytes of text at most where it can.
     public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = RealmState.defaultSeats,
-                watchLength: Double = RealmState.defaultWatchLength, frontier: Bool = false, now: Double) async throws {
+                watchLength: Double = RealmState.defaultWatchLength, frontier: Bool = false,
+                budget: Int = RealmSteward.publicationBudget, now: Double) async throws {
         self.transport = transport
         self.token = token
+        publicationBudget = max(budget, 1)
         let parts = try await RealmSteward.keptParts(transport, token: token)
         keptParts = parts
         // Versions run on past the last status, never back.
@@ -497,7 +502,7 @@ public actor RealmSteward {
     }
 
     /// The world's parts as SpacetimeDB keeps them, by name.
-    private static func keptParts(_ transport: any SpacetimeTransport, token: String) async throws -> [String: String] {
+    static func keptParts(_ transport: any SpacetimeTransport, token: String) async throws -> [String: String] {
         let rows = try await transport.query("SELECT name, text FROM world_part", token: token)
         return Dictionary(rows.compactMap { row -> (String, String)? in
             guard row.count == 2, let name = row[0].string, let text = row[1].string else { return nil }
@@ -673,9 +678,27 @@ public actor RealmSteward {
                                            from: version + 1, budget: publicationBudget)
         let statusText = String(decoding: try encoder.encode(status), as: UTF8.self)
         publications += 1
+        // The first call that publishes: any before it send its world ahead.
+        let first = calls.firstIndex { !$0.ahead } ?? 0
         for (index, call) in calls.enumerated() {
+            if call.ahead {
+                // Kept or not, it is none of the world until the call that
+                // publishes it takes it, so nothing is unsure: the next
+                // publication sends it again, from the world as kept.
+                do {
+                    try await transport.call("send_ahead", [.integer(call.version), .strings(call.worldNames), .strings(call.worldTexts),
+                                                            .string(holder)], token: token)
+                } catch {
+                    if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
+                    throw error
+                }
+                callsSentAhead += 1
+                publicationCalls += 1
+                publicationBytes += call.size
+                continue
+            }
             let settling = Settling(version: call.version, at: now, status: status, shown: call.shown, shownAt: call.shownAt,
-                                    world: index == 0 ? (parts, state.world, lately, told.count, acts.count) : nil,
+                                    world: index == first ? (parts, state.world, lately, told.count, acts.count) : nil,
                                     answers: call.answers.map { ($0.id, $0.nonce) },
                                     alike: (written: call.alikeWritten, kept: call.alikeKeeps, final: call.alikeFinal))
             do {
@@ -694,6 +717,7 @@ public actor RealmSteward {
                     .strings(call.partKeepers),
                     .strings(call.partNames),
                     .strings(call.partTexts),
+                    .strings(call.sentAhead),
                 ], token: token)
             } catch {
                 if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
@@ -738,10 +762,15 @@ public actor RealmSteward {
         }
     }
 
-    /// One call of a publication, as the module's `publish` takes it.
+    /// One call of a publication, as the module's `publish` takes it, or,
+    /// `ahead`, its `send_ahead`: the world's parts sent ahead of the call
+    /// that publishes them.
     struct Call {
         let version: UInt64
+        var ahead = false
         var worldNames: [String] = [], worldTexts: [String] = [], gone: [String] = []
+        /// The world's parts sent ahead that it publishes, by name.
+        var sentAhead: [String] = []
         var keepers: [String] = [], views: [String] = [], heard: [String] = []
         var partKeepers: [String] = [], partNames: [String] = [], partTexts: [String] = []
         var answers: [Answer] = []
@@ -763,34 +792,52 @@ public actor RealmSteward {
     /// Most text one call of a publication carries, in bytes: the server
     /// takes no request of over 2 MiB, and the text grows by its escapes as
     /// it is sent.
-    static let publicationBudget = 1_000_000
+    public static let publicationBudget = 1_000_000
 
     /// A publication in calls, each carrying at most `budget` bytes of text
     /// where it can, numbered on from `version`. The first carries the
     /// world's parts that changed and those gone, and every answer, whatever
     /// their size: the world and the answers that came of it are kept in one
     /// transaction, so a steward stopped between calls neither loses a
-    /// request nor carries one out twice. Then the pages told alike the
-    /// views name that the server doesn't keep, each written once for every
-    /// view, before any view that names them; then each keeper's view whole
-    /// in one call, its parts with its row, as the module asks. Each answer
-    /// tells the version its keeper's view is written at, 0 if it isn't,
-    /// and their Mac waits for that call, or for none. The rows of pages
-    /// told alike that no view names are let go in the last call, once
-    /// every view is written.
+    /// request nor carries one out twice. A world too big to go with its
+    /// answers in one call goes ahead of it, in calls of its own of the
+    /// budget at most that keep it aside, the first naming every part it
+    /// publishes. Then the pages told alike the views name that the server
+    /// doesn't keep, each written once for every view, before any view that
+    /// names them; then each keeper's view whole in one call, its parts with
+    /// its row, as the module asks. Each answer tells the version its
+    /// keeper's view is written at, 0 if it isn't, and their Mac waits for
+    /// that call, or for none. The rows of pages told alike that no view
+    /// names are let go in the last call, once every view is written.
     static func calls(world changed: [(key: String, value: String)], gone: [String], alike: Alike = Alike(), shown: [Shown],
                       answers: [Answer], from version: UInt64, budget: Int) throws -> [Call] {
         let encoder = JSONEncoder()
         func encoded(_ reply: RealmReply) throws -> String { String(decoding: try encoder.encode(reply), as: UTF8.self) }
         func keeps(_ names: [String]) -> String { ViewRow(own: Dictionary(uniqueKeysWithValues: names.map { ($0, UInt64(0)) })).text }
         var calls = [Call(version: version)]
-        calls[0].worldNames = changed.map(\.key)
-        calls[0].worldTexts = changed.map(\.value)
         calls[0].gone = gone
         calls[0].answers = answers
         // The answers' size as they will go, the version they tell aside.
-        calls[0].size = changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + gone.reduce(0) { $0 + $1.utf8.count }
-            + (try answers.reduce(0) { $0 + (try encoded($1.reply.with(viewAt: version))).utf8.count })
+        let told = try answers.reduce(0) { $0 + (try encoded($1.reply.with(viewAt: version))).utf8.count } + gone.reduce(0) { $0 + $1.utf8.count }
+        let world = changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count }
+        var ahead: [Call] = []
+        if changed.count > 1, world + told > budget {
+            for (name, text) in changed {
+                let size = name.utf8.count + text.utf8.count
+                if ahead.last.map({ $0.size + size > budget }) ?? true {
+                    ahead.append(Call(version: version, ahead: true))
+                }
+                ahead[ahead.count - 1].worldNames.append(name)
+                ahead[ahead.count - 1].worldTexts.append(text)
+                ahead[ahead.count - 1].size += size
+            }
+            calls[0].sentAhead = changed.map(\.key)
+            calls[0].size = changed.reduce(0) { $0 + $1.key.utf8.count } + told
+        } else {
+            calls[0].worldNames = changed.map(\.key)
+            calls[0].worldTexts = changed.map(\.value)
+            calls[0].size = world + told
+        }
         /// A new call, if what comes next would take the last over budget.
         func room(for size: Int) {
             if calls[calls.count - 1].size > 0, calls[calls.count - 1].size + size > budget {
@@ -853,7 +900,7 @@ public actor RealmSteward {
             calls[last].alikeFinal = true
         }
         calls[0].replies = try answers.map { try encoded($0.reply.with(viewAt: viewAt[$0.keeper] ?? 0)) }
-        return calls
+        return ahead + calls
     }
 
     /// The views of these keepers, in parts, worked out side by side: each

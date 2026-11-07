@@ -227,6 +227,46 @@ final class StewardRoundsTests: XCTestCase {
         XCTAssertEqual(try told(quiet[0]), [0, 0, 0])
     }
 
+    /// A world too big to go with its answers in one call goes ahead of it,
+    /// in calls of its own of the budget at most but one carrying a single
+    /// part larger, every one at the version of the call that publishes it;
+    /// that call names every part sent ahead, in order, with the parts gone
+    /// and every answer, and the views come after as ever. A world that fits
+    /// goes in the call that publishes it, and so does one part, however
+    /// large, sending it ahead gaining nothing.
+    func testAWorldTooBigForOneCallGoesAheadOfIt() throws {
+        let world: [(key: String, value: String)] = [("head", String(repeating: "h", count: 300)), ("map.0", String(repeating: "m", count: 2_500)),
+                                                      ("units.0", String(repeating: "u", count: 400)), ("units.1", String(repeating: "v", count: 500))]
+        let shown = [RealmSteward.Shown(keeper: "k0", parts: ["head": "h0"], changed: [(key: "head", value: "h0")], at: [:])]
+        let answers = [RealmSteward.Answer(id: 1, nonce: "n1", keeper: "k0", reply: .done)]
+        let calls = try RealmSteward.calls(world: world, gone: ["units.9"], shown: shown, answers: answers, from: 10, budget: 1_000)
+        let ahead = Array(calls.prefix { $0.ahead })
+        XCTAssertEqual(ahead.map(\.worldNames), [["head"], ["map.0"], ["units.0", "units.1"]], "In order, as many to a call as fit")
+        XCTAssertEqual(ahead.flatMap(\.worldTexts), world.map(\.value))
+        XCTAssertEqual(ahead.map(\.size), [304, 2_505, 914])
+        XCTAssertTrue(ahead.allSatisfy { $0.version == 10 && ($0.size <= 1_000 || $0.worldNames.count == 1) })
+        XCTAssertTrue(ahead.allSatisfy { $0.gone.isEmpty && $0.answers.isEmpty && $0.keepers.isEmpty && $0.sentAhead.isEmpty })
+        let publishing = calls[ahead.count]
+        XCTAssertFalse(publishing.ahead)
+        XCTAssertEqual(publishing.version, 10)
+        XCTAssertEqual(publishing.sentAhead, world.map(\.key), "Every part sent ahead, by name")
+        XCTAssertTrue(publishing.worldNames.isEmpty && publishing.worldTexts.isEmpty)
+        XCTAssertEqual(publishing.gone, ["units.9"])
+        XCTAssertEqual(publishing.answers.map(\.id), [1])
+        XCTAssertEqual(publishing.keepers, ["k0"], "The view after the world, here in the same call")
+        let told = try publishing.replies.map { try JSONDecoder().decode(RealmReply.self, from: Data($0.utf8)).viewAt }
+        XCTAssertEqual(told, [10])
+        XCTAssertFalse(calls.dropFirst(ahead.count + 1).contains { $0.ahead }, "Nothing sent ahead after it")
+
+        // A world that fits, or one part however large, as it always went.
+        for (world, budget) in [(world, RealmSteward.publicationBudget), (Array(world[1...1]), 1_000)] {
+            let one = try RealmSteward.calls(world: world, gone: [], shown: shown, answers: answers, from: 10, budget: budget)
+            XCTAssertFalse(one.contains { $0.ahead })
+            XCTAssertEqual(one[0].worldNames, world.map(\.key))
+            XCTAssertTrue(one[0].sentAhead.isEmpty)
+        }
+    }
+
     func testHealthIsSaidPlainly() {
         let one = RealmStatus(name: "N", age: 2, watch: 40, seats: 12, freeSeats: 1, keepers: 11, online: 1, ready: 0,
                               secondsLeft: 60, isEnding: false)

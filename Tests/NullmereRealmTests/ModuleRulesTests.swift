@@ -48,12 +48,67 @@ final class ModuleRulesTests: XCTestCase {
         await db.advance(FakeSpacetime.leaseSeconds + 1)
         let stale = await refusal(db, "publish", [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]),
                                                   .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold"),
-                                                  .strings([]), .strings([]), .strings([])],
+                                                  .strings([]), .strings([]), .strings([]), .strings([])],
                                   token: key.token)
         XCTAssertEqual(stale, "Version \(version) is not after \(version).")
         let second = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "no hold", seats: 4, watchLength: 600, now: 1)
         let taken = await second.version
         XCTAssertGreaterThan(taken, version, "Taken up at once")
+    }
+
+    /// The world's parts sent ahead of a publication are none of the world
+    /// until the call that publishes it names them: one named that was
+    /// never sent ahead, or was sent ahead of another publication, and
+    /// nothing of it is kept; those it doesn't name are let go with it, and
+    /// those sent ahead of a publication that never came are let go by the
+    /// next sent ahead of another. None but the steward sends any ahead, and
+    /// none ahead of a publication passed. `SpacetimeIntegrationTests` holds
+    /// a real server to the same.
+    func testTheWorldSentAheadIsNoneOfItUntilPublished() async throws {
+        let db = FakeSpacetime()
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "ahead", seats: 4, watchLength: 600, now: 0)
+        let next = await steward.version + 1
+        await db.advance(FakeSpacetime.leaseSeconds + 1)
+        let hold = ReducerArgument.string("a test's hold")
+        func publish(_ version: UInt64, ahead: [String]) -> [ReducerArgument] {
+            [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]), .strings([]), .strings([]),
+             .integers([]), .strings([]), hold, .strings([]), .strings([]), .strings([]), .strings(ahead)]
+        }
+        let before = try await RealmSteward.keptParts(db, token: key.token)
+        let sent = await refusal(db, "send_ahead", [.integer(next), .strings(["map.0", "spare"]), .strings(["{\"m\":1}", "{}"]), hold],
+                                 token: key.token)
+        XCTAssertNil(sent)
+        let aside = try await RealmSteward.keptParts(db, token: key.token)
+        XCTAssertEqual(aside, before, "None of the world until published")
+
+        let unsent = await refusal(db, "publish", publish(next, ahead: ["map.0", "map.9"]), token: key.token)
+        XCTAssertEqual(unsent, "The part map.9 was never sent ahead.")
+        let other = await refusal(db, "publish", publish(next + 1, ahead: ["map.0"]), token: key.token)
+        XCTAssertEqual(other, "The part map.0 was sent ahead of another publication.")
+        let refused = try await RealmSteward.keptParts(db, token: key.token)
+        XCTAssertEqual(refused, before, "Nothing of a publication refused kept")
+
+        let published = await refusal(db, "publish", publish(next, ahead: ["map.0"]), token: key.token)
+        XCTAssertNil(published)
+        var world = before
+        world["map.0"] = "{\"m\":1}"
+        let kept = try await RealmSteward.keptParts(db, token: key.token)
+        XCTAssertEqual(kept, world, "The part named published, the one it didn't let go")
+        let gone = await db.sentAhead
+        XCTAssertTrue(gone.isEmpty)
+
+        for (version, name) in [(next + 2, "map.1"), (next + 3, "map.2")] {
+            let ahead = await refusal(db, "send_ahead", [.integer(version), .strings([name]), .strings(["{}"]), hold], token: key.token)
+            XCTAssertNil(ahead)
+        }
+        let left = await db.sentAhead
+        XCTAssertEqual(Array(left.keys), ["map.2"], "Those sent ahead of a publication that never came let go")
+        let passed = await refusal(db, "send_ahead", [.integer(next), .strings([]), .strings([]), hold], token: key.token)
+        XCTAssertEqual(passed, "Version \(next) is not after \(next).")
+        let stranger = try await db.createIdentity()
+        let strange = await refusal(db, "send_ahead", [.integer(next + 9), .strings([]), .strings([]), .string("x")], token: stranger.token)
+        XCTAssertEqual(strange, "Only the steward writes the world.")
     }
 
     /// The realm handed to another identity: it stewards the realm from

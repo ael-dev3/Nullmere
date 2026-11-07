@@ -653,6 +653,48 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertTrue(boHeard, "Bo shown the realm as it was kept")
     }
 
+    /// A publication whose world goes ahead of it, one of those calls lost:
+    /// nothing of it is the world and no answer is given; the next round
+    /// sends it all ahead again and publishes it, the world the server keeps
+    /// the steward's own, nothing left aside, and the arrival carried out
+    /// once.
+    func testAWorldSentAheadAndLostIsSentAgain() async throws {
+        let db = FakeSpacetime()
+        let owner = try await db.createIdentity()
+        let line = Flaky(db)
+        let steward = try await RealmSteward(transport: line, token: owner.token, name: "The Nullmere", seed: "sent ahead and lost",
+                                             seats: 4, watchLength: 600, budget: 1_000, now: 0)
+        let first = await steward.callsSentAhead
+        XCTAssertGreaterThan(first, 1, "The first world sent ahead of the call that publishes it")
+        let kept = await db.worldParts
+        let ama = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
+        await line.failNext("send_ahead")
+        do {
+            try await steward.step(now: 1)
+            XCTFail("A call sending the world ahead was lost")
+        } catch {}
+        let unchanged = await db.worldParts
+        XCTAssertEqual(unchanged, kept, "Nothing of it the world")
+        let unanswered = try await db.query("SELECT * FROM my_replies", token: ama.token)
+        XCTAssertTrue(unanswered.isEmpty, "Nor any answer given")
+
+        try await steward.step(now: 2)
+        let answered = try await db.query("SELECT * FROM my_replies", token: ama.token)
+        XCTAssertTrue(answered.contains { $0.first?.string == "a1" }, "Answered once it is published")
+        let published = await db.worldParts
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let world = try await steward.state.parts(using: encoder)
+        XCTAssertEqual(published, world, "The world the server keeps is the steward's")
+        let aside = await db.sentAhead
+        XCTAssertTrue(aside.isEmpty, "Nothing left aside")
+        let arrivals = await db.handled(kind: "arrive")
+        XCTAssertEqual(arrivals, 1)
+        let again = await steward.callsSentAhead
+        XCTAssertGreaterThan(again, first, "Sent ahead again")
+    }
+
     func testAStewardThatStopsBeforePublishingLosesNothing() async throws {
         let db = FakeSpacetime()
         let owner = try await db.createIdentity()

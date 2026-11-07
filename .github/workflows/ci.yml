@@ -608,8 +608,9 @@ jobs:
           echo "NULLMERE_STDB_TOKEN=$token" >> "$GITHUB_ENV"
           # Two realms and the Frontier between them, each a database of its
           # own; and three more, fresh, for keepers' clients to play it through.
-          # And one for a full realm of keepers' clients at once.
-          for db in frontier-west frontier-east frontier play-west play-east play-frontier crowd; do
+          # And one for a full realm of keepers' clients at once; and two for
+          # a realm whose world goes ahead of its publications.
+          for db in frontier-west frontier-east frontier play-west play-east play-frontier crowd ahead ahead-rules; do
             REALM_DB="$db" STEWARD=none NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh local
           done
 
@@ -625,6 +626,8 @@ jobs:
           NULLMERE_STDB_FRONTIER: http://127.0.0.1:3000/frontier-west,http://127.0.0.1:3000/frontier-east,http://127.0.0.1:3000/frontier
           NULLMERE_STDB_FRONTIER_PLAY: http://127.0.0.1:3000/play-west,http://127.0.0.1:3000/play-east,http://127.0.0.1:3000/play-frontier
           NULLMERE_STDB_CROWD: http://127.0.0.1:3000/crowd
+          NULLMERE_STDB_AHEAD: http://127.0.0.1:3000/ahead
+          NULLMERE_STDB_AHEAD_RULES: http://127.0.0.1:3000/ahead-rules
         run: |
           stdbuf -oL -eL swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
           total="$(grep "Executed .* tests" realm-integration.log | tail -n 1)"

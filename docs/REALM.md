@@ -127,7 +127,13 @@ steward's answer). For development a realm can also be hosted in-process
   several calls of about a megabyte, one version each: the world and every
   answer in the first, each keeper's view whole in one of them, so a full
   realm of ninety-six keepers arriving at once is shown the world in a
-  few calls a round. Each answer tells the version its keeper's view is
+  few calls a round. A world too big to go with its answers in one call
+  (a realm of hundreds of seats: 3.0 MB at 384 by its fiftieth watch)
+  goes ahead of that first call, in calls of its own (`send_ahead`) the
+  server keeps aside, none of them the world, until the first names every
+  part sent ahead and publishes them with its answers in one transaction:
+  a steward stopped between them leaves the world as it was, and parts
+  sent ahead of a publication that never came are let go. Each answer tells the version its keeper's view is
   written at, or that it isn't, and their Mac waits for that call or for
   none; should a call fail part way, the next round shows the keepers it
   didn't reach their view.
