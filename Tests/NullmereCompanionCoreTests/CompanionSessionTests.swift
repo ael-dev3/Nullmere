@@ -235,7 +235,8 @@ final class CompanionSessionTests: XCTestCase {
     /// The realm's other words, as the phone hears them while it keeps the
     /// House: an order the realm refused, its reason told with the world as
     /// it stands; a refusal of anything else, told as itself; the world
-    /// settled after an order, the order carried out; readiness as the
+    /// settled after an order shown, and the order carried out once it is
+    /// answered, as a realm in this process answers it; readiness as the
     /// realm last said; news alone, nothing changed.
     func testTheRealmsOtherWordsAreToldAsTheyCome() async throws {
         let (db, running, mac, _, _) = try await realm()
@@ -262,6 +263,8 @@ final class CompanionSessionTests: XCTestCase {
         phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
         XCTAssertEqual(phone.word?.awaited, true)
         phone.hear(.settled(world, []))
+        XCTAssertEqual(phone.word?.awaited, true, "The world shown; the order not yet answered")
+        phone.hear(.answered([]))
         XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): carried out by the realm.")
 
         phone.hear(.readiness(true))
@@ -312,6 +315,10 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertEqual(phone.phase, .keeping, "Still in, the House as it last stood")
         XCTAssertNotNil(phone.ledger)
         XCTAssertEqual(phone.keeper?.id, keeper.id)
+        // Said while the realm is out of reach: told it waits, not that it went.
+        phone.say("Hold the ford.", toAlliance: false)
+        XCTAssertEqual(phone.word?.text, "Said to the realm: \(CompanionSession.waitsForReach)")
+        XCTAssertEqual(phone.word?.awaited, true)
 
         var macWorld: GameState?
         mac.onEvent = { event in
@@ -322,10 +329,57 @@ final class CompanionSessionTests: XCTestCase {
         }
         await db.setReachable(true)
         try await until("the realm in reach again", timeout: 30) { phone.outOfReach == nil }
+        // What was said while it was out of reach is carried out, and told so.
+        try await until("the realm's word on what was said while out of reach", timeout: 30) {
+            phone.word?.text == "Said to the realm: carried out by the realm."
+        }
         phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): sent to the realm.", "In reach, sent")
         try await until("the realm's word on the order", timeout: 30) { phone.word?.awaited == false }
         XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): carried out by the realm.")
         try await until("the order seen on the Mac, in reach again too", timeout: 60) { macWorld?.unit(company.id)?.fortified == true }
+        phone.unlink()
+        mac.close()
+    }
+
+    /// Orders given one after another before the realm answers the first are
+    /// each told the realm's own word, in the order given, as the link sends
+    /// them; one still unanswered when the phone is set aside is told so,
+    /// never left waiting on a word that won't come.
+    func testEachOrderIsToldTheRealmsWordOnItself() async throws {
+        let (db, running, mac, _, _) = try await realm()
+        defer { running.cancel() }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping }
+        let company = try XCTUnwrap(phone.ledger?.companies.first { $0.orders.contains { $0.title == "Fortify" } })
+
+        // Both wait while the realm is out of reach, each said to.
+        await db.setReachable(false)
+        try await until("the realm said out of reach", timeout: 30) { phone.outOfReach != nil }
+        phone.say("Hold the ford.", toAlliance: false)
+        phone.give(.fortify(unit: company.id), told: "Fortify the \(company.name)")
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): \(CompanionSession.waitsForReach)")
+
+        // The realm's word on each, the first given first.
+        phone.hear(.answered([]))
+        XCTAssertEqual(phone.word?.text, "Said to the realm: carried out by the realm.", "The first answer is the first order's")
+        let world = try XCTUnwrap(phone.world)
+        phone.hear(.orderRefused(.refused("The realm refused the order."), world))
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): the realm refused it. The realm refused the order.")
+        XCTAssertEqual(phone.word?.refused, true)
+        phone.hear(.answered([]))
+        XCTAssertEqual(phone.word?.text, "Fortify the \(company.name): the realm refused it. The realm refused the order.",
+                       "No order waiting, no word on one")
+
+        // Given, then set aside before the realm answers: told so.
+        phone.say("And the bridge.", toAlliance: false)
+        XCTAssertEqual(phone.word?.awaited, true)
+        phone.pause()
+        XCTAssertEqual(phone.word?.text, "Said to the realm: \(CompanionSession.letGo)")
+        XCTAssertEqual(phone.word?.awaited, false)
         phone.unlink()
         mac.close()
     }

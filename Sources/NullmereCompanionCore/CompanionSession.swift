@@ -93,8 +93,10 @@ public final class CompanionSession {
     private let memory: CompanionMemory
     private let makeLink: @MainActor (URL) -> NetworkRealmLink?
     private let clock: () -> Date
-    /// The last order given here, as it was told, for the realm's word on it.
-    private var given: String?
+    /// The orders given here the realm hasn't answered yet, as each was
+    /// told, the first given first: the link sends them one at a time and
+    /// in order, and the realm answers each, so its word is on the first.
+    private var pending: [String] = []
 
     /// `makeLink` reaches a realm at an address under this phone's own
     /// identity for it; nil for an address it can't reach.
@@ -153,6 +155,7 @@ public final class CompanionSession {
         }
         link.leave()
         self.link = nil
+        letGoOfPending()
         phase = .away
     }
 
@@ -186,7 +189,8 @@ public final class CompanionSession {
 
     /// Gives an order for the keeper's House: refused here with the rules'
     /// reason if they wouldn't take it from this view, else carried out
-    /// here as the realm will and sent, its word to follow.
+    /// here as the realm will and sent, its word to follow; while the realm
+    /// is out of reach, said to wait until it is, as it does.
     public func give(_ command: Command, told: String) {
         guard phase == .keeping, let link, let house = keeper?.house, var copy = world else { return }
         do {
@@ -195,10 +199,28 @@ public final class CompanionSession {
             word = Word(text: "\(told): \(error)", refused: true, awaited: false)
             return
         }
-        given = told
+        pending.append(told)
         show(copy)
-        word = Word(text: "\(told): sent to the realm.", refused: false, awaited: true)
+        word = Word(text: outOfReach == nil ? "\(told): sent to the realm." : "\(told): \(Self.waitsForReach)",
+                    refused: false, awaited: true)
         link.send(command)
+    }
+
+    /// The word on an order given while the realm is out of reach: it is
+    /// sent once the realm can be reached again.
+    public static let waitsForReach = "it waits until the realm can be reached."
+
+    /// The word on an order still unanswered when the phone's link went:
+    /// whether the realm carried it out is the House's to show.
+    public static let letGo = "the phone was set aside before the realm answered."
+
+    /// What was given here and not yet answered goes with the link that
+    /// would have sent it: the keeper told so, where they were waiting on it.
+    private func letGoOfPending() {
+        if let told = pending.last, word?.awaited == true {
+            word = Word(text: "\(told): \(Self.letGo)", refused: false, awaited: false)
+        }
+        pending = []
     }
 
     /// Ready for the watch to turn, or not.
@@ -225,6 +247,7 @@ public final class CompanionSession {
 
     private func open(_ address: URL) -> NetworkRealmLink? {
         link?.close()
+        letGoOfPending()
         guard let made = makeLink(address) else {
             problem = "This phone can't reach a realm at \(address.absoluteString)."
             phase = .pairing
@@ -272,16 +295,17 @@ public final class CompanionSession {
                 word = Word(text: error.description, refused: true, awaited: false)
             }
         case .settled(let world, let events):
+            // A realm in this process answers the order too, just after.
             show(world)
             file(events, in: world)
-            carriedOut(events)
         case .answered(let events):
             // Across the network, an order carried out is answered so, the
             // world it made told as it changed.
             carriedOut(events)
         case .orderRefused(let error, let world):
             show(world)
-            word = Word(text: "\(given ?? "Your order"): the realm refused it. \(error.description)", refused: true, awaited: false)
+            let told = pending.isEmpty ? "Your order" : pending.removeFirst()
+            word = Word(text: "\(told): the realm refused it. \(error.description)", refused: true, awaited: false)
         case .changed(let world):
             show(world)
         case .watchTurned(let world, let events):
@@ -297,12 +321,13 @@ public final class CompanionSession {
         }
     }
 
-    /// The realm's word on the order given here, and what came of it where
-    /// it is told at once, as the Mac tells it: what a chest of the Lantern
-    /// Inn opened by it held, how a venture up the Spine went.
+    /// The realm's word on the first order given here still unanswered, and
+    /// what came of it where it is told at once, as the Mac tells it: what a
+    /// chest of the Lantern Inn opened by it held, how a venture up the Spine
+    /// went.
     private func carriedOut(_ events: [GameEvent] = []) {
-        guard word?.awaited == true else { return }
-        var text = "\(given ?? "Your order"): carried out by the realm."
+        guard !pending.isEmpty else { return }
+        var text = "\(pending.removeFirst()): carried out by the realm."
         if let house = keeper?.house, let world,
            let held = events.lazy.compactMap({ event -> String? in
                switch event {
@@ -335,6 +360,7 @@ public final class CompanionSession {
     private func forget(_ why: String?) {
         link?.close()
         link = nil
+        pending = []
         memory.realm = nil
         memory.counsel = [:]
         memory.lastSeen = nil

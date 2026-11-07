@@ -230,12 +230,14 @@ background: the keeper stays in the realm while their Mac or their phone
 is there, and one device leaving takes them away only when neither has
 been heard from lately. When the realm can't be reached (the phone's
 network gone, or the realm not answering), the phone says so in its own
-words and keeps the House as it last stood; an order given then waits, and
-goes once the realm answers again, which the phone asks at once when its
-network comes back. The realm's word on each order given from the phone,
-and what came of it where it is told at once (a chest's contents, a
-venture's end), stays a few seconds at the foot of whichever tab the
-keeper is on, wherever they have scrolled to give it.
+words and keeps the House as it last stood; an order given then is said to
+wait, and goes once the realm answers again, which the phone asks at once
+when its network comes back. The realm's word on each order given from the
+phone, each its own however many wait together, and what came of it where
+it is told at once (a chest's contents, a venture's end), stays a few
+seconds at the foot of whichever tab the keeper is on, wherever they have
+scrolled to give it; an order still unanswered when the phone is set
+aside is said to have been.
 
 - **While you were away.** Coming in again after the phone was set aside,
   what happened to the House meanwhile, as the Mac tells a keeper come back
