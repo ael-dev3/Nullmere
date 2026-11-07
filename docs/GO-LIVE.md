@@ -198,11 +198,12 @@ Needs a Mac with Apple silicon, macOS 26, Xcode 26, and Apple Intelligence
 turned on (System Settings > Apple Intelligence & Siri) and its model
 downloaded. CI's runners are virtual Macs. CI asks their model for the
 voices and for a commander's counsel through the debug app too (the voices
-and counsel steps of its build job), but so far they have told it they
-aren't eligible, though the release app's
-own check finds the model ready; the release build carries no hooks to
-ask it with. And their figures are a virtual Mac's, not Apple silicon's
-own. A keeper's Mac is the one that counts.
+and counsel steps of its build job), and they tell it they aren't
+eligible: the debug app, a release build made for the checks
+(`CHECKS=1 scripts/build-app.sh`, asked by the Model check workflow), and
+the app as it ships, whose launcher shows its requirement screen there.
+And their figures are a virtual Mac's, not Apple silicon's own. A keeper's
+Mac is the one that counts.
 
 - [ ] One command: Apple's on-device model speaks for every kind of envoy and
   chronicle entry, each line held to the voices' rules (spoken at all,

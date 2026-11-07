@@ -225,11 +225,12 @@ jobs:
       # the debug app asks it for each kind of envoy and chronicle entry,
       # and every line is held to the voices' rules. A runner whose model
       # isn't ready to speak says so and passes on; a line that breaks the
-      # rules fails. GitHub's virtual Macs have so far told the debug app
-      # they aren't eligible, under its own name or the app's and after
-      # waiting for the model's word, though the release app's own check
-      # finds the model ready: the release build carries no hooks to ask it
-      # with, so the voices are heard on a real Mac (docs/GO-LIVE.md).
+      # rules fails. GitHub's virtual Macs tell the app they aren't
+      # eligible: the debug app, under its own name or the app's and after
+      # waiting for the model's word; a release build of it made for the
+      # checks (Model check, run 1); and the app as it ships, whose
+      # launcher shows its requirement screen here ("Launch the app"). So
+      # the voices are heard on a real Mac (docs/GO-LIVE.md).
       - name: The voices, from the runner's own model
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 15

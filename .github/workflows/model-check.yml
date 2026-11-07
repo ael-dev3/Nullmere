@@ -1,19 +1,16 @@
 name: Model check
 
-# Apple's on-device model, asked on CI's virtual Mac by a release build of
-# the app. There the app as it ships finds the model ready ("Launch the
-# app" in CI), while the debug app the checks are heard from is told the
-# Mac isn't eligible. So the checks are heard here from an optimised build
-# made for them (scripts/build-app.sh with CHECKS=1, NULLMERE_CHECKS
-# defined; the shipping app never heeds them): counsel of a commander and
-# the voices, each held to its rules, or told unverified where the model
-# won't speak; then the debug app's, on the same Mac, beside them. Runs
-# once when this file changes, or by hand.
+# Apple's on-device model, asked on one of CI's virtual Macs by a release
+# build of the app made for the checks (scripts/build-app.sh with CHECKS=1,
+# NULLMERE_CHECKS defined; the app as it ships never heeds them): counsel of
+# a commander and the voices, each held to its rules, or told unverified
+# where the model won't speak; then the debug app's counsel on the same Mac
+# beside them. Run 1 (November 7) was told the Mac isn't eligible by both
+# builds, as the shipping app's launcher is ("Launch the app" in CI shows
+# its requirement screen): GitHub's virtual Macs can't run the model, so it
+# is heard on a real Mac (docs/GO-LIVE.md). Run by hand, should a new
+# runner image change that.
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/model-check.yml
   workflow_dispatch:
 
 permissions:
