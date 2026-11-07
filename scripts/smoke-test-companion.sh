@@ -17,7 +17,9 @@
 # Only debug builds heed NULLMERE_OFFER_LINK, NULLMERE_LINK_REPORT and the
 # companion's NULLMERE_COMPANION_LINK, NULLMERE_COMPANION_TAB and
 # NULLMERE_COUNSEL_REPORT.
-set -euo pipefail
+set -Eeuo pipefail
+# A step that stops the script says where, so no failure is a silent one.
+trap 'echo "error: smoke-test-companion.sh stopped at line $LINENO: $BASH_COMMAND" >&2' ERR
 cd "$(dirname "$0")/.."
 
 REALM="${NULLMERE_REALM:-http://127.0.0.1:3000/nullmere}"
@@ -142,7 +144,9 @@ done
 cp "$COUNSEL" "$COUNSEL_REPORT" 2>/dev/null || echo "The companion wrote no report of counsel." >"$COUNSEL_REPORT"
 cat "$COUNSEL_REPORT"
 PHONE_COUNSEL=failed
-if head -n 1 "$COUNSEL_REPORT" | grep -q ", not ready ("; then
+# Read whole first: grep -q leaving a pipe early must not read as no match.
+COUNSEL_FIRST="$(head -n 1 "$COUNSEL_REPORT")"
+if [[ "$COUNSEL_FIRST" == *", not ready ("* ]]; then
     PHONE_COUNSEL="unverified: the model can't be asked here"
 elif [ "$(tail -n 1 "$COUNSEL_REPORT")" = "Counsel kept to its rules." ]; then
     PHONE_COUNSEL="heard, within its rules"

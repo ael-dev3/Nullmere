@@ -54,8 +54,14 @@ final class PanelRenderTests: XCTestCase {
         let me = state.player
         state.houses[me].stock = Stock(grain: 9_000, timber: 9_000, stone: 9_000, moonsalt: 900)
         let seat = try XCTUnwrap(state.seat(of: me))
+        let index = try XCTUnwrap(state.holdIndex(seat.id))
         _ = try state.perform(.build(hold: seat.id, kind: .granary), as: me)
-        let kind = try XCTUnwrap(UnitKind.allCases.first { $0.hasTiers && state.tierRefusal(of: $0, tier: 1, at: seat, for: me) == nil })
+        // A Muster Hall at the seat: every company of war, spears the first,
+        // is mustered at one, and a seat has none as the age begins.
+        XCTAssertNotNil(state.tierRefusal(of: .spear, tier: 1, at: state.holds[index], for: me), "No Muster Hall, no spears")
+        state.holds[index].levels[.musterHall] = 1
+        let kind = try XCTUnwrap(UnitKind.allCases.first { $0.hasTiers && state.tierRefusal(of: $0, tier: 1, at: state.holds[index], for: me) == nil })
+        XCTAssertEqual(kind, .spear, "Spears, at a Muster Hall of I")
         _ = try state.perform(.train(hold: seat.id, kind: kind, tier: 1), as: me)
         _ = try state.perform(.foundAlliance(name: "Hostward"), as: me)
         let alliance = try XCTUnwrap(state.alliance(of: me))
@@ -64,8 +70,8 @@ final class PanelRenderTests: XCTestCase {
         XCTAssertTrue(standard.isWhole, "Raised whole")
         state.standards = [standard]
         XCTAssertTrue(state.isOnAllianceLand(try XCTUnwrap(state.hold(seat.id))), "Its seat on the alliance's land")
-        let index = try XCTUnwrap(state.holdIndex(seat.id))
         XCTAssertNotNil(state.holds[index].project)
+        XCTAssertNotNil(state.holds[index].training)
         for left in [3, 1, 0] {
             state.holds[index].training?.watchesLeft = left
             let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("at-work-\(left)")))

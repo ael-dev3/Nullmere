@@ -174,5 +174,54 @@ mac_run env MAC_ARCH=x86_64 "$MAC/scripts/check-on-mac.sh" --no-commit
 check "check-on-mac.sh refuses a Mac without Apple silicon" "$(cat "$WORK/mac.status")" "1"
 check "before hearing or measuring" "$(halves_ran)" "  "
 
+# build-companion.sh: in a stand-in repository, with stand-in tools for
+# the iOS SDK, the Swift build and signing, the companion bundled whole,
+# its version the Mac app's, and any step that stops it saying where.
+PHONE="$WORK/phone"
+mkdir -p "$PHONE/scripts" "$WORK/phonebin" "$WORK/phone-products"
+cp scripts/build-companion.sh "$PHONE/scripts/"
+cat > "$WORK/phonebin/xcrun" <<STANDIN
+#!/usr/bin/env bash
+case "\$*" in
+    "--sdk iphonesimulator --show-sdk-path") echo "$WORK/iPhoneSimulator.sdk" ;;
+    "--sdk iphonesimulator --show-sdk-version") echo 26.0 ;;
+    *) exit 1 ;;
+esac
+STANDIN
+cat > "$WORK/phonebin/swift" <<STANDIN
+#!/usr/bin/env bash
+case "\$*" in
+    *--show-bin-path*) [ -n "\${SWIFT_BIN_PATH_FAILS:-}" ] && exit 3; echo "$WORK/phone-products" ;;
+    *) echo stand-in > "$WORK/phone-products/NullmereCompanion"; echo "Build of product 'NullmereCompanion' complete!" ;;
+esac
+STANDIN
+printf '#!/usr/bin/env bash\ngrep -q "<key>CFBundleExecutable</key>" "$2"\n' > "$WORK/phonebin/plutil"
+printf '#!/usr/bin/env bash\necho "signed ${*: -1}" >> "%s/signed"\n' "$WORK" > "$WORK/phonebin/codesign"
+chmod +x "$PHONE/scripts/build-companion.sh" "$WORK"/phonebin/*
+phone_run() {
+    rm -rf "$PHONE/build" "$WORK/signed"
+    set +e
+    PATH="$WORK/phonebin:$PATH" "$@" > "$WORK/phone.out" 2>&1
+    echo $? > "$WORK/phone.status"
+    set -e
+}
+PLIST="$PHONE/build/companion/Nullmere Companion.app/Info.plist"
+version_of() { sed -n 's|.*<key>CFBundleShortVersionString</key><string>\(.*\)</string>|\1|p' "$PLIST" 2>/dev/null; }
+phone_run "$PHONE/scripts/build-companion.sh"
+check "build-companion.sh bundles the companion" "$(cat "$WORK/phone.status")" "0"
+check "and says so" "$(grep -c '^Bundled build/companion/Nullmere Companion.app' "$WORK/phone.out")" "1"
+check "its binary in the bundle" "$(cat "$PHONE/build/companion/Nullmere Companion.app/NullmereCompanion" 2>/dev/null)" "stand-in"
+check "its version the Mac app's" "$(version_of)" "0.3.0"
+check "signed to run in the simulator" "$(grep -c "Nullmere Companion.app$" "$WORK/signed" 2>/dev/null)" "1"
+check "with a word that its icon wasn't compiled, without actool" "$(grep -c "^warning: could not compile Packaging/AppIcon.icon" "$WORK/phone.out")" "1"
+phone_run env VERSION=1.2.3 "$PHONE/scripts/build-companion.sh"
+check "a version given is the companion's" "$(version_of)" "1.2.3"
+phone_run env VERSION=1.2 "$PHONE/scripts/build-companion.sh"
+check "build-companion.sh refuses a version of two numbers" "$(cat "$WORK/phone.status")" "1"
+check "and says why" "$(grep -c "^error: VERSION must be three numbers" "$WORK/phone.out")" "1"
+phone_run env SWIFT_BIN_PATH_FAILS=1 "$PHONE/scripts/build-companion.sh"
+check "build-companion.sh stops when a step after the build fails" "$(cat "$WORK/phone.status")" "3"
+check "and says where" "$(grep -q "^error: build-companion.sh stopped at line [0-9]*: " "$WORK/phone.out" && echo said)" "said"
+
 [ "$failures" = 0 ] && echo "The scripts do what they say."
 exit "$failures"

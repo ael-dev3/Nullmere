@@ -6,18 +6,21 @@
 # a simulator build, so its keychain is its own there too.
 #
 #   scripts/build-companion.sh [--configuration debug|release]
+#   VERSION=0.3.0 scripts/build-companion.sh   # the marketing version, as the Mac app's
 #
 # A build for a keeper's own iPhone is signed with an Apple developer team
 # in Xcode: open Package.swift, choose the NullmereCompanion scheme and a
 # device, and set the team; the app and its Info.plist are the same.
-set -euo pipefail
+set -Eeuo pipefail
+# A step that stops the script says where, so no failure is a silent one.
+trap 'echo "error: build-companion.sh stopped at line $LINENO: $BASH_COMMAND" >&2' ERR
 cd "$(dirname "$0")/.."
 
 CONFIGURATION=debug
 while [ $# -gt 0 ]; do
     case "$1" in
         --configuration) CONFIGURATION="$2"; shift 2 ;;
-        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
         *) echo "error: unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -63,8 +66,10 @@ cp "$BIN/NullmereCompanion" "$APP/NullmereCompanion"
 for bundle in "$BIN"/*.bundle; do
     [ -e "$bundle" ] && cp -R "$bundle" "$APP/"
 done
-VERSION="$(sed -n 's/^## \[\{0,1\}\([0-9][0-9.]*\).*/\1/p' CHANGELOG.md 2>/dev/null | head -n 1)"
-VERSION="${VERSION:-0.4.0}"
+# The marketing version, as scripts/build-app.sh gives the Mac app: three
+# numbers, as iOS compares them.
+VERSION="${VERSION:-0.3.0}"
+echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "error: VERSION must be three numbers, such as 1.0.0 (not $VERSION)" >&2; exit 1; }
 
 cat > "$APP/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
