@@ -278,7 +278,15 @@ been heard from lately.
   gates at the nearest of the allies' seats. Above them, Call a rally,
   sworn to an alliance and with none called: on a lair the House has found
   within its rung, or a hold it knows of a House at war, the nearest first,
-  mustered at its nearest Muster Hall and gathering two watches. An order the rules wouldn't take from the keeper's view is
+  mustered at its nearest Muster Hall and gathering two watches. Orders
+  in your own words opens the clerk, as on the Mac: write what the House
+  should do, and Apple's on-device model on the phone reads it into the
+  order book's lines, given what the House has and knows, each line with
+  the order the realm would take or why not; where the phone's model
+  can't read them, they are read as the order book's lines as written
+  (its lines and the companies' handles listed below) and you are told
+  why. Stop stops a reading; Give gives the orders the realm would take,
+  each judged by the realm as any is. An order the rules wouldn't take from the keeper's view is
   refused on the phone with their reason and sent nowhere; one sent is
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone

@@ -200,6 +200,7 @@ struct HouseTab: View {
 struct ArmyTab: View {
     let session: CompanionSession
     @State private var counselling: Counselling?
+    @State private var wording = false
 
     var body: some View {
         NavigationStack {
@@ -207,6 +208,9 @@ struct ArmyTab: View {
                 if let ledger = session.ledger {
                     Section {
                         WordLine(session: session)
+                        Button("Orders in your own words") { wording = true }
+                            .font(Night.body)
+                            .accessibilityHint("Read by Apple's on-device model on this phone into the order book's lines; nothing is given until you give it")
                     }
                     // A rally called from the phone, as on the Mac: on a lair
                     // found or a hold of a House at war, gathering two watches.
@@ -258,6 +262,9 @@ struct ArmyTab: View {
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("Army")
+            .sheet(isPresented: $wording) {
+                OrdersInWordsView(session: session) { wording = false }
+            }
         }
         .sheet(item: $counselling, onDismiss: { counselling = nil }) { open in
             CounselView(session: session, counsel: open.counsel) { counselling = nil }
@@ -271,6 +278,7 @@ struct ArmyTab: View {
                let first = session.ledger?.commanders.first(where: \.canCounsel) {
                 openCounsel(with: first.id)
             }
+            if CompanionCheck.wordsShown { wording = true }
             #endif
         }
     }

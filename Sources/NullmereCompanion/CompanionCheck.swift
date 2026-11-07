@@ -24,7 +24,7 @@ import NullmereCounsel
 @MainActor
 enum CompanionCheck {
     static var tabShown: CompanionTab? {
-        if counselShown { return .army }
+        if counselShown || wordsShown { return .army }
         return ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"].flatMap(CompanionTab.init(rawValue:))
     }
 
@@ -32,6 +32,12 @@ enum CompanionCheck {
     /// NULLMERE_COMPANION_TAB=counsel.
     static var counselShown: Bool {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "counsel"
+    }
+
+    /// Orders in the keeper's own words opened, a line of the order book
+    /// read, to be seen: NULLMERE_COMPANION_TAB=words.
+    static var wordsShown: Bool {
+        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "words"
     }
 
     /// The line a report ends with when every step came as it should.
@@ -199,6 +205,10 @@ enum CompanionCheck {
             } else {
                 lines.append("Nothing marched from the chart: no company but the one dug in could go")
             }
+            // A line of the order book read by the clerk, through this
+            // phone's own model where it can read, as written where it can't.
+            let reading = await OrderClerk().read("FORTIFY C1", in: world, player: house)
+            lines.append("Read in the keeper's words: " + reading.summary + (reading.trouble.map { " " + $0 } ?? ""))
         }
         write(done: false)
         // Ready for the watch to turn, from the phone: the watch turns once

@@ -1,6 +1,7 @@
 import Foundation
 import FoundationModels
 import NullmereCore
+import NullmereCounsel
 import os
 
 /// Something that can put a moment of the game into a character's words.
@@ -102,15 +103,7 @@ public struct OnDeviceVoice: Voice {
 
     /// What the House's clerk is told: to write the keeper's words as the
     /// order book's lines, and nothing else.
-    static let clerk = """
-    You are the clerk of a great House in Nullmere Online. Its keeper tells you in their own words \
-    what they would have done; you write it as lines of the House's order book, in exactly the forms \
-    given, one order to a line, at most six lines. Name each company by its handle alone, C1, C2 and \
-    so on, as the briefing numbers them, and every place, hold, House, work, store and kind of company \
-    exactly as the briefing names it. What the keeper would have done while they are away goes in the \
-    WHILE AWAY lines. Write only the lines: no numbering, no quotation marks, no words of your \
-    own. If the keeper asks for nothing the forms can order, reply NONE.
-    """
+    static let clerk = OrderClerk.instructions
 
     /// Whether the model can be asked now, and the asking itself: Apple's
     /// on-device model, or for tests a stand-in.
