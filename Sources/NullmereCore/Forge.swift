@@ -166,6 +166,22 @@ extension GameState {
         return kind.recipe.mapValues { max(1, ($0 * quality.multiplier * thrift + 50) / 100) }
     }
 
+    /// What a House keeps of each making, as the Mac and the phone say it.
+    public func makingsSaid(of house: Int) -> String {
+        "Makings: " + Making.allCases.map { "\(makings($0, of: house)) \($0.title.lowercased())" }.joined(separator: ", ") + "."
+    }
+
+    /// What forging a piece this fine takes, in words.
+    public func recipeSaid(_ kind: GearKind, _ quality: GearQuality, for house: Int) -> String {
+        let recipe = self.recipe(kind, quality, for: house)
+        let makings = Making.allCases.compactMap { making in recipe[making].map { "\($0) \(making.title.lowercased())" } }
+        return (makings + ["\(GameState.forgingCost(quality).moonsalt) moonsalt"]).joined(separator: ", ")
+    }
+
+    /// Said where a House has no Forge.
+    public static let noForgeSaid = "Raise a Forge at one of your holds to forge gear of three sets from the makings your companies bring in: "
+        + "hide, iron, heartwood and moonglass, from the wilds they strike down and the land's sites they gather at."
+
     /// The moonsalt forging a piece this fine takes.
     public static func forgingCost(_ quality: GearQuality) -> Stock {
         Stock(moonsalt: forgingMoonsalt * quality.multiplier)

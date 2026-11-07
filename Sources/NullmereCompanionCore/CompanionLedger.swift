@@ -123,6 +123,39 @@ public struct CompanionLedger: Equatable, Sendable {
         public let rivals: [Rival]
     }
 
+    /// The House's Forge, as the Mac's Commanders tell it: how fine it
+    /// works, the makings the House keeps, and each piece of the three sets
+    /// at the finest it makes, what it gives and takes, with Forge where
+    /// the rules would forge it now.
+    public struct Forge: Equatable, Sendable {
+        public struct Piece: Equatable, Identifiable, Sendable {
+            public var id: String { title }
+            /// Its kind and the slot it is worn in.
+            public let title: String
+            /// What it gives, and what forging it takes.
+            public let said: String
+            public let forge: Order?
+        }
+
+        public struct GearLine: Equatable, Identifiable, Sendable {
+            public var id: String { name }
+            public let name: String
+            /// What wearing its pieces together gives.
+            public let effect: String
+            public let pieces: [Piece]
+        }
+
+        /// "Forge · level II", or "Forge" where the House has none.
+        public let heading: String
+        public let makings: String
+        /// How to come by a Forge, where the House has none.
+        public let none: String?
+        public let sets: [GearLine]
+
+        /// How many pieces the House may forge now.
+        public var forgeable: Int { sets.reduce(0) { $0 + $1.pieces.filter { $0.forge != nil }.count } }
+    }
+
     /// The realm's law, as the Mac's Houses tell it: the edict before the
     /// realm, its tally, and the House's vote, or Aye and Nay where the
     /// rules would take its vote now; the edicts holding the realm; and
@@ -349,6 +382,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let law: Law
     /// The House in the Ring.
     public let ring: TheRing
+    /// The House's Forge.
+    public let forge: Forge
 
     /// What waits in the Ring and up the Spine, said on the Army tab's way
     /// to them: keepers' lines to challenge, or the House's line to stand,
@@ -363,6 +398,8 @@ public struct CompanionLedger: Equatable, Sendable {
             said.append("Your commanders may stand a line in the Ring")
         }
         if !spine.ventures.isEmpty { said.append("This watch's venture up the Spine still to make") }
+        let pieces = forge.forgeable
+        if pieces > 0 { said.append(pieces == 1 ? "A piece of gear the Forge may make" : "\(pieces) pieces of gear the Forge may make") }
         return said
     }
     /// Help for each ally with works, musters or study under way the
@@ -474,7 +511,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
-            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.helps == b.helps
+            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.forge == b.forge && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -509,6 +546,26 @@ public struct CompanionLedger: Equatable, Sendable {
         var stock = Stock()
         for store in stores { stock[store.resource] = store.amount }
         return stock
+    }
+
+    /// The House's Forge as it is told it, at the finest the Forge makes,
+    /// and each piece the rules would forge now.
+    static func forge(in world: GameState, player: Int) -> Forge {
+        let level = world.forgeLevel(of: player)
+        let heading = level > 0 ? "Forge · level \(BuildingKind.numeral(level))" : "Forge"
+        guard level > 0, let quality = GearQuality.forged(atLevel: level) else {
+            return Forge(heading: heading, makings: world.makingsSaid(of: player), none: GameState.noForgeSaid, sets: [])
+        }
+        let sets = GearSet.allCases.map { set in
+            Forge.GearLine(name: set.name, effect: set.effect.prefix(1).uppercased() + set.effect.dropFirst() + ".", pieces: set.pieces.map { kind in
+                let piece = Gear(id: 0, kind: kind, quality: quality, owner: player)
+                let command = Command.forge(kind, quality: quality)
+                return Forge.Piece(title: "\(kind.title) · \(kind.slot.title.lowercased())",
+                                   said: "\(piece.effect). Takes \(world.recipeSaid(kind, quality, for: player)).",
+                                   forge: world.refusal(of: command, as: player) == nil ? Order(title: "Forge a \(piece.title)", command: command) : nil)
+            })
+        }
+        return Forge(heading: heading, makings: world.makingsSaid(of: player), none: nil, sets: sets)
     }
 
     /// The House in the Ring as it is told it, and the orders the rules
@@ -642,6 +699,7 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         law = CompanionLedger.law(in: world, player: player)
         ring = CompanionLedger.ring(in: world, player: player)
+        forge = CompanionLedger.forge(in: world, player: player)
         prisoners = world.prisoners(heldBy: player).sorted { $0.id < $1.id }.compactMap { prisoner in
             guard let captive = prisoner.captive else { return nil }
             let question = world.questionRefusal(prisoner.id, as: player) == nil

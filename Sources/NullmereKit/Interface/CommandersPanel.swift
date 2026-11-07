@@ -310,20 +310,17 @@ struct ForgeView: View {
         return chosen.map { min($0, finest) } ?? finest
     }
 
-    /// What the House keeps of each making.
+    /// What the House keeps of each making, in the rules' words.
     static func makingsLine(_ state: GameState, _ house: Int) -> String {
-        "Makings: " + Making.allCases.map { "\(state.makings($0, of: house)) \($0.title.lowercased())" }.joined(separator: ", ") + "."
+        state.makingsSaid(of: house)
     }
 
-    /// What forging a piece this fine takes, in words.
+    /// What forging a piece this fine takes, in the rules' words.
     static func recipeLine(_ kind: GearKind, _ quality: GearQuality, in state: GameState, for house: Int) -> String {
-        let recipe = state.recipe(kind, quality, for: house)
-        let makings = Making.allCases.compactMap { making in recipe[making].map { "\($0) \(making.title.lowercased())" } }
-        return (makings + ["\(GameState.forgingCost(quality).moonsalt) moonsalt"]).joined(separator: ", ")
+        state.recipeSaid(kind, quality, for: house)
     }
 
-    static let noForge = "Raise a Forge at one of your holds to forge gear of three sets from the makings your companies bring in: "
-        + "hide, iron, heartwood and moonglass, from the wilds they strike down and the land's sites they gather at."
+    static let noForge = GameState.noForgeSaid
 }
 
 /// A piece of a set: what it gives at the quality chosen, what forging it

@@ -20,8 +20,8 @@ import NullmereCounsel
 /// what it saw to Documents/companion-report.txt in its own container,
 /// ending with the word on it all once it is done. NULLMERE_COMPANION_TAB
 /// opens a tab to be seen, the page of barter, the Inn and the satchel
-/// (NULLMERE_COMPANION_TAB=market), the page of the Ring and the Spine
-/// (NULLMERE_COMPANION_TAB=ventures), or counsel with the first free commander
+/// (NULLMERE_COMPANION_TAB=market), the page of the Ring, the Spine and the
+/// Forge (NULLMERE_COMPANION_TAB=ventures), or counsel with the first free commander
 /// (NULLMERE_COMPANION_TAB=counsel). And NULLMERE_COUNSEL_REPORT takes counsel of a
 /// commander through this phone's own on-device model, as the Mac's check
 /// does (CounselCheck), writing what was heard to
@@ -40,8 +40,8 @@ enum CompanionCheck {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "market"
     }
 
-    /// The page of the Ring and the Spine opened off the Army tab, to be
-    /// seen: NULLMERE_COMPANION_TAB=ventures.
+    /// The page of the Ring, the Spine and the Forge opened off the Army
+    /// tab, to be seen: NULLMERE_COMPANION_TAB=ventures.
     static var venturesShown: Bool {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "ventures"
     }

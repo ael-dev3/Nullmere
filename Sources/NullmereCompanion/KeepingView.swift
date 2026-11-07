@@ -459,15 +459,16 @@ struct MarketPage: View {
     }
 }
 
-/// The Ring and the Spine, a page of their own off the Army tab: where the
-/// House stands in the Ring and its bouts, its line to stand and the other
-/// keepers' lines to challenge; and the Spine's next stage, with a line or
-/// one commander to send up it.
+/// The Ring, the Spine and the Forge, a page of their own off the Army tab:
+/// where the House stands in the Ring and its bouts, its line to stand and
+/// the other keepers' lines to challenge; the Spine's next stage, with a
+/// line or one commander to send up it; and the House's Forge, each set
+/// folded until asked for, every piece with what it gives and takes.
 struct VenturesPage: View {
     let session: CompanionSession
 
     /// The Army tab's way to it.
-    static let way = "The Ring and the Spine"
+    static let way = "The Ring, the Spine and the Forge"
 
     var body: some View {
         List {
@@ -491,11 +492,14 @@ struct VenturesPage: View {
                     }
                     .font(Night.body)
                 }
+                Section(ledger.forge.heading) {
+                    ForgeRows(session: session, forge: ledger.forge)
+                }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Night.background)
-        .navigationTitle(VenturesPage.way)
+        .navigationTitle("Ring, Spine and Forge")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -1319,6 +1323,57 @@ struct LawRows: View {
                 }
             }
             .font(Night.small)
+        }
+    }
+}
+
+/// The House's Forge, as the Mac's Commanders tell it: the makings it keeps,
+/// how to come by a Forge where it has none, and each set at the finest the
+/// Forge makes, folded until asked for, every piece with what it gives and
+/// takes, and Forge where the rules would forge it now.
+struct ForgeRows: View {
+    let session: CompanionSession
+    let forge: CompanionLedger.Forge
+
+    var body: some View {
+        Text(verbatim: forge.makings)
+            .font(Night.small)
+            .foregroundStyle(Night.ink.opacity(0.8))
+            .fixedSize(horizontal: false, vertical: true)
+        if let none = forge.none {
+            Text(verbatim: none)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        ForEach(forge.sets) { line in
+            DisclosureGroup(line.name) {
+                Text(verbatim: line.effect)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(line.pieces) { piece in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: piece.title)
+                                .font(Night.small)
+                            Text(verbatim: piece.said)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.65))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                        Spacer()
+                        if let order = piece.forge {
+                            Button("Forge") { session.give(order.command, told: order.title) }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel(order.title)
+                        }
+                    }
+                }
+            }
+            .font(Night.body)
         }
     }
 }

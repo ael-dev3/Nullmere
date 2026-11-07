@@ -560,6 +560,41 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.venturesWaiting.contains("This watch's venture up the Spine still to make"), !ledger.spine.ventures.isEmpty)
     }
 
+    /// The Forge from the phone, as the Mac's Commanders tell it: with none,
+    /// told how to come by one; with a Forge and makings enough, each piece
+    /// of the three sets at the finest it makes told with what it gives
+    /// and takes, offered where the rules would forge it, and said on the
+    /// way to the page; forged, into the House's armoury.
+    func testThePhoneForgesGear() throws {
+        var (state, me) = try world()
+        var forge = CompanionLedger(world: state, player: me).forge
+        XCTAssertEqual(forge.heading, "Forge")
+        XCTAssertEqual(forge.none, GameState.noForgeSaid)
+        XCTAssertTrue(forge.sets.isEmpty)
+        XCTAssertEqual(forge.makings, state.makingsSaid(of: me))
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].levels[.forge] = 1
+        _ = state.give(makings: Dictionary(uniqueKeysWithValues: Making.allCases.map { ($0, 60) }), to: me)
+        forge = CompanionLedger(world: state, player: me).forge
+        XCTAssertEqual(forge.heading, "Forge · level I")
+        XCTAssertNil(forge.none)
+        XCTAssertEqual(forge.sets.map(\.name), GearSet.allCases.map(\.name))
+        let quality = try XCTUnwrap(GearQuality.forged(atLevel: 1))
+        let first = try XCTUnwrap(GearSet.allCases.first?.pieces.first)
+        let piece = try XCTUnwrap(forge.sets.first?.pieces.first)
+        XCTAssertEqual(piece.title, "\(first.title) · \(first.slot.title.lowercased())")
+        XCTAssertTrue(piece.said.hasSuffix("Takes \(state.recipeSaid(first, quality, for: me))."), piece.said)
+        let offered = forge.sets.flatMap(\.pieces).compactMap(\.forge)
+        XCTAssertFalse(offered.isEmpty)
+        assertTaken(offered, in: state, as: me)
+        XCTAssertEqual(forge.forgeable, offered.count)
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.venturesWaiting.contains { $0.contains("the Forge may make") }, "\(ledger.venturesWaiting)")
+        let before = state.gear(of: me).count
+        _ = try state.perform(try XCTUnwrap(offered.first).command, as: me)
+        XCTAssertEqual(state.gear(of: me).count, before + 1, "Into the armoury")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.
