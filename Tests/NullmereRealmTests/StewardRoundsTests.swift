@@ -17,8 +17,9 @@ final class StewardRoundsTests: XCTestCase {
         let credentials = try await db.createIdentity()
         let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "stopped", seats: 2,
                                              watchLength: 600, now: 0)
+        let before = await db.queried(FakeSpacetime.stewardRound)
         let running = Task { await steward.run(clock: { 1 }) }
-        try await db.waitFor(1, more: FakeSpacetime.stewardRound)
+        try await firstRound(db, since: before)
         await steward.stop()
         await running.value
         let rounds = await db.queried(FakeSpacetime.stewardRound)
@@ -36,8 +37,9 @@ final class StewardRoundsTests: XCTestCase {
         let key = try await db.createIdentity()
         let steward = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "woken", seats: 4,
                                              watchLength: 600, now: 0)
+        let before = await db.queried(FakeSpacetime.stewardRound)
         let running = Task.detached { await steward.run(clock: { 1 }, resting: 600) }
-        try await db.waitFor(1, more: FakeSpacetime.stewardRound)
+        try await firstRound(db, since: before)
         let watching = await db.watchingRequests
         XCTAssertEqual(watching, 1, "The steward watching the requests")
         // Resting now, for ten minutes but for a request.
@@ -66,13 +68,22 @@ final class StewardRoundsTests: XCTestCase {
         await db.advance(61)
         let again = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "woken", seats: 4,
                                            watchLength: 600, now: 2)
+        let first = await db.queried(FakeSpacetime.stewardRound)
         let cancelled = Task.detached { await again.run(clock: { 2 }, resting: 600) }
-        try await db.waitFor(1, more: FakeSpacetime.stewardRound)
+        try await firstRound(db, since: first)
         try await Task.sleep(nanoseconds: 100_000_000)
         let cancelling = Date()
         cancelled.cancel()
         await cancelled.value
         XCTAssertLessThan(Date().timeIntervalSince(cancelling), 5, "Its rest ended as its running was cancelled")
+    }
+
+    /// Waits for a steward just set running to begin its first round,
+    /// counted from before it was set running: a round it began before the
+    /// waiting did is not waited for again, as a steward resting ten
+    /// minutes between rounds would not begin another.
+    private func firstRound(_ db: FakeSpacetime, since before: Int) async throws {
+        try await until("the steward's first round", timeout: 20) { await db.queried(FakeSpacetime.stewardRound) > before }
     }
 
     private func until(_ what: String, timeout: Double = 10, _ condition: () async -> Bool) async throws {
