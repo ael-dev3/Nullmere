@@ -360,7 +360,7 @@ asking to join to answer, and allies' work to help.
   word on it.
 - **Alliance.** The alliance and its Houses, the leader first, with Help
   for each ally with works, musters or study under way the House hasn't
-  helped yet; what was said in it lately, and to the whole realm, the
+  helped yet, and Help all where there are several; what was said in it lately, and to the whole realm, the
   latest three of each open and the earlier folded beneath them; and a
   line to say to either. What waits on the keeper's answer, as the Mac's
   Alliance panel tells it: an alliance's invitation, to join or decline

@@ -566,6 +566,15 @@ struct AllianceTab: View {
                                     .buttonStyle(.bordered)
                                     .font(Night.small)
                             }
+                            // Every ally helped at once, each help the realm's to answer.
+                            if ledger.helps.count > 1 {
+                                Button("Help all \(ledger.helps.count)") {
+                                    for help in ledger.helps { session.give(help.command, told: help.title) }
+                                }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel("Help every ally with work under way")
+                            }
                         } else {
                             Text(verbatim: "Your House is in no alliance.")
                                 .font(Night.small)
