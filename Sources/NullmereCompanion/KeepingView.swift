@@ -9,23 +9,37 @@ import SwiftUI
 struct KeepingView: View {
     let session: CompanionSession
     @State private var tab = CompanionTab.house
+    /// The realm's word on the last order, while it is news: held at the
+    /// foot of every tab a few seconds as it comes, wherever the keeper has
+    /// scrolled to give it.
+    @State private var news: CompanionSession.Word?
 
     var body: some View {
         TabView(selection: $tab) {
             HouseTab(session: session)
+                .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("House", systemImage: "house") }
                 .tag(CompanionTab.house)
             LandTab(session: session)
+                .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("Land", systemImage: "map") }
                 .tag(CompanionTab.land)
             ArmyTab(session: session)
+                .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("Army", systemImage: "shield") }
                 .tag(CompanionTab.army)
             AllianceTab(session: session)
+                .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("Alliance", systemImage: "flag") }
                 .tag(CompanionTab.alliance)
         }
         .tint(Night.moon)
+        .task(id: session.word) {
+            news = session.word
+            guard let word = session.word, !word.awaited else { return }
+            try? await Task.sleep(for: WordBanner.held)
+            if session.word == word { news = nil }
+        }
         .onAppear {
             #if DEBUG
             if let shown = CompanionCheck.tabShown { tab = shown }
@@ -36,6 +50,39 @@ struct KeepingView: View {
 
 enum CompanionTab: String, Hashable {
     case house, land, army, alliance
+}
+
+/// The realm's word on the last order, at the foot of a tab while it is
+/// news: awaited, carried out (with what came of it), or refused.
+struct WordBanner: View {
+    let word: CompanionSession.Word?
+
+    /// How long a word the realm has given stays at the foot of the tabs.
+    static let held: Duration = .seconds(6)
+
+    var body: some View {
+        Group {
+            if let word {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    if word.awaited { ProgressView().controlSize(.small).tint(Night.moon) }
+                    Text(verbatim: word.text)
+                        .font(Night.small)
+                        .foregroundStyle(word.refused ? Night.bad : Night.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(word.refused ? "Refused: \(word.text)" : word.text)
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: word)
+    }
 }
 
 /// The realm's word on the last order, while it is news.

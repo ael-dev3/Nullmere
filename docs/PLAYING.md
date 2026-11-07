@@ -232,7 +232,10 @@ been heard from lately. When the realm can't be reached (the phone's
 network gone, or the realm not answering), the phone says so in its own
 words and keeps the House as it last stood; an order given then waits, and
 goes once the realm answers again, which the phone asks at once when its
-network comes back.
+network comes back. The realm's word on each order given from the phone,
+and what came of it where it is told at once (a chest's contents, a
+venture's end), stays a few seconds at the foot of whichever tab the
+keeper is on, wherever they have scrolled to give it.
 
 - **While you were away.** Coming in again after the phone was set aside,
   what happened to the House meanwhile, as the Mac tells a keeper come back
