@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 @testable import NullmereCore
 @testable import NullmereRealm
 import NullmereTestSupport
@@ -366,6 +369,17 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// A phone with no network says so of itself, never of a Mac: the
+    /// realm's troubles are told on the phone in the phone's own words.
+    func testAPhoneWithNoNetworkSaysSoOfItself() async throws {
+        let phone = CompanionSession(memory: PassingMemory()) { _ in
+            NetworkRealmLink(transport: Offline(), credentials: MemoryStore(), pollInterval: 0.05)
+        }
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: "ABCD2345EFGH")))
+        try await until("the code's taking failed") { phone.phase == .pairing }
+        XCTAssertEqual(phone.problem, "This phone isn't connected to the internet.")
+    }
+
     /// A realm too old to link phones is said to be, and the phone asks for
     /// nothing more of it; one that can't be reached is told so.
     func testARealmThatCantLinkIsSaidToBe() async throws {
@@ -387,4 +401,11 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertEqual(old.outOfReach, "The realm can't be reached.")
         XCTAssertEqual(old.secondsLeft(at: Date().addingTimeInterval(1_000)), 0, "Counted down to nothing, never below")
     }
+}
+
+/// A phone with no network at all: nothing it asks of the realm leaves it.
+private struct Offline: SpacetimeTransport {
+    func createIdentity() async throws -> SpacetimeCredentials { throw URLError(.notConnectedToInternet) }
+    func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws { throw URLError(.notConnectedToInternet) }
+    func query(_ sql: String, token: String) async throws -> [[JSONValue]] { throw URLError(.notConnectedToInternet) }
 }

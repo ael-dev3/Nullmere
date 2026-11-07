@@ -73,8 +73,7 @@ public struct SpacetimeError: Error, Equatable, CustomStringConvertible, Sendabl
         self.status = status
     }
 
-    public static let unauthorized = SpacetimeError("The realm doesn't accept this Mac's key just now. The key is kept, and offered again in a while.",
-                                                    isUnauthorized: true, status: 401)
+    public static let unauthorized = SpacetimeError(RealmTrouble.unaccepted(on: .mac), isUnauthorized: true, status: 401)
     /// The realm's module has no such request: it and this version of the
     /// game don't match.
     public static let unknownRequest = "The realm doesn't know what this version of Nullmere Online asks of it: one of the two is newer than the other."

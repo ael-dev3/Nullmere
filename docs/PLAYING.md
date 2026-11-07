@@ -228,7 +228,11 @@ code the Mac shows at the realm's door (see Entering the realm), it comes
 in as the keeper whenever it opens, and is set aside as it goes to the
 background: the keeper stays in the realm while their Mac or their phone
 is there, and one device leaving takes them away only when neither has
-been heard from lately.
+been heard from lately. When the realm can't be reached (the phone's
+network gone, or the realm not answering), the phone says so in its own
+words and keeps the House as it last stood; an order given then waits, and
+goes once the realm answers again, which the phone asks at once when its
+network comes back.
 
 - **While you were away.** Coming in again after the phone was set aside,
   what happened to the House meanwhile, as the Mac tells a keeper come back

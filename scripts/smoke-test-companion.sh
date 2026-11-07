@@ -10,18 +10,23 @@
 # and the Mac sees the company dug in, hears the words, sees the alliance
 # raised, the watch turned and the hold at work; and, seeing the company dug
 # in, the Mac says so to the realm and the phone hears its answer come back.
+# The phone reaches the realm through a line of its own (scripts/line-relay.py),
+# which is cut and mended: it says the realm is out of reach and keeps the
+# House, says words to the realm while it is, and once the line is mended is
+# in reach again by its own key, its words carried out and heard on the Mac.
 # Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
 # unverified. Saves the companion's screens and the reports:
 # build/companion-*.png, build/companion-report.txt,
-# build/companion-mac-report.txt and build/counsel-phone-report.txt.
+# build/companion-lost-report.txt, build/companion-mac-report.txt and
+# build/counsel-phone-report.txt.
 #
 #   NULLMERE_REALM=http://127.0.0.1:3000/nullmere scripts/smoke-test-companion.sh
 #
 # Only debug builds heed NULLMERE_OFFER_LINK, NULLMERE_LINK_REPORT and the
-# companion's NULLMERE_COMPANION_LINK, NULLMERE_COMPANION_TAB and
-# NULLMERE_COUNSEL_REPORT.
+# companion's NULLMERE_COMPANION_LINK, NULLMERE_COMPANION_TAB,
+# NULLMERE_COMPANION_LOST and NULLMERE_COUNSEL_REPORT.
 set -Eeuo pipefail
 # A step that stops the script says where, so no failure is a silent one.
 trap 'echo "error: smoke-test-companion.sh stopped at line $LINENO: $BASH_COMMAND" >&2' ERR
@@ -38,9 +43,11 @@ LINK="$PWD/build/companion-link.txt"
 MAC_REPORT="$PWD/build/companion-mac-report.txt"
 REPORT="build/companion-report.txt"
 COUNSEL_REPORT="build/counsel-phone-report.txt"
+LOST_REPORT="build/companion-lost-report.txt"
+LINE_LOG="build/companion-line.log"
 IDENTITY="$PWD/build/companion-mac-identity"
 mkdir -p build
-rm -f "$LINK" "$MAC_REPORT" "$REPORT" "$COUNSEL_REPORT" "$IDENTITY" build/companion-*.png
+rm -f "$LINK" "$MAC_REPORT" "$REPORT" "$COUNSEL_REPORT" "$LOST_REPORT" "$LINE_LOG" "$IDENTITY" build/companion-*.png
 [ -d "$APP" ] || scripts/build-companion.sh
 
 # An iPhone of the newest iOS the simulators have, booted.
@@ -71,9 +78,11 @@ xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 xcrun simctl install "$UDID" "$APP"
 
 mac=""
+relay=""
 cleanup() {
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     if [ -n "$mac" ]; then kill -TERM "$mac" 2>/dev/null || true; wait "$mac" 2>/dev/null || true; fi
+    if [ -n "$relay" ]; then kill -TERM "$relay" 2>/dev/null || true; wait "$relay" 2>/dev/null || true; fi
     rm -f "$IDENTITY"
 }
 trap cleanup EXIT
@@ -110,6 +119,33 @@ if [ ! -s "$LINK" ]; then
 fi
 INVITE="$(cat "$LINK")"
 echo "The Mac offered a link to ${INVITE%%code=*}code=(twelve letters and figures)."
+
+# The phone reaches the realm through a line of its own, carried byte for
+# byte, to be cut and mended later on: the network lost under the phone and
+# found again, the Mac and the realm going on all the while.
+SERVER="${REALM#*://}"
+SERVER="${SERVER%%/*}"
+python3 scripts/line-relay.py 0 "$SERVER" >"$LINE_LOG" 2>&1 &
+relay=$!
+for _ in $(seq 1 40); do
+    grep -q "^listening " "$LINE_LOG" 2>/dev/null && break
+    sleep 0.25
+done
+LINE_PORT="$(sed -n 's/^listening //p' "$LINE_LOG")"
+if [ -z "$LINE_PORT" ]; then
+    echo "error: the phone's line to the realm didn't open" >&2
+    cat "$LINE_LOG" >&2 || true
+    exit 1
+fi
+INVITE="$(python3 -c '
+import sys, urllib.parse as up
+link, port = sys.argv[1], sys.argv[2]
+parts = up.urlsplit(link)
+items = [(key, up.urlunsplit(up.urlsplit(value)._replace(netloc="127.0.0.1:" + port)) if key == "realm" else value)
+         for key, value in up.parse_qsl(parts.query, keep_blank_values=True)]
+print(up.urlunsplit(parts._replace(query=up.urlencode(items))))
+' "$INVITE" "$LINE_PORT")"
+echo "The phone reaches the realm through a line of its own, by port $LINE_PORT."
 
 # The phone takes it, as its camera would hand it the link.
 SIMCTL_CHILD_NULLMERE_COMPANION_LINK="$INVITE" SIMCTL_CHILD_NULLMERE_COMPANION_TAB=army \
@@ -192,6 +228,46 @@ if [ -n "$TURNED_TO" ]; then
 fi
 echo "The Mac sees the watch the phone came to: $TURNED (the phone's watch ${TURNED_TO:-unknown}, the Mac's ${MAC_WATCH:-unknown})"
 
+# The phone's line to the realm cut and mended: in again by its own key, it
+# says the realm is out of reach and keeps the House, says words to the realm
+# while it is, and once the line is mended is in reach again, its words
+# carried out by the realm and heard on the Mac. Word of the cut and of the
+# mending is left in its Documents, for it to time itself by.
+LOST="$DATA/Documents/lost-report.txt"
+rm -f "$LOST" "$DATA/Documents/line-cut" "$DATA/Documents/line-mended"
+xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+SIMCTL_CHILD_NULLMERE_COMPANION_LOST=1 xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
+for _ in $(seq 1 60); do
+    grep -qE "^In again|^Broken" "$LOST" 2>/dev/null && break
+    sleep 1
+done
+echo "Cutting the phone's line to the realm…"
+kill -USR1 "$relay" 2>/dev/null || echo "warning: the phone's line had already gone" >&2
+touch "$DATA/Documents/line-cut"
+for _ in $(seq 1 90); do
+    grep -qE "^Said while cut off: |^Broken" "$LOST" 2>/dev/null && break
+    sleep 1
+done
+shot lost 1
+echo "Mending it…"
+kill -USR2 "$relay" 2>/dev/null || echo "warning: the phone's line had already gone" >&2
+touch "$DATA/Documents/line-mended"
+for _ in $(seq 1 150); do
+    grep -qE "came back to the realm|^Broken" "$LOST" 2>/dev/null && break
+    sleep 1
+done
+cp "$LOST" "$LOST_REPORT" 2>/dev/null || echo "The companion wrote no report of its line cut." >"$LOST_REPORT"
+cat "$LOST_REPORT"; echo
+CUT_OFF="$(sed -n 's/^Said while cut off: //p' "$LOST_REPORT" | head -n 1)"
+CAME_BACK=no
+if [ -n "$CUT_OFF" ] && grep -q "The companion came back to the realm." "$LOST_REPORT"; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "said: $CUT_OFF" "$MAC_REPORT" 2>/dev/null; then CAME_BACK=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac hears what the phone said while its line was down: $CAME_BACK"
+
 # The phone's other screens, in again by its own key each time, and
 # counsel with the House's first free commander.
 for tab in house land alliance counsel words; do
@@ -255,6 +331,10 @@ if [ "$ALLIES_HEARD" != yes ]; then
 fi
 if [ "$TURNED" != yes ]; then
     echo "error: the Mac never came to the watch the phone came to" >&2
+    exit 1
+fi
+if [ "$CAME_BACK" != yes ]; then
+    echo "error: the phone didn't come back to the realm when its line was mended, or the Mac never heard it; see $LOST_REPORT" >&2
     exit 1
 fi
 if [ "$PHONE_COUNSEL" = failed ]; then

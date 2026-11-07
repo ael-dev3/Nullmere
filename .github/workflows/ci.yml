@@ -292,7 +292,9 @@ jobs:
       # a link; the phone, in the simulator, takes it, digs a company in,
       # speaks to the realm, makes its keeper ready so the watch turns and
       # sets a hold to work, is set aside and comes in again, and the Mac
-      # sees each of them. Then the phone takes
+      # sees each of them; its line to the realm is cut and mended, and it
+      # comes back, the words it said while cut off heard on the Mac. Then
+      # the phone takes
       # counsel through its own on-device model: unverified where the
       # runner's model can't be asked, as so far it can't.
       - name: The keeper's phone beside their Mac
@@ -461,6 +463,7 @@ jobs:
           ends build/counsel-report.txt
           # The keeper's phone beside their Mac: what it did, and what the Mac saw.
           awk 1 build/companion-report.txt 2>/dev/null || true
+          awk 1 build/companion-lost-report.txt 2>/dev/null || true
           grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
           # Counsel taken on the phone, through its own model: whose, and its verdict.
           ends build/counsel-phone-report.txt
@@ -678,9 +681,10 @@ jobs:
           # Two realms and the Frontier between them, each a database of its
           # own; and three more, fresh, for keepers' clients to play it through.
           # And one for a full realm of keepers' clients at once; two for a
-          # realm whose world goes ahead of its publications; and one for a
-          # keeper's phone beside their Mac.
-          for db in frontier-west frontier-east frontier play-west play-east play-frontier crowd ahead ahead-rules companion; do
+          # realm whose world goes ahead of its publications; one for a
+          # keeper's phone beside their Mac, and one for the phone's line to
+          # the realm cut and mended.
+          for db in frontier-west frontier-east frontier play-west play-east play-frontier crowd ahead ahead-rules companion companion-lost; do
             REALM_DB="$db" STEWARD=none NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh local
           done
 
@@ -703,6 +707,7 @@ jobs:
           NULLMERE_STDB_AHEAD: http://127.0.0.1:3000/ahead
           NULLMERE_STDB_AHEAD_RULES: http://127.0.0.1:3000/ahead-rules
           NULLMERE_STDB_COMPANION: http://127.0.0.1:3000/companion
+          NULLMERE_STDB_COMPANION_LOST: http://127.0.0.1:3000/companion-lost
         run: |
           stdbuf -oL -eL swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
           total="$(grep "Executed .* tests" realm-integration.log | tail -n 1)"

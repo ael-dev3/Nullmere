@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import NullmereCompanionCore
 import NullmereCore
 import NullmereRealm
@@ -17,6 +18,7 @@ struct CompanionApp: App {
         return NetworkRealmLink(transport: transport, credentials: CompanionKeychain(realm: address), pollInterval: 2)
     }
     @Environment(\.scenePhase) private var scenePhase
+    @State private var network = NetworkReturn()
 
     var body: some Scene {
         WindowGroup {
@@ -26,9 +28,12 @@ struct CompanionApp: App {
                 }
                 .onAppear {
                     session.resume()
+                    let session = session
+                    network.start { session.networkReturned() }
                     #if DEBUG
                     CompanionCheck.startIfAsked(session)
                     CompanionCheck.takeCounselIfAsked()
+                    CompanionCheck.loseTheLineIfAsked(session)
                     #endif
                 }
         }
@@ -100,5 +105,30 @@ struct CompanionRoot: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+/// Tells when the phone's network comes back after it was gone, so that a
+/// phone in as the keeper asks the realm at once: the realm out of reach
+/// while the network was gone is read again as soon as it can be.
+@MainActor
+final class NetworkReturn {
+    private let monitor = NWPathMonitor()
+    private var online = true
+    private var started = false
+
+    func start(_ returned: @escaping @MainActor @Sendable () -> Void) {
+        guard !started else { return }
+        started = true
+        monitor.pathUpdateHandler = { [weak self] path in
+            let online = path.status == .satisfied
+            Task { @MainActor in
+                guard let self else { return }
+                let back = online && !self.online
+                self.online = online
+                if back { returned() }
+            }
+        }
+        monitor.start(queue: DispatchQueue(label: "online.nullmere.companion.network"))
     }
 }

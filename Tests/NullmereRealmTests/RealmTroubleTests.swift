@@ -38,6 +38,20 @@ final class RealmTroubleTests: XCTestCase {
         for (error, words) in said {
             XCTAssertEqual(RealmTrouble.words(for: error), words, "\(error)")
         }
+        // On the phone that speaks for the keeper, the words name the phone.
+        let onThePhone: [(any Error, String)] = [
+            (URLError(.notConnectedToInternet), "This phone isn't connected to the internet."),
+            (URLError(.dataNotAllowed), "This phone isn't connected to the internet."),
+            (NSError(domain: "NSOSStatusErrorDomain", code: -25308),
+             "This phone's keychain wouldn't keep your key. Unlock the phone, then try again."),
+            (SpacetimeError.unauthorized, "The realm doesn't accept this phone's key just now. The key is kept, and offered again in a while."),
+            (URLError(.timedOut), "The realm didn't answer in time."),
+            (URLError(.cannotConnectToHost), "The realm can't be reached."),
+            (SpacetimeError("The realm answered 503.", status: 503), "The realm couldn't answer just now."),
+        ]
+        for (error, words) in onThePhone {
+            XCTAssertEqual(RealmTrouble.words(for: error, on: .phone), words, "\(error)")
+        }
         let garbled = Result { try JSONDecoder().decode(SpacetimeCredentials.self, from: Data("{}".utf8)) }
         if case .failure(let error) = garbled {
             XCTAssertTrue(RealmTrouble.words(for: error).hasPrefix("The realm answered in words"))

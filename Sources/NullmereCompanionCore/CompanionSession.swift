@@ -121,6 +121,14 @@ public final class CompanionSession {
         link.accompany()
     }
 
+    /// The phone's network back after it was gone: a phone in as the keeper
+    /// asks the realm at once, rather than at its next read, which a realm
+    /// long out of reach puts as much as half a minute off.
+    public func networkReturned() {
+        guard phase == .keeping, let link else { return }
+        link.wake()
+    }
+
     /// Brings the code the keeper's Mac shows, to speak for them from now on.
     public func take(_ invite: CompanionInvite) {
         guard let link = open(invite.realm) else { return }
@@ -224,6 +232,7 @@ public final class CompanionSession {
         }
         realm = address
         link = made
+        made.device = .phone
         made.onEvent = { [weak self, weak made] event in
             guard let self, let made, made === self.link else { return }
             self.hear(event)

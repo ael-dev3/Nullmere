@@ -152,6 +152,9 @@ public final class NetworkRealmLink: RealmLink {
         self.stewardSilence = stewardSilence
     }
 
+    /// The device the link speaks from, as the troubles it tells name it.
+    public var device: RealmTrouble.Device = .mac
+
     public static let silentSteward = "The realm has been silent for a minute: it stands still, and orders sent to it wait until it returns."
 
     /// The identity being made, while it is. The first poll, an arrival and
@@ -411,7 +414,7 @@ public final class NetworkRealmLink: RealmLink {
             failures += 1
             guard failures > 1 else { return }
             wasUnreachable = true
-            onEvent?(.unreachable(RealmTrouble.words(for: error)))
+            onEvent?(.unreachable(RealmTrouble.words(for: error, on: device)))
         }
     }
 
@@ -793,7 +796,7 @@ public final class NetworkRealmLink: RealmLink {
                 done(reply.ok ? .success(reply.keeper?.companions?.count ?? 0)
                      : .failure(LinkRefusal(reply.refusal ?? "The realm wouldn't offer the link.")))
             } catch {
-                done(.failure(LinkRefusal(RealmTrouble.words(for: error))))
+                done(.failure(LinkRefusal(RealmTrouble.words(for: error, on: device))))
             }
         }
     }
@@ -807,7 +810,7 @@ public final class NetworkRealmLink: RealmLink {
                 let reply = try await request("unlink", [])
                 done(reply.ok ? nil : reply.refusal ?? "The realm wouldn't let the devices go.")
             } catch {
-                done(RealmTrouble.words(for: error))
+                done(RealmTrouble.words(for: error, on: device))
             }
         }
     }
@@ -831,7 +834,7 @@ public final class NetworkRealmLink: RealmLink {
                 let reply = try await request("seal", [.string(proof)])
                 done(reply.ok ? nil : reply.refusal ?? "The realm wouldn't keep the words.")
             } catch {
-                done(RealmTrouble.words(for: error))
+                done(RealmTrouble.words(for: error, on: device))
             }
         }
     }
@@ -889,7 +892,7 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.arrived(view.keeper, view.world))
             } catch {
                 guard number == enteringNumber else { return }
-                onEvent?(.refused(.refused(RealmTrouble.words(for: error))))
+                onEvent?(.refused(.refused(RealmTrouble.words(for: error, on: device))))
             }
         }
     }
@@ -997,7 +1000,7 @@ public final class NetworkRealmLink: RealmLink {
                 } catch {
                     if self.senderNumber != number { break }
                     self.wasUnreachable = true
-                    self.onEvent?(.unreachable(RealmTrouble.words(for: error)))
+                    self.onEvent?(.unreachable(RealmTrouble.words(for: error, on: device)))
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     delay = min(delay * 2, Self.retryLimit)
                 }

@@ -15,6 +15,11 @@ final class CompanionInviteTests: XCTestCase {
         let typed = try XCTUnwrap(CompanionInvite(realm: "  maincloud.spacetimedb.com/nullmere ", code: "ABCD 2345 EFGH"))
         XCTAssertEqual(typed.realm.absoluteString, "https://maincloud.spacetimedb.com/nullmere", "An address typed bare is HTTPS")
         XCTAssertEqual(typed, invite)
+        // Its realm written out in full, as a script that sends the phone by
+        // another way to the same realm writes it: read the same.
+        let written = try XCTUnwrap(URL(string: "nullmere://link?realm=http%3A%2F%2F127.0.0.1%3A46249%2Fnullmere&code=ABCD2345EFGH"))
+        XCTAssertEqual(CompanionInvite(url: written)?.realm.absoluteString, "http://127.0.0.1:46249/nullmere")
+        XCTAssertEqual(CompanionInvite(url: written)?.code, "ABCD2345EFGH")
     }
 
     func testOnlyARealmOverHTTPSOrOnThisMachineIsTaken() throws {

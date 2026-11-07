@@ -12,12 +12,19 @@ public enum RealmTrouble {
         "The request is too long.",
     ]
 
-    public static func words(for error: any Error) -> String {
-        if let spacetime = error as? SpacetimeError { return words(for: spacetime) }
+    /// The device a keeper meets the trouble on, as the words name it: their
+    /// Mac, or the phone that speaks for them.
+    public enum Device: String, Sendable {
+        case mac = "Mac"
+        case phone = "phone"
+    }
+
+    public static func words(for error: any Error, on device: Device = .mac) -> String {
+        if let spacetime = error as? SpacetimeError { return words(for: spacetime, on: device) }
         if let url = error as? URLError {
             switch url.code {
             case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff:
-                return "This Mac isn't connected to the internet."
+                return "This \(device.rawValue) isn't connected to the internet."
             case .timedOut:
                 return "The realm didn't answer in time."
             case .cannotFindHost, .dnsLookupFailed:
@@ -34,15 +41,23 @@ public enum RealmTrouble {
         }
         let described = error as NSError
         if described.domain == "NSOSStatusErrorDomain" {
-            return "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."
+            // A phone's keychain opens with the phone; a Mac's may be locked apart.
+            return device == .mac ? "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."
+                : "This \(device.rawValue)'s keychain wouldn't keep your key. Unlock the \(device.rawValue), then try again."
         }
         return "The realm can't be reached."
+    }
+
+    /// The realm turning a device's key away for now.
+    public static func unaccepted(on device: Device) -> String {
+        "The realm doesn't accept this \(device.rawValue)'s key just now. The key is kept, and offered again in a while."
     }
 
     /// The link's own words, and the realm's own refusals, as they are;
     /// whatever else the server said, which is for whoever runs it, in plain
     /// words: never a status code, a stack or the server's own wording.
-    private static func words(for spacetime: SpacetimeError) -> String {
+    private static func words(for spacetime: SpacetimeError, on device: Device) -> String {
+        if spacetime.isUnauthorized { return unaccepted(on: device) }
         guard let status = spacetime.status, status != 401, status != 404, !realmRefusals.contains(spacetime.description) else {
             return spacetime.description
         }
