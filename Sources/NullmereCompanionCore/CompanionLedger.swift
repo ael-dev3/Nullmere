@@ -96,6 +96,17 @@ public struct CompanionLedger: Equatable, Sendable {
         public let refusingIsWar: Bool
     }
 
+    /// An item of the House's satchel: how many it keeps, what one does, and
+    /// the uses the rules would take now.
+    public struct Item: Equatable, Identifiable, Sendable {
+        public var id: String { kind.rawValue }
+        public let kind: ItemKind
+        /// So many of it, in words: "2 Salt Hourglasses".
+        public let count: String
+        public let effect: String
+        public let uses: [Order]
+    }
+
     /// A question among the alliances waiting on the keeper's answer: an
     /// alliance's invitation to the House, or a House asking to join the
     /// alliance it leads, with the answers the rules take.
@@ -129,6 +140,11 @@ public struct CompanionLedger: Equatable, Sendable {
     /// while one is under way.
     public let studies: [Order]
     public let stores: [(resource: Resource, amount: Int)]
+    /// The House's satchel, a stack a kind, as the Mac's panels use it:
+    /// hourglasses for the holds with work or a muster to hasten and for the
+    /// study, caches while the stores have room, ward stones for the holds
+    /// whose ward isn't whole, and draughts while a company is hurt.
+    public let satchel: [Item]
     /// The alliance, by name, and its Houses, the leader first.
     public let alliance: String?
     public let allies: [String]
@@ -159,7 +175,7 @@ public struct CompanionLedger: Equatable, Sendable {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
-            && a.stores.map(\.amount) == b.stores.map(\.amount) && a.alliance == b.alliance && a.allies == b.allies
+            && a.stores.map(\.amount) == b.stores.map(\.amount) && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave
@@ -238,6 +254,31 @@ public struct CompanionLedger: Equatable, Sendable {
         studies = CompanionLedger.studies(in: world, player: player)
         let stock = houses.indices.contains(player) ? houses[player].stock : .zero
         stores = Resource.allCases.map { ($0, stock[$0]) }
+        let room = world.storage(of: player)
+        let hurt = world.units(of: player).contains { $0.health < 100 }
+        satchel = world.satchel(of: player).map { stack in
+            let uses: [Order]
+            switch stack.kind {
+            case .hourglass:
+                let works = holds.filter { ($0.project?.watchesLeft ?? 0) > 1 || ($0.training?.watchesLeft ?? 0) > 1 }.map { hold in
+                    Order(title: "Hasten \(hold.name)", command: .useItem(.hourglass, hold: hold.id))
+                }
+                let study = (pursuit?.watchesLeft ?? 0) > 1 ? [Order(title: "Hasten the study", command: .useItem(.hourglass, hold: nil))] : []
+                uses = works + study
+            case .grainCache, .timberCache, .stoneCache, .moonsaltCache:
+                let fits = Resource.allCases.contains { stack.kind.stores[$0] > 0 && stock[$0] < room }
+                uses = fits ? [Order(title: "Open it", command: .useItem(stack.kind, hold: nil))] : []
+            case .wardStone:
+                uses = holds.filter { $0.ward < $0.maximumWard }.map { hold in
+                    Order(title: "Make the ward of \(hold.name) whole", command: .useItem(.wardStone, hold: hold.id))
+                }
+            case .mendingDraught:
+                uses = hurt ? [Order(title: "Share it out", command: .useItem(.mendingDraught, hold: nil))] : []
+            }
+            let effect = stack.kind.effect
+            return Item(kind: stack.kind, count: stack.kind.counted(stack.count), effect: effect.prefix(1).uppercased() + effect.dropFirst(),
+                        uses: uses)
+        }
         let allied = world.alliance(of: player)
         alliance = allied?.name
         let sworn = allied.map { [$0.leader] + $0.members.filter { $0 != allied?.leader } } ?? []

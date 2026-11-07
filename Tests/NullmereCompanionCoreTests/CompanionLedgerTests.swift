@@ -171,6 +171,58 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// The House's satchel on the phone, as the Mac's panels use it: each
+    /// item, how many and what one does, with the uses the rules take now:
+    /// an hourglass for each hold with work to hasten and for the study, a
+    /// cache while the stores have room, a ward stone for a hold whose ward
+    /// isn't whole, a draught while a company is hurt; none where it would
+    /// do nothing.
+    func testTheSatchelIsUsedFromThePhone() throws {
+        var (state, me) = try world()
+        state.houses[me].stock = Stock(grain: 0, timber: 5_000, stone: 5_000, moonsalt: 500)
+        XCTAssertTrue(CompanionLedger(world: state, player: me).satchel.isEmpty, "Nothing in it")
+        _ = state.give(.hourglass, 2, to: me)
+        _ = state.give(.grainCache, to: me)
+        _ = state.give(.wardStone, to: me)
+        _ = state.give(.mendingDraught, to: me)
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.satchel.map(\.kind), [.hourglass, .grainCache, .wardStone, .mendingDraught])
+        XCTAssertEqual(ledger.satchel.first?.count, "2 Salt Hourglasses")
+        XCTAssertEqual(ledger.satchel.first?.effect, "A hold's work and muster a watch nearer, or the House's study")
+        XCTAssertEqual(ledger.satchel.filter { !$0.uses.isEmpty }.map(\.kind), [.grainCache],
+                       "Nothing under way, no ward broken, none hurt: only the cache opens")
+        XCTAssertEqual(ledger.satchel[1].uses.map(\.command), [.useItem(.grainCache, hold: nil)])
+        assertTaken(ledger.satchel[1].uses, in: state, as: me)
+
+        // A work under way at the seat and a study, the seat's ward broken, a company hurt.
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let seatIndex = try XCTUnwrap(state.holdIndex(seat.id))
+        state.holds[seatIndex].project = Hold.Project(kind: .granary, targetLevel: 2, watchesLeft: 3, watches: 3)
+        state.houses[me].research.pursuit = Pursuit(study: .drill, grade: 1, watchesLeft: 3)
+        state.holds[seatIndex].ward = 1
+        let hurt = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
+        state.units[hurt].health = 50
+        ledger = CompanionLedger(world: state, player: me)
+        let uses = Dictionary(uniqueKeysWithValues: ledger.satchel.map { ($0.kind, $0.uses) })
+        XCTAssertEqual(uses[.hourglass]?.map(\.command), [.useItem(.hourglass, hold: seat.id), .useItem(.hourglass, hold: nil)])
+        XCTAssertEqual(uses[.hourglass]?.map(\.title), ["Hasten \(seat.name)", "Hasten the study"])
+        XCTAssertEqual(uses[.wardStone]?.map(\.command), [.useItem(.wardStone, hold: seat.id)])
+        XCTAssertEqual(uses[.wardStone]?.first?.title, "Make the ward of \(seat.name) whole")
+        XCTAssertEqual(uses[.mendingDraught]?.map(\.command), [.useItem(.mendingDraught, hold: nil)])
+        assertTaken(ledger.satchel.flatMap(\.uses), in: state, as: me)
+
+        // A watch left of each is none to hasten; the granary full, the cache stays shut.
+        state.holds[seatIndex].project?.watchesLeft = 1
+        state.houses[me].research.pursuit?.watchesLeft = 1
+        state.houses[me].stock = Stock(grain: state.storage(of: me), timber: 5_000, stone: 5_000, moonsalt: 500)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.satchel.first { $0.kind == .hourglass }?.uses, [])
+        XCTAssertEqual(ledger.satchel.first { $0.kind == .grainCache }?.uses, [])
+        for order in [Command.useItem(.hourglass, hold: seat.id), .useItem(.hourglass, hold: nil), .useItem(.grainCache, hold: nil)] {
+            XCTAssertNotNil(state.refusal(of: order, as: me), "\(order) refused by the rules too")
+        }
+    }
+
     /// The alliances from the phone, as the Mac's Alliance panel reads them:
     /// sworn to none, the House asks to join those that would take it, the
     /// nearest first, answers those that invited it (no acceptance offered

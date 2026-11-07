@@ -178,6 +178,14 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The satchel: each item, how many, what one does, and its uses now.
+                    if !ledger.satchel.isEmpty {
+                        Section("Satchel") {
+                            ForEach(ledger.satchel) { item in
+                                SatchelRow(session: session, item: item)
+                            }
+                        }
+                    }
                     Section("The chronicle") {
                         ForEach(Array(ledger.chronicle.enumerated()), id: \.offset) { line in
                             Text(verbatim: line.element)
@@ -586,6 +594,35 @@ struct EnvoyRow: View {
 }
 
 /// A menu of orders of one kind, shown only when there are any.
+/// An item of the House's satchel: how many, what one does, and its uses
+/// now, one at a press or a menu of where.
+struct SatchelRow: View {
+    let session: CompanionSession
+    let item: CompanionLedger.Item
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: item.count)
+                .font(Night.body)
+            Text(verbatim: item.effect)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+            if item.uses.count == 1, let use = item.uses.first {
+                Button(use.title) { session.give(use.command, told: "\(use.title): a \(item.kind.title)") }
+                    .buttonStyle(.bordered)
+                    .font(Night.small)
+            } else {
+                OrdersMenu(title: "Use one", orders: item.uses, label: "Use a \(item.kind.title)") { order in
+                    session.give(order.command, told: "\(order.title): a \(item.kind.title)")
+                }
+                .font(Night.small)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
 struct OrdersMenu: View {
     let title: String
     let orders: [CompanionLedger.Order]
