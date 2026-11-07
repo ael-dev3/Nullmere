@@ -174,7 +174,7 @@ private struct CommanderRow: View {
             ForEach(session.state.worn(by: commander.id).sorted { $0.slot.rawValue < $1.slot.rawValue }) { piece in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Caps("\(piece.slot.title): \(piece.title)", size: 8.5, weight: .medium)
+                        Caps(piece.wornSaid, size: 8.5, weight: .medium)
                             .foregroundStyle(Palette.text(0.85))
                         Text(verbatim: piece.effect)
                             .font(.nm(10))
@@ -209,7 +209,7 @@ struct ArmouryView: View {
         let kept = held.filter { $0.wornBy == nil }
         let wearer = commanders.first { $0.id == chosen } ?? commanders.first
         VStack(alignment: .leading, spacing: 6) {
-            Caps("Armoury · \(held.count) of \(GameState.armouryLimit)", size: 9, weight: .medium)
+            Caps(session.state.armourySaid(of: session.player), size: 9, weight: .medium)
                 .foregroundStyle(Palette.text(0.7))
                 .accessibilityAddTraits(.isHeader)
             if kept.isEmpty {
@@ -230,7 +230,7 @@ struct ArmouryView: View {
             ForEach(kept) { piece in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Caps("\(piece.title) · \(piece.slot.title.lowercased())", size: 8.5, weight: .medium)
+                        Caps(piece.keptSaid, size: 8.5, weight: .medium)
                             .foregroundStyle(Palette.text(0.85))
                         Text(verbatim: piece.effect)
                             .font(.nm(10))
@@ -252,7 +252,7 @@ struct ArmouryView: View {
         }
     }
 
-    static let empty = "Gear falls with the wilds struck down: weapons, armour and charms for your commanders, finer from the higher levels."
+    static let empty = GameState.noGearSaid
 }
 
 /// The House's Forge: the makings it keeps, how fine its Forge works, and

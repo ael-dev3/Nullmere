@@ -98,6 +98,8 @@ public struct CompanionLedger: Equatable, Sendable {
         /// Held prisoner by another House: their ransom, where the House's
         /// stores would pay it now.
         public var ransom: Order? = nil
+        /// What they wear, slot by slot, each with Take off.
+        public var worn: [GearPiece] = []
     }
 
     /// The Ring, as the Mac's Commanders tell it: where the House stands,
@@ -133,6 +135,35 @@ public struct CompanionLedger: Equatable, Sendable {
         public let terms: String
         /// Renounced with notice, where the House swore it and has not yet.
         public let renounce: Order?
+    }
+
+    /// A piece of the House's gear, as the Mac's Commanders tell it: worn
+    /// on its commander's line, with Take off; or kept in the armoury, with
+    /// each commander free to take it up and Break up for its moonsalt.
+    public struct GearPiece: Equatable, Identifiable, Sendable {
+        public let id: Int
+        /// "Weapon: Fine Moonblade" worn, "Fine Moonblade · weapon" kept.
+        public let title: String
+        /// What it gives.
+        public let effect: String
+        /// Worn: taken off, back to the armoury.
+        public let takeOff: Order?
+        /// Kept: each commander free to take it up.
+        public let arm: [Order]
+        /// Kept: broken up for its moonsalt.
+        public let breakUp: Order?
+        /// The moonsalt it breaks up for.
+        public let scrap: Int
+    }
+
+    /// The House's armoury, as the Mac's Commanders tell it: how full it
+    /// is, and the pieces no commander wears.
+    public struct Armoury: Equatable, Sendable {
+        /// "Armoury · 3 of 12".
+        public let heading: String
+        public let kept: [GearPiece]
+        /// Said where no piece is kept.
+        public var none: String? { kept.isEmpty ? GameState.noGearSaid : nil }
     }
 
     /// The House's Forge, as the Mac's Commanders tell it: how fine it
@@ -396,6 +427,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let ring: TheRing
     /// The House's Forge.
     public let forge: Forge
+    /// The House's armoury.
+    public let armoury: Armoury
     /// The oaths the House has sworn, and those sworn to it.
     public let oathsSworn: [SwornOath]
     public let oathsToUs: [SwornOath]
@@ -526,7 +559,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
-            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.forge == b.forge && a.oathsSworn == b.oathsSworn && a.oathsToUs == b.oathsToUs && a.helps == b.helps
+            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.forge == b.forge && a.armoury == b.armoury && a.oathsSworn == b.oathsSworn && a.oathsToUs == b.oathsToUs && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -675,7 +708,7 @@ public struct CompanionLedger: Equatable, Sendable {
                            gates: CompanionLedger.gates(for: unit, in: world, player: player))
         }
         let war = world.units(of: player).filter { $0.kind.isMilitary }.sorted { $0.id < $1.id }
-        let armoury = world.gear(of: player)
+        let held = world.gear(of: player)
         commanders = world.commandersBoard(for: player).lines.map { line in
             let standing: String
             if let captor = line.heldBy {
@@ -701,17 +734,32 @@ public struct CompanionLedger: Equatable, Sendable {
                 Order(title: "Learn \(talent.title) \(BuildingKind.numeral(line.commander.rank(of: talent) + 1))",
                       command: .learnTalent(commander: id, talent: talent))
             }
-            let gear: [Order] = line.heldBy != nil ? [] : armoury.filter { $0.wornBy != id }.map { piece in
+            let gear: [Order] = line.heldBy != nil ? [] : held.filter { $0.wornBy != id }.map { piece in
                 let from = piece.wornBy.flatMap { world.commander($0)?.name }.map { ", from \($0)" } ?? ""
                 return Order(title: "Wear the \(piece.title)\(from)", command: .wear(gear: piece.id, commander: id))
             }
             let ransom = line.heldBy != nil && world.ransomRefusal(id, as: player) == nil
                 ? Order(title: "Ransom for \(GameState.ransom(for: line.commander))", command: .ransom(commander: id)) : nil
+            // What they wear, slot by slot, each piece taken off back to the armoury.
+            let worn = held.filter { $0.wornBy == id }.sorted { $0.slot.rawValue < $1.slot.rawValue }.map { piece in
+                GearPiece(id: piece.id, title: piece.wornSaid, effect: piece.effect,
+                          takeOff: Order(title: "Take the \(piece.title) off \(line.commander.name)", command: .takeOff(gear: piece.id)),
+                          arm: [], breakUp: nil, scrap: piece.scrap)
+            }
             return Commander(id: id, name: line.commander.name, title: "\(line.commander.archetype.title) · level \(line.level)",
                              standing: standing, canCounsel: line.heldBy == nil, leads: leads, seconds: seconds,
                              home: riding ? Order(title: "Ride home", command: .unassign(commander: id)) : nil,
-                             talents: talents, gear: gear, ransom: ransom)
+                             talents: talents, gear: gear, ransom: ransom, worn: worn)
         }
+        // The armoury: each piece no commander wears, to arm any commander
+        // free to take it up, or to break up for its moonsalt.
+        let free = commanders.filter(\.canCounsel)
+        armoury = Armoury(heading: world.armourySaid(of: player), kept: held.filter { $0.wornBy == nil }.map { piece in
+            GearPiece(id: piece.id, title: piece.keptSaid, effect: piece.effect, takeOff: nil,
+                      arm: free.map { Order(title: "Arm \($0.name)", command: .wear(gear: piece.id, commander: $0.id)) },
+                      breakUp: Order(title: "Break up the \(piece.title) for \(piece.scrap) moonsalt", command: .breakUp(gear: piece.id)),
+                      scrap: piece.scrap)
+        })
         law = CompanionLedger.law(in: world, player: player)
         ring = CompanionLedger.ring(in: world, player: player)
         forge = CompanionLedger.forge(in: world, player: player)

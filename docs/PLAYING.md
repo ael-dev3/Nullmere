@@ -358,7 +358,9 @@ a vote on the realm's law to cast.
   second beside a company's leader, Ride home, Learn the next rank of a
   talent with a point to spend, Wear a piece of the armoury, from
   whoever wears it, and, for one held prisoner by another House, its
-  ransom while the stores would pay it; and Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
+  ransom while the stores would pay it; what each wears, slot by slot, as
+  the Mac's Commanders tell it ("Weapon: Fine Moonblade"), with what it
+  gives and Take off; and Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
   phone (an iPhone 15 Pro or later, with Apple Intelligence on), told of
   the realm from the House's view as the phone holds it. Each answer
   appears as it is spoken, Stop stops it, and an order the commander puts
@@ -377,7 +379,10 @@ a vote on the realm's law to cast.
   the Spine still to make, and pieces of gear the Forge may make): the
   Forge, as the Mac's Commanders tell it, the makings the House keeps and
   each set at the finest its Forge makes, folded until asked for, every
-  piece with what it gives and takes, to Forge; the Ring, as the Mac's
+  piece with what it gives and takes, to Forge; the armoury, as the Mac's
+  Commanders tell it (how many of its twelve it keeps, worn or not), each
+  piece no commander wears with what it gives, Arm for each commander free
+  to take it up, and Break up for its moonsalt, asked first; the Ring, as the Mac's
   Commanders tell it: where
   the House stands and the challenges left it this watch, and its last
   bouts; and, folded until asked for, its heaviest commanders to stand as

@@ -495,6 +495,11 @@ struct VenturesPage: View {
                 Section(ledger.forge.heading) {
                     ForgeRows(session: session, forge: ledger.forge)
                 }
+                // The armoury, as the Mac's Commanders tell it: what is kept
+                // there, each piece to arm a commander with or break up.
+                Section(ledger.armoury.heading) {
+                    ArmouryRows(session: session, armoury: ledger.armoury)
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -1221,6 +1226,20 @@ struct CommanderOrders: View {
     let commander: CompanionLedger.Commander
 
     var body: some View {
+        // What they wear, slot by slot, as the Mac's Commanders tell it,
+        // each piece taken off back to the armoury.
+        ForEach(commander.worn) { piece in
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                GearLines(piece: piece)
+                Spacer()
+                if let takeOff = piece.takeOff {
+                    Button("Take off") { session.give(takeOff.command, told: takeOff.title) }
+                        .buttonStyle(.bordered)
+                        .font(Night.small)
+                        .accessibilityLabel(takeOff.title)
+                }
+            }
+        }
         if !commander.leads.isEmpty || !commander.seconds.isEmpty || commander.home != nil {
             HStack(spacing: 10) {
                 ListedOrdersMenu(title: "Lead", orders: commander.leads, label: "Give \(commander.name) a company to lead") { order in
@@ -1368,6 +1387,71 @@ struct LawRows: View {
                             .font(Night.small)
                     }
                     .padding(.vertical, 2)
+                }
+            }
+            .font(Night.small)
+        }
+    }
+}
+
+/// A piece of gear in two lines: what it is, and what it gives.
+struct GearLines: View {
+    let piece: CompanionLedger.GearPiece
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: piece.title)
+                .font(Night.small)
+            Text(verbatim: piece.effect)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The House's armoury, as the Mac's Commanders tell it: each piece no
+/// commander wears, to arm one of them with or break up for its moonsalt,
+/// asked first as the Mac asks; or, with none kept, how gear comes.
+struct ArmouryRows: View {
+    let session: CompanionSession
+    let armoury: CompanionLedger.Armoury
+
+    var body: some View {
+        if let none = armoury.none {
+            Text(verbatim: none)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        ForEach(armoury.kept) { piece in
+            KeptPieceRow(session: session, piece: piece)
+        }
+    }
+}
+
+/// A piece kept in the armoury: Arm, for each commander free to take it
+/// up, and Break up, asked first.
+private struct KeptPieceRow: View {
+    let session: CompanionSession
+    let piece: CompanionLedger.GearPiece
+    @State private var breaking = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            GearLines(piece: piece)
+            HStack(spacing: 10) {
+                ListedOrdersMenu(title: "Arm", orders: piece.arm, label: "Arm a commander with it") { order in
+                    session.give(order.command, told: order.title)
+                }
+                if let breakUp = piece.breakUp {
+                    Button("Break up", role: .destructive) { breaking = true }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel(breakUp.title)
+                        .confirmationDialog("\(breakUp.title)?", isPresented: $breaking, titleVisibility: .visible) {
+                            Button(breakUp.title, role: .destructive) { session.give(breakUp.command, told: breakUp.title) }
+                        }
                 }
             }
             .font(Night.small)

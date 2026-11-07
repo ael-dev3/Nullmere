@@ -595,6 +595,62 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(state.gear(of: me).count, before + 1, "Into the armoury")
     }
 
+    /// The armoury and what each commander wears on the phone, in the words
+    /// of the Mac's Commanders: nothing kept, told how gear comes; a piece
+    /// kept, offered to every free commander and to break up, each taken by
+    /// the rules; worn, on its commander's line with Take off, taken by the
+    /// rules; taken off, kept again; broken up, gone for its moonsalt; and
+    /// a commander held by another House arms with nothing.
+    func testThePhoneArmsCommandersFromTheArmoury() throws {
+        var (state, me) = try world()
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.armoury.heading, "Armoury · 0 of \(GameState.armouryLimit)")
+        XCTAssertEqual(ledger.armoury.none, GameState.noGearSaid)
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        XCTAssertEqual(ledger.commanders.first { $0.id == commander.id }?.worn, [])
+        _ = state.awardGear(from: .saltwights, level: 3, to: me)
+        _ = state.awardGear(from: .reavers, level: 5, to: me)
+        let pieces = state.gear(of: me)
+        XCTAssertEqual(pieces.count, 2)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.armoury.heading, "Armoury · 2 of \(GameState.armouryLimit)")
+        XCTAssertNil(ledger.armoury.none)
+        XCTAssertEqual(ledger.armoury.kept.map(\.title), pieces.map(\.keptSaid))
+        XCTAssertEqual(ledger.armoury.kept.map(\.effect), pieces.map(\.effect))
+        let first = try XCTUnwrap(ledger.armoury.kept.first)
+        XCTAssertEqual(first.arm.map(\.title), ["Arm \(commander.name)"])
+        XCTAssertEqual(first.breakUp?.title, "Break up the \(pieces[0].title) for \(pieces[0].scrap) moonsalt")
+        assertTaken(ledger.armoury.kept.flatMap { $0.arm + [$0.breakUp].compactMap { $0 } }, in: state, as: me)
+
+        // Worn: on the commander's line, out of the armoury, still counted.
+        _ = try state.perform(try XCTUnwrap(first.arm.first).command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let line = try XCTUnwrap(ledger.commanders.first { $0.id == commander.id })
+        XCTAssertEqual(line.worn.map(\.title), [pieces[0].wornSaid])
+        XCTAssertEqual(line.worn.first?.effect, pieces[0].effect)
+        let takeOff = try XCTUnwrap(line.worn.first?.takeOff)
+        XCTAssertEqual(takeOff.title, "Take the \(pieces[0].title) off \(commander.name)")
+        assertTaken([takeOff], in: state, as: me)
+        XCTAssertEqual(ledger.armoury.kept.map(\.id), [pieces[1].id])
+        XCTAssertEqual(ledger.armoury.heading, "Armoury · 2 of \(GameState.armouryLimit)")
+
+        // Taken off: kept again; broken up: gone, for its moonsalt.
+        _ = try state.perform(takeOff.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.commanders.first { $0.id == commander.id }?.worn, [])
+        XCTAssertEqual(ledger.armoury.kept.count, 2)
+        state.houses[me].stock.moonsalt = 0 // well within the House's room
+        _ = try state.perform(try XCTUnwrap(ledger.armoury.kept.first?.breakUp).command, as: me)
+        XCTAssertEqual(state.houses[me].stock.moonsalt, pieces[0].scrap)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).armoury.kept.map(\.id), [pieces[1].id])
+
+        // Held by another House: no commander to arm.
+        let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == commander.id })
+        let captive = Captivity(by: (me + 1) % state.houses.count, since: state.watch, questioned: 0)
+        state.commanders?[index].captive = captive
+        XCTAssertEqual(CompanionLedger(world: state, player: me).armoury.kept.first?.arm, [])
+    }
+
     /// Oaths on the phone, in the words of the Mac's Houses: one the House
     /// swore told and offered to renounce, taken by the rules; renounced,
     /// told until when it binds and offered no more; one sworn to the House

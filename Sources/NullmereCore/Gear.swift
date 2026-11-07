@@ -194,12 +194,28 @@ public struct Gear: Codable, Equatable, Identifiable, Sendable {
 
     /// Moonsalt it is broken up for.
     public var scrap: Int { 5 * quality.rawValue }
+
+    /// Worn, as its commander's line tells it, on the Mac and the phone:
+    /// "Weapon: Fine Moonblade".
+    public var wornSaid: String { "\(slot.title): \(title)" }
+
+    /// Kept in the armoury, as its line there tells it: "Fine Moonblade ·
+    /// weapon".
+    public var keptSaid: String { "\(title) · \(slot.title.lowercased())" }
 }
 
 extension GameState {
     /// The most gear a House's armoury keeps, worn or not; a piece found
     /// beyond it is broken up for its moonsalt.
     public static let armouryLimit = 12
+
+    /// Said where the armoury keeps no piece unworn, on the Mac and the phone.
+    public static let noGearSaid = "Gear falls with the wilds struck down: weapons, armour and charms for your commanders, finer from the higher levels."
+
+    /// The armoury's heading, on the Mac and the phone: "Armoury · 3 of 12".
+    public func armourySaid(of house: Int) -> String {
+        "Armoury · \(gear(of: house).count) of \(GameState.armouryLimit)"
+    }
 
     /// The chance, in a hundred, that a company of the wilds of a level
     /// leaves a piece of gear as it falls.
