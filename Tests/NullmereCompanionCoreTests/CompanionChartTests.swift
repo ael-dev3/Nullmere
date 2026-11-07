@@ -290,6 +290,27 @@ final class CompanionChartTests: XCTestCase {
         XCTAssertEqual(onFoe.calls, [call], "The rally on what lies there alone")
     }
 
+    /// Beside another House's hold, the House's Lanterns are offered to
+    /// scout it, as the rules would send them, its report to follow; none
+    /// offered at the House's own seat.
+    func testAHoldIsScoutedFromTheChart() throws {
+        var (state, me) = world()
+        let other = try XCTUnwrap(state.holds.first { $0.owner != me })
+        let beside = try XCTUnwrap(other.position.neighbors.first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        let lantern = try XCTUnwrap(state.placeUnit(.lantern, for: me, near: beside))
+        XCTAssertLessThanOrEqual(lantern.position.distance(to: other.position), GameState.scoutReach)
+        let view = state.view(for: me)
+        let place = CompanionChart(world: view, player: me).place(at: other.position, in: view, player: me)
+        let scout = try XCTUnwrap(place.scouts.first { $0.command == .scout(unit: lantern.id, hold: other.id) }, "\(place.orders.map(\.title))")
+        XCTAssertEqual(scout.title, "Scout \(other.name) with the \(SpokenOrders.named(lantern, in: view))")
+        XCTAssertEqual(place.orders, place.strikes + place.calls + place.scouts + place.gathers + place.marches)
+        assertTaken(place.orders, in: view, as: me)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        XCTAssertTrue(CompanionChart(world: view, player: me).place(at: seat.position, in: view, player: me).scouts.isEmpty, "Not its own hold")
+    }
+
     /// Ground the House sees drawn in its own colour; explored but unseen,
     /// dimmed; unexplored land under the fog, its water showing through.
     func testEachCellIsShadedAsTheHouseKnowsIt() {

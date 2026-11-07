@@ -267,7 +267,9 @@ been heard from lately.
   about
   and pinch to look closer; Your seat turns the chart back. Tap a hex for
   what lies there and the orders the rules would take there: a strike on
-  it from each company in reach, a rally called on it, Gather here and
+  it from each company in reach, a rally called on it, a hold of another
+  House scouted by the House's Lanterns in reach (the report following
+  on the Army tab), Gather here and
   March here with the House's nearest companies, six at most; the House's
   own companies and hold there come with their orders, as on the Army and
   House tabs. VoiceOver reads each mark on the chart and chooses it.

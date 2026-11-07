@@ -87,6 +87,12 @@ struct PlaceSections: View {
                 .font(Night.small)
                 .foregroundStyle(Night.bad)
             }
+            ForEach(Array(place.scouts.enumerated()), id: \.offset) { order in
+                Button(order.element.title) {
+                    session.give(order.element.command, told: order.element.title)
+                }
+                .font(Night.small)
+            }
             if !place.gathers.isEmpty || !place.marches.isEmpty {
                 HStack(spacing: 10) {
                     ListedOrdersMenu(title: "Gather here", orders: place.gathers, label: "Send a company to gather here") { order in

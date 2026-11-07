@@ -60,13 +60,16 @@ public struct CompanionChart: Equatable, Sendable {
         public let strikes: [CompanionLedger.Order]
         /// A rally of the House's alliance called on what lies there.
         public let calls: [CompanionLedger.Order]
+        /// The House's Lanterns in reach sent to scout a hold of another
+        /// House there, its report to follow.
+        public let scouts: [CompanionLedger.Order]
         /// The House's companies of war sent to gather there, the nearest first.
         public let gathers: [CompanionLedger.Order]
         /// The House's companies marched there, the nearest first.
         public let marches: [CompanionLedger.Order]
 
         /// Every order the rules would take there, each as offered.
-        public var orders: [CompanionLedger.Order] { strikes + calls + gathers + marches }
+        public var orders: [CompanionLedger.Order] { strikes + calls + scouts + gathers + marches }
     }
 
     /// The hex at its heart: the House's seat, or where the House has
@@ -187,6 +190,18 @@ public struct CompanionChart: Equatable, Sendable {
                 strikes.append(CompanionLedger.Order(title: "\(strike.title) with the \(SpokenOrders.named(unit, in: world))", command: strike.command))
             }
         }
+        // The House's Lanterns in reach sent to scout another House's hold here.
+        var scouts: [CompanionLedger.Order] = []
+        if let hold, hold.owner != player {
+            scouts = own.lazy.filter { $0.kind == .lantern }
+                .map { unit in
+                    CompanionLedger.Order(title: "Scout \(hold.name) with the \(SpokenOrders.named(unit, in: world))",
+                                          command: .scout(unit: unit.id, hold: hold.id))
+                }
+                .filter { world.refusal(of: $0.command, as: player) == nil }
+                .prefix(CompanionChart.offered)
+                .map { $0 }
+        }
         // The House's companies of war sent to gather here.
         var gathers: [CompanionLedger.Order] = []
         if let site = world.site(at: hex) {
@@ -205,7 +220,7 @@ public struct CompanionChart: Equatable, Sendable {
         return Place(hex: hex, title: title, lines: lines, companies: own.filter { $0.position == hex }.map(\.id),
                      hold: hold.flatMap { $0.owner == player ? $0.id : nil }, strikes: strikes,
                      calls: CompanionLedger.calls(in: world, player: player, holds: world.holds(of: player), at: hex),
-                     gathers: gathers, marches: Array(marches))
+                     scouts: scouts, gathers: gathers, marches: Array(marches))
     }
 
     /// How a cell is drawn, its red, green and blue from 0 to 1: its
