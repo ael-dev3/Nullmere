@@ -19,6 +19,8 @@ struct KeepingView: View {
             HouseTab(session: session)
                 .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("House", systemImage: "house") }
+                // What waits on the keeper there: envoys, foes gathering.
+                .badge(session.ledger?.houseWaiting ?? 0)
                 .tag(CompanionTab.house)
             LandTab(session: session)
                 .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
@@ -31,6 +33,8 @@ struct KeepingView: View {
             AllianceTab(session: session)
                 .safeAreaInset(edge: .bottom) { WordBanner(word: news) }
                 .tabItem { Label("Alliance", systemImage: "flag") }
+                // Invitations and asks to answer, allies to help.
+                .badge(session.ledger?.allianceWaiting ?? 0)
                 .tag(CompanionTab.alliance)
         }
         .tint(Night.moon)

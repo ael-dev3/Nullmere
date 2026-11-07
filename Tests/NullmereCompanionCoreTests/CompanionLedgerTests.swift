@@ -539,12 +539,14 @@ final class CompanionLedgerTests: XCTestCase {
         let allySeat = try XCTUnwrap(state.seat(of: ally))
         _ = try state.perform(.build(hold: allySeat.id, kind: .granary), as: ally)
         let help = try XCTUnwrap(CompanionLedger(world: state, player: me).helps.first)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).allianceWaiting, 1, "The Alliance tab's badge: an ally to help")
         XCTAssertEqual(help.command, .help(house: ally))
         XCTAssertEqual(help.title, "Help \(state.houses[ally].title), \(state.helpable(by: me, for: ally)) under way")
         assertTaken([help], in: state, as: me)
         var helped = state
         _ = try helped.perform(help.command, as: me)
         XCTAssertTrue(CompanionLedger(world: helped, player: me).helps.isEmpty, "Helped, nothing left to help")
+        XCTAssertEqual(CompanionLedger(world: helped, player: me).allianceWaiting, 0)
 
         // Keeping an ally's gates: their seat, the company free to go.
         let spear = try XCTUnwrap(state.placeUnit(.spear, for: me, near: seat.position))
@@ -666,6 +668,7 @@ final class CompanionLedgerTests: XCTestCase {
         _ = try state.perform(.inviteToAlliance(house: me), as: others[0])
         ledger = CompanionLedger(world: state, player: me)
         let invitation = try XCTUnwrap(ledger.invitations.first)
+        XCTAssertEqual(ledger.allianceWaiting, 1, "The Alliance tab's badge: an invitation to answer")
         XCTAssertEqual(invitation.question, "Hostward invites your House to join it.")
         let join = try XCTUnwrap(invitation.accept)
         XCTAssertEqual(join.command, .answerInvitation(alliance: hostward.id, accept: true))
@@ -753,6 +756,7 @@ final class CompanionLedgerTests: XCTestCase {
         state.envoys.append(Envoy(id: state.takeID(), from: trader, to: others[2], proposal: .pact, arrived: state.watch))
         let ledger = CompanionLedger(world: state, player: me)
         XCTAssertEqual(ledger.envoys.map(\.offer), ["Trade", "Tribute"], "Those waiting on this House alone")
+        XCTAssertEqual(ledger.houseWaiting, 2, "The House tab's badge: two envoys to answer")
         let trade = try XCTUnwrap(ledger.envoys.first)
         let tradeEnvoy = try XCTUnwrap(state.envoys.first { $0.id == trade.id })
         XCTAssertEqual(trade.from, state.houses[trader].title)
@@ -781,6 +785,7 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(placed, GameState.gatheringCompanies)
         let gathered = CompanionLedger(world: state, player: me).gatherings
         XCTAssertEqual(gathered, ["\(GameState.gatheringCompanies) companies of \(state.houses[foe].title) gather near \(seat.name)."])
+        XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 3, "And the companies gathered near the seat")
         XCTAssertEqual(state.gatherings(against: me) { _ in false }, [], "Nothing gathers that isn't seen")
     }
 

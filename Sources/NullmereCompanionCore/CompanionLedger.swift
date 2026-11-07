@@ -356,6 +356,14 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.errands == b.errands && a.course == b.course
     }
 
+    /// What waits on the keeper on the House tab, for its badge: envoys to
+    /// answer, and companies of Houses at war gathered near its holds.
+    public var houseWaiting: Int { envoys.count + gatherings.count }
+
+    /// What waits on them on the Alliance tab, for its badge: invitations
+    /// and Houses asking to join to answer, and allies' work to help.
+    public var allianceWaiting: Int { invitations.count + requests.count + helps.count }
+
     /// The House's stores as one stock.
     public var stock: Stock {
         var stock = Stock()
