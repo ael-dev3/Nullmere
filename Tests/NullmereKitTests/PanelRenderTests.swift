@@ -59,8 +59,10 @@ final class PanelRenderTests: XCTestCase {
         _ = try state.perform(.train(hold: seat.id, kind: kind, tier: 1), as: me)
         _ = try state.perform(.foundAlliance(name: "Hostward"), as: me)
         let alliance = try XCTUnwrap(state.alliance(of: me))
-        let standard = state.takeID()
-        state.standards = [Standard(id: standard, alliance: alliance.id, raisedBy: me, position: seat.position, raised: state.watch)]
+        var standard = Standard(id: state.takeID(), alliance: alliance.id, raisedBy: me, position: seat.position, raised: state.watch)
+        standard.built = Standard.raising
+        XCTAssertTrue(standard.isWhole, "Raised whole")
+        state.standards = [standard]
         XCTAssertTrue(state.isOnAllianceLand(try XCTUnwrap(state.hold(seat.id))), "Its seat on the alliance's land")
         let index = try XCTUnwrap(state.holdIndex(seat.id))
         XCTAssertNotNil(state.holds[index].project)
