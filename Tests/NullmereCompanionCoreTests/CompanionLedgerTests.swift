@@ -455,6 +455,7 @@ final class CompanionLedgerTests: XCTestCase {
         assertTaken(law.votes, in: state, as: me)
         XCTAssertTrue(law.proposals.isEmpty, "None may be put while one is before the realm")
         XCTAssertEqual(ledger.allianceWaiting, waitingBefore + 1, "A vote to cast")
+        XCTAssertEqual(ledger.realmWaiting, ["A vote to cast on the edict before the realm"], "Said on the way to the realm's page")
 
         // Voted aye: told, and offered no more.
         _ = try state.perform(law.votes[0].command, as: me)
@@ -659,6 +660,7 @@ final class CompanionLedgerTests: XCTestCase {
     func testThePhoneStakesOnTheAugury() throws {
         var (state, me) = try world()
         XCTAssertTrue(CompanionLedger(world: state, player: me).prophecies.isEmpty)
+        XCTAssertFalse(CompanionLedger(world: state, player: me).hasRealmMatters, "Nothing of the realm's to tell")
         let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
         let third = try XCTUnwrap(state.houses.last { $0.id != me && $0.id != other }?.id)
         state.houses[other].isPlayer = true
@@ -673,12 +675,15 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(back.title, "Back it with \(Prophecy.stakeLaid) moonsalt")
         XCTAssertEqual(against.title, "Stand against it with \(Prophecy.stakeLaid) moonsalt")
         assertTaken([back, against], in: state, as: me)
+        XCTAssertTrue(ledger.hasRealmMatters)
+        XCTAssertEqual(ledger.realmWaiting, ["A prophecy open to your stake"])
         _ = try state.perform(against.command, as: me)
         ledger = CompanionLedger(world: state, player: me)
         let staked = try XCTUnwrap(ledger.prophecies.first)
         XCTAssertEqual(staked.standing, "20 moonsalt backing it, \(Prophecy.stakeLaid) against; stakes close at watch \(prophecy.stakesClose).")
         XCTAssertNil(staked.back, "Staked once")
         XCTAssertNil(staked.standAgainst)
+        XCTAssertEqual(ledger.realmWaiting, [], "Nothing more waits once staked")
         // To its prophet, its own.
         XCTAssertTrue(CompanionLedger(world: state, player: other).prophecies.first?.said.hasPrefix("You foretold that ") == true)
     }

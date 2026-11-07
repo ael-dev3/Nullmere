@@ -475,6 +475,23 @@ public struct CompanionLedger: Equatable, Sendable {
         if pieces > 0 { said.append(pieces == 1 ? "A piece of gear the Forge may make" : "\(pieces) pieces of gear the Forge may make") }
         return said
     }
+    /// Whether the realm's law, any oath or the Augury has anything to
+    /// tell the House, so the way to their page is offered.
+    public var hasRealmMatters: Bool {
+        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty
+    }
+
+    /// What waits on the House among the realm's law, oaths and auguries,
+    /// said on the Alliance tab's way to them: a vote to cast on the edict
+    /// before the realm, and prophecies open to its stake.
+    public var realmWaiting: [String] {
+        var said: [String] = []
+        if !law.votes.isEmpty { said.append("A vote to cast on the edict before the realm") }
+        let open = prophecies.filter { $0.back != nil }.count
+        if open > 0 { said.append(open == 1 ? "A prophecy open to your stake" : "\(open) prophecies open to your stake") }
+        return said
+    }
+
     /// Help for each ally with works, musters or study under way the
     /// House hasn't helped yet.
     public let helps: [Order]

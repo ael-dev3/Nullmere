@@ -417,7 +417,10 @@ a vote on the realm's law to cast.
   measure at a time (100 grain, timber or stone, 10 moonsalt) or all it
   laid up; what was said in it lately, and to the whole realm, the
   latest three of each open and the earlier folded beneath them; and a
-  line to say to either. The realm's law, as the Mac's Houses tell it: the
+  line to say to either. On a page of their own, The realm's law, oaths
+  and auguries, whose way from the Alliance tab says only what waits
+  there (a vote to cast on the edict before the realm, prophecies open to
+  the House's stake): the realm's law, as the Mac's Houses tell it: the
   edict before the realm, who put it and what it would forbid, the vote as
   it stands (the Houses and their might for and against, and when it
   closes) and the House's vote, or Aye and Nay while it may cast one; the

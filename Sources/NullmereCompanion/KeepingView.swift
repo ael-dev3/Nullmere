@@ -553,6 +553,60 @@ struct VenturesPage: View {
     }
 }
 
+/// The realm's law, its oaths and the Augury, on a page of their own off
+/// the Alliance tab: the edict before the realm and the House's vote, the
+/// edicts holding it and those the House may put; the oaths between the
+/// House and others, each of its own renounced with notice; and each
+/// prophecy, how it stands, with a stake to lay on either side.
+struct RealmPage: View {
+    let session: CompanionSession
+
+    /// The Alliance tab's way to it.
+    static let way = "The realm's law, oaths and auguries"
+
+    var body: some View {
+        List {
+            if let ledger = session.ledger {
+                if session.word != nil || session.outOfReach != nil {
+                    Section {
+                        WordLine(session: session)
+                    }
+                }
+                // The realm's law, as the Mac's Houses tell it: the edict
+                // before the realm and the House's vote, those holding it,
+                // and, folded, the edicts the House may put.
+                if !ledger.law.isEmpty {
+                    Section("The realm's law") {
+                        LawRows(session: session, law: ledger.law)
+                    }
+                }
+                // Oaths, as the Mac's Houses tell them: the House's own,
+                // each renounced with notice, and those sworn to it.
+                if !ledger.oathsSworn.isEmpty || !ledger.oathsToUs.isEmpty {
+                    Section("Oaths") {
+                        OathRows(session: session, oaths: ledger.oathsSworn + ledger.oathsToUs)
+                    }
+                }
+                // The Augury, as the Mac's Realm panel tells it: each
+                // prophecy, how it stands, and a stake laid on either side.
+                if !ledger.prophecies.isEmpty {
+                    Section("The Augury") {
+                        ForEach(ledger.prophecies) { prophecy in
+                            ProphecyRows(session: session, prophecy: prophecy)
+                        }
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Night.background)
+        .navigationTitle("Law, oaths and auguries")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+}
+
 /// The House's companies: what each is about and the orders it may be
 /// given, each the realm's to decide; and its commanders, each of whom may
 /// be asked for counsel, spoken by Apple's on-device model on this phone.
@@ -782,27 +836,25 @@ struct AllianceTab: View {
                             AllianceOwnRows(session: session, own: own)
                         }
                     }
-                    // The realm's law, as the Mac's Houses tell it: the edict
-                    // before the realm and the House's vote, those holding it,
-                    // and, folded, the edicts the House may put.
-                    if !ledger.law.isEmpty {
-                        Section("The realm's law") {
-                            LawRows(session: session, law: ledger.law)
-                        }
-                    }
-                    // Oaths, as the Mac's Houses tell them: the House's own,
-                    // each renounced with notice, and those sworn to it.
-                    if !ledger.oathsSworn.isEmpty || !ledger.oathsToUs.isEmpty {
-                        Section("Oaths") {
-                            OathRows(session: session, oaths: ledger.oathsSworn + ledger.oathsToUs)
-                        }
-                    }
-                    // The Augury, as the Mac's Realm panel tells it: each
-                    // prophecy, how it stands, and a stake laid on either side.
-                    if !ledger.prophecies.isEmpty {
-                        Section("The Augury") {
-                            ForEach(ledger.prophecies) { prophecy in
-                                ProphecyRows(session: session, prophecy: prophecy)
+                    // The realm's law, its oaths and the Augury on a page of
+                    // their own, the way to it saying only what waits there.
+                    if ledger.hasRealmMatters {
+                        Section {
+                            NavigationLink {
+                                RealmPage(session: session)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(verbatim: RealmPage.way)
+                                        .font(Night.body)
+                                    ForEach(ledger.realmWaiting, id: \.self) { waiting in
+                                        Text(verbatim: waiting)
+                                            .font(Night.small)
+                                            .foregroundStyle(Night.moon)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                                .accessibilityElement(children: .combine)
                             }
                         }
                     }
