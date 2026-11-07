@@ -588,11 +588,17 @@ struct RealmPage: View {
                     }
                 }
                 // The Augury, as the Mac's Realm panel tells it: each
-                // prophecy, how it stands, and a stake laid on either side.
-                if !ledger.prophecies.isEmpty {
+                // prophecy, how it stands, and a stake laid on either side;
+                // and a prophecy of the House's own, while it may make one.
+                if !ledger.prophecies.isEmpty || ledger.mayForetell {
                     Section("The Augury") {
                         ForEach(ledger.prophecies) { prophecy in
                             ProphecyRows(session: session, prophecy: prophecy)
+                        }
+                        if ledger.mayForetell {
+                            ForetellRows(session: session,
+                                         houses: [ForetellRows.Choice(id: session.keeper?.house ?? -1, name: "Your House")]
+                                            + ledger.dealings.map { ForetellRows.Choice(id: $0.id, name: $0.name) })
                         }
                     }
                 }
@@ -1412,6 +1418,73 @@ struct CommanderOrders: View {
                 .font(Night.small)
                 .accessibilityLabel("Ransom \(commander.name) home, for \(ransom.title.replacingOccurrences(of: "Ransom for ", with: ""))")
         }
+    }
+}
+
+/// A prophecy of the House's own, made as the Mac's Augury makes one:
+/// what it foretells, then of which House, or which two, among the House
+/// itself and the Houses nearest it, then spoken with its stake where the
+/// rules would take it, or why not.
+struct ForetellRows: View {
+    /// A House to foretell of.
+    struct Choice: Identifiable, Hashable {
+        let id: Int
+        let name: String
+    }
+
+    let session: CompanionSession
+    let houses: [Choice]
+    @State private var kind: Prophecy.Kind?
+    @State private var first: Int?
+    @State private var second: Int?
+
+    var body: some View {
+        DisclosureGroup("Foretell…") {
+            Picker("It foretells", selection: Binding(get: { kind }, set: { kind = $0; first = nil; second = nil })) {
+                Text(verbatim: "Choose").tag(Prophecy.Kind?.none)
+                ForEach(Prophecy.Kind.allCases, id: \.self) { choice in
+                    Text(verbatim: choice.title).tag(Prophecy.Kind?.some(choice))
+                }
+            }
+            if kind != nil {
+                Picker("Of which House", selection: $first) {
+                    Text(verbatim: "Choose").tag(Int?.none)
+                    ForEach(houses) { house in
+                        Text(verbatim: house.name).tag(Int?.some(house.id))
+                    }
+                }
+            }
+            if kind == .war, let first {
+                Picker("At war with", selection: $second) {
+                    Text(verbatim: "Choose").tag(Int?.none)
+                    ForEach(houses.filter { $0.id != first }) { house in
+                        Text(verbatim: house.name).tag(Int?.some(house.id))
+                    }
+                }
+            }
+            if let kind, let world = session.world, let house = session.keeper?.house,
+               let foretelling = CompanionLedger.foretelling(kind, first: first, second: second, in: world, player: house) {
+                Text(verbatim: foretelling.said)
+                    .font(Night.small)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let foretell = foretelling.foretell {
+                    Button("Foretell") {
+                        session.give(foretell.command, told: foretell.title)
+                        self.kind = nil
+                        first = nil
+                        second = nil
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(foretell.title)
+                } else if let why = foretelling.why {
+                    Text(verbatim: why)
+                        .font(Night.small)
+                        .foregroundStyle(Night.bad)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(Night.small)
     }
 }
 

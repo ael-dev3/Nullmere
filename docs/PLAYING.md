@@ -430,7 +430,11 @@ a vote on the realm's law to cast.
   prophecy, who foretold what and by when, how it stands (what is laid
   on each side, and until when; or how the realm judged it), and, while
   stakes are open to the House, Back it and Stand against it, 10 moonsalt
-  each, once. The oaths between the House and others, as the Mac's
+  each, once; and Foretell…, a prophecy of the House's own while none of
+  its own is open, made as the Mac makes one: what it foretells (a House
+  falls, takes a hold, two Houses at war, a Moonspire rises), of which
+  House among its own and the Houses nearest it, by twelve watches on,
+  staking 10 moonsalt, spoken where the rules take it, or why not. The oaths between the House and others, as the Mac's
   Houses tell them: the House's own ("Your oath to House Quell: peace
   until watch 40"), each with Renounce, asked first because it binds three
   watches more and the whole realm is told, and marked renounced once it

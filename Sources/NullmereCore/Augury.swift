@@ -60,6 +60,22 @@ public struct Prophecy: Codable, Equatable, Identifiable, Sendable {
 
     /// The moonsalt of a stake laid from the Mac's Augury or the phone.
     public static let stakeLaid = 10
+    /// How many watches ahead a prophecy made from the Mac or the phone looks.
+    public static let lookedAhead = 12
+
+    /// What a prophecy being made foretells, before its Houses are chosen.
+    public enum Kind: CaseIterable, Sendable {
+        case falls, takesAHold, war, spireRises
+
+        public var title: String {
+            switch self {
+            case .falls: return "A House falls"
+            case .takesAHold: return "A House takes a hold"
+            case .war: return "Two Houses at war"
+            case .spireRises: return "A Moonspire rises"
+            }
+        }
+    }
 
     /// How it stands, in a line, on the Mac and the phone: what is laid on
     /// each side, and until when; or how the realm judged it.
@@ -204,6 +220,23 @@ extension GameState {
     }
 
     /// What a prophecy foretells, as a sentence says it after "that".
+    /// The prophecy the choices make, once they are enough: a Moonspire's
+    /// next stage, war between two Houses.
+    public func claim(_ kind: Prophecy.Kind, first: Int?, second: Int?) -> Prophecy.Claim? {
+        guard let first else { return nil }
+        switch kind {
+        case .falls: return .falls(house: first)
+        case .takesAHold: return .takesAHold(house: first)
+        case .war: return second.map { .war(first, $0) }
+        case .spireRises: return .spireRises(house: first, stage: highest(.moonspire, of: first) + 1)
+        }
+    }
+
+    /// A prophecy being made, as the Mac's Augury and the phone say it.
+    public func foretellingSaid(_ claim: Prophecy.Claim, until: Int, moonsalt: Int) -> String {
+        "That \(told(claim)) by watch \(until), staking \(moonsalt) moonsalt."
+    }
+
     /// A prophecy as the Mac's Augury and the phone tell it: who foretold
     /// what, and by when.
     public func prophecySaid(_ prophecy: Prophecy, to house: Int) -> String {

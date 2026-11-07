@@ -10,22 +10,11 @@ struct AugurySection: View {
     let session: GameSession
 
     /// What a prophecy being made foretells, before its Houses are chosen.
-    enum Kind: CaseIterable {
-        case falls, takesAHold, war, spireRises
-
-        var title: String {
-            switch self {
-            case .falls: return "A House falls"
-            case .takesAHold: return "A House takes a hold"
-            case .war: return "Two Houses at war"
-            case .spireRises: return "A Moonspire rises"
-            }
-        }
-    }
+    typealias Kind = Prophecy.Kind
 
     /// How many watches ahead a prophecy made here looks, and the moonsalt
     /// each stake laid here is.
-    static let span = 12
+    static let span = Prophecy.lookedAhead
     static let stake = Prophecy.stakeLaid
 
     @State private var composing: Bool
@@ -46,13 +35,7 @@ struct AugurySection: View {
     /// The prophecy the choices make, once they are enough: a Moonspire's
     /// next stage, war between two Houses.
     static func claim(_ kind: Kind, first: Int?, second: Int?, in state: GameState) -> Prophecy.Claim? {
-        guard let first else { return nil }
-        switch kind {
-        case .falls: return .falls(house: first)
-        case .takesAHold: return .takesAHold(house: first)
-        case .war: return second.map { .war(first, $0) }
-        case .spireRises: return .spireRises(house: first, stage: state.highest(.moonspire, of: first) + 1)
-        }
+        state.claim(kind, first: first, second: second)
     }
 
     /// How a prophecy stands, in a line: what is laid on each side, and
@@ -147,7 +130,7 @@ struct AugurySection: View {
             if let claim = AugurySection.claim(kind, first: first, second: second, in: state) {
                 let until = state.watch + AugurySection.span
                 let refusal = state.prophecyRefusal(claim, until: until, moonsalt: AugurySection.stake, as: me)
-                Text(verbatim: "That \(state.told(claim)) by watch \(until), staking \(AugurySection.stake) moonsalt.")
+                Text(verbatim: state.foretellingSaid(claim, until: until, moonsalt: AugurySection.stake))
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)

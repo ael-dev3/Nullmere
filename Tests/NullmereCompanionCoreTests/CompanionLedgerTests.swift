@@ -660,7 +660,8 @@ final class CompanionLedgerTests: XCTestCase {
     func testThePhoneStakesOnTheAugury() throws {
         var (state, me) = try world()
         XCTAssertTrue(CompanionLedger(world: state, player: me).prophecies.isEmpty)
-        XCTAssertFalse(CompanionLedger(world: state, player: me).hasRealmMatters, "Nothing of the realm's to tell")
+        XCTAssertTrue(CompanionLedger(world: state, player: me).mayForetell)
+        XCTAssertTrue(CompanionLedger(world: state, player: me).hasRealmMatters, "A keeper may always foretell")
         let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
         let third = try XCTUnwrap(state.houses.last { $0.id != me && $0.id != other }?.id)
         state.houses[other].isPlayer = true
@@ -686,6 +687,31 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.realmWaiting, [], "Nothing more waits once staked")
         // To its prophet, its own.
         XCTAssertTrue(CompanionLedger(world: state, player: other).prophecies.first?.said.hasPrefix("You foretold that ") == true)
+    }
+
+    /// A prophecy of the House's own made from the phone, as the Mac's
+    /// Augury makes one: nothing until a House is chosen; a House's fall
+    /// said with its stake and Foretell taken by the rules; war wanting its
+    /// second House; foretold, the House may foretell no more while it is
+    /// open, and a prophecy refused says why.
+    func testThePhoneForetells() throws {
+        var (state, me) = try world()
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        XCTAssertNil(CompanionLedger.foretelling(.falls, first: nil, second: nil, in: state, player: me), "Of no House yet")
+        XCTAssertNil(CompanionLedger.foretelling(.war, first: other, second: nil, in: state, player: me), "Wanting the second House")
+        let falls = try XCTUnwrap(CompanionLedger.foretelling(.falls, first: other, second: nil, in: state, player: me))
+        let until = state.watch + Prophecy.lookedAhead
+        XCTAssertEqual(falls.said, "That \(state.told(.falls(house: other))) by watch \(until), staking \(Prophecy.stakeLaid) moonsalt.")
+        let foretell = try XCTUnwrap(falls.foretell)
+        XCTAssertNil(falls.why)
+        assertTaken([foretell], in: state, as: me)
+        _ = try state.perform(foretell.command, as: me)
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertFalse(ledger.mayForetell, "Its own prophecy is open")
+        XCTAssertTrue(ledger.prophecies.first?.said.hasPrefix("You foretold that ") == true)
+        let again = try XCTUnwrap(CompanionLedger.foretelling(.takesAHold, first: other, second: nil, in: state, player: me))
+        XCTAssertNil(again.foretell)
+        XCTAssertEqual(again.why, RuleError.prophecyOpen.description)
     }
 
     /// The Remembering on the phone, as the Mac's Realm panel sets it: no

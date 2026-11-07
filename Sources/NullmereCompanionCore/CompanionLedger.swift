@@ -377,6 +377,28 @@ public struct CompanionLedger: Equatable, Sendable {
         public let standAgainst: Order?
     }
 
+    /// A prophecy of the House's own being made: what it would foretell,
+    /// said as the Mac's Augury says it, and Foretell where the rules
+    /// would take it, or why not.
+    public struct Foretelling: Equatable, Sendable {
+        public let said: String
+        public let foretell: Order?
+        public let why: String?
+    }
+
+    /// The prophecy the House would speak of these choices, looking as far
+    /// ahead and staking as much as the Mac's Augury does; nil until the
+    /// choices are enough.
+    public static func foretelling(_ kind: Prophecy.Kind, first: Int?, second: Int?, in world: GameState, player: Int) -> Foretelling? {
+        guard let claim = world.claim(kind, first: first, second: second) else { return nil }
+        let until = world.watch + Prophecy.lookedAhead, stake = Prophecy.stakeLaid
+        let refusal = world.prophecyRefusal(claim, until: until, moonsalt: stake, as: player)
+        return Foretelling(said: world.foretellingSaid(claim, until: until, moonsalt: stake),
+                           foretell: refusal == nil ? Order(title: "Foretell it, staking \(stake) moonsalt",
+                                                            command: .prophesy(claim, until: until, moonsalt: stake)) : nil,
+                           why: refusal?.description)
+    }
+
     /// The riddle the lake has set the House at the half moon, as the Mac's
     /// Realm panel sets it: how it stands, the line with its name taken
     /// out, and each name to answer while it may.
@@ -476,9 +498,10 @@ public struct CompanionLedger: Equatable, Sendable {
         return said
     }
     /// Whether the realm's law, any oath or the Augury has anything to
-    /// tell the House, so the way to their page is offered.
+    /// tell the House, or the House may foretell, so the way to their page
+    /// is offered.
     public var hasRealmMatters: Bool {
-        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty
+        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || mayForetell
     }
 
     /// What waits on the House among the realm's law, oaths and auguries,
@@ -571,6 +594,9 @@ public struct CompanionLedger: Equatable, Sendable {
     public let remembering: Remembering?
     /// The Augury's prophecies, the latest first.
     public let prophecies: [Foretold]
+    /// Whether the House may foretell: a keeper's, with no prophecy of its
+    /// own still open.
+    public let mayForetell: Bool
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -631,7 +657,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -994,6 +1020,8 @@ public struct CompanionLedger: Equatable, Sendable {
                             standAgainst: open ? Order(title: "Stand against it with \(stake) moonsalt",
                                                        command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
         }
+        mayForetell = world.houses.indices.contains(player) && world.houses[player].isPlayer && !world.houses[player].isEliminated
+            && !world.openProphecies.contains { $0.by == player }
         remembering = world.riddle(of: player).map { riddle in
             Remembering(standing: riddle.standingSaid, line: riddle.line,
                         answers: riddle.choices.filter { world.riddleRefusal($0, as: player) == nil }.map {
