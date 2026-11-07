@@ -181,15 +181,6 @@ enum CompanionCheck {
             let toAllies = "Sworn to \(alliance), from \(session.keeper?.name ?? "a keeper")'s phone."
             await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to allies")
             lines.append("Said to the alliance: \(toAllies)")
-            // The alliance's study chosen from the phone, and given toward.
-            if let pursue = session.ledger?.pursuits.first {
-                await give(pursue.command, told: pursue.title, as: "Pursued")
-                if await until(30, { session.ledger?.allianceGifts.isEmpty == false }), let gift = session.ledger?.allianceGifts.first {
-                    await give(gift.command, told: gift.title, as: "Given toward the study")
-                } else {
-                    lines.append("Nothing the House could give toward the study")
-                }
-            }
         } else {
             lines.append("Sworn to no alliance: nothing said to one")
         }
@@ -255,6 +246,17 @@ enum CompanionCheck {
             lines.append("At work: \(setTo)")
         } else {
             broken.append("no hold its stores could set to work: " + now.holds.map { "\($0.name), \($0.work.joined(separator: ", "))" }.joined(separator: "; "))
+        }
+        // The alliance's study chosen from the phone and given toward, once
+        // the hold is at work: a gift of the House's stores spent before it
+        // left nothing to muster with (run 674).
+        if session.ledger?.alliance != nil, let pursue = session.ledger?.pursuits.first {
+            await give(pursue.command, told: pursue.title, as: "Pursued")
+            if await until(30, { session.ledger?.allianceGifts.isEmpty == false }), let gift = session.ledger?.allianceGifts.first {
+                await give(gift.command, told: gift.title, as: "Given toward the study")
+            } else {
+                lines.append("Nothing the House could give toward the study")
+            }
         }
         write(done: false)
         // Set aside and back, by its own key: in again, the order kept.
