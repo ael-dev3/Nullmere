@@ -325,7 +325,10 @@ been heard from lately.
   nearest: the twelve whose seats lie nearest the keeper's, each with how
   it stands with the keeper's House (at war, at peace, in a pact or sworn
   to the alliance), Send an envoy with peace, a pact or a demand of tribute
-  where the rules would carry it, and Declare war, asked once more first.
+  where the rules would carry it, Send a gift of any store, as much as a
+  House takes in gifts in a watch (a hundred, or twenty-five moonsalt),
+  to any House not at war with the keeper's, and Declare war, asked once
+  more first.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.

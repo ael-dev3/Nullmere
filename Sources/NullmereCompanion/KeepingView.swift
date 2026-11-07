@@ -717,9 +717,12 @@ struct DealingRow: View {
                 .foregroundStyle(dealing.stance.hasPrefix("At war") ? Night.bad : Night.ink.opacity(0.7))
         }
         .accessibilityElement(children: .combine)
-        if !dealing.envoys.isEmpty || dealing.war != nil {
+        if !dealing.envoys.isEmpty || !dealing.gifts.isEmpty || dealing.war != nil {
             HStack(spacing: 10) {
                 ListedOrdersMenu(title: "Send an envoy", orders: dealing.envoys, label: "Send an envoy to \(dealing.name)") { order in
+                    session.give(order.command, told: order.title)
+                }
+                ListedOrdersMenu(title: "Send a gift", orders: dealing.gifts, label: "Send a gift to \(dealing.name)") { order in
                     session.give(order.command, told: order.title)
                 }
                 if let war = dealing.war {

@@ -124,8 +124,15 @@ final class CompanionLedgerTests: XCTestCase {
             XCTAssertEqual(dealing.stance, "At peace with your House")
             XCTAssertEqual(dealing.war?.command, .declareWar(on: dealing.id))
             XCTAssertFalse(dealing.envoys.contains { $0.command == .propose(.peace, to: dealing.id) }, "No peace offered at peace")
-            assertTaken(dealing.envoys + [try XCTUnwrap(dealing.war)], in: state, as: me)
+            XCTAssertEqual(dealing.gifts.map(\.title), Resource.allCases.map { resource in
+                "Send \(resource == .moonsalt ? 25 : 100) \(resource.title.lowercased()) to \(dealing.name)"
+            }, "Each store, as much as a House takes in a watch")
+            assertTaken(dealing.envoys + dealing.gifts + [try XCTUnwrap(dealing.war)], in: state, as: me)
         }
+        // Gifts given up to what the House takes in a watch: no more to it then.
+        let given = try XCTUnwrap(ledger.dealings.first)
+        _ = try state.perform(try XCTUnwrap(given.gifts.first).command, as: me)
+        XCTAssertTrue(try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.first { $0.id == given.id }).gifts.isEmpty)
 
         let foe = try XCTUnwrap(ledger.dealings.first).id
         _ = try state.declareWar(by: me, on: foe)
@@ -133,6 +140,7 @@ final class CompanionLedgerTests: XCTestCase {
         let atWar = try XCTUnwrap(ledger.dealings.first { $0.id == foe })
         XCTAssertEqual(atWar.stance, "At war with your House")
         XCTAssertNil(atWar.war, "At war already")
+        XCTAssertTrue(atWar.gifts.isEmpty, "No gifts to a House at war")
         let peace = try XCTUnwrap(atWar.envoys.first { $0.command == .propose(.peace, to: foe) }, "\(atWar.envoys.map(\.title))")
         XCTAssertEqual(peace.title, "Offer peace to \(state.houses[foe].title)")
         assertTaken(atWar.envoys, in: state, as: me)

@@ -127,6 +127,9 @@ public struct CompanionLedger: Equatable, Sendable {
         public let name: String
         public let stance: String
         public let envoys: [Order]
+        /// Gifts of the House's stores the rules would let it send now, as
+        /// much as a House takes in gifts in a watch.
+        public let gifts: [Order]
         public let war: Order?
     }
 
@@ -457,6 +460,7 @@ public struct CompanionLedger: Equatable, Sendable {
             world.seat(of: house).map { (house, $0.position.distance(to: home)) }
         }
         let nearest = others.sorted { ($0.1, $0.0) < ($1.1, $1.0) }.prefix(dealtWith).map(\.0)
+        let stock = houses[player].stock
         return nearest.map { house in
             let name = houses[house].title
             let stance: String
@@ -472,9 +476,17 @@ public struct CompanionLedger: Equatable, Sendable {
             let offered: [(String, Proposal)] = [("Offer peace to", .peace), ("Offer a pact to", .pact), ("Demand tribute of", .tribute)]
             let envoys = offered.map { Order(title: "\($0.0) \(name)", command: .propose($0.1, to: house)) }
                 .filter { world.refusal(of: $0.command, as: player) == nil }
+            let atWar = world.isAtWar(player, house)
+            let gifts = atWar ? [] : Resource.allCases.compactMap { resource -> Order? in
+                let amount = resource == .moonsalt ? GameState.giftsTakenPerWatch / 4 : GameState.giftsTakenPerWatch
+                guard stock[resource] >= amount else { return nil }
+                let order = Order(title: "Send \(amount) \(resource.title.lowercased()) to \(name)",
+                                  command: .gift(to: house, resource: resource, amount: amount))
+                return world.refusal(of: order.command, as: player) == nil ? order : nil
+            }
             let war = Order(title: "Declare war on \(name)", command: .declareWar(on: house))
-            return Dealing(id: house, name: name, stance: stance, envoys: envoys,
-                           war: world.isAtWar(player, house) || world.refusal(of: war.command, as: player) != nil ? nil : war)
+            return Dealing(id: house, name: name, stance: stance, envoys: envoys, gifts: gifts,
+                           war: atWar || world.refusal(of: war.command, as: player) != nil ? nil : war)
         }
     }
 
