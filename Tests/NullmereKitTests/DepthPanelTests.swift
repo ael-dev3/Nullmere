@@ -848,6 +848,68 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(tier, highest > 1 ? highest : nil, "The highest first chosen, for \(kind)")
     }
 
+    /// A realm of a hundred and twenty-eight Houses: a whisper, a prophecy
+    /// and a title each offer the Houses the keeper has reason to name,
+    /// nearest first, not a button for every House, and find any other by
+    /// its name.
+    func testAWideRealmsComposersOfferTheHousesAKeeperHasReasonToName() throws {
+        var state = GameState(settings: GameSettings(seedText: "a wide realm's choosers", houseCount: 128,
+                                                     radius: RealmState.radius(forSeats: 128), keepers: 1))
+        let me = state.player
+        state.houses[me].stock.moonsalt = 80
+        let ground = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.hold(at: hex) == nil
+        })
+        state.shrines = (state.shrines ?? []) + [Shrine(id: 99, kind: .brokenSpire, position: ground, holder: me, since: state.watch)]
+        state.reveal(around: ground, range: 1, for: me)
+        let (session, link) = session(state)
+        let choice = session.state.houseChoice(by: me, excluding: [me])
+        XCTAssertTrue(choice.searchable)
+        let near = try XCTUnwrap(choice.offered.first)
+        let far = try XCTUnwrap(session.state.livingHouses.last { house in house.id != me && !choice.offered.contains { $0.id == house.id } })
+        func buttons(_ prefix: String) -> [String] { shown.filter { $0.hasPrefix(prefix) } }
+
+        // A whisper: the Houses offered, not every House; one far off found by its name.
+        draw(WhispersSection(session: session, composing: true, kind: .walls), width: 360, height: 1200)
+        XCTAssertEqual(buttons("Of House").count, choice.offered.count, "Among \(shown)")
+        XCTAssertTrue(shown.contains("Of \(near.title)"), "Its nearest first among them")
+        XCTAssertFalse(shown.contains("Of \(far.title)"), "Found by its name, not offered")
+        XCTAssertLessThan(choice.offered.count, 40, "Not a hundred and twenty-seven")
+        draw(HouseChooser(session: session, excluding: [me], query: far.name) { house in
+            QuietButton(title: "Of \(house.title)", size: 8.5) {}
+        }, width: 360, height: 400)
+        XCTAssertTrue(shown.contains("Of \(far.title)"), "Among \(shown)")
+        draw(WhispersSection(session: session, composing: true, kind: .walls, house: far.id), width: 360, height: 1200)
+        let claim = Whisper.Claim.seatBreached(house: far.id)
+        XCTAssertTrue(PressableButtons.press("Whisper that \(session.state.told(claim))"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .whisper(claim))
+
+        // Many go by a letter, two dozen shown; none by another.
+        draw(HouseChooser(session: session, excluding: [me], query: "a") { house in
+            QuietButton(title: "Of \(house.title)", size: 8.5) {}
+        }, width: 360, height: 900)
+        XCTAssertEqual(shown.count, HouseChoice.found, "Among \(shown)")
+        draw(HouseChooser(session: session, excluding: [me], query: "Qqx") { house in
+            QuietButton(title: "Of \(house.title)", size: 8.5) {}
+        }, width: 360, height: 300)
+        XCTAssertTrue(shown.isEmpty, "Among \(shown)")
+
+        // A prophecy may be of the keeper's own House; a war's second House is never its first.
+        draw(AugurySection(session: session, composing: true, kind: .falls), width: 360, height: 1200)
+        XCTAssertTrue(shown.contains("Of Your House"), "Among \(shown)")
+        XCTAssertEqual(buttons("Of House").count, choice.offered.count)
+        draw(AugurySection(session: session, composing: true, kind: .war, first: near.id), width: 360, height: 1200)
+        XCTAssertTrue(shown.contains("With Your House"), "Among \(shown)")
+        XCTAssertFalse(shown.contains("With \(near.title)"))
+
+        // A title named to one of the Houses offered, none far off.
+        XCTAssertEqual(session.state.titleGiver, me)
+        draw(TitlesSection(session: session, open: true, naming: .swordOfTheLake), width: 360, height: 1200)
+        XCTAssertFalse(buttons("Name House").isEmpty, "Among \(shown)")
+        XCTAssertTrue(Set(buttons("Name House")).isSubset(of: Set(choice.offered.map { "Name \($0.title)" })), "Among \(shown)")
+        XCTAssertFalse(shown.contains("Name \(far.title)"))
+    }
+
     /// The titles of the Spire on the Realm screen: the keeper whose House
     /// holds the broken Spire chooses a title, then the House to name to
     /// it; the House named reads it in the Houses' list, and hears it.

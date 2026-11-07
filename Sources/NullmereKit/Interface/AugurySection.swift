@@ -142,15 +142,15 @@ struct AugurySection: View {
             Text(verbatim: picking ? "At war with which House?" : "Of which House?")
                 .font(.nm(10))
                 .foregroundStyle(Palette.text(0.6))
-            FlowLayout(spacing: 6, lineSpacing: 4) {
-                ForEach(state.livingHouses.filter { !picking || $0.id != first }) { house in
-                    let named = house.id == me ? "Your House" : house.title
-                    QuietButton(title: picking ? "With \(named)" : "Of \(named)", size: 8.5,
-                                prominent: (picking ? second : first) == house.id) {
-                        if picking { second = house.id } else { first = house.id }
-                    }
+            // The second House of a war chosen afresh, not among those the first was found by.
+            HouseChooser(session: session, excluding: picking ? Set(first.map { [$0] } ?? []) : []) { house in
+                let named = house.id == me ? "Your House" : house.title
+                QuietButton(title: picking ? "With \(named)" : "Of \(named)", size: 8.5,
+                            prominent: (picking ? second : first) == house.id) {
+                    if picking { second = house.id } else { first = house.id }
                 }
             }
+            .id(picking)
             if let claim = AugurySection.claim(kind, first: first, second: second, in: state) {
                 let until = state.watch + AugurySection.span
                 let refusal = state.prophecyRefusal(claim, until: until, moonsalt: AugurySection.stake, as: me)

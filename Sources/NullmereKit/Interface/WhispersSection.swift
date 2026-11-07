@@ -122,11 +122,9 @@ struct WhispersSection: View {
             Text(verbatim: "Of which House?")
                 .font(.nm(10))
                 .foregroundStyle(Palette.text(0.6))
-            FlowLayout(spacing: 6, lineSpacing: 4) {
-                ForEach(state.livingHouses.filter { $0.id != me }) { other in
-                    QuietButton(title: "Of \(other.title)", size: 8.5, prominent: house == other.id) {
-                        house = other.id
-                    }
+            HouseChooser(session: session, excluding: [me]) { other in
+                QuietButton(title: "Of \(other.title)", size: 8.5, prominent: house == other.id) {
+                    house = other.id
                 }
             }
             if let house {

@@ -83,13 +83,11 @@ struct TitlesSection: View {
                         .font(.nm(10))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
-                    FlowLayout(spacing: 6, lineSpacing: 4) {
-                        ForEach(state.livingHouses.filter { $0.id != me }) { house in
-                            let refusal = state.bestowRefusal(naming, on: house.id, as: me)
-                            QuietButton(title: "Name \(house.title)", size: 8.5, enabled: refusal == nil,
-                                        name: "Name \(house.title) \(naming.title)", why: refusal?.description) {
-                                if session.perform(.bestow(naming, on: house.id)) { self.naming = nil }
-                            }
+                    HouseChooser(session: session, excluding: [me]) { house in
+                        let refusal = state.bestowRefusal(naming, on: house.id, as: me)
+                        QuietButton(title: "Name \(house.title)", size: 8.5, enabled: refusal == nil,
+                                    name: "Name \(house.title) \(naming.title)", why: refusal?.description) {
+                            if session.perform(.bestow(naming, on: house.id)) { self.naming = nil }
                         }
                     }
                 }

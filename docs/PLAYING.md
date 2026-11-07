@@ -167,7 +167,13 @@ full screen at launch as chosen.
   the widest lakes, each with a name and a colour of its own, on the map
   and in its words. A thousand colours can't each be as plainly apart as
   ninety-six are: at the widest lakes a House's name, and the line where
-  its land meets another's, tell it apart where its colour alone can't. Seats no keeper holds are played by stewards, the same minds that
+  its land meets another's, tell it apart where its colour alone can't.
+  Where more than ninety-six Houses stand, a whisper, a prophecy or a
+  title offers, of all of them, the Houses its keeper has reason to name,
+  nearest their seat first (their neighbours, the dozen nearest; their
+  alliance, liege and vassals; every House they have dealt with; and the
+  race's dozen leaders), and finds any other by its name, two dozen at a
+  time. Seats no keeper holds are played by stewards, the same minds that
   once played rivals, until a keeper claims them. When every seat is
   held, a newcomer waits at the front door and steps in the moment one
   falls free. A seat whose keeper has been away a week goes back to the
