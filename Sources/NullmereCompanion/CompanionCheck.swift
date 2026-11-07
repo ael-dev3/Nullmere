@@ -321,6 +321,18 @@ enum CompanionCheck {
                 broken.append("the standing orders given from the phone never stood")
             }
         }
+        // The House's heaviest commanders stood as its line in the Ring, from
+        // the phone; the Mac must see the line stand.
+        if let stand = session.ledger?.ring.stand, case .standInTheRing(let line) = stand.command, let house = session.keeper?.house {
+            await give(stand.command, told: stand.title, as: "Entered the Ring")
+            if await until(30, { session.world?.ringLine(of: house) == line }) {
+                lines.append("Ring line: " + line.map(String.init).joined(separator: " "))
+            } else {
+                broken.append("the line stood in the Ring from the phone never stood")
+            }
+        } else {
+            lines.append("No line to stand in the Ring")
+        }
         // A commander given a company of war from the phone, where one is free.
         if let commander = session.ledger?.commanders.first(where: { !$0.leads.isEmpty }), let lead = commander.leads.first {
             await give(lead.command, told: "\(commander.name): \(lead.title)", as: "Commanded")

@@ -585,8 +585,8 @@ public final class GameApp {
     /// companies dug in, what its holds are at work on (each as its hold and
     /// the work raised or company mustered there), the watch, the alliance
     /// it is sworn to, the caretaker's standing orders as the keeper is told
-    /// them, and the last words said to the whole realm and to its alliance,
-    /// a line each.
+    /// them, the commanders of the line it stands in the Ring, and the last
+    /// words said to the whole realm and to its alliance, a line each.
     static func linkReport(of state: GameState, player: Int) -> String {
         let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
         let working = state.holds(of: player).flatMap { hold in
@@ -599,8 +599,9 @@ public final class GameApp {
         } ?? []
         let sworn = state.alliance(of: player).map { ["alliance: \($0.name)"] } ?? []
         let standing = ["standing: \(state.standingOrders(of: player).said)"]
+        let ring = ["ring: " + (state.ringLine(of: player) ?? []).map(String.init).joined(separator: " ")]
         return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + sworn + standing
-                + said + allied).joined(separator: "\n") + "\n"
+                + ring + said + allied).joined(separator: "\n") + "\n"
     }
 
     func stopLinkReport() {

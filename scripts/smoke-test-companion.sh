@@ -5,11 +5,12 @@
 # scripts/build-companion.sh and run in one, takes the link as the phone's
 # camera would, comes in as the keeper, keeps their House from the phone (a
 # company dug in, words said to the realm, an alliance raised and words
-# said to it, the caretaker's standing orders given, the keeper made ready
-# so the watch turns, a hold set to work), each
+# said to it, the caretaker's standing orders given, a line of its
+# commanders stood in the Ring, the keeper made ready so the watch turns,
+# a hold set to work), each
 # carried out by the realm, is set aside and comes in again by its own key;
 # and the Mac sees the company dug in, hears the words, sees the alliance
-# raised, the watch turned and the hold at work; and, seeing the company dug
+# raised, the line in the Ring, the watch turned and the hold at work; and, seeing the company dug
 # in, the Mac says so to the realm and the phone hears its answer come back.
 # The phone reaches the realm through a line of its own (scripts/line-relay.py),
 # which is cut and mended: it says the realm is out of reach and keeps the
@@ -229,6 +230,15 @@ if [ -n "$STANDING" ]; then
     done
 fi
 echo "The Mac sees the standing orders the phone gave: $STOOD${STANDING:+ ($STANDING)}"
+RING_LINE="$(sed -n 's/^Ring line: //p' "$REPORT" | head -n 1)"
+IN_RING=no
+if [ -n "$RING_LINE" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "ring: $RING_LINE" "$MAC_REPORT" 2>/dev/null; then IN_RING=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the line the phone stood in the Ring: $IN_RING${RING_LINE:+ (commanders $RING_LINE)}"
 TURNED_TO="$(sed -n 's/^Watch: //p' "$REPORT" | head -n 1)"
 TURNED=no
 if [ -n "$TURNED_TO" ]; then
@@ -344,6 +354,10 @@ if [ "$ALLIES_HEARD" != yes ]; then
 fi
 if [ "$STOOD" != yes ]; then
     echo "error: the Mac never saw the standing orders given on the phone" >&2
+    exit 1
+fi
+if [ -n "$RING_LINE" ] && [ "$IN_RING" != yes ]; then
+    echo "error: the Mac never saw the line stood in the Ring on the phone" >&2
     exit 1
 fi
 if [ "$TURNED" != yes ]; then
