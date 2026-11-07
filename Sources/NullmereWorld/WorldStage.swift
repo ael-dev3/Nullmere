@@ -808,23 +808,32 @@ public final class WorldStage: @unchecked Sendable {
     /// view comes down close, the rest of their folk out about the lanes and
     /// gathered at the well and the stalls, as a frame at `time` sees them:
     /// each on the land under it, posed as it walks or stands, those
-    /// gathered each at their own moment of what they do there. None about
-    /// a hold whose ward is broken below half: they keep within.
+    /// gathered each at their own moment of what they do there, those
+    /// walking stepping aside of each other as they pass (see
+    /// `stepsAside`). None about a hold whose ward is broken below half:
+    /// they keep within.
     public func townsfolk(_ sights: [HoldSight], time: Float, crowds: Bool = false, into frame: inout SceneFrame) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
         var shared: [PoseKey: UInt32] = [:]
         for sight in sights where sight.hold.ward * 2 >= sight.hold.maximumWard {
             let hex = SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r))
             let planned = plan(of: sight)
-            for errand in planned.errands + planned.porters + (crowds ? strolls(of: sight) : []) {
-                let (at, heading, clip) = WorldStage.walk(errand, at: time)
+            let errands = planned.errands + planned.porters + (crowds ? strolls(of: sight) : [])
+            let walks = errands.map { WorldStage.walk($0, at: time) }
+            let gathered = crowds ? gatherings(of: sight) : []
+            let aside = WorldStage.stepsAside(zip(errands, walks).map { errand, walk in
+                Walker(at: walk.position, heading: walk.heading, along: WorldStage.along(errand, at: walk.position))
+            }, standing: gathered.map(\.position))
+            for (index, errand) in errands.enumerated() {
+                let (walked, heading, clip) = walks[index]
+                let at = walked + aside[index]
                 let start = WorldStage.pose(errand.key, clip, at: time + Float(errand.salt % 13) * 0.29, shared: &shared, into: &frame)
                 placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),
                                                          colour: sight.colour, phase: Float(errand.salt % 17) * 0.31, hex: hex,
                                                          palette: start)))
             }
             guard crowds else { continue }
-            for (index, folk) in gatherings(of: sight).enumerated() {
+            for (index, folk) in gathered.enumerated() {
                 let salt = sight.hold.id &* 61 &+ index
                 let start = WorldStage.pose(folk.key, .gather, at: time + Float(salt % 13) * 0.37, shared: &shared, into: &frame)
                 let at = folk.position
@@ -833,6 +842,68 @@ public final class WorldStage: @unchecked Sendable {
             }
         }
         return WorldStage.batches(placed)
+    }
+
+    /// How far one walking the town's lanes steps aside to let another by:
+    /// most of the way to the lane's edge, never past it, so never into a
+    /// home.
+    public static let stepAside = HoldLayout.laneHalfWidth * HoldLayout.grandeur * 0.8
+    /// How near another comes before one walking begins to step aside.
+    public static let passing: Float = 0.35
+
+    /// One of a hold's folk on their way, as a frame sees them: where they
+    /// are, which way they face, and how far along their way, 0 at either
+    /// end, where they stand, to 1 well along it.
+    struct Walker {
+        var at: Vec3
+        var heading: Float
+        var along: Float
+    }
+
+    /// How far along its way one walking it is at `at`: 0 at either end,
+    /// rising to 1 a quarter of a hex from both.
+    static func along(_ errand: Errand, at: Vec3) -> Float {
+        guard let first = errand.path.first, let last = errand.path.last else { return 0 }
+        func flat(_ a: Vec3, _ b: Vec3) -> Float { ((a.x - b.x) * (a.x - b.x) + (a.z - b.z) * (a.z - b.z)).squareRoot() }
+        return WorldStage.smoothstep(0, 0.25, min(flat(at, first), flat(at, last)))
+    }
+
+    /// How far each of a hold's walkers steps aside as they pass each other
+    /// and those standing: each to its own side of the lane, so two meeting
+    /// part, the more the nearer the other and the more it comes their way
+    /// (one going the same way a little, one standing between), for those
+    /// ahead and beside, not behind, so one overtaking steps out and the one
+    /// overtaken keeps on; nothing at either end of a way, where they stand,
+    /// so none starts aside or turns about there. Every step a smooth
+    /// measure of where they all are, so as they walk it comes and goes
+    /// smoothly, frame by frame.
+    static func stepsAside(_ walkers: [Walker], standing: [Vec3]) -> [Vec3] {
+        walkers.indices.map { index in
+            let me = walkers[index]
+            guard me.along > 0 else { return .zero }
+            let ahead = Vec3(sin(me.heading), 0, cos(me.heading))
+            var push: Float = 0
+            func weigh(_ at: Vec3, _ facing: Float) {
+                let dx = at.x - me.at.x, dz = at.z - me.at.z
+                let distance = (dx * dx + dz * dz).squareRoot()
+                guard distance < passing else { return }
+                let before = WorldStage.smoothstep(-0.4, 0.2, (dx * ahead.x + dz * ahead.z) / max(distance, 1e-4))
+                // Close by, which side they are on matters no longer.
+                let side = before + (1 - before) * (1 - WorldStage.smoothstep(0, passing * 0.2, distance))
+                push += WorldStage.smoothstep(passing, passing * 0.3, distance) * side * facing
+            }
+            for (other, them) in walkers.enumerated() where other != index {
+                weigh(them.at, 0.7 - 0.3 * cos(them.heading - me.heading) * them.along)
+            }
+            for at in standing { weigh(at, 0.7) }
+            return Vec3(cos(me.heading), 0, -sin(me.heading)) * (min(push, 1) * stepAside * me.along)
+        }
+    }
+
+    /// 0 at `edge0`, 1 at `edge1`, easing between, as the shaders' own.
+    static func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float {
+        let t = min(max((x - edge0) / (edge1 - edge0), 0), 1)
+        return t * t * (3 - 2 * t)
     }
 
     // MARK: Traffic

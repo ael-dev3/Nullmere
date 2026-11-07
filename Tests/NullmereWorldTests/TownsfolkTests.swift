@@ -347,4 +347,94 @@ extension TownsfolkTests {
         XCTAssertTrue(stage.porters(of: HoldSight(hold: try seat([.granary: 1, .quarry: 1]), colour: Vec4(1, 0, 0, 1))).isEmpty,
                       "none without walls to keep a lane")
     }
+
+    /// Two meeting on a lane each step to their own side, the more the
+    /// nearer, so they pass a lane's width apart where they would have met;
+    /// the step comes and goes smoothly as they walk; one alone, or one
+    /// standing at the end of their way, keeps to the line.
+    func testTwoMeetingOnALaneStepAsideAndPass() {
+        func step(_ gap: Float) -> (Vec3, Vec3) {
+            let aside = WorldStage.stepsAside([WorldStage.Walker(at: Vec3(0, 0, -gap / 2), heading: 0, along: 1),
+                                               WorldStage.Walker(at: Vec3(0, 0, gap / 2), heading: .pi, along: 1)], standing: [])
+            return (aside[0], aside[1])
+        }
+        let (far, farOther) = step(WorldStage.passing + 0.01)
+        XCTAssertEqual(far, .zero, "Not yet near")
+        XCTAssertEqual(farOther, .zero)
+        let (met, metOther) = step(0)
+        XCTAssertEqual(met.x - metOther.x, 2 * WorldStage.stepAside, accuracy: 1e-4, "Where they would have met, a lane's width apart")
+        XCTAssertLessThan(met.x * metOther.x, 0, "Each to their own side")
+        XCTAssertEqual(met.y, 0)
+        XCTAssertLessThan(WorldStage.stepAside, HoldLayout.laneHalfWidth * HoldLayout.grandeur, "Never past the lane's edge")
+        // Smoothly, at a walk's pace a frame at sixty a second.
+        let walk: Float = 0.15 / 60
+        var gap = WorldStage.passing + 0.05, last = step(gap).0
+        while gap > 0 {
+            gap -= 2 * walk
+            let now = step(max(gap, 0)).0
+            XCTAssertLessThan(abs(now.x - last.x), WorldStage.stepAside * 0.08, "No jump at a gap of \(gap)")
+            last = now
+        }
+        // Alone, or standing at the end of the way, on the line.
+        XCTAssertEqual(WorldStage.stepsAside([WorldStage.Walker(at: .zero, heading: 1, along: 1)], standing: []), [.zero])
+        let resting = WorldStage.stepsAside([WorldStage.Walker(at: .zero, heading: 0, along: 0),
+                                             WorldStage.Walker(at: Vec3(0, 0, 0.05), heading: .pi, along: 1)], standing: [])
+        XCTAssertEqual(resting[0], .zero, "Standing at the end of its way")
+        XCTAssertNotEqual(resting[1], .zero, "The other steps round it")
+    }
+
+    /// One overtaking steps out and the one overtaken keeps on; one coming
+    /// on folk standing at the well steps round them.
+    func testOneOvertakingStepsOutAndFolkStandingAreWalkedRound() {
+        let overtaking = WorldStage.stepsAside([WorldStage.Walker(at: Vec3(0, 0, 0), heading: 0, along: 1),
+                                                WorldStage.Walker(at: Vec3(0, 0, 0.12), heading: 0, along: 1)], standing: [])
+        XCTAssertGreaterThan(abs(overtaking[0].x), 0.01, "The one behind steps out")
+        XCTAssertEqual(overtaking[1], .zero, "The one ahead keeps on")
+        let round = WorldStage.stepsAside([WorldStage.Walker(at: .zero, heading: 0, along: 1)], standing: [Vec3(0, 0, 0.1)])
+        XCTAssertGreaterThan(abs(round[0].x), 0.01)
+        let behind = WorldStage.stepsAside([WorldStage.Walker(at: .zero, heading: 0, along: 1)], standing: [Vec3(0, 0, -0.2)])
+        XCTAssertEqual(behind[0], .zero, "Nothing for those behind")
+    }
+
+    /// A busy seat's folk, crowds and all, through three minutes: two
+    /// coming face to face on the lanes never pass through each other, as
+    /// they did walking their lanes' lines, and the frame stages each as
+    /// it steps.
+    func testTheTownsFolkNeverWalkThroughEachOther() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let hold = try seat([.walls: 2, .granary: 3, .sawpit: 2, .quarry: 2, .saltworks: 1, .infirmary: 1, .forge: 1, .beacon: 1])
+        let sight = HoldSight(hold: hold, colour: Vec4(0.2, 0.4, 0.8, 1))
+        let errands = stage.errands(of: sight) + stage.porters(of: sight) + stage.strolls(of: sight)
+        let standing = stage.gatherings(of: sight).map(\.position)
+        var throughBefore = 0, nearestAfter = Float.infinity
+        var time: Float = 0
+        while time < 180 {
+            let walks = errands.map { WorldStage.walk($0, at: time) }
+            let walkers = zip(errands, walks).map { WorldStage.Walker(at: $1.position, heading: $1.heading, along: WorldStage.along($0, at: $1.position)) }
+            let aside = WorldStage.stepsAside(walkers, standing: standing)
+            for a in walks.indices where walks[a].clip == .march && walkers[a].along > 0.99 {
+                for b in walks.indices where b > a && walks[b].clip == .march && walkers[b].along > 0.99
+                    && cos(walks[a].heading - walks[b].heading) < -0.95 {
+                    guard flat(walks[a].position, walks[b].position) < 0.02 else { continue }
+                    throughBefore += 1
+                    nearestAfter = min(nearestAfter, flat(walks[a].position + aside[a], walks[b].position + aside[b]))
+                }
+            }
+            time += 0.05
+        }
+        XCTAssertGreaterThan(throughBefore, 0, "On their lanes' lines, some met face to face")
+        XCTAssertGreaterThan(nearestAfter, WorldStage.stepAside, "Stepping aside, none passes through another")
+
+        // The frame stages them so.
+        var frame = SceneFrame()
+        let staged = stage.townsfolk([sight], time: 41, crowds: true, into: &frame).flatMap(\.instances)
+        let walks = errands.map { WorldStage.walk($0, at: 41) }
+        let aside = WorldStage.stepsAside(zip(errands, walks).map { WorldStage.Walker(at: $1.position, heading: $1.heading,
+                                                                                    along: WorldStage.along($0, at: $1.position)) },
+                                          standing: standing)
+        for (walk, step) in zip(walks, aside) {
+            let at = walk.position + step
+            XCTAssertTrue(staged.contains { abs($0.model.c3.x - at.x) < 1e-4 && abs($0.model.c3.z - at.z) < 1e-4 }, "Staged where it steps")
+        }
+    }
 }
