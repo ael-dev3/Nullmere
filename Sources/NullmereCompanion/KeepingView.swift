@@ -164,6 +164,20 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The Archive's studies: the one under way, or those the House may begin.
+                    if ledger.studying != nil || !ledger.studies.isEmpty {
+                        Section("Studies") {
+                            if let studying = ledger.studying {
+                                Text(verbatim: studying)
+                                    .font(Night.body)
+                            } else {
+                                OrdersMenu(title: "Begin a study", orders: ledger.studies, label: "Begin a study at the Archive") { order in
+                                    session.give(order.command, told: order.title)
+                                }
+                                .font(Night.small)
+                            }
+                        }
+                    }
                     Section("The chronicle") {
                         ForEach(Array(ledger.chronicle.enumerated()), id: \.offset) { line in
                             Text(verbatim: line.element)

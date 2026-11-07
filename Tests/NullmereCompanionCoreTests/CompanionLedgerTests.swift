@@ -22,6 +22,34 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// The House's studies on the phone: none before it has an Archive;
+    /// then each it may begin, at its next grade, one the rules take as
+    /// offered; and one under way said with how long it has to go, none
+    /// offered beside it.
+    func testThePhoneOffersTheStudiesTheHouseMayBegin() throws {
+        var (state, me) = try world()
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].levels[.archive] = 0
+        XCTAssertTrue(CompanionLedger(world: state, player: me).studies.isEmpty, "No Archive, no study")
+        state.holds[seat].levels[.archive] = 1
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertNil(ledger.studying)
+        XCTAssertFalse(ledger.studies.isEmpty)
+        assertTaken(ledger.studies, in: state, as: me)
+        for order in ledger.studies {
+            guard case .study(let study) = order.command else { return XCTFail("\(order.title) is no study") }
+            XCTAssertEqual(order.title, "Study \(study.title) I", "Its first grade")
+        }
+        let first = ledger.studies[0]
+        guard case .study(let begun) = first.command else { return XCTFail() }
+        _ = try state.perform(first.command, as: me)
+        let studying = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(studying.studies.isEmpty, "None beside one under way")
+        let watches = try XCTUnwrap(state.houses[me].research.pursuit).watchesLeft
+        XCTAssertEqual(studying.studying, "Studying \(begun.title) I, \(CompanionLedger.watches(watches))")
+        XCTAssertNotEqual(studying, ledger, "The phone's ledger changes with it")
+    }
+
     func testTheHousesWorksAndMustersAreThoseTheRulesTake() throws {
         let (state, me) = try world()
         let ledger = CompanionLedger(world: state, player: me)

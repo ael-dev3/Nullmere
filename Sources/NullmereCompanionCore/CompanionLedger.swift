@@ -109,6 +109,11 @@ public struct CompanionLedger: Equatable, Sendable {
     /// House hasn't helped yet.
     public let helps: [Order]
     public let holds: [Hold]
+    /// The study under way at the House's Archive, and how long it has to go.
+    public let studying: String?
+    /// The studies the House may begin now, its stores able to pay: none
+    /// while one is under way.
+    public let studies: [Order]
     public let stores: [(resource: Resource, amount: Int)]
     /// The alliance, by name, and its Houses, the leader first.
     public let alliance: String?
@@ -124,7 +129,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
-            && a.holds == b.holds
+            && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
     }
@@ -197,6 +202,9 @@ public struct CompanionLedger: Equatable, Sendable {
                         musters: CompanionLedger.musters(at: hold, in: world, player: player),
                         works: CompanionLedger.works(at: hold, in: world, player: player))
         }
+        let pursuit = houses.indices.contains(player) ? houses[player].research.pursuit : nil
+        studying = pursuit.map { "Studying \($0.study.title) \(BuildingKind.numeral($0.grade)), " + CompanionLedger.watches($0.watchesLeft) }
+        studies = CompanionLedger.studies(in: world, player: player)
         let stock = houses.indices.contains(player) ? houses[player].stock : .zero
         stores = Resource.allCases.map { ($0, stock[$0]) }
         let allied = world.alliance(of: player)
@@ -284,6 +292,18 @@ public struct CompanionLedger: Equatable, Sendable {
             world.tierRefusal(of: kind, tier: 1, at: hold, for: player) == nil && stock.covers(world.trainingCost(of: kind, tier: 1, for: player))
         }.map { kind in
             Order(title: "Muster \(kind.title) I", command: .train(hold: hold.id, kind: kind, tier: 1))
+        }
+    }
+
+    /// The studies a House may begin now, each at its next grade, as the
+    /// rules would take it: none while one is under way, each its Archive
+    /// high enough for, its studies before it learned and its stores able
+    /// to pay.
+    static func studies(in world: GameState, player: Int) -> [Order] {
+        guard world.houses.indices.contains(player) else { return [] }
+        let research = world.houses[player].research
+        return Study.allCases.filter { world.studyRefusal(of: $0, for: player) == nil }.map { study in
+            Order(title: "Study \(study.title) \(BuildingKind.numeral(research.grade(of: study) + 1))", command: .study(study))
         }
     }
 
