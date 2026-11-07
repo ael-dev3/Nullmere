@@ -53,6 +53,12 @@ public struct CompanionLedger: Equatable, Sendable {
         public let musters: [Order]
         /// The works it may raise a level now, the House able to pay.
         public let works: [Order]
+        /// Its Infirmary while any lie in its beds, as the Mac tells it:
+        /// "Infirmary, 2 of 4 beds: Spears II · Bows I, healing".
+        public var infirmary: String? = nil
+        /// Healing those still waiting, for what it costs, where the rules
+        /// would pay for it now.
+        public var heal: Order? = nil
     }
 
     /// A line said in the alliance or to the realm.
@@ -357,8 +363,9 @@ public struct CompanionLedger: Equatable, Sendable {
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
-    /// answer, and companies of Houses at war gathered near its holds.
-    public var houseWaiting: Int { envoys.count + gatherings.count }
+    /// answer, companies of Houses at war gathered near its holds, and
+    /// holds with wounded in their beds the House may pay to heal.
+    public var houseWaiting: Int { envoys.count + gatherings.count + holds.filter { $0.heal != nil }.count }
 
     /// What waits on them on the Alliance tab, for its badge: invitations
     /// and Houses asking to join to answer, and allies' work to help.
@@ -464,9 +471,11 @@ public struct CompanionLedger: Equatable, Sendable {
                 work.append("Mustering \(training.kind.title) \(BuildingKind.numeral(training.musteredTier)), "
                     + CompanionLedger.watches(training.watchesLeft))
             }
+            let (infirmary, heal) = CompanionLedger.infirmary(at: hold, in: world, player: player)
             return Hold(id: hold.id, name: hold.name, isSeat: hold.isSeat, work: work,
                         musters: CompanionLedger.musters(at: hold, in: world, player: player),
-                        works: CompanionLedger.works(at: hold, in: world, player: player))
+                        works: CompanionLedger.works(at: hold, in: world, player: player),
+                        infirmary: infirmary, heal: heal)
         }
         let pursuit = houses.indices.contains(player) ? houses[player].research.pursuit : nil
         studying = pursuit.map { "Studying \($0.study.title) \(BuildingKind.numeral($0.grade)), " + CompanionLedger.watches($0.watchesLeft) }
@@ -808,6 +817,16 @@ public struct CompanionLedger: Equatable, Sendable {
             errands.append(opened(ready.map(\.count).joined(separator: " and ") + " ready to use"))
         }
         return errands
+    }
+
+    /// A hold's Infirmary while any lie in its beds, in the Mac's words, and
+    /// the healing of those still waiting where the rules would pay for it.
+    static func infirmary(at hold: NullmereCore.Hold, in world: GameState, player: Int) -> (String?, Order?) {
+        guard let wounded = hold.wounded, !wounded.isEmpty else { return (nil, nil) }
+        let said = "Infirmary, \(wounded.count) of \(hold.beds) beds: \(Wounded.lying(wounded))"
+        let waiting = wounded.filter { !$0.healing }.count
+        guard waiting > 0, world.refusal(of: .heal(hold: hold.id), as: player) == nil else { return (said, nil) }
+        return (said, Order(title: "Heal \(waiting) for \(world.healingCost(at: hold))", command: .heal(hold: hold.id)))
     }
 
     /// The House's labours this watch and its part in the happening, in the

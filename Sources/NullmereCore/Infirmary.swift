@@ -20,6 +20,17 @@ public struct Wounded: Codable, Equatable, Sendable {
     }
 }
 
+extension Wounded {
+    /// Who lies in a hold's beds, each with its tier, and those being
+    /// healed, as the Mac and the phone tell it: "Spears II · Bows I, healing".
+    public static func lying(_ wounded: [Wounded]) -> String {
+        wounded.map { company in
+            let tier = company.kind.hasTiers ? " \(BuildingKind.numeral(company.tier))" : ""
+            return company.kind.title + tier + (company.healing ? ", healing" : "")
+        }.joined(separator: " · ")
+    }
+}
+
 extension GameState {
     /// What healing a company costs, in percent of what mustering it anew
     /// would.

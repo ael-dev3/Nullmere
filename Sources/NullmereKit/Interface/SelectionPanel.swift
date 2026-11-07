@@ -292,13 +292,9 @@ struct InfirmaryRows: View {
         }
     }
 
-    /// Who lies in the beds, each with its tier, and those being healed.
-    static func lying(_ wounded: [Wounded]) -> String {
-        wounded.map { company in
-            let tier = company.kind.hasTiers ? " \(Narration.roman(company.tier))" : ""
-            return company.kind.title + tier + (company.healing ? ", healing" : "")
-        }.joined(separator: " · ")
-    }
+    /// Who lies in the beds, each with its tier, and those being healed,
+    /// in the words the phone tells it in too.
+    static func lying(_ wounded: [Wounded]) -> String { Wounded.lying(wounded) }
 }
 
 private struct ProgressLine: View {

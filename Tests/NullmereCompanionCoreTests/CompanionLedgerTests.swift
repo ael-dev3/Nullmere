@@ -193,6 +193,42 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(CompanionLedger(world: state, player: me).course.standing, "Your points: 14, every mark passed, second of 2 with points")
     }
 
+    /// The Infirmary on the phone, in the Mac's words: nothing while none lie
+    /// in a hold's beds; those carried in told, and their healing offered for
+    /// what it costs, one the rules take; paid for, told healing and offered
+    /// no more; one more carried in with the stores gone, told, not offered.
+    func testThePhoneHealsTheWoundedInTheInfirmary() throws {
+        var (state, me) = try world()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let index = try XCTUnwrap(state.holdIndex(seat.id))
+        func hold() throws -> CompanionLedger.Hold {
+            try XCTUnwrap(CompanionLedger(world: state, player: me).holds.first { $0.id == seat.id })
+        }
+        XCTAssertNil(try hold().infirmary, "None in its beds")
+        XCTAssertNil(try hold().heal)
+
+        state.holds[index].levels[.infirmary] = 2
+        state.holds[index].wounded = [Wounded(kind: .spear, tier: 2, experience: 3, since: state.watch),
+                                      Wounded(kind: .bow, tier: 1, experience: 0, since: state.watch)]
+        let beds = state.holds[index].beds
+        XCTAssertEqual(try hold().infirmary, "Infirmary, 2 of \(beds) beds: Spears II · Bows I")
+        let heal = try XCTUnwrap(try hold().heal)
+        XCTAssertEqual(heal.title, "Heal 2 for \(state.healingCost(at: state.holds[index]))")
+        XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 1, "The House tab's badge: wounded to heal")
+        assertTaken([heal], in: state, as: me)
+        _ = try state.perform(heal.command, as: me)
+        XCTAssertEqual(try hold().infirmary, "Infirmary, 2 of \(beds) beds: Spears II, healing · Bows I, healing")
+        XCTAssertNil(try hold().heal, "Paid for, none left waiting")
+        XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 0)
+
+        let carried = Wounded(kind: .rider, tier: 1, experience: 0, since: state.watch)
+        state.holds[index].wounded?.append(carried)
+        state.houses[me].stock = Stock()
+        XCTAssertEqual(try hold().infirmary, "Infirmary, 3 of \(beds) beds: Spears II, healing · Bows I, healing · Riders I")
+        XCTAssertNil(try hold().heal, "The stores can't pay for it")
+        XCTAssertNotNil(state.refusal(of: .heal(hold: seat.id), as: me), "Nor would the rules take it")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

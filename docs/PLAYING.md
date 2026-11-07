@@ -238,8 +238,8 @@ it is told at once (a chest's contents, a venture's end), stays a few
 seconds at the foot of whichever tab the keeper is on, wherever they have
 scrolled to give it; an order still unanswered when the phone is set
 aside is said to have been. The House, Army and Alliance tabs carry a
-count of what waits on the keeper there: envoys to answer and foes
-gathered near the House's holds; commanders with a talent to learn and
+count of what waits on the keeper there: envoys to answer, foes gathered
+near the House's holds and wounded it may heal; commanders with a talent to learn and
 the watch's venture up the Spine not yet made; invitations and Houses
 asking to join to answer, and allies' work to help.
 
@@ -264,9 +264,11 @@ asking to join to answer, and allies' work to help.
   pedlar lying off a hold and how many of his wares the House may buy, its
   keys to spend at the Inn and a word before a silver one is lost, the
   items it may use now); its holds,
-  each with what it raises and musters and how long each has to go, and
-  Raise and Muster: the works it may raise a level and the companies it
-  may muster at the first tier now, the House able to pay; While you are
+  each with what it raises and musters and how long each has to go, its
+  Infirmary while any lie in its beds (who lies there, and those being
+  healed) with Heal for half what mustering them anew costs, and Raise and
+  Muster: the works it may raise a level and the companies it may muster
+  at the first tier now, the House able to pay; While you are
   away, the caretaker's standing orders as they stand, with Muster (the one
   kind of company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace

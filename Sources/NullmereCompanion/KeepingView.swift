@@ -1112,8 +1112,21 @@ struct HoldRows: View {
                     .font(Night.small)
                     .foregroundStyle(Night.ink.opacity(0.5))
             }
+            // Its Infirmary, while any lie in its beds.
+            if let infirmary = hold.infirmary {
+                Text(verbatim: infirmary)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .accessibilityElement(children: .combine)
+        if let heal = hold.heal {
+            Button(heal.title) { session.give(heal.command, told: "\(heal.title) at \(hold.name)") }
+                .buttonStyle(.bordered)
+                .font(Night.small)
+                .accessibilityLabel("\(heal.title) at \(hold.name)")
+        }
         if !hold.works.isEmpty || !hold.musters.isEmpty {
             HStack(spacing: 10) {
                 OrdersMenu(title: "Raise", orders: hold.works, label: "Raise a work at \(hold.name)") { order in
