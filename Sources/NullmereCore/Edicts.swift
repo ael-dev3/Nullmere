@@ -27,6 +27,10 @@ public enum EdictKind: String, Codable, CaseIterable, Sendable, PlainCases {
     /// Its name at the head of a line.
     public var heading: String { title.prefix(1).uppercased() + title.dropFirst() }
 
+    /// What it forbids, as a sentence: "No House strikes Founders or
+    /// Lanterns."
+    public var lawSaid: String { law.prefix(1).uppercased() + law.dropFirst() + "." }
+
     /// What it forbids, as the realm reads it out.
     public var law: String {
         switch self {
@@ -142,6 +146,38 @@ extension GameState {
     /// The might for an edict and against it, as its votes stand.
     public func tally(of edict: Edict) -> (aye: Int, nay: Int) {
         (edict.ayes.reduce(0) { $0 + might(of: $1) }, edict.nays.reduce(0) { $0 + might(of: $1) })
+    }
+
+    /// An edict holding the realm, in a line, as the Mac and the phone tell
+    /// it: how long, what it forbids, and how often it was broken.
+    public func inForceSaid(_ edict: Edict) -> String {
+        let left = watchesLeft(of: edict), broken = edict.breaches.count
+        let holds = left <= 1 ? "holds this last watch" : "holds \(left) more watches"
+        let breaches = broken == 0 ? "" : broken == 1 ? " Broken once." : " Broken \(broken) times."
+        return "\(edict.kind.heading) \(holds): \(edict.kind.law).\(breaches)"
+    }
+
+    /// The vote on an edict as it stands: the Houses and their might on
+    /// each side, and when it closes.
+    public func tallySaid(_ edict: Edict) -> String {
+        let (aye, nay) = tally(of: edict)
+        let left = watchesToVote(on: edict)
+        let closes = left <= 1 ? "the vote closes as the watch turns" : "\(left) watches to vote"
+        return "Aye \(edict.ayes.count), might \(GameState.counted(aye)) · Nay \(edict.nays.count), might \(GameState.counted(nay)) · \(closes)"
+    }
+
+    /// The edict before the realm, as `house` is told it: who put it, and
+    /// what it would forbid.
+    public func beforeTheRealmSaid(_ edict: Edict, to house: Int) -> String {
+        let by = houses.indices.contains(edict.proposer) ? (edict.proposer == house ? "your House" : houses[edict.proposer].title) : "a House"
+        return "Before the realm, put by \(by): \(edict.kind.title), \(edict.kind.law)."
+    }
+
+    /// How `house` voted on an edict, if it has: "Your House votes aye."
+    public func voteSaid(on edict: Edict, by house: Int) -> String? {
+        if edict.ayes.contains(house) { return "Your House votes aye." }
+        if edict.nays.contains(house) { return "Your House votes nay." }
+        return nil
     }
 
     /// How many times a House broke the realm's edicts this age.

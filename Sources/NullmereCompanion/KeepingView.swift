@@ -648,6 +648,14 @@ struct AllianceTab: View {
                                 .foregroundStyle(Night.ink.opacity(0.75))
                         }
                     }
+                    // The realm's law, as the Mac's Houses tell it: the edict
+                    // before the realm and the House's vote, those holding it,
+                    // and, folded, the edicts the House may put.
+                    if !ledger.law.isEmpty {
+                        Section("The realm's law") {
+                            LawRows(session: session, law: ledger.law)
+                        }
+                    }
                     if !ledger.invitations.isEmpty || !ledger.requests.isEmpty {
                         Section("Awaiting your answer") {
                             ForEach(ledger.invitations + ledger.requests) { answer in
@@ -1180,6 +1188,83 @@ struct CommanderOrders: View {
                 .buttonStyle(.bordered)
                 .font(Night.small)
                 .accessibilityLabel("Ransom \(commander.name) home, for \(ransom.title.replacingOccurrences(of: "Ransom for ", with: ""))")
+        }
+    }
+}
+
+/// The realm's law, as the Mac's Houses tell it: the edict before the
+/// realm, its tally and the House's vote, or Aye and Nay while it may vote;
+/// the edicts holding the realm; and, folded until asked for, the edicts the
+/// House may put, each with what it would forbid and its cost.
+struct LawRows: View {
+    let session: CompanionSession
+    let law: CompanionLedger.Law
+
+    /// Aye or Nay, as a vote's button says it.
+    static func label(of vote: CompanionLedger.Order) -> String {
+        if case .voteEdict(_, let aye) = vote.command { return aye ? "Aye" : "Nay" }
+        return vote.title
+    }
+
+    var body: some View {
+        if let before = law.before {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: before)
+                    .font(Night.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let tally = law.tally {
+                    Text(verbatim: tally)
+                        .font(Night.small.monospacedDigit())
+                        .foregroundStyle(Night.ink.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let voted = law.voted {
+                    Text(verbatim: voted)
+                        .font(Night.small)
+                        .foregroundStyle(Night.moon)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            if !law.votes.isEmpty {
+                HStack(spacing: 10) {
+                    ForEach(law.votes) { vote in
+                        Button(LawRows.label(of: vote)) { session.give(vote.command, told: vote.title) }
+                            .accessibilityLabel(vote.title)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .font(Night.small)
+            }
+        }
+        ForEach(law.inForce, id: \.self) { line in
+            Text(verbatim: line)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if law.before == nil && law.inForce.isEmpty {
+            Text(verbatim: CompanionLedger.Law.none)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.6))
+        }
+        if !law.proposals.isEmpty {
+            DisclosureGroup("Put an edict to the realm") {
+                ForEach(law.proposals) { proposal in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(verbatim: proposal.heading)
+                            .font(Night.body)
+                        Text(verbatim: proposal.law)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.7))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(proposal.order.title) { session.give(proposal.order.command, told: proposal.order.title) }
+                            .buttonStyle(.bordered)
+                            .font(Night.small)
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+            .font(Night.small)
         }
     }
 }

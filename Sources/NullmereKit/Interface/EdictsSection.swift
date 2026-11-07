@@ -13,22 +13,14 @@ struct EdictsSection: View {
     @AppStorage(EdictsSection.proposingKey) private var proposing = false
     static let proposingKey = "edicts.open"
 
-    /// An edict holding the realm, in a line: how long, what it forbids,
-    /// and how often it was broken.
+    /// An edict holding the realm, in a line, in the rules' words.
     static func inForce(_ edict: Edict, in state: GameState) -> String {
-        let left = state.watchesLeft(of: edict), broken = edict.breaches.count
-        let holds = left <= 1 ? "holds this last watch" : "holds \(left) more watches"
-        let breaches = broken == 0 ? "" : broken == 1 ? " Broken once." : " Broken \(broken) times."
-        return "\(edict.kind.heading) \(holds): \(edict.kind.law).\(breaches)"
+        state.inForceSaid(edict)
     }
 
-    /// The vote on an edict as it stands: the Houses and their might on
-    /// each side, and when it closes.
+    /// The vote on an edict as it stands, in the rules' words.
     static func tally(_ edict: Edict, in state: GameState) -> String {
-        let (aye, nay) = state.tally(of: edict)
-        let left = state.watchesToVote(on: edict)
-        let closes = left <= 1 ? "the vote closes as the watch turns" : "\(left) watches to vote"
-        return "Aye \(edict.ayes.count), might \(GameState.counted(aye)) · Nay \(edict.nays.count), might \(GameState.counted(nay)) · \(closes)"
+        state.tallySaid(edict)
     }
 
     var body: some View {
@@ -71,9 +63,8 @@ private struct EdictVote: View {
 
     var body: some View {
         let state = session.state, me = session.player
-        let by = state.houses.indices.contains(edict.proposer) ? (edict.proposer == me ? "your House" : state.houses[edict.proposer].title) : "a House"
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "Before the realm, put by \(by): \(edict.kind.title), \(edict.kind.law).")
+            Text(verbatim: state.beforeTheRealmSaid(edict, to: me))
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -81,8 +72,8 @@ private struct EdictVote: View {
                 .font(.nm(10).monospacedDigit())
                 .foregroundStyle(Palette.text(0.55))
                 .fixedSize(horizontal: false, vertical: true)
-            if edict.ayes.contains(me) || edict.nays.contains(me) {
-                Text(verbatim: "Your House votes \(edict.ayes.contains(me) ? "aye" : "nay").")
+            if let voted = state.voteSaid(on: edict, by: me) {
+                Text(verbatim: voted)
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.55))
             } else {
@@ -113,7 +104,7 @@ private struct EdictOffer: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Caps(kind.heading, size: 9, weight: .medium).foregroundStyle(Palette.text(0.85))
-                Text(verbatim: "\(kind.law.prefix(1).uppercased())\(kind.law.dropFirst()).")
+                Text(verbatim: kind.lawSaid)
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)

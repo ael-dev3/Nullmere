@@ -414,6 +414,64 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(CompanionLedger(world: state, player: me).commanders.first { $0.id == mine.id }?.ransom)
     }
 
+    /// The realm's law from the phone, in the Mac's words: nothing to tell
+    /// while the House may put no edict and none is before the realm; with
+    /// two holds, each edict offered for its cost and taken by the rules;
+    /// one another keeper put, told before the realm with its tally, Aye
+    /// and Nay offered and taken and the Alliance tab counting the vote to
+    /// cast, none to put meanwhile; voted, the House's vote told and
+    /// offered no more; passed, holding the realm in its line.
+    func testThePhonePutsAndVotesOnTheRealmsLaw() throws {
+        var (state, me) = try world()
+        for house in state.houses.indices where !state.houses[house].isPlayer { state.houses[house].temperament = .wary }
+        XCTAssertTrue(CompanionLedger(world: state, player: me).law.isEmpty, "One hold: nothing to tell, nothing to put")
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let ground = try XCTUnwrap(seat.position.spiral(4).dropFirst(7).first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && !state.isOccupied(hex) && state.hold(at: hex) == nil
+        })
+        state.holds.append(Hold(id: state.takeID(), name: "Second", owner: me, position: ground, isSeat: false, foundedWatch: 1))
+        var law = CompanionLedger(world: state, player: me).law
+        XCTAssertNil(law.before)
+        XCTAssertTrue(law.inForce.isEmpty)
+        XCTAssertEqual(law.proposals.map(\.heading), EdictKind.allCases.map(\.heading))
+        XCTAssertEqual(law.proposals.map(\.law), EdictKind.allCases.map(\.lawSaid))
+        XCTAssertEqual(law.proposals.first?.order.title, "Put \(EdictKind.allCases[0].title) to the realm, for \(GameState.edictCost)")
+        assertTaken(law.proposals.map(\.order), in: state, as: me)
+        let waitingBefore = CompanionLedger(world: state, player: me).allianceWaiting
+
+        // Another keeper puts Safe Conduct to the realm.
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        state.houses[other].isPlayer = true
+        state.edicts = [Edict(id: state.takeID(), kind: .safeConduct, proposer: other, proposed: state.watch, ayes: [other])]
+        let edict = try XCTUnwrap(state.edictInVote)
+        var ledger = CompanionLedger(world: state, player: me)
+        law = ledger.law
+        XCTAssertEqual(law.before, "Before the realm, put by \(state.houses[other].title): Safe Conduct, \(EdictKind.safeConduct.law).")
+        XCTAssertEqual(law.tally, state.tallySaid(edict))
+        XCTAssertNil(law.voted)
+        XCTAssertEqual(law.votes.map(\.title), ["Vote aye on Safe Conduct", "Vote nay on Safe Conduct"])
+        assertTaken(law.votes, in: state, as: me)
+        XCTAssertTrue(law.proposals.isEmpty, "None may be put while one is before the realm")
+        XCTAssertEqual(ledger.allianceWaiting, waitingBefore + 1, "A vote to cast")
+
+        // Voted aye: told, and offered no more.
+        _ = try state.perform(law.votes[0].command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.law.voted, "Your House votes aye.")
+        XCTAssertTrue(ledger.law.votes.isEmpty)
+        XCTAssertEqual(ledger.allianceWaiting, waitingBefore)
+
+        // The vote closes and the edict passes: it holds the realm.
+        for _ in 0..<GameState.edictVote { _ = state.endWatch() }
+        let held = try XCTUnwrap(state.edictsInForce.first)
+        law = CompanionLedger(world: state, player: me).law
+        XCTAssertNil(law.before)
+        XCTAssertEqual(law.inForce, [state.inForceSaid(held)])
+        XCTAssertTrue(law.inForce[0].hasPrefix("Safe Conduct holds"), law.inForce[0])
+        XCTAssertFalse(law.proposals.contains { $0.heading == EdictKind.safeConduct.heading }, "Not put again while it holds")
+        XCTAssertEqual(EdictKind.safeConduct.lawSaid, "No House strikes Founders or Lanterns.")
+    }
+
     /// The caretaker's standing orders on the phone: told as they stand,
     /// every order offered one the rules take; given, told so and offered no
     /// more, the other way offered; cleared, the House kept as it sees fit.

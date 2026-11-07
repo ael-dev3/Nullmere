@@ -100,6 +100,41 @@ public struct CompanionLedger: Equatable, Sendable {
         public var ransom: Order? = nil
     }
 
+    /// The realm's law, as the Mac's Houses tell it: the edict before the
+    /// realm, its tally, and the House's vote, or Aye and Nay where the
+    /// rules would take its vote now; the edicts holding the realm; and
+    /// the edicts the House may put to it now, each for its cost.
+    public struct Law: Equatable, Sendable {
+        /// An edict the House may put to the realm now.
+        public struct Proposal: Equatable, Identifiable, Sendable {
+            public var id: String { heading }
+            /// "The Moon's Peace".
+            public let heading: String
+            /// What it would forbid, as a sentence.
+            public let law: String
+            public let order: Order
+        }
+
+        /// The edict before the realm, as the House is told it, and the vote
+        /// on it as it stands.
+        public let before: String?
+        public let tally: String?
+        /// How the House voted on it, once it has.
+        public let voted: String?
+        /// Aye and Nay, while the House may vote.
+        public let votes: [Order]
+        /// The edicts holding the realm, each in a line.
+        public let inForce: [String]
+        public let proposals: [Proposal]
+
+        /// Said when no edict is before the realm or holds it.
+        public static let none = "No edict holds the realm."
+
+        /// Whether there is anything to tell or do: an edict before the
+        /// realm or holding it, or one the House may put.
+        public var isEmpty: Bool { before == nil && inForce.isEmpty && proposals.isEmpty }
+    }
+
     /// A commander of another House the House holds prisoner, as the Mac's
     /// Commanders list them: whose, how long until they slip away, the last
     /// true thing they told, and what the rules would let the House do with
@@ -287,6 +322,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let commanders: [Commander]
     /// The commanders of other Houses the House holds prisoner.
     public let prisoners: [Prisoner]
+    /// The realm's law, and the House's say in it.
+    public let law: Law
     /// Help for each ally with works, musters or study under way the
     /// House hasn't helped yet.
     public let helps: [Order]
@@ -396,7 +433,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
-            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.helps == b.helps
+            && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
@@ -418,7 +455,7 @@ public struct CompanionLedger: Equatable, Sendable {
 
     /// What waits on them on the Alliance tab, for its badge: invitations
     /// and Houses asking to join to answer, and allies' work to help.
-    public var allianceWaiting: Int { invitations.count + requests.count + helps.count }
+    public var allianceWaiting: Int { invitations.count + requests.count + helps.count + (law.votes.isEmpty ? 0 : 1) }
 
     /// What waits on them on the Army tab, for its badge: commanders with a
     /// talent to learn, and the watch's venture up the Spine not yet made.
@@ -431,6 +468,25 @@ public struct CompanionLedger: Equatable, Sendable {
         var stock = Stock()
         for store in stores { stock[store.resource] = store.amount }
         return stock
+    }
+
+    /// The realm's law as `player`'s House is told it, and the orders the
+    /// rules would take for it now: a vote on the edict before the realm,
+    /// and each edict it may put, for its cost.
+    static func law(in world: GameState, player: Int) -> Law {
+        let open = world.edictInVote
+        let votes: [Order] = open.map { edict in
+            guard world.voteRefusal(on: edict.id, as: player) == nil else { return [] }
+            return [Order(title: "Vote aye on \(edict.kind.title)", command: .voteEdict(edict: edict.id, aye: true)),
+                    Order(title: "Vote nay on \(edict.kind.title)", command: .voteEdict(edict: edict.id, aye: false))]
+        } ?? []
+        let proposals = EdictKind.allCases.filter { world.edictRefusal($0, as: player) == nil }.map { kind in
+            Law.Proposal(heading: kind.heading, law: kind.lawSaid,
+                         order: Order(title: "Put \(kind.title) to the realm, for \(GameState.edictCost)", command: .proposeEdict(kind: kind)))
+        }
+        return Law(before: open.map { world.beforeTheRealmSaid($0, to: player) }, tally: open.map { world.tallySaid($0) },
+                   voted: open.flatMap { world.voteSaid(on: $0, by: player) }, votes: votes,
+                   inForce: world.edictsInForce.map { world.inForceSaid($0) }, proposals: proposals)
     }
 
     /// The ledger of `player`'s House in their view of the world.
@@ -517,6 +573,7 @@ public struct CompanionLedger: Equatable, Sendable {
                              home: riding ? Order(title: "Ride home", command: .unassign(commander: id)) : nil,
                              talents: talents, gear: gear, ransom: ransom)
         }
+        law = CompanionLedger.law(in: world, player: player)
         prisoners = world.prisoners(heldBy: player).sorted { $0.id < $1.id }.compactMap { prisoner in
             guard let captive = prisoner.captive else { return nil }
             let question = world.questionRefusal(prisoner.id, as: player) == nil

@@ -242,7 +242,8 @@ what waits on the keeper there: envoys to answer, foes gathered near the
 House's holds, wounded it may heal and the Lyceum sitting; commanders with
 a talent to learn, the watch's venture up the Spine not yet made and
 prisoners to question;
-invitations and Houses asking to join to answer, and allies' work to help.
+invitations and Houses asking to join to answer, allies' work to help, and
+a vote on the realm's law to cast.
 
 - **While you were away.** Coming in again after the phone was set aside,
   what happened to the House meanwhile, as the Mac tells a keeper come back
@@ -376,7 +377,13 @@ invitations and Houses asking to join to answer, and allies' work to help.
   for each ally with works, musters or study under way the House hasn't
   helped yet, and Help all where there are several; what was said in it lately, and to the whole realm, the
   latest three of each open and the earlier folded beneath them; and a
-  line to say to either. What waits on the keeper's answer, as the Mac's
+  line to say to either. The realm's law, as the Mac's Houses tell it: the
+  edict before the realm, who put it and what it would forbid, the vote as
+  it stands (the Houses and their might for and against, and when it
+  closes) and the House's vote, or Aye and Nay while it may cast one; the
+  edicts holding the realm and for how long; and, folded until asked for,
+  the edicts the House may put to it now, each with what it would forbid
+  and its cost. What waits on the keeper's answer, as the Mac's
   Alliance panel tells it: an alliance's invitation, to join or decline
   (no joining one that is full, or holds a House at war with the
   keeper's), and for its leader, each House asking to join, to admit or
