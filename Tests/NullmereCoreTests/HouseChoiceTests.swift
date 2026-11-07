@@ -124,5 +124,9 @@ final class HouseChoiceTests: XCTestCase {
         XCTAssertEqual(state.houseChoice(by: me, matching: " House ", excluding: [me]), state.houseChoice(by: me, excluding: [me]))
         XCTAssertNil(HouseChoice.foundLine(state.houseChoice(by: me, excluding: [me]), query: ""))
         XCTAssertEqual(HouseChoice.folded("Housewright"), "housewright", "A name that begins with the word is looked for whole")
+        XCTAssertTrue(HouseChoice.isNamed("Ilsen", by: "house ILS"))
+        XCTAssertTrue(HouseChoice.isNamed("Ilsen", by: " "), "Nothing looked for: any name")
+        XCTAssertFalse(HouseChoice.isNamed("Ilsen", by: "Brannoc"))
+        XCTAssertTrue(HouseChoice.isNamed("Érendal", by: "erendal"), "Accents aside")
     }
 }

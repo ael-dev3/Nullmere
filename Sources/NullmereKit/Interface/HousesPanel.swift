@@ -14,6 +14,15 @@ struct HousesPanel: View {
     /// The House opened to what may be said to it: one at a time, the rest
     /// each a line.
     @State private var open: Int?
+    /// A name looked for among a wide realm's Houses.
+    @State private var looking: String
+
+    /// The panel, with a name already looked for among a wide realm's
+    /// Houses if one is given.
+    init(session: GameSession, looking: String = "") {
+        self.session = session
+        _looking = State(initialValue: looking)
+    }
 
     var body: some View {
         let state = session.state
@@ -30,9 +39,22 @@ struct HousesPanel: View {
                     Rule(opacity: 0.18)
                     let others = state.houses.filter { $0.id != session.player }
                     if others.count > Standing.shownWhole {
-                        // A realm of a thousand Houses: each laid out as it
-                        // scrolls into view, not every one as the panel opens.
-                        LazyVStack(alignment: .leading, spacing: 14) { rows(others) }
+                        // A realm of a thousand Houses: found by name, each laid
+                        // out as it scrolls into view, not every one as the
+                        // panel opens.
+                        TextField("Find a House by its name", text: $looking)
+                            .textFieldStyle(.plain)
+                            .font(.nm(11))
+                            .foregroundStyle(Palette.ink)
+                            .overlay(alignment: .bottom) { Rule(opacity: 0.5) }
+                            .accessibilityLabel("Find a House by its name")
+                        let found = others.filter { HouseChoice.isNamed($0.name, by: looking) }
+                        if found.isEmpty {
+                            Text(verbatim: "No House goes by such a name.")
+                                .font(.nm(10))
+                                .foregroundStyle(Palette.text(0.55))
+                        }
+                        LazyVStack(alignment: .leading, spacing: 14) { rows(found) }
                     } else {
                         rows(others)
                     }

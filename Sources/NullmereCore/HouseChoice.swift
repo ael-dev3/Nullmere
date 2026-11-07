@@ -37,6 +37,14 @@ public struct HouseChoice: Equatable, Sendable {
         return nil
     }
 
+    /// Whether a House goes by a name looked for: its name holds it,
+    /// whatever their case and accents and "House" before it; any name, if
+    /// nothing is looked for.
+    public static func isNamed(_ name: String, by query: String) -> Bool {
+        let wanted = folded(query)
+        return wanted.isEmpty || folded(name).contains(wanted)
+    }
+
     /// A name as it is looked for: whatever its case and accents, without
     /// the spaces about it, and without "House" before it, since every
     /// House's name is looked for after it.
@@ -80,7 +88,7 @@ extension GameState {
 
         let wanted = HouseChoice.folded(query)
         if !wanted.isEmpty {
-            let named = nearestFirst.filter { HouseChoice.folded(houses[$0].name).contains(wanted) }
+            let named = nearestFirst.filter { HouseChoice.isNamed(houses[$0].name, by: query) }
             return HouseChoice(offered: named.prefix(HouseChoice.found).map { houses[$0] }, searchable: true,
                                more: max(0, named.count - HouseChoice.found))
         }

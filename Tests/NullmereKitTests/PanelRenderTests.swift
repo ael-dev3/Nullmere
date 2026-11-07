@@ -104,6 +104,11 @@ final class PanelRenderTests: XCTestCase {
         XCTAssertEqual(shown.count, Standing.leaders + (leading ? 0 : 1), "Its leaders and the keeper's own place")
         XCTAssertEqual(RaceTable.more(session.standings.count - shown.count), "\(128 - shown.count) more Houses, further from winning")
         try draw(HousesPanel(session: session), width: 360, height: 900)
+        // A House found by its name among them, or none.
+        let far = try XCTUnwrap(state.houses.last)
+        try draw(HousesPanel(session: session, looking: "house \(far.name.lowercased())"), width: 360, height: 900)
+        try draw(HousesPanel(session: session, looking: "Qqx"), width: 360, height: 900)
+        XCTAssertEqual(state.houses.filter { $0.id != session.player && HouseChoice.isNamed($0.name, by: "Qqx") }.count, 0)
         try draw(RaceTable(session: session), width: 360)
         // The story of the age: the dozen holding most and the keeper's own, not a line for each House.
         let told = StoryChart.told(in: state, player: session.player)
