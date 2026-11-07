@@ -173,8 +173,10 @@ full screen at launch as chosen.
   nearest their seat first (their neighbours, the dozen nearest; their
   alliance, liege and vassals; every House they have dealt with; and the
   race's dozen leaders), and finds any other by its name, two dozen at a
-  time; and a letter, where more than ninety-six keepers might read it, is
-  written to one of the keepers chosen so. Seats no keeper holds are played by stewards, the same minds that
+  time; a letter, where more than ninety-six keepers might read it, is
+  written to one of the keepers chosen so, and an alliance's leader
+  invites so; and the story of the age, as it ends, follows the dozen
+  Houses holding most and the keeper's own. Seats no keeper holds are played by stewards, the same minds that
   once played rivals, until a keeper claims them. When every seat is
   held, a newcomer waits at the front door and steps in the moment one
   falls free. A seat whose keeper has been away a week goes back to the
