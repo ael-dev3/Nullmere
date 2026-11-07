@@ -116,14 +116,14 @@ struct RealmPanel: View {
                         .foregroundStyle(shrine.holder.map { state.areAllied($0, session.player) || $0 == session.player } == true
                                          ? Palette.glowWords : Palette.text(0.6))
                 }
-                Text(verbatim: "\(shrine.kind.effect); \(state.placeName(of: shrine.position))")
+                Text(verbatim: state.shrineSaid(shrine))
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
         }
-        Text(verbatim: "A company of war standing on a holy site as the watch turns, with no foe beside it, takes it for its House and alliance.")
+        Text(verbatim: GameState.shrineTakenSaid)
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.55))
             .fixedSize(horizontal: false, vertical: true)
@@ -241,9 +241,7 @@ struct RealmPanel: View {
 
     /// Who holds a holy site, as the panel says it.
     static func held(_ shrine: Shrine, in state: GameState, player: Int) -> String {
-        guard let holder = shrine.holder, state.houses.indices.contains(holder) else { return "Held by none" }
-        if holder == player { return "Yours" }
-        return "Held by \(state.houses[holder].title)"
+        state.shrineHolderSaid(shrine, to: player)
     }
 
     /// The keeper's favour: its level, what they have won, and what the

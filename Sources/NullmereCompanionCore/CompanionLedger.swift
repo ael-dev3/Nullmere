@@ -377,6 +377,17 @@ public struct CompanionLedger: Equatable, Sendable {
         public let standAgainst: Order?
     }
 
+    /// A holy site the House has found, as the Mac's Realm panel tells it:
+    /// who holds it, and what it gives and where.
+    public struct HolySite: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let title: String
+        public let held: String
+        public let said: String
+        /// Held by the House or an ally.
+        public let isFriendly: Bool
+    }
+
     /// The titles of the Spire, as the Mac's Realm panel tells them: who
     /// names them, each borne and by which House, and whether the House
     /// names them itself.
@@ -561,7 +572,7 @@ public struct CompanionLedger: Equatable, Sendable {
     /// tell the House, or the House may foretell, so the way to their page
     /// is offered.
     public var hasRealmMatters: Bool {
-        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || !whispers.isEmpty || titles.shown || mayForetell
+        !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || !whispers.isEmpty || titles.shown || !holySites.isEmpty || mayForetell
     }
 
     /// What waits on the House among the realm's law, oaths and auguries,
@@ -661,6 +672,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let whispers: [Heard]
     /// The titles of the Spire.
     public let titles: Titles
+    /// The holy sites the House has found.
+    public let holySites: [HolySite]
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -721,7 +734,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
-            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers && a.titles == b.titles
+            && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers && a.titles == b.titles && a.holySites == b.holySites
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -1083,6 +1096,10 @@ public struct CompanionLedger: Equatable, Sendable {
                                                command: .stake(prophecy: prophecy.id, backs: true, moonsalt: stake)) : nil,
                             standAgainst: open ? Order(title: "Stand against it with \(stake) moonsalt",
                                                        command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
+        }
+        holySites = world.holySites.map { shrine in
+            HolySite(id: shrine.id, title: shrine.title, held: world.shrineHolderSaid(shrine, to: player), said: world.shrineSaid(shrine),
+                     isFriendly: shrine.holder.map { $0 == player || world.areAllied($0, player) } == true)
         }
         titles = Titles(giver: world.titleGiverSaid(to: player),
                         borne: world.titlesBorne.map { borne in

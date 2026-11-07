@@ -75,6 +75,24 @@ public struct Shrine: Codable, Equatable, Identifiable, Sendable {
 }
 
 extension GameState {
+    /// Who holds a holy site, as the Mac's Realm panel and the phone say it
+    /// to a House.
+    public func shrineHolderSaid(_ shrine: Shrine, to house: Int) -> String {
+        guard let holder = shrine.holder, houses.indices.contains(holder) else { return "Held by none" }
+        if holder == house { return "Yours" }
+        return "Held by \(houses[holder].title)"
+    }
+
+    /// What a holy site gives its holders, and where it lies.
+    public func shrineSaid(_ shrine: Shrine) -> String {
+        "\(shrine.kind.effect); \(placeName(of: shrine.position))"
+    }
+
+    /// How a holy site is taken, said beneath them on the Mac and the phone.
+    public static let shrineTakenSaid = "A company of war standing on a holy site as the watch turns, with no foe beside it, takes it for its House and alliance."
+}
+
+extension GameState {
     /// The fewest tiles from any hold a shrine lies.
     public static let shrinesFromHolds = 5
     /// The fewest tiles between two shrines.

@@ -726,6 +726,12 @@ final class CompanionLedgerTests: XCTestCase {
         })
         state.shrines = (state.shrines ?? []) + [Shrine(id: 99, kind: .brokenSpire, position: ground, holder: me, since: state.watch)]
         var ledger = CompanionLedger(world: state, player: me)
+        // The broken Spire is a holy site the House holds, told as the Mac tells it.
+        let spire = try XCTUnwrap(state.holySites.first { $0.kind == .brokenSpire })
+        let site = try XCTUnwrap(ledger.holySites.first { $0.id == spire.id })
+        XCTAssertEqual(site.held, "Yours")
+        XCTAssertTrue(site.isFriendly)
+        XCTAssertEqual(site.said, "\(spire.kind.effect); \(state.placeName(of: spire.position))")
         XCTAssertTrue(ledger.titles.shown)
         XCTAssertTrue(ledger.titles.mayName)
         XCTAssertEqual(ledger.titles.giver, "Your House holds the broken Spire: you name the realm's titles.")
@@ -744,6 +750,8 @@ final class CompanionLedgerTests: XCTestCase {
         let named = CompanionLedger(world: state, player: others[0]).titles
         XCTAssertEqual(named.borne.first?.house, "Your House")
         XCTAssertFalse(named.mayName)
+        XCTAssertEqual(CompanionLedger(world: state, player: others[0]).holySites.first { $0.id == spire.id }?.held,
+                       "Held by \(state.houses[me].title)")
     }
 
     /// Whispers on the water from the phone, as the Mac's Realm panel makes

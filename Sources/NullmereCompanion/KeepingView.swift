@@ -602,6 +602,33 @@ struct RealmPage: View {
                         }
                     }
                 }
+                // The holy sites the House has found, as the Mac's Realm panel
+                // tells them: who holds each, what it gives and where.
+                if !ledger.holySites.isEmpty {
+                    Section("Holy sites") {
+                        ForEach(ledger.holySites) { site in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(verbatim: site.title)
+                                        .font(Night.small)
+                                    Spacer()
+                                    Text(verbatim: site.held)
+                                        .font(Night.small)
+                                        .foregroundStyle(site.isFriendly ? Night.moon : Night.ink.opacity(0.6))
+                                }
+                                Text(verbatim: site.said)
+                                    .font(Night.small)
+                                    .foregroundStyle(Night.ink.opacity(0.6))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                        Text(verbatim: GameState.shrineTakenSaid)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.55))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 // The titles of the Spire, as the Mac's Realm panel tells them:
                 // who names them, each borne, and, for the House holding the
                 // broken Spire, a House named to a title.

@@ -440,7 +440,10 @@ a vote on the realm's law to cast.
   tried by its Lanterns, or found false and its teller named); and
   Whisper…, one of the House's own about a House nearest it (a host
   gathered at one of its holds, granaries low, walls broken), let loose
-  for 10 moonsalt where the rules take it, or why not. The titles of the
+  for 10 moonsalt where the rules take it, or why not. The holy sites the
+  House has found, as the Mac's Realm panel tells them: who holds each
+  (its own or an ally's lit), what it gives and where, and how one is
+  taken. The titles of the
   Spire, as the Mac's Realm panel tells them, in an age whose broken
   Spire the House has found or while any title is borne: who names them,
   each title borne and by which House, with what it gives or takes; and,
