@@ -741,6 +741,7 @@ jobs:
           # The Frontier play-through's last steps, and its watchdog's word if it stalled.
           grep -h "^PLAY " realm-integration.log 2>/dev/null | tail -8 || true
           # The full realm's figures, or where its crowd stood when it stopped.
+          grep -h "^REALM [0-9]* keepers' clients took every seat" realm-integration.log 2>/dev/null || true
           grep -h "^CROWD " realm-integration.log 2>/dev/null | tail -6 || true
           tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true
           tail -n 10 realm-state/standalone.log 2>/dev/null || true

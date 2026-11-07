@@ -2,10 +2,11 @@ import XCTest
 @testable import NullmereCore
 
 /// How great the stewards' battles grow over whole ages: each age of
-/// twelve seats played to its end, its greatest battle's troops kept.
-/// Run only when NULLMERE_BATTLE_AGES names how many ages to play (and
-/// NULLMERE_BATTLE_FROM, if set, the first age's number): a measure for
-/// the work on battles of hundreds of thousands, not a check on every push.
+/// twelve seats (or NULLMERE_BATTLE_SEATS) played to its end, its greatest
+/// battle's troops kept. Run only when NULLMERE_BATTLE_AGES names how many
+/// ages to play (and NULLMERE_BATTLE_FROM, if set, the first age's number):
+/// a measure for the work on battles of hundreds of thousands, not a check
+/// on every push.
 final class BattleSizeTests: XCTestCase {
     func testTheGreatestBattlesOfWholeAges() throws {
         let environment = ProcessInfo.processInfo.environment
@@ -13,10 +14,11 @@ final class BattleSizeTests: XCTestCase {
             throw XCTSkip("Set NULLMERE_BATTLE_AGES to measure")
         }
         let from = environment["NULLMERE_BATTLE_FROM"].flatMap(Int.init) ?? 1
+        let seats = min(max(environment["NULLMERE_BATTLE_SEATS"].flatMap(Int.init) ?? 12, 2), WorldGenerator.mostHouses)
         var greatest: [Int] = []
         var wins: [String: Int] = [:]
         for age in from..<(from + count) {
-            var world = RealmState.world(seed: "battles of the lake \(age)", age: age, seats: 12, radius: RealmState.radius(forSeats: 12))
+            var world = RealmState.world(seed: "battles of the lake \(age)", age: age, seats: seats, radius: RealmState.radius(forSeats: seats))
             var most = 0
             for _ in 1...400 where world.outcome == nil {
                 var events: [GameEvent] = []
@@ -27,7 +29,8 @@ final class BattleSizeTests: XCTestCase {
             greatest.append(most)
             let winner = world.outcome.map { world.houses[$0.winner].temperament.rawValue } ?? "none"
             wins[winner, default: 0] += 1
-            print("BATTLES age \(age): greatest \(most) troops, ended at watch \(world.watch), won by the \(winner)")
+            let how = world.outcome.map { "by \($0.kind.rawValue)" } ?? "unended"
+            print("BATTLES age \(age) of \(seats) seats: greatest \(most) troops, ended at watch \(world.watch) \(how), won by the \(winner)")
         }
         let sorted = greatest.sorted()
         let median = sorted.count % 2 == 1 ? sorted[sorted.count / 2] : (sorted[sorted.count / 2 - 1] + sorted[sorted.count / 2]) / 2
