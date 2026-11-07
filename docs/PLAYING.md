@@ -316,6 +316,12 @@ been heard from lately.
   House, those whose leaders' seats are nearest first, or Raise a banner
   of the keeper's own naming; its leader may Invite the nearest Houses that
   could join, and any of its Houses Leave it, asked once more first.
+  Studies together: the study the alliance pursues and what is still to
+  give toward its next grade, or that it pursues none, and what it has
+  learned; Give all the grade still needs, or as much of each store it
+  lacks as the House has (a grade paid for is learned at once, and every
+  three hundred given in worth brings the giver a Salt Hourglass); and for
+  its leader, Pursue, the next study at its next grade.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.

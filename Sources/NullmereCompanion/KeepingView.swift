@@ -355,6 +355,27 @@ struct AllianceTab: View {
                             .disabled(!Alliance.isValidName(banner.trimmingCharacters(in: .whitespaces)))
                         }
                     } else {
+                        // The alliance's studies: the one pursued and what
+                        // is still to give, its leader choosing the next.
+                        Section("Studies together") {
+                            ForEach(ledger.allianceLore, id: \.self) { line in
+                                Text(verbatim: line)
+                                    .font(Night.small)
+                                    .foregroundStyle(Night.ink.opacity(0.8))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            if !ledger.allianceGifts.isEmpty || !ledger.pursuits.isEmpty {
+                                HStack(spacing: 10) {
+                                    ListedOrdersMenu(title: "Give", orders: ledger.allianceGifts, label: "Give toward the alliance's study") { order in
+                                        session.give(order.command, told: order.title)
+                                    }
+                                    ListedOrdersMenu(title: "Pursue", orders: ledger.pursuits, label: "Set your alliance to pursue a study") { order in
+                                        session.give(order.command, told: order.title)
+                                    }
+                                }
+                                .font(Night.small)
+                            }
+                        }
                         if !ledger.invites.isEmpty {
                             Section("Invite a House") {
                                 ForEach(ledger.invites) { invite in

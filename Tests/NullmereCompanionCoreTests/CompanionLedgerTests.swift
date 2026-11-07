@@ -107,6 +107,53 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger, "A commander's standing changes the ledger")
     }
 
+    /// The alliance's studies from the phone, as the Mac's Alliance panel
+    /// keeps them: none sworn to no alliance; the leader offered each study
+    /// at its next grade, none given toward before one is pursued; then what
+    /// is still to give, all of it or each store lacking, each gift one the
+    /// rules take; a grade paid for learned at once, the next pursued; a
+    /// House short of every store offered nothing to give.
+    func testTheAlliancesStudiesAreFundedFromThePhone() throws {
+        var (state, me) = try world()
+        let sworn = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(sworn.allianceLore.isEmpty && sworn.pursuits.isEmpty && sworn.allianceGifts.isEmpty, "Sworn to no alliance")
+        _ = try state.perform(.foundAlliance(name: "Studyward"), as: me)
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.allianceLore, ["Your alliance pursues no study."])
+        XCTAssertTrue(ledger.allianceGifts.isEmpty, "Nothing pursued, nothing to give toward")
+        XCTAssertEqual(ledger.pursuits.map(\.title), AllianceStudy.allCases.map { "Pursue \($0.title) I" })
+        assertTaken(ledger.pursuits, in: state, as: me)
+
+        let study = try XCTUnwrap(AllianceStudy.allCases.first)
+        _ = try state.perform(.pursueAllianceStudy(study), as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let cost = study.cost(grade: 1)
+        XCTAssertEqual(ledger.allianceLore, ["Pursuing \(study.title) I: \(cost) still to give"])
+        XCTAssertFalse(ledger.pursuits.contains { $0.command == .pursueAllianceStudy(study) }, "Not the study pursued")
+        let all = try XCTUnwrap(ledger.allianceGifts.first)
+        XCTAssertEqual(all.title, "Give all \(study.title) I still needs: \(cost)")
+        XCTAssertEqual(all.command, .giveToAlliance(cost))
+        let lacking = Resource.allCases.filter { cost[$0] > 0 }
+        XCTAssertEqual(ledger.allianceGifts.count, lacking.count > 1 ? 1 + lacking.count : 1)
+        assertTaken(ledger.allianceGifts, in: state, as: me)
+
+        _ = try state.perform(all.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.allianceLore, ["Pursuing \(study.title) II: \(study.cost(grade: 2)) still to give", "Learned together: \(study.title) I"])
+
+        // Short of every store: nothing offered to give.
+        state.houses[me].stock = .zero
+        XCTAssertTrue(CompanionLedger(world: state, player: me).allianceGifts.isEmpty)
+        // Short of one store: as much of it as the House has.
+        var some = Stock()
+        some[try XCTUnwrap(Resource.allCases.first { study.cost(grade: 2)[$0] > 0 })] = 1
+        state.houses[me].stock = some
+        let little = CompanionLedger(world: state, player: me)
+        XCTAssertFalse(little.allianceGifts.isEmpty)
+        assertTaken(little.allianceGifts, in: state, as: me)
+        XCTAssertNotEqual(little, ledger)
+    }
+
     /// The House's commanders kept from the phone as from the Mac's board,
     /// each order offered one the rules take: a free commander taking up a
     /// company of war by a hold, then riding home; a second sent to ride

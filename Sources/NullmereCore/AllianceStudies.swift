@@ -123,7 +123,7 @@ extension GameState {
     }
 
     /// Why a House can't set its alliance to pursue a study, if it can't.
-    func pursuitRefusal(_ study: AllianceStudy, by house: Int) -> RuleError? {
+    public func pursuitRefusal(_ study: AllianceStudy, by house: Int) -> RuleError? {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard sworn.leader == house else { return .notAllianceLeader }
         let lore = sworn.lore ?? AllianceLore()
@@ -144,7 +144,7 @@ extension GameState {
     }
 
     /// Why a House can't give stores to its alliance's study, if it can't.
-    func allianceGiftRefusal(_ stock: Stock, by house: Int) -> RuleError? {
+    public func allianceGiftRefusal(_ stock: Stock, by house: Int) -> RuleError? {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard sworn.lore?.pursuit != nil else { return .noAllianceStudy }
         guard !stock.isZero, Resource.allCases.allSatisfy({ stock[$0] >= 0 }) else { return .nothingGiven }

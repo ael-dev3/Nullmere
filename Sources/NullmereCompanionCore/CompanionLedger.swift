@@ -179,6 +179,16 @@ public struct CompanionLedger: Equatable, Sendable {
     public let invites: [Order]
     /// The House's alliance to leave, while it is sworn to one.
     public let leave: Order?
+    /// The alliance's studies, as the Mac's Alliance panel tells them: the
+    /// study it pursues and what is still to give toward its next grade, or
+    /// that it pursues none, and what it has learned together.
+    public let allianceLore: [String]
+    /// For the alliance's leader, the studies it may set the alliance to
+    /// pursue, at their next grade.
+    public let pursuits: [Order]
+    /// What the House may give toward the study pursued, from its stores:
+    /// all the grade still needs, or as much of each store it lacks.
+    public let allianceGifts: [Order]
     /// The rallies the House may call now, as the Mac's panels call them:
     /// on the lairs it has found within its rung and the holds it knows of
     /// Houses at war with it, the nearest first, each gathering two watches
@@ -202,6 +212,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave && a.calls == b.calls
+            && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
     }
 
     /// The House's stores as one stock.
@@ -384,6 +395,11 @@ public struct CompanionLedger: Equatable, Sendable {
             .map { Order(title: "Invite \(title($0))", command: .inviteToAlliance(house: $0)) }
         leave = board.alliance.map { Order(title: "Leave \($0.name)", command: .leaveAlliance) }
         calls = CompanionLedger.calls(in: world, player: player, holds: holds)
+        // The alliance's studies, as the Mac's Alliance panel reads them.
+        let studied = CompanionLedger.studies(of: allied, in: world, player: player)
+        allianceLore = studied.lore
+        pursuits = studied.pursuits
+        allianceGifts = studied.gifts
     }
 
     /// The rallies the House may call: none while it is sworn to no
@@ -411,6 +427,48 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         return offered.sorted { ($0.distance, $0.order.title) < ($1.distance, $1.order.title) }
             .lazy.map(\.order).filter { world.refusal(of: $0.command, as: player) == nil }.prefix(CompanionLedger.alliancesOffered).map { $0 }
+    }
+
+    /// The alliance's studies for the ledger: what it pursues and still needs
+    /// or that it pursues none, what it has learned; the studies its leader
+    /// may set it to pursue; and what the House may give toward the pursuit.
+    static func studies(of alliance: Alliance?, in world: GameState, player: Int) -> (lore: [String], pursuits: [Order], gifts: [Order]) {
+        guard let alliance else { return ([], [], []) }
+        let lore = alliance.lore ?? AllianceLore()
+        var lines: [String] = []
+        var gifts: [Order] = []
+        if let next = lore.next {
+            let named = "\(next.study.title) \(BuildingKind.numeral(next.grade))"
+            let still = lore.given.shortfall(for: next.study.cost(grade: next.grade))
+            lines.append("Pursuing \(named): \(still) still to give")
+            var offered = [Order(title: "Give all \(named) still needs: \(still)", command: .giveToAlliance(still))]
+            let lacking = Resource.allCases.filter { still[$0] > 0 }
+            let stock = world.houses.indices.contains(player) ? world.houses[player].stock : .zero
+            if lacking.count > 1 {
+                for resource in lacking {
+                    var gift = Stock()
+                    gift[resource] = min(still[resource], stock[resource])
+                    offered.append(Order(title: "Give \(gift) toward \(named)", command: .giveToAlliance(gift)))
+                }
+            } else if let only = lacking.first, stock[only] < still[only], stock[only] > 0 {
+                var gift = Stock()
+                gift[only] = stock[only]
+                offered.append(Order(title: "Give \(gift) toward \(named)", command: .giveToAlliance(gift)))
+            }
+            gifts = offered.filter { order in
+                guard case .giveToAlliance(let stock) = order.command else { return false }
+                return world.allianceGiftRefusal(stock, by: player) == nil
+            }
+        } else {
+            lines.append("Your alliance pursues no study.")
+        }
+        let learned = AllianceStudy.allCases.filter { lore.grade(of: $0) > 0 }
+            .map { "\($0.title) \(BuildingKind.numeral(lore.grade(of: $0)))" }
+        if !learned.isEmpty { lines.append("Learned together: " + learned.joined(separator: ", ")) }
+        let pursuits = AllianceStudy.allCases.filter { world.pursuitRefusal($0, by: player) == nil }.map { study in
+            Order(title: "Pursue \(study.title) \(BuildingKind.numeral(lore.grade(of: study) + 1))", command: .pursueAllianceStudy(study))
+        }
+        return (lines, pursuits, gifts)
     }
 
     /// The most sites a company is offered to gather at: the nearest.
