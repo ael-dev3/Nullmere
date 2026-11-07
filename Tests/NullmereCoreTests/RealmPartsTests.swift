@@ -169,6 +169,64 @@ final class RealmPartsTests: XCTestCase {
         }
     }
 
+    /// The rest of what every keeper is told alike goes apart from the head,
+    /// one part the same in every view; what is a keeper's own and seldom
+    /// changes goes apart too, and the words they hear: a word said writes
+    /// the words, and every head and every keeper's own stands. A world
+    /// written while they were in its head reads as it did.
+    func testTheHeadKeepsOnlyWhatChangesWithTheWatch() throws {
+        var realm = try played(watches: 3)
+        realm.world.lyceumSet = [LyceumQuestion(text: "Who keeps the ford?", choices: ["Ama", "Bel", "Cyn", "Dov"], answer: 1)]
+        realm.world.chargesDone = Array(repeating: 1, count: realm.world.houses.count)
+        let commons = realm.world.viewCommons(ways: realm.world.ways())
+        let stranger = try realm.world.view(for: -1, commons: commons).parts(using: encoder)
+        var views: [String: [String: String]] = [:]
+        for keeper in realm.keepers {
+            let parts = try XCTUnwrap(realm.view(for: keeper.id, commons: commons)).parts(using: encoder)
+            views[keeper.id] = parts
+            XCTAssertEqual(parts[GameState.realmPart], stranger[GameState.realmPart], "\(keeper.name)'s realm as every keeper's")
+            XCTAssertNotNil(parts[GameState.keepsPart])
+            XCTAssertNotNil(parts[GameState.wordsPart])
+            let head = try XCTUnwrap(parts["head"])
+            XCTAssertFalse(head.contains("Who keeps the ford?"), "The Lyceum's questions out of every head")
+            XCTAssertLessThan(head.utf8.count, 1_200, "What changes with the watch, and little else")
+        }
+        XCTAssertTrue(try XCTUnwrap(stranger[GameState.realmPart]).contains("Who keeps the ford?"))
+
+        // A word said: the words written anew, every head and every keeper's
+        // own as they were.
+        let ama = try XCTUnwrap(realm.keeper("id-ama")?.house)
+        _ = try realm.world.say("The ford is ours", toAlliance: false, as: ama)
+        let said = realm.world.viewCommons(ways: realm.world.ways())
+        for keeper in realm.keepers {
+            let before = try XCTUnwrap(views[keeper.id])
+            let parts = try XCTUnwrap(realm.view(for: keeper.id, commons: said)).parts(using: encoder)
+            XCTAssertNotEqual(parts[GameState.wordsPart], before[GameState.wordsPart], "\(keeper.name) hears it")
+            XCTAssertEqual(parts["head"], before["head"])
+            XCTAssertEqual(parts[GameState.keepsPart], before[GameState.keepsPart])
+            XCTAssertEqual(parts[GameState.realmPart], before[GameState.realmPart])
+        }
+
+        // The world goes so too, and comes back whole; and a world written
+        // while they were in its head reads as it did.
+        let world = realm.world
+        let whole = try world.parts(using: encoder)
+        var read = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(whole["head"]).utf8))
+        try read.join(whole, using: JSONDecoder())
+        XCTAssertEqual(read, world)
+        var older = whole
+        var head = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(whole["head"]).utf8)) as? [String: Any] ?? [:]
+        for name in [GameState.realmPart, GameState.keepsPart, GameState.wordsPart] {
+            let apart = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(whole[name]).utf8)) as? [String: Any] ?? [:]
+            head.merge(apart) { $1 }
+            older[name] = nil
+        }
+        older["head"] = String(decoding: try JSONSerialization.data(withJSONObject: head, options: [.sortedKeys]), as: UTF8.self)
+        var old = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(older["head"]).utf8))
+        try old.join(older, using: JSONDecoder())
+        XCTAssertEqual(old, world)
+    }
+
     /// What every keeper is told alike of the realm as it stands goes apart
     /// from the head, the same in every view: a House's strength changed,
     /// that part is written anew and every head stands; and a world or

@@ -331,6 +331,22 @@ extension GameState {
         head.reputedMight = nil
         head.stillHour = nil
         head.happening = nil
+        // And the rest of what every keeper is told alike of the realm,
+        // which changes as the watch turns, if then (its settings, the
+        // Lyceum's questions, the charges done, the Sundering, the omens);
+        // what is a keeper's own and seldom changes (their dreams, riddles,
+        // letters, satchel, what they see of shrines and lairs); and the
+        // words they hear, which change as anyone speaks: each a part of
+        // its own, so the head, written for every keeper as every watch
+        // turns, is the little that changes with it (at 384 seats, 2.9 KB
+        // of every keeper's 3.2 was the rest).
+        for (name, made) in [(GameState.realmPart, try text(Realm(of: self))), (GameState.keepsPart, try text(Keeps(of: self))),
+                             (GameState.wordsPart, try text(Words(of: self)))] {
+            parts[name] = written.lazy.compactMap { $0.parts[name] }.first { $0 == made } ?? made
+        }
+        Realm.clear(&head)
+        Keeps.clear(&head)
+        head.words = nil
         return head
     }
 
@@ -376,6 +392,267 @@ extension GameState {
             reputedMight = world.reputedMight
             stillHour = world.stillHour
             happening = world.happening
+        }
+    }
+
+    /// The part the rest of what every keeper is told alike of the realm
+    /// goes in.
+    public static let realmPart = "realm"
+
+    /// The part what is a keeper's own and seldom changes goes in.
+    public static let keepsPart = "keeps"
+
+    /// The part the words a keeper hears go in.
+    public static let wordsPart = "words"
+
+    /// The head's stand-in for the realm's settings, which are kept apart.
+    static let noSettings = GameSettings(seedText: "")
+
+    /// The rest of what every keeper is told alike of the realm as it
+    /// stands, apart from every House's strength: its settings and its
+    /// end, the omens and the eclipse, the Spire's titles, the Augury, the
+    /// veils, the Ring, the ripples, the monument, the mirror's walks, the
+    /// Lyceum's questions and its hall, the calm, the lairs' ladder, the
+    /// oaths, the deep water, the broken Spire, the edicts, the Sundering,
+    /// its ford and the drowned crown, the charges done, and where the
+    /// realm's rounds of words begin.
+    struct Realm: Codable, Equatable {
+        var settings: GameSettings
+        var outcome: Outcome?
+        var omen: Omen?
+        var omenLifted: Int?
+        var bestowals: [Bestowal]?
+        var auguries: [Prophecy]?
+        var veils: [Veil]?
+        var ring: Ring?
+        var ripples: [Int]?
+        var ventured: [Int]?
+        var monument: Monument?
+        var mirrorWalks: [MirrorWalk]?
+        var mirrorWalked: [Int: Int]?
+        var lyceumSet: [LyceumQuestion]?
+        var lyceumHall: Hex?
+        var calm: Int?
+        var lairLadder: [Int: Int]?
+        var eclipse: Int?
+        var oaths: [Oath]?
+        var moonWater: DeepWater?
+        var brokenSpire: BrokenSpire?
+        var edicts: [Edict]?
+        var sundering: Sundering?
+        var ford: [Hex]?
+        var crown: DrownedCrown?
+        var unsundered: Bool?
+        var chargesDone: [Int]?
+        var dealing: Dealing?
+
+        init(of world: GameState) {
+            settings = world.settings
+            outcome = world.outcome
+            omen = world.omen
+            omenLifted = world.omenLifted
+            bestowals = world.bestowals
+            auguries = world.auguries
+            veils = world.veils
+            ring = world.ring
+            ripples = world.ripples
+            ventured = world.ventured
+            monument = world.monument
+            mirrorWalks = world.mirrorWalks
+            mirrorWalked = world.mirrorWalked
+            lyceumSet = world.lyceumSet
+            lyceumHall = world.lyceumHall
+            calm = world.calm
+            lairLadder = world.lairLadder
+            eclipse = world.eclipse
+            oaths = world.oaths
+            moonWater = world.moonWater
+            brokenSpire = world.brokenSpire
+            edicts = world.edicts
+            sundering = world.sundering
+            ford = world.ford
+            crown = world.crown
+            unsundered = world.unsundered
+            chargesDone = world.chargesDone
+            dealing = world.dealing
+        }
+
+        /// Into a world read from its head.
+        func put(into world: inout GameState) {
+            world.settings = settings
+            world.outcome = outcome
+            world.omen = omen
+            world.omenLifted = omenLifted
+            world.bestowals = bestowals
+            world.auguries = auguries
+            world.veils = veils
+            world.ring = ring
+            world.ripples = ripples
+            world.ventured = ventured
+            world.monument = monument
+            world.mirrorWalks = mirrorWalks
+            world.mirrorWalked = mirrorWalked
+            world.lyceumSet = lyceumSet
+            world.lyceumHall = lyceumHall
+            world.calm = calm
+            world.lairLadder = lairLadder
+            world.eclipse = eclipse
+            world.oaths = oaths
+            world.moonWater = moonWater
+            world.brokenSpire = brokenSpire
+            world.edicts = edicts
+            world.sundering = sundering
+            world.ford = ford
+            world.crown = crown
+            world.unsundered = unsundered
+            world.chargesDone = chargesDone
+            world.dealing = dealing
+        }
+
+        /// None of it, but the settings a head can't be without.
+        init(empty settings: GameSettings) {
+            self.settings = settings
+        }
+
+        /// Out of a head, which keeps a stand-in for its settings.
+        static func clear(_ head: inout GameState) {
+            Realm(empty: GameState.noSettings).put(into: &head)
+        }
+    }
+
+    /// What is a keeper's own and seldom changes: their dreams, their
+    /// whispers, their riddles, their listening stones and what they hear,
+    /// their sculptures, letters and pedlar, how far they have gone up the
+    /// Spine, their keys at the Inn, the Houses they hide, their answers at
+    /// the Lyceum, their false reflections, their letters to the age to
+    /// come and those of the age before, their standing orders, their
+    /// alliances, their reports and bars on words, the drowned holds,
+    /// bottles, barges, rallies, fields of battle, shrines, lairs,
+    /// standards, halls and storehouses they know of, their satchel and
+    /// their makings.
+    struct Keeps: Codable, Equatable {
+        var dreams: [Dream]?
+        var whispers: [Whisper]?
+        var riddles: [Riddle]?
+        var listeningStones: [ListeningStone]?
+        var sculptureCounts: [Int: Int]?
+        var mail: [Missive]?
+        var pedlars: [Pedlar]?
+        var expeditions: [Int: Int]?
+        var expeditionBest: [Int: [Int: Int]]?
+        var innBook: [Int: InnKeys]?
+        var hidden: [Int: [Int]]?
+        var lyceumBook: [Int: [Int]]?
+        var reflections: [FalseReflection]?
+        var soundings: [Sounding]?
+        var listened: [Int: Hex]?
+        var letters: [Letter]?
+        var oldLetters: [Letter]?
+        var standing: [StandingOrders]?
+        var alliances: [Alliance]?
+        var reports: [WordReport]?
+        var bars: [WordsBar]?
+        var drowned: [DrownedHold]?
+        var bottles: [Bottle]?
+        var barges: [Ferrying]?
+        var rallies: [Rally]?
+        var fields: [Field]?
+        var shrines: [Shrine]?
+        var lairs: [Lair]?
+        var standards: [Standard]?
+        var halls: [AllianceHall]?
+        var storehouses: [Storehouse]?
+        var satchel: [ItemStack]?
+        var makings: [MakingStack]?
+
+        init(of world: GameState) {
+            dreams = world.dreams
+            whispers = world.whispers
+            riddles = world.riddles
+            listeningStones = world.listeningStones
+            sculptureCounts = world.sculptureCounts
+            mail = world.mail
+            pedlars = world.pedlars
+            expeditions = world.expeditions
+            expeditionBest = world.expeditionBest
+            innBook = world.innBook
+            hidden = world.hidden
+            lyceumBook = world.lyceumBook
+            reflections = world.reflections
+            soundings = world.soundings
+            listened = world.listened
+            letters = world.letters
+            oldLetters = world.oldLetters
+            standing = world.standing
+            alliances = world.alliances
+            reports = world.reports
+            bars = world.bars
+            drowned = world.drowned
+            bottles = world.bottles
+            barges = world.barges
+            rallies = world.rallies
+            fields = world.fields
+            shrines = world.shrines
+            lairs = world.lairs
+            standards = world.standards
+            halls = world.halls
+            storehouses = world.storehouses
+            satchel = world.satchel
+            makings = world.makings
+        }
+
+        /// Into a world read from its head.
+        func put(into world: inout GameState) {
+            world.dreams = dreams
+            world.whispers = whispers
+            world.riddles = riddles
+            world.listeningStones = listeningStones
+            world.sculptureCounts = sculptureCounts
+            world.mail = mail
+            world.pedlars = pedlars
+            world.expeditions = expeditions
+            world.expeditionBest = expeditionBest
+            world.innBook = innBook
+            world.hidden = hidden
+            world.lyceumBook = lyceumBook
+            world.reflections = reflections
+            world.soundings = soundings
+            world.listened = listened
+            world.letters = letters
+            world.oldLetters = oldLetters
+            world.standing = standing
+            world.alliances = alliances
+            world.reports = reports
+            world.bars = bars
+            world.drowned = drowned
+            world.bottles = bottles
+            world.barges = barges
+            world.rallies = rallies
+            world.fields = fields
+            world.shrines = shrines
+            world.lairs = lairs
+            world.standards = standards
+            world.halls = halls
+            world.storehouses = storehouses
+            world.satchel = satchel
+            world.makings = makings
+        }
+
+        /// None of it.
+        init() {}
+
+        /// Out of a head.
+        static func clear(_ head: inout GameState) {
+            Keeps().put(into: &head)
+        }
+    }
+
+    /// The words a keeper hears.
+    struct Words: Codable, Equatable {
+        var words: [Word]?
+
+        init(of world: GameState) {
+            words = world.words
         }
     }
 
@@ -485,6 +762,18 @@ extension GameState {
             reputedMight = common.reputedMight
             stillHour = common.stillHour
             happening = common.happening
+        }
+        // And the rest of what every keeper is told alike, what is a
+        // keeper's own and the words they hear; a world written before they
+        // went apart keeps them in its head.
+        if parts[GameState.realmPart] != nil {
+            try GameState.part(GameState.realmPart, of: parts, using: decoder, as: Realm.self, read: read).put(into: &self)
+        }
+        if parts[GameState.keepsPart] != nil {
+            try GameState.part(GameState.keepsPart, of: parts, using: decoder, as: Keeps.self, read: read).put(into: &self)
+        }
+        if parts[GameState.wordsPart] != nil {
+            words = try GameState.part(GameState.wordsPart, of: parts, using: decoder, as: Words.self, read: read).words
         }
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)

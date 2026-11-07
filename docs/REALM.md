@@ -64,7 +64,15 @@ steward's answer). For development a realm can also be hosted in-process
   the Still Hour's glimpses, the realm's happening) goes apart from it as
   one part told alike, so a House's strength changed at a pace writes
   that part once rather than every keeper's head (at 384 seats, 16 KB a
-  keeper at nearly every pace); and a House's
+  keeper at nearly every pace). The rest of what every keeper is told
+  alike (the realm's settings, the omens, the Lyceum's questions, the
+  charges done, the Sundering) goes in one part told alike too ("realm"),
+  what is a keeper's own and seldom changes (their dreams, riddles,
+  letters, satchel, the shrines and lairs they know of) in a part of its
+  own ("keeps"), and the words they hear in another ("words"), so the
+  head, written for every keeper as the watch turns, is the little that
+  changes with it (at 384 seats, 248 KB of a turn's heads against 1,244);
+  and a House's
   explored ground goes as its runs (how many unseen, how many seen, by
   turns), a few hundred bytes where its bits were 5 KB. The map's ground
   goes as its runs too, its terrain and its features each (how many
