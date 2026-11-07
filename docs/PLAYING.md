@@ -1609,7 +1609,9 @@ it plays.
   picture, and as the app quits, and back in from silence.
 - **Controls.** Music, in the launcher's Settings and the realm's, is one
   choice. The realm's Settings (⌘,) also hold its sound (on or off, the
-  effects, the night, the music and its score's volume) and counsel; ⇧⌘M
+  effects, the night, the music and its score's volume), counsel, and how
+  the voices stand on this Mac by Apple's own word on its model: who speaks
+  through it, or, where it can't be asked, who falls silent and why; ⇧⌘M
   turns all sound off or on, and ⇧⌘U the music alone, once the realm shows.
   CI keeps each theme and every cue as a sound file to listen to, the
   `sounds` artifact.
@@ -1638,7 +1640,7 @@ world, so there is nothing to save.
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
-| ⌘, | Settings: display and text (the launcher's), sound and volumes, letter keys alone or with ⌥, counsel |
+| ⌘, | Settings: display and text (the launcher's), sound and volumes, letter keys alone or with ⌥, counsel, how the voices stand |
 | ⇧⌘M / ⇧⌘U / ⇧⌘+ | Sound on or off / the music / larger text |
 | ⇧⌘W | Leave the world for the front door |
 

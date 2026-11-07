@@ -304,7 +304,22 @@ public enum CounselTrouble: Equatable, Sendable, Error {
 
     public enum Unavailability: Equatable, Sendable {
         case deviceNotEligible, appleIntelligenceOff, modelNotReady, systemTooOld
+
+        /// How the voices stand where the model can't be asked, as the Mac's
+        /// settings tell it: who falls silent, and what reads in their place.
+        public var voicesSaid: String {
+            let silent = "the envoys and the chronicle go unvoiced, your commanders give no counsel, and the order book reads your words as they are written"
+            switch self {
+            case .deviceNotEligible: return "This Mac can't run Apple's on-device model, so \(silent)."
+            case .appleIntelligenceOff: return "Apple Intelligence is turned off in System Settings, so \(silent) until it is turned on."
+            case .modelNotReady: return "Apple's on-device model is still downloading or preparing; until it is ready, \(silent)."
+            case .systemTooOld: return "Apple's on-device model needs a newer system than this one, so \(silent)."
+            }
+        }
     }
+
+    /// How the voices stand where the model can be asked.
+    public static let voicesReady = "Apple's on-device model on this Mac gives the envoys, the chronicle and your commanders their words, and reads yours into orders; nothing they say leaves the Mac."
 
     /// The words the keeper is shown.
     public var said: String {

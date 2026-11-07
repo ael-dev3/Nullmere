@@ -1,11 +1,15 @@
+import FoundationModels
 import LauncherCore
 import LauncherKit
+import NullmereCore
+import NullmereCounsel
 import SwiftUI
 
 /// The realm's Settings (⌘,), over the front door or the world, in the
 /// realm's own quiet type, Larger type and all: how the lake, the map and
 /// the type are drawn, the launcher's own display settings shared; how
-/// loud each part of the sound plays; the keys; and counsel.
+/// loud each part of the sound plays; the keys; counsel; and how the voices
+/// stand on this Mac, by Apple's own word on its model.
 public struct GameSettingsView: View {
     @Bindable private var app: GameApp
     @AppStorage("counsel.hidden") private var counselHidden = false
@@ -54,9 +58,19 @@ public struct GameSettingsView: View {
                 ChoiceLine(title: "Counsel", options: ["Shown", "Hidden"], chosen: counselHidden ? 1 : 0) { counselHidden = $0 == 1 }
                 Note("Counsel guides the opening and warns of the race for the lake.")
             }
+            part("Voices") {
+                Note(GameSettingsView.voices(SystemLanguageModel.default.availability))
+            }
         }
         .padding(22)
         .frame(width: 480)
+    }
+
+    /// How the voices stand on this Mac, from Apple's own word on its
+    /// model: who speaks through it, or who falls silent and why.
+    static func voices(_ availability: SystemLanguageModel.Availability) -> String {
+        if case .unavailable(let reason)? = CommanderCounselSession.trouble(for: availability) { return reason.voicesSaid }
+        return CounselTrouble.voicesReady
     }
 
     /// A part of the settings under its name.

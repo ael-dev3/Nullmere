@@ -1,3 +1,4 @@
+import FoundationModels
 import LauncherKit
 @testable import NullmereCore
 import NullmereRealm
@@ -198,6 +199,16 @@ final class PanelRenderTests: XCTestCase {
         let session = try XCTUnwrap(app.session)
         try draw(TopBar(session: session), width: 1200)
         try draw(GameSettingsView(app: app), width: 480, height: 520)
+    }
+
+    /// How the voices stand, in the game's settings, by Apple's own word on
+    /// its model: who speaks through it, or who falls silent and why.
+    func testTheSettingsSayHowTheVoicesStand() {
+        XCTAssertEqual(GameSettingsView.voices(.available), CounselTrouble.voicesReady)
+        XCTAssertEqual(GameSettingsView.voices(.unavailable(.deviceNotEligible)), CounselTrouble.Unavailability.deviceNotEligible.voicesSaid)
+        XCTAssertEqual(GameSettingsView.voices(.unavailable(.appleIntelligenceNotEnabled)),
+                       CounselTrouble.Unavailability.appleIntelligenceOff.voicesSaid)
+        XCTAssertEqual(GameSettingsView.voices(.unavailable(.modelNotReady)), CounselTrouble.Unavailability.modelNotReady.voicesSaid)
     }
 
     func testEveryStanceAndEveryEnvoyDraws() throws {

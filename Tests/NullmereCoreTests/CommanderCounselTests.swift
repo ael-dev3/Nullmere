@@ -195,6 +195,21 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertTrue(CounselTrouble.failed("the stars are wrong").said.hasSuffix("the stars are wrong"))
     }
 
+    /// How the voices stand where Apple's model can't be asked, as the Mac's
+    /// settings tell it: who falls silent and why, for every reason; and
+    /// where it can be, who speaks through it.
+    func testTheVoicesSayWhyTheyAreSilent() {
+        let reasons: [CounselTrouble.Unavailability] = [.deviceNotEligible, .appleIntelligenceOff, .modelNotReady, .systemTooOld]
+        for reason in reasons {
+            XCTAssertTrue(reason.voicesSaid.contains("the envoys and the chronicle go unvoiced, your commanders give no counsel, "
+                                                     + "and the order book reads your words as they are written"), reason.voicesSaid)
+        }
+        XCTAssertEqual(Set(reasons.map(\.voicesSaid)).count, reasons.count, "Each reason its own words")
+        XCTAssertTrue(CounselTrouble.Unavailability.deviceNotEligible.voicesSaid.hasPrefix("This Mac can't run Apple's on-device model"))
+        XCTAssertTrue(CounselTrouble.Unavailability.appleIntelligenceOff.voicesSaid.hasSuffix("until it is turned on."))
+        XCTAssertTrue(CounselTrouble.voicesReady.hasSuffix("nothing they say leaves the Mac."))
+    }
+
     /// What the system says of a failure is told where a keeper can read
     /// it; its stock words for an error it has nothing to say of, which
     /// name a type and a code, never are.
