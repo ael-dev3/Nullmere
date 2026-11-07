@@ -1,8 +1,11 @@
 name: Live realm smoke
 
 # Two keepers' clients, as shipped, meet in the live realm on maincloud:
-# they arrive, see each other's Houses and hear each other speak. It needs
-# no secret, only the realm published (Publish the realm) and its steward
+# they arrive, see each other's Houses and hear each other speak; then the
+# first keeper's phone, its own session as the companion app keeps it,
+# takes the link her Mac offers and keeps her House beside it, words going
+# each way, its line cut and mended (no seat of its own). It needs no
+# secret, only the realm published (Publish the realm) and its steward
 # running (scripts/raise-realm.sh maincloud). Run by hand, and each day.
 on:
   workflow_dispatch:
@@ -43,7 +46,7 @@ jobs:
             echo "up=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Two keepers meet in it
+      - name: Two keepers meet in it, and a phone keeps one's House
         if: steps.up.outputs.up == 'true'
         env:
           NULLMERE_LIVE_REALM: ${{ steps.up.outputs.address }}

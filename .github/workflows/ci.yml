@@ -727,10 +727,12 @@ jobs:
           CONFIGURATION=debug STEWARD=background scripts/raise-realm.sh local
           REALM_ADDRESS=http://127.0.0.1:3000/standalone scripts/go-live-status.sh --expect-realm
           # Two keepers' clients meet in it as they would in the live realm,
-          # by the same test the Live realm smoke workflow runs on maincloud.
+          # and the first keeper's phone keeps her House beside her Mac, its
+          # line cut and mended, by the same test the Live realm smoke
+          # workflow runs on maincloud.
           NULLMERE_LIVE_REALM=http://127.0.0.1:3000/standalone swift test --skip-build --filter LiveRealmSmokeTests 2>&1 | tee realm-live-smoke.log
           grep -Eq "Executed 1 test, with 0 failures" realm-live-smoke.log && ! grep -q "skipped" realm-live-smoke.log || {
-            echo "::error::Two keepers didn't meet in the standalone realm"
+            echo "::error::Two keepers didn't meet in the standalone realm, or the phone didn't keep the House beside the Mac"
             exit 1
           }
           scripts/raise-realm.sh local --stop
