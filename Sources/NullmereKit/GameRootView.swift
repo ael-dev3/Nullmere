@@ -330,8 +330,8 @@ struct PlayView: View {
         }
         .onDisappear { session.keeperReturned() }
         // Counsel with a commander, over the map while it lasts.
-        .sheet(isPresented: Binding(get: { session.counsel != nil }, set: { if !$0 { session.closeCounsel() } })) {
-            if let counsel = session.counsel {
+        .sheet(isPresented: Binding(get: { session.commanderCounsel != nil }, set: { if !$0 { session.closeCounsel() } })) {
+            if let counsel = session.commanderCounsel {
                 CounselSheet(session: session, counsel: counsel)
             }
         }

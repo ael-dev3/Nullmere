@@ -53,7 +53,7 @@ final class CounselSheetTests: XCTestCase {
         let commander = try XCTUnwrap(session.state.commanders(of: session.player).first)
         draw(CommandersPanel(session: session))
         XCTAssertTrue(PressableButtons.press("Take counsel"), "Among \(shown)")
-        let counsel = try XCTUnwrap(session.counsel)
+        let counsel = try XCTUnwrap(session.commanderCounsel)
         XCTAssertEqual(counsel.id, commander.id)
         XCTAssertEqual(counsel.unavailable, .unavailable(.deviceNotEligible))
         draw(CounselSheet(session: session, counsel: counsel))
@@ -64,10 +64,10 @@ final class CounselSheetTests: XCTestCase {
         draw(CounselSheet(session: session, counsel: counsel))
         XCTAssertTrue(link.sent.isEmpty, "Counsel orders nothing of itself")
         session.closeCounsel()
-        XCTAssertNil(session.counsel)
+        XCTAssertNil(session.commanderCounsel)
         // None but the keeper's own commanders counsel them.
         session.openCounsel(with: 9_999)
-        XCTAssertNil(session.counsel)
+        XCTAssertNil(session.commanderCounsel)
     }
 
     /// What the commander remembers is kept for the age and picked up when
@@ -82,7 +82,7 @@ final class CounselSheetTests: XCTestCase {
         XCTAssertEqual(store.loadCounsel(commander: commander.id), memory)
         XCTAssertNil(store.loadCounsel(commander: 4_321))
         session.openCounsel(with: commander.id)
-        let counsel = try XCTUnwrap(session.counsel)
+        let counsel = try XCTUnwrap(session.commanderCounsel)
         XCTAssertEqual(counsel.memory, memory)
         // An order carried out: the commander's counsel sees the world after it.
         let company = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })

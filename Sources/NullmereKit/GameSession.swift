@@ -561,7 +561,7 @@ public final class GameSession {
 
     /// The counsel the keeper is taking of one of their commanders, spoken
     /// by Apple's on-device model on this Mac; nil while none is open.
-    public private(set) var counsel: CommanderCounselSession?
+    public private(set) var commanderCounsel: CommanderCounselSession?
     /// Whether Apple's on-device model can be asked, for tests to set: nil
     /// asks the Foundation Models framework, as the app always does.
     @ObservationIgnored var counselAvailability: (() -> SystemLanguageModel.Availability)?
@@ -570,30 +570,30 @@ public final class GameSession {
     /// was said in earlier counsel this age.
     public func openCounsel(with commander: Int) {
         guard let grounded = CommanderCounsel(state: state, player: player, commander: commander) else { return }
-        counsel?.stop()
+        commanderCounsel?.stop()
         let memory = store.loadCounsel(commander: commander) ?? CounselMemory(commander: commander, age: realmStatus?.age ?? 0)
         let opened = CommanderCounselSession(counsel: grounded, memory: memory, availability: counselAvailability)
         let store = self.store
         opened.onRemember = { store.saveCounsel($0) }
         opened.prewarm()
-        counsel = opened
+        commanderCounsel = opened
     }
 
     public func closeCounsel() {
-        counsel?.stop()
-        counsel = nil
+        commanderCounsel?.stop()
+        commanderCounsel = nil
     }
 
     /// The keeper gives an order their commander put forward: carried out
     /// as any order is, and the realm's word taken as final.
     public func give(_ offer: CommanderCounselSession.Offer) {
-        guard let command = counsel?.give(offer) else { return }
+        guard let command = commanderCounsel?.give(offer) else { return }
         perform(command)
     }
 
     /// The commander's looks tell the world as it now stands.
     private func renewCounsel() {
-        guard let open = counsel, let grounded = CommanderCounsel(state: state, player: player, commander: open.id) else { return }
+        guard let open = commanderCounsel, let grounded = CommanderCounsel(state: state, player: player, commander: open.id) else { return }
         open.renew(grounded)
     }
 
