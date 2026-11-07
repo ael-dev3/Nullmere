@@ -154,9 +154,9 @@ SIMCTL_CHILD_NULLMERE_COMPANION_LINK="$INVITE" SIMCTL_CHILD_NULLMERE_COMPANION_T
 DATA="$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data)"
 KEPT="$DATA/Documents/companion-report.txt"
 # Its steps take a few minutes, the watch turning when the keeper is ready
-# among them (as much as 200 s into a watch, while the keeper entered across
-# the network before is away); the report ends with the word on them all
-# once they are done.
+# among them (at once while no keeper whose House stands is away, as CI
+# runs it; a third of a watch into it were one away); the report ends with
+# the word on them all once they are done.
 for _ in $(seq 1 360); do
     grep -qE "kept its keeper's House|^Broken" "$KEPT" 2>/dev/null && break
     sleep 1

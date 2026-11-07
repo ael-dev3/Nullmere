@@ -366,10 +366,11 @@ enum CompanionCheck {
         write(done: false)
         // Ready for the watch to turn, from the phone: the watch turns once
         // every keeper there is ready, and a third of it has passed while a
-        // keeper whose House stands is away (the keeper the smoke test
-        // entered before, across the network). On CI's realm a watch is
-        // 600 s, so the turn may wait 200 s from the watch's start: the
-        // phone, made ready within 110 s of it, waited past 90 s (run 696).
+        // keeper whose House stands is away. CI now runs the phone before
+        // any other keeper enters its realm, so the turn comes at once; were
+        // one away, on CI's 600-s watch the turn could wait 200 s from the
+        // watch's start (the phone, made ready within 110 s of it, waited
+        // past 90 s in run 696, and 97 s in run 707).
         // The House's holds may be at work already as the keeper comes in
         // (a seat taken from its steward is kept as it stood); a watch on,
         // what they mustered is done.
