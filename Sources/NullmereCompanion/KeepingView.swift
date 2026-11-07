@@ -783,6 +783,7 @@ struct AllianceTab: View {
     @State private var letter = ""
     @State private var writingTo: Int?
     @State private var castingOut: CompanionLedger.Order?
+    @State private var realmOpen = false
 
     var body: some View {
         NavigationStack {
@@ -1008,6 +1009,14 @@ struct AllianceTab: View {
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("Alliance")
+            .navigationDestination(isPresented: $realmOpen) { RealmPage(session: session) }
+            .onAppear {
+                #if DEBUG
+                // Seen by the smoke test: the page of the realm's law, oaths
+                // and auguries, opened as a keeper would.
+                if CompanionCheck.realmShown { realmOpen = true }
+                #endif
+            }
         }
     }
 }

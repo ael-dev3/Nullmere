@@ -21,7 +21,8 @@ import NullmereCounsel
 /// ending with the word on it all once it is done. NULLMERE_COMPANION_TAB
 /// opens a tab to be seen, the page of barter, the Inn and the satchel
 /// (NULLMERE_COMPANION_TAB=market), the page of the Ring, the Spine and the
-/// Forge (NULLMERE_COMPANION_TAB=ventures), or counsel with the first free commander
+/// Forge (NULLMERE_COMPANION_TAB=ventures), the page of the realm's law,
+/// oaths and auguries (NULLMERE_COMPANION_TAB=realm), or counsel with the first free commander
 /// (NULLMERE_COMPANION_TAB=counsel). And NULLMERE_COUNSEL_REPORT takes counsel of a
 /// commander through this phone's own on-device model, as the Mac's check
 /// does (CounselCheck), writing what was heard to
@@ -31,6 +32,7 @@ enum CompanionCheck {
     static var tabShown: CompanionTab? {
         if counselShown || wordsShown || venturesShown { return .army }
         if marketShown { return .house }
+        if realmShown { return .alliance }
         return ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"].flatMap(CompanionTab.init(rawValue:))
     }
 
@@ -38,6 +40,12 @@ enum CompanionCheck {
     /// to be seen: NULLMERE_COMPANION_TAB=market.
     static var marketShown: Bool {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "market"
+    }
+
+    /// The page of the realm's law, oaths and auguries opened off the
+    /// Alliance tab, to be seen: NULLMERE_COMPANION_TAB=realm.
+    static var realmShown: Bool {
+        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "realm"
     }
 
     /// The page of the Ring, the Spine and the Forge opened off the Army

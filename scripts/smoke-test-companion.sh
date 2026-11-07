@@ -293,7 +293,7 @@ echo "The Mac hears what the phone said while its line was down: $CAME_BACK"
 # The phone's other screens, in again by its own key each time, and
 # counsel with the House's first free commander, then asked a question,
 # with what came of it: the model's answer, or why there was none.
-for tab in house market ventures land alliance counsel counsel-asked words; do
+for tab in house market ventures land alliance realm counsel counsel-asked words; do
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     SIMCTL_CHILD_NULLMERE_COMPANION_TAB="$tab" xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
     if [ "$tab" = counsel-asked ]; then shot "$tab" 20; else shot "$tab" 8; fi
