@@ -33,7 +33,7 @@ final class CompactTests: XCTestCase {
         }
         let whole = Compact.spoken
         for promise in ["keychain", "on-device model", "Words", "report", "forget", "read them again",
-                        "GNU Affero General Public License", "repository"] {
+                        "GNU Affero General Public License", "repository", "phone you link", "the phone's own on-device model"] {
             XCTAssertTrue(whole.contains(promise), "The compact speaks of \(promise)")
         }
         // Each edition after the first says what changed.

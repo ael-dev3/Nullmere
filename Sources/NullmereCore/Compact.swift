@@ -11,7 +11,7 @@ public enum Compact {
 
     /// The compact's edition: raised whenever its words change in
     /// substance, so that every keeper is asked to read it again.
-    public static let edition = 3
+    public static let edition = 4
 
     /// What changed in each edition after the first, told to a keeper who
     /// accepted an earlier one.
@@ -21,6 +21,8 @@ public enum Compact {
             + "and only the orders you give leave it.",
         3: "The game's code, art and sounds are now under the GNU Affero General Public License, version 3 only, in place of the Apache License and the public domain, "
             + "and stays open to all in its repository.",
+        4: "The compact now says what is kept of a phone you link from your Mac: its own key, which keys the realm knows speak for you, "
+            + "and the counsel and orders read by the phone's own model, which stay on the phone.",
     ]
 
     public static let articles: [Article] = [
@@ -32,6 +34,8 @@ public enum Compact {
                 text: "A letter you seal for the age to come is kept until the age after it ends, and every House reads it once it is found. The standing orders you give your caretaker are kept until you clear them, and no other keeper knows them. Should your House pass from you before the age ends, both go with you."),
         Article(heading: "What stays on your Mac",
                 text: "The voices of the lake and the ballads offered you are made by your Mac's own on-device model, which also reads the orders you write in your own words: what it is asked and what it says leave your Mac only when you sing a ballad to the realm or give the orders it read. Your settings stay on your Mac. The launcher reads the game's news from its repository and sends nothing of yours."),
+        Article(heading: "Your phone",
+                text: "A phone you link from your Mac speaks for you under a key of its own, made and kept in its keychain; the realm keeps which keys speak for you until you let them go, and of the code that linked it only a digest. Counsel your commanders give on the phone, and the orders it reads in your own words, are made by the phone's own on-device model: what it is asked and what it says leave the phone only when you give the orders it read. What your commanders remember of it, and what the phone last saw of your House, stay on the phone until you let it go."),
         Article(heading: "Keeping the peace of the realm",
                 text: "Write to other keepers as you would be written to: no threats, no hatred, no one's private details, nothing for sale. Any keeper may report a line to the realm's steward, who may take it away and bar a House from the Words for a time. Hold one House, under one identity, and play it yourself."),
         Article(heading: "The realm may change",
