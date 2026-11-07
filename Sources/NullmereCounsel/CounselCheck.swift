@@ -71,14 +71,17 @@ public enum CounselCheck {
     /// its Mac's; where that says it is ready yet gives no answer at all, as
     /// on a Mac that can't run it, the report says it went unheard,
     /// unverified like a model that can't be asked, never passed nor broken.
+    /// `speaker` stands in for the model, for the tests.
     @MainActor
     public static func run(on device: String = "this Mac", simulated: Bool = false,
-                           availability: (() -> SystemLanguageModel.Availability)? = nil) async -> Report {
+                           availability: (() -> SystemLanguageModel.Availability)? = nil,
+                           speaker: ((String) -> AsyncThrowingStream<String, Error>)? = nil) async -> Report {
         guard let (world, commander) = world(),
               let counsel = CommanderCounsel(state: world.view(for: world.player), player: world.player, commander: commander) else {
             return Report(text: "No commander to take counsel of.", failures: ["no commander"], unavailable: false)
         }
         let session = CommanderCounselSession(counsel: counsel, memory: CounselMemory(commander: commander, age: 1), availability: availability)
+        if let speaker { session.speaker = speaker }
         if let trouble = session.unavailable {
             return Report(text: "Apple's on-device model on \(device), not ready (\(trouble.said))", failures: [], unavailable: true)
         }

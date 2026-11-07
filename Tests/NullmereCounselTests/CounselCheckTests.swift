@@ -26,18 +26,23 @@ final class CounselCheckTests: XCTestCase {
     /// A simulator's model is its Mac's. Where it says it is ready yet gives
     /// no answer at all, as on a Mac that can't run it (CI's, run 658), the
     /// check says it went unheard, with the model's own words: unverified,
-    /// neither passed nor broken. Where it answers, its answers are held to
-    /// counsel's rules as ever.
+    /// neither passed nor broken. On a real device, no answer at all is
+    /// counsel broken, as ever.
     func testASimulatorsModelThatGivesNoAnswerIsUnheardNotBroken() async {
-        let report = await CounselCheck.run(on: "this iPhone Simulator", simulated: true, availability: { .available })
-        if report.unavailable {
-            XCTAssertTrue(report.text.hasPrefix("Apple's on-device model on this iPhone Simulator, unheard (it says it is ready, yet gave no answer: "),
-                          report.text)
-            XCTAssertTrue(report.failures.isEmpty)
-            XCTAssertTrue(report.text.contains("NO ANSWER: "), "What it said instead, kept")
-            XCTAssertFalse(report.text.hasSuffix(CounselCheck.passed))
-        } else {
-            XCTAssertFalse(report.text.contains(", unheard ("), "Answered, so heard: \(report.text)")
+        struct Silence: Error {}
+        let silent: (String) -> AsyncThrowingStream<String, Error> = { _ in
+            AsyncThrowingStream { $0.finish(throwing: Silence()) }
         }
+        let unheard = await CounselCheck.run(on: "this iPhone Simulator", simulated: true, availability: { .available }, speaker: silent)
+        XCTAssertTrue(unheard.unavailable, unheard.text)
+        XCTAssertTrue(unheard.failures.isEmpty)
+        XCTAssertTrue(unheard.text.hasPrefix("Apple's on-device model on this iPhone Simulator, unheard (it says it is ready, yet gave no answer: "),
+                      unheard.text)
+        XCTAssertTrue(unheard.text.contains("NO ANSWER: "), "What it said instead, kept")
+        XCTAssertFalse(unheard.text.hasSuffix(CounselCheck.passed))
+        let broken = await CounselCheck.run(on: "this iPhone", availability: { .available }, speaker: silent)
+        XCTAssertFalse(broken.unavailable, "A real device's silence is no unavailability")
+        XCTAssertFalse(broken.failures.isEmpty)
+        XCTAssertTrue(broken.text.hasSuffix("Broken: \(broken.failures.count)"), broken.text)
     }
 }

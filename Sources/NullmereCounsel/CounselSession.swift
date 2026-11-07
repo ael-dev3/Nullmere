@@ -301,7 +301,8 @@ public final class CommanderCounselSession: ObservableObject {
     /// Readies the model as the counsel opens, so the first answer begins
     /// sooner.
     public func prewarm() {
-        guard unavailable == nil else { return }
+        // A stand-in speaker leaves no model to warm.
+        guard unavailable == nil, speaker == nil else { return }
         (session ?? makeSession()).prewarm()
     }
 
