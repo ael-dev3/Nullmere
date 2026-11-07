@@ -130,6 +130,17 @@ struct HouseTab: View {
                                 }
                             }
                             .accessibilityElement(children: .combine)
+                            if !hold.works.isEmpty || !hold.musters.isEmpty {
+                                HStack(spacing: 10) {
+                                    OrdersMenu(title: "Raise", orders: hold.works, label: "Raise a work at \(hold.name)") { order in
+                                        session.give(order.command, told: "\(order.title) at \(hold.name)")
+                                    }
+                                    OrdersMenu(title: "Muster", orders: hold.musters, label: "Muster a company at \(hold.name)") { order in
+                                        session.give(order.command, told: "\(order.title) at \(hold.name)")
+                                    }
+                                }
+                                .font(Night.small)
+                            }
                         }
                     }
                     Section("The chronicle") {
@@ -200,15 +211,19 @@ struct ArmyTab: View {
                                         .buttonStyle(.bordered)
                                         .accessibilityLabel("\(order.title) the \(company.name)")
                                     }
-                                    if !company.marches.isEmpty {
-                                        Menu("March") {
-                                            ForEach(company.marches) { march in
-                                                Button(march.title) {
-                                                    session.give(march.command, told: "\(march.title), the \(company.name)")
-                                                }
-                                            }
-                                        }
-                                        .accessibilityLabel("March the \(company.name) to a hold")
+                                    OrdersMenu(title: "March", orders: company.marches, label: "March the \(company.name) to a hold") { march in
+                                        session.give(march.command, told: "\(march.title), the \(company.name)")
+                                    }
+                                }
+                                .font(Night.small)
+                            }
+                            if !company.strikes.isEmpty || !company.gathers.isEmpty {
+                                HStack(spacing: 10) {
+                                    OrdersMenu(title: "Strike", orders: company.strikes, label: "Strike with the \(company.name)") { strike in
+                                        session.give(strike.command, told: "\(strike.title), the \(company.name)")
+                                    }
+                                    OrdersMenu(title: "Gather", orders: company.gathers, label: "Send the \(company.name) to gather") { gather in
+                                        session.give(gather.command, told: "\(gather.title), the \(company.name)")
                                     }
                                 }
                                 .font(Night.small)
@@ -279,6 +294,25 @@ struct AllianceTab: View {
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("Alliance")
+        }
+    }
+}
+
+/// A menu of orders of one kind, shown only when there are any.
+struct OrdersMenu: View {
+    let title: String
+    let orders: [CompanionLedger.Order]
+    let label: String
+    let give: (CompanionLedger.Order) -> Void
+
+    var body: some View {
+        if !orders.isEmpty {
+            Menu(title) {
+                ForEach(orders) { order in
+                    Button(order.title) { give(order) }
+                }
+            }
+            .accessibilityLabel(label)
         }
     }
 }

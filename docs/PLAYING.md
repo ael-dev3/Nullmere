@@ -219,14 +219,18 @@ been heard from lately.
 
 - **House.** The realm, its age and watch, the time until the watch turns
   and how many keepers are there and ready; the House's stores; its holds,
-  each with what it raises and musters and how long each has to go; the
-  realm's chronicle, the latest first; and Ready for the watch to turn,
-  which counts as the keeper's, Mac or phone.
+  each with what it raises and musters and how long each has to go, and
+  Raise and Muster: the works it may raise a level and the companies it
+  may muster at the first tier now, the House able to pay; the realm's
+  chronicle, the latest first; and Ready for the watch to turn, which
+  counts as the keeper's, Mac or phone.
 - **Army.** Each company as the order book names it, its troops, its
   commander and what it is about, with the orders it may be given now:
   Fortify one not dug in, Halt one on the march, Recall one gathering or
-  carrying, Drill one by a Muster Hall, and March to any of the House's
-  holds. An order the rules wouldn't take from the keeper's view is
+  carrying, Drill one by a Muster Hall, March to any of the House's holds,
+  Strike what lies in its reach (the wilds, and the companies and holds of
+  Houses at war with the keeper's), and Gather at the nearest sites of the
+  land it may work. An order the rules wouldn't take from the keeper's view is
   refused on the phone with their reason and sent nowhere; one sent is
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone

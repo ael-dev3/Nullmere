@@ -23,6 +23,11 @@ public struct CompanionLedger: Equatable, Sendable {
         public let orders: [Order]
         /// The holds of the House it may march to now.
         public let marches: [Order]
+        /// What it may strike from where it stands: the wilds, and the
+        /// companies and holds of Houses at war with this one, in its reach.
+        public let strikes: [Order]
+        /// The nearest sites of the land it may be sent to gather at.
+        public let gathers: [Order]
     }
 
     /// An order offered: what it says, and the command it gives.
@@ -39,6 +44,11 @@ public struct CompanionLedger: Equatable, Sendable {
         public let isSeat: Bool
         /// What it raises and musters, and how long each has to go.
         public let work: [String]
+        /// The companies it may muster now, at the first tier, the House
+        /// able to pay for them.
+        public let musters: [Order]
+        /// The works it may raise a level now, the House able to pay.
+        public let works: [Order]
     }
 
     /// A line said in the alliance or to the realm.
@@ -98,7 +108,8 @@ public struct CompanionLedger: Equatable, Sendable {
             }
             return Company(id: unit.id, name: SpokenOrders.named(unit, in: world), troops: GameState.counted(world.troops(of: unit)),
                            leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world),
-                           orders: orders, marches: marches)
+                           orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
+                           gathers: CompanionLedger.gathers(for: unit, in: world, player: player))
         }
         self.holds = holds.map { hold in
             var work: [String] = []
@@ -110,7 +121,9 @@ public struct CompanionLedger: Equatable, Sendable {
                 work.append("Mustering \(training.kind.title) \(BuildingKind.numeral(training.musteredTier)), "
                     + CompanionLedger.watches(training.watchesLeft))
             }
-            return Hold(id: hold.id, name: hold.name, isSeat: hold.isSeat, work: work)
+            return Hold(id: hold.id, name: hold.name, isSeat: hold.isSeat, work: work,
+                        musters: CompanionLedger.musters(at: hold, in: world, player: player),
+                        works: CompanionLedger.works(at: hold, in: world, player: player))
         }
         let stock = houses.indices.contains(player) ? houses[player].stock : .zero
         stores = Resource.allCases.map { ($0, stock[$0]) }
@@ -124,6 +137,72 @@ public struct CompanionLedger: Equatable, Sendable {
         allianceWords = allied.map { alliance in lines(said.filter { $0.alliance == alliance.id }) } ?? []
         realmWords = lines(said.filter { $0.alliance == nil })
         chronicle = world.chronicle.suffix(CompanionLedger.linesShown).reversed().map(\.text)
+    }
+
+    /// The most sites a company is offered to gather at: the nearest.
+    public static let sitesOffered = 3
+
+    /// What a company may strike now from where it stands, by the rules'
+    /// own reach: the wilds, which any House may strike, and the companies
+    /// and holds of Houses at war with this one.
+    static func strikes(for unit: Unit, in world: GameState, player: Int) -> [Order] {
+        guard unit.kind.isMilitary, unit.movesLeft > 0 else { return [] }
+        let reach = unit.kind.range
+        func near(_ hex: Hex) -> Bool { hex != unit.position && hex.distance(to: unit.position) <= reach }
+        let houses = world.houses
+        func title(_ house: Int) -> String { houses.indices.contains(house) ? houses[house].title : "the wilds" }
+        var strikes: [Order] = []
+        for wild in world.wildsStanding where near(wild.position) {
+            strikes.append(Order(title: "Strike the \(wild.kind.title)", command: .attack(unit: unit.id, target: wild.position)))
+        }
+        for other in world.units where other.owner != player && houses.indices.contains(other.owner)
+            && world.isAtWar(player, other.owner) && near(other.position) {
+            strikes.append(Order(title: "Strike \(title(other.owner))'s \(SpokenOrders.named(other, in: world))",
+                                 command: .attack(unit: unit.id, target: other.position)))
+        }
+        for hold in world.holds where hold.owner != player && houses.indices.contains(hold.owner)
+            && world.isAtWar(player, hold.owner) && near(hold.position) {
+            strikes.append(Order(title: "Strike \(hold.name)", command: .attack(unit: unit.id, target: hold.position)))
+        }
+        return strikes
+    }
+
+    /// The nearest sites a company of war may be sent to gather at, as the
+    /// rules would send it.
+    static func gathers(for unit: Unit, in world: GameState, player: Int) -> [Order] {
+        guard unit.kind.isMilitary, unit.errand == nil else { return [] }
+        let nearest = world.sitesInLand.sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        return nearest.lazy.filter { world.gatherRefusal(unit.id, at: $0.id, as: player) == nil }.prefix(sitesOffered).map { site in
+            Order(title: "Gather \(site.store.title.lowercased()) at \(world.placeName(of: site.position))",
+                  command: .gather(unit: unit.id, site: site.id))
+        }
+    }
+
+    /// The companies a hold may muster now at the first tier: none while it
+    /// musters one; those its works allow, the House able to pay.
+    static func musters(at hold: NullmereCore.Hold, in world: GameState, player: Int) -> [Order] {
+        guard hold.training == nil, world.houses.indices.contains(player) else { return [] }
+        let stock = world.houses[player].stock
+        return UnitKind.allCases.filter { kind in
+            world.tierRefusal(of: kind, tier: 1, at: hold, for: player) == nil && stock.covers(world.trainingCost(of: kind, tier: 1, for: player))
+        }.map { kind in
+            Order(title: "Muster \(kind.title) I", command: .train(hold: hold.id, kind: kind, tier: 1))
+        }
+    }
+
+    /// The works a hold may raise a level now: none while it raises one;
+    /// each below its last level, the Moonspire at the seat alone and never
+    /// by a vassal, the House able to pay.
+    static func works(at hold: NullmereCore.Hold, in world: GameState, player: Int) -> [Order] {
+        guard hold.project == nil, world.houses.indices.contains(player) else { return [] }
+        let house = world.houses[player]
+        return BuildingKind.allCases.compactMap { kind -> Order? in
+            if kind.requiresSeat, !hold.isSeat { return nil }
+            if kind == .moonspire, house.liege != nil { return nil }
+            let level = hold.level(kind) + 1
+            guard level <= kind.maxLevel, house.stock.covers(world.buildCost(of: kind, toLevel: level, for: player)) else { return nil }
+            return Order(title: "Raise \(kind.title) \(BuildingKind.numeral(level))", command: .build(hold: hold.id, kind: kind))
+        }
     }
 
     /// What a company is about, in a few words.
