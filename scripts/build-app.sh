@@ -5,6 +5,8 @@
 #   scripts/build-app.sh                 # release builds into build/
 #   VERSION=0.3.0 scripts/build-app.sh   # set the marketing version
 #   REALM_ADDRESS=https://maincloud.spacetimedb.com/nullmere scripts/build-app.sh
+#   CHECKS=1 OUTPUT_DIR=build/checks scripts/build-app.sh
+#                                        # a release build that heeds the checks
 #
 # The app is built for Apple silicon only and needs macOS 26, matching
 # Apple Intelligence. It is ad-hoc signed, which is enough to run it on the
@@ -31,9 +33,17 @@ case "$REALM_ADDRESS" in
     *) echo "REALM_ADDRESS must be an http(s) address, such as https://maincloud.spacetimedb.com/nullmere" >&2; exit 1 ;;
 esac
 
-echo "Building ($CONFIGURATION, arm64)…"
-swift build -c "$CONFIGURATION" --arch arm64 --product NullmereLauncher
-BIN_DIR="$(swift build -c "$CONFIGURATION" --arch arm64 --show-bin-path)"
+# CHECKS=1: the checks' own build (scripts/check-counsel.sh and
+# scripts/check-voices.sh heard from an optimised app), NULLMERE_CHECKS
+# defined, built apart from the app's own so the two never mix.
+BUILD_ARGS=(-c "$CONFIGURATION" --arch arm64)
+if [ -n "${CHECKS:-}" ]; then
+    BUILD_ARGS+=(--scratch-path .build-checks -Xswiftc -DNULLMERE_CHECKS)
+fi
+
+echo "Building ($CONFIGURATION, arm64${CHECKS:+, with the checks})…"
+swift build "${BUILD_ARGS[@]}" --product NullmereLauncher
+BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 
 ICONSET_ROOT="$(mktemp -d)"
 trap 'rm -rf "$ICONSET_ROOT"' EXIT

@@ -1,0 +1,88 @@
+name: Model check
+
+# Apple's on-device model, asked on CI's virtual Mac by a release build of
+# the app. There the app as it ships finds the model ready ("Launch the
+# app" in CI), while the debug app the checks are heard from is told the
+# Mac isn't eligible. So the checks are heard here from an optimised build
+# made for them (scripts/build-app.sh with CHECKS=1, NULLMERE_CHECKS
+# defined; the shipping app never heeds them): counsel of a commander and
+# the voices, each held to its rules, or told unverified where the model
+# won't speak; then the debug app's, on the same Mac, beside them. Runs
+# once when this file changes, or by hand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/model-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-check
+  cancel-in-progress: false
+
+jobs:
+  model:
+    name: The runner's model, from a release build
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          sw_vers
+          sysctl -n hw.model machdep.cpu.brand_string || true
+
+      - name: Build the release app with its checks
+        run: CHECKS=1 OUTPUT_DIR=build/checks scripts/build-app.sh
+
+      # Exit 2 is the model not ready to speak: unverified, said so, not failed.
+      - name: Commanders' counsel, from the release-built app
+        if: ${{ !cancelled() }}
+        run: |
+          scripts/check-counsel.sh --app "build/checks/Nullmere Online.app" || [ $? -eq 2 ]
+          cp build/counsel-report.txt build/counsel-release-report.txt 2>/dev/null || true
+
+      - name: The voices, from the release-built app
+        if: ${{ !cancelled() }}
+        run: |
+          scripts/check-voices.sh --app "build/checks/Nullmere Online.app" || [ $? -eq 2 ]
+          cp build/voices-report.txt build/voices-release-report.txt 2>/dev/null || true
+
+      # The debug app on the same Mac, as CI's own steps hear it.
+      - name: Commanders' counsel, from the debug app
+        if: ${{ !cancelled() }}
+        run: |
+          scripts/check-counsel.sh || [ $? -eq 2 ]
+          cp build/counsel-report.txt build/counsel-debug-report.txt 2>/dev/null || true
+
+      - name: Summary
+        if: ${{ !cancelled() }}
+        run: |
+          for report in counsel-release voices-release counsel-debug; do
+            echo "== $report"
+            head -n 120 "build/$report-report.txt" 2>/dev/null || echo "(no report)"
+            echo
+          done | tee build/model-check.txt
+          {
+            echo '### The runner'"'"'s model, from a release build'
+            echo '```'
+            cat build/model-check.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: model-check
+          path: build/*-report.txt
+          if-no-files-found: ignore

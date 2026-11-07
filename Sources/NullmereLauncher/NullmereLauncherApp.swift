@@ -27,7 +27,10 @@ struct NullmereOnlineApp: App {
 @MainActor
 final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        #if DEBUG
+        // The checks are heard in debug builds, and in a release build made
+        // for them alone (scripts/build-app.sh with CHECKS=1, which defines
+        // NULLMERE_CHECKS); the app as it ships never heeds them.
+        #if DEBUG || NULLMERE_CHECKS
         // scripts/check-voices.sh: the voices heard from this Mac's own
         // model, asked by the app as it runs on a keeper's Mac, each line
         // held to the voices' rules; the report written, the app goes.
