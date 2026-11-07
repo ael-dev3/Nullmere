@@ -135,57 +135,60 @@ enum CompanionCheck {
     /// (line-cut, line-mended) for the phone to time itself by.
     static func loseTheLineIfAsked(_ session: CompanionSession) {
         guard ProcessInfo.processInfo.environment["NULLMERE_COMPANION_LOST"] != nil else { return }
+        Task { await loseTheLine(session) }
+    }
+
+    /// The line cut and mended, its steps in order, each written as it comes.
+    private static func loseTheLine(_ session: CompanionSession) async {
         let file = documents.appendingPathComponent("lost-report.txt")
         let cut = documents.appendingPathComponent("line-cut")
         let mended = documents.appendingPathComponent("line-mended")
-        Task {
-            var lines: [String] = []
-            var broken: [String] = []
-            func write(done: Bool = false) {
-                let last = !broken.isEmpty ? "Broken: " + broken.joined(separator: "; ") : done ? cameBack : keeping
-                try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
-                try? (lines + ["", last]).joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
-            }
-            /// Seconds since the smoke test left word at `marker`, if it has.
-            func since(_ marker: URL) -> String {
-                guard let left = (try? FileManager.default.attributesOfItem(atPath: marker.path))?[.modificationDate] as? Date else { return "" }
-                return String(format: " (%.2f s after the %@)", Date().timeIntervalSince(left), marker == cut ? "cut" : "mending")
-            }
-            let began = Date()
-            guard await until(60, { session.phase == .keeping && session.ledger != nil }) else {
-                broken.append("never came in again: \(session.problem ?? "no word")")
-                write()
-                return
-            }
-            lines.append(String(format: "In again by its own key in %.2f s", Date().timeIntervalSince(began)))
-            write()
-            guard await until(90, { session.outOfReach != nil }), let said = session.outOfReach else {
-                broken.append("never said the realm was out of reach")
-                write()
-                return
-            }
-            lines.append("Out of reach: \(said)" + since(cut))
-            if session.phase != .keeping || session.ledger == nil {
-                broken.append("let the House go while out of reach")
-            }
-            let words = "Said from \(session.keeper?.name ?? "a keeper")'s phone while its line was down."
-            session.say(words, toAlliance: false)
-            lines.append("Said while cut off: \(words)")
-            write()
-            guard await until(120, { session.outOfReach == nil && FileManager.default.fileExists(atPath: mended.path) }) else {
-                broken.append("never in reach again once the line was mended")
-                write()
-                return
-            }
-            lines.append("In reach again" + since(mended))
-            if await until(60, { session.word?.awaited == false }), let word = session.word {
-                lines.append("Once in reach: \(word.text)" + since(mended))
-                if word.refused { broken.append("the realm refused the words said while cut off: \(word.text)") }
-            } else {
-                broken.append("no word from the realm on the words said while cut off")
-            }
-            write(done: true)
+        var lines: [String] = []
+        var broken: [String] = []
+        func write(done: Bool = false) {
+            let last = !broken.isEmpty ? "Broken: " + broken.joined(separator: "; ") : done ? cameBack : keeping
+            try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+            try? (lines + ["", last]).joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
         }
+        /// Seconds since the smoke test left word at `marker`, if it has.
+        func since(_ marker: URL) -> String {
+            guard let left = (try? FileManager.default.attributesOfItem(atPath: marker.path))?[.modificationDate] as? Date else { return "" }
+            return String(format: " (%.2f s after the %@)", Date().timeIntervalSince(left), marker == cut ? "cut" : "mending")
+        }
+        let began = Date()
+        guard await until(60, { session.phase == .keeping && session.ledger != nil }) else {
+            broken.append("never came in again: \(session.problem ?? "no word")")
+            write()
+            return
+        }
+        lines.append(String(format: "In again by its own key in %.2f s", Date().timeIntervalSince(began)))
+        write()
+        guard await until(90, { session.outOfReach != nil }), let said = session.outOfReach else {
+            broken.append("never said the realm was out of reach")
+            write()
+            return
+        }
+        lines.append("Out of reach: \(said)" + since(cut))
+        if session.phase != .keeping || session.ledger == nil {
+            broken.append("let the House go while out of reach")
+        }
+        let words = "Said from \(session.keeper?.name ?? "a keeper")'s phone while its line was down."
+        session.say(words, toAlliance: false)
+        lines.append("Said while cut off: \(words)")
+        write()
+        guard await until(120, { session.outOfReach == nil && FileManager.default.fileExists(atPath: mended.path) }) else {
+            broken.append("never in reach again once the line was mended")
+            write()
+            return
+        }
+        lines.append("In reach again" + since(mended))
+        if await until(60, { session.word?.awaited == false }), let word = session.word {
+            lines.append("Once in reach: \(word.text)" + since(mended))
+            if word.refused { broken.append("the realm refused the words said while cut off: \(word.text)") }
+        } else {
+            broken.append("no word from the realm on the words said while cut off")
+        }
+        write(done: true)
     }
 
     private static func until(_ seconds: Double, _ condition: () -> Bool) async -> Bool {
