@@ -217,6 +217,13 @@ public final class CommanderCounselSession: ObservableObject {
 
     /// Seconds an answer may take to begin before it is given up.
     public static let firstWordsTimeout: Double = 25
+    /// This counsel's own: the same, but less in a test of giving up.
+    var firstWordsLimit = CommanderCounselSession.firstWordsTimeout
+    /// Where an answer's words come from in place of the model, in tests of
+    /// how counsel shows an answer as it streams, stops it, gives it up and
+    /// tells its trouble: each element the answer so far. Never set in the
+    /// game, where every answer is Apple's on-device model's own.
+    var speaker: ((String) -> AsyncThrowingStream<String, Error>)?
     static let logger = Logger(subsystem: "online.nullmere.game", category: "counsel")
 
     public init(counsel: CommanderCounsel, memory: CounselMemory, model: SystemLanguageModel = .default,
@@ -326,7 +333,7 @@ public final class CommanderCounselSession: ObservableObject {
             await self?.answer(prompt, asked: asked, began: began)
         }
         watchdog = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(CommanderCounselSession.firstWordsTimeout))
+            try? await Task.sleep(for: .seconds(self?.firstWordsLimit ?? CommanderCounselSession.firstWordsTimeout))
             guard let self, !Task.isCancelled, self.answering, self.firstWords == nil else { return }
             self.gaveUp = true
             self.task?.cancel()
@@ -374,16 +381,29 @@ public final class CommanderCounselSession: ObservableObject {
     }
 
     private func respond(_ prompt: String) async throws -> String {
-        let session = self.session ?? makeSession()
-        let options = GenerationOptions(temperature: 0.5, maximumResponseTokens: CounselBudget.answerTokens)
         var text = ""
-        for try await snapshot in session.streamResponse(to: prompt, options: options) {
-            try Task.checkCancellation()
-            if firstWords == nil { firstWords = Date() }
-            text = snapshot.content
-            partial = text
-            await takeFromBench()
+        if let speaker {
+            for try await snapshot in speaker(prompt) {
+                try Task.checkCancellation()
+                if firstWords == nil { firstWords = Date() }
+                text = snapshot
+                partial = text
+                await takeFromBench()
+            }
+        } else {
+            let session = self.session ?? makeSession()
+            let options = GenerationOptions(temperature: 0.5, maximumResponseTokens: CounselBudget.answerTokens)
+            for try await snapshot in session.streamResponse(to: prompt, options: options) {
+                try Task.checkCancellation()
+                if firstWords == nil { firstWords = Date() }
+                text = snapshot.content
+                partial = text
+                await takeFromBench()
+            }
         }
+        // Stopped, it is stopped, however its stream ended: what came of
+        // it is never taken for the answer, nor remembered.
+        try Task.checkCancellation()
         return text
     }
 

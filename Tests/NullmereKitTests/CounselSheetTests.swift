@@ -1,7 +1,7 @@
 import AppKit
 import FoundationModels
 @testable import LauncherKit
-import NullmereCounsel
+@testable import NullmereCounsel
 import NullmereRealm
 import SwiftUI
 import XCTest
@@ -93,6 +93,71 @@ final class CounselSheetTests: XCTestCase {
                                                                                      command: .fortify(unit: company.id), why: nil))
         session.give(offer)
         XCTAssertEqual(counsel.offers.count, 0)
+    }
+
+    private func until(_ what: String, _ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(10)
+        while !condition() {
+            if Date() > deadline { return XCTFail("Timed out waiting for \(what)") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
+    /// Where the model can be asked: the sheet asks for the keeper's words;
+    /// shows an answer as it streams, with Stop, which stops it; then a whole
+    /// answer and how long it took; and the order the commander puts
+    /// forward, which the keeper gives from the sheet and the realm is sent
+    /// as any order. The answers here are the test's, to hold the sheet to
+    /// them; the model's own are heard on a Mac with Apple Intelligence.
+    func testWhereTheModelCanBeAskedTheSheetShowsTheAnswerAsItComes() async throws {
+        let (session, link) = session()
+        var ready = false
+        session.counselAvailability = { ready ? .available : .unavailable(.deviceNotEligible) }
+        let commander = try XCTUnwrap(session.state.commanders(of: session.player).first)
+        session.openCounsel(with: commander.id)
+        let counsel = try XCTUnwrap(session.commanderCounsel)
+        ready = true
+        XCTAssertNil(counsel.unavailable)
+        draw(CounselSheet(session: session, counsel: counsel))
+
+        // Spoken as it comes, and stopped.
+        var speaking: AsyncThrowingStream<String, Error>.Continuation?
+        counsel.speaker = { _ in AsyncThrowingStream { speaking = $0 } }
+        counsel.ask("What do you see?")
+        try await until("the answer begun") { speaking != nil }
+        speaking?.yield("The water lies still")
+        try await until("its first words") { counsel.partial == "The water lies still" }
+        draw(CounselSheet(session: session, counsel: counsel))
+        XCTAssertTrue(PressableButtons.press("Stop"), "Among \(shown)")
+        try await until("the answer stopped") { !counsel.answering }
+        XCTAssertEqual(counsel.lines.last?.text, "Stopped.")
+        speaking?.finish()
+
+        // A whole answer, timed.
+        counsel.speaker = { _ in
+            AsyncThrowingStream { continuation in
+                continuation.yield("We hold the ford, my keeper.")
+                continuation.finish()
+            }
+        }
+        counsel.ask("Do we hold the ford?")
+        try await until("the whole answer") { !counsel.answering }
+        XCTAssertEqual(counsel.lines.last?.text, "We hold the ford, my keeper.")
+        XCTAssertNotNil(counsel.timing)
+        draw(CounselSheet(session: session, counsel: counsel))
+
+        // An order put forward, given from the sheet, sent to the realm.
+        let company = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary && !$0.fortified })
+        let handle = try XCTUnwrap(counsel.counsel.handle(of: company))
+        _ = await counsel.bench.propose("fortify", company: handle, place: "")
+        await counsel.takeFromBench()
+        XCTAssertEqual(counsel.offers.map(\.state), [.waiting])
+        draw(CounselSheet(session: session, counsel: counsel))
+        XCTAssertTrue(PressableButtons.press("Give the order"), "Among \(shown)")
+        XCTAssertEqual(counsel.offers.map(\.state), [.given])
+        XCTAssertEqual(link.sent, [.fortify(unit: company.id)])
+        draw(CounselSheet(session: session, counsel: counsel))
+        session.closeCounsel()
     }
 
     /// Every kind of line and every state of an offer is drawn.

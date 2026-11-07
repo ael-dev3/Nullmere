@@ -140,4 +140,163 @@ final class CounselSessionTests: XCTestCase {
         XCTAssertEqual(session.counsel.state.watch, counsel.state.watch + 1)
         session.stop()
     }
+
+    // MARK: An answer, as counsel handles it
+
+    // What follows holds how counsel handles an answer, each answer spoken
+    // by the test in place of the model: shown as it streams, timed, kept,
+    // stopped, given up, its trouble told. None of it is the model's words,
+    // which are heard on a Mac with Apple Intelligence (CounselCheck).
+
+    /// Streams kept open until the test is done.
+    private var open: [AsyncThrowingStream<String, Error>.Continuation] = []
+
+    override func tearDown() async throws {
+        for continuation in open { continuation.finish() }
+        open.removeAll()
+    }
+
+    private func spoken(_ counsel: CommanderCounsel, _ answers: @escaping (String) -> AsyncThrowingStream<String, Error>) -> CommanderCounselSession {
+        let session = session(counsel, availability: .available)
+        session.speaker = answers
+        return session
+    }
+
+    private func until(_ what: String, timeout: Double = 10, _ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() > deadline { return XCTFail("Timed out waiting for \(what)") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
+    /// An answer shown as it is spoken, then whole, trimmed of its quotes;
+    /// timed; remembered, and kept where the commander's memory is kept;
+    /// what the keeper did since told with what they say next; nothing
+    /// asked of nothing, nor while an answer is coming.
+    func testAnAnswerIsShownAsItIsSpokenAndRemembered() async throws {
+        let counsel = try counsel()
+        var asked: [String] = []
+        var said: [String] = []
+        let session = spoken(counsel) { prompt in
+            asked.append(prompt)
+            return AsyncThrowingStream { continuation in
+                continuation.yield("The water")
+                continuation.yield("\u{201C}The water lies still to the east, my keeper.\u{201D}")
+                continuation.finish()
+            }
+        }
+        var kept: CounselMemory?
+        session.onRemember = { kept = $0 }
+        session.ask("   ")
+        XCTAssertTrue(session.lines.isEmpty, "Nothing asked")
+        session.ask("What do you see?")
+        XCTAssertTrue(session.answering)
+        XCTAssertEqual(session.partial, "", "Its words to come")
+        session.ask("And more?")
+        XCTAssertEqual(session.lines.count, 1, "Nothing asked while an answer comes")
+        try await until("the answer") { !session.answering }
+        XCTAssertEqual(session.lines.map(\.kind), [.keeper, .commander])
+        XCTAssertEqual(session.lines.last?.text, "The water lies still to the east, my keeper.")
+        XCTAssertNil(session.partial)
+        XCTAssertNil(session.trouble)
+        let timing = try XCTUnwrap(session.timing)
+        XCTAssertLessThanOrEqual(timing.firstWords, timing.whole)
+        XCTAssertEqual(session.memory.exchanges.map(\.asked), ["What do you see?"])
+        XCTAssertEqual(kept, session.memory, "Kept where the commander's memory is kept")
+        XCTAssertEqual(asked, ["What do you see?"])
+        said = session.lines.map(\.text)
+
+        // The keeper gives an order the commander put forward: told of it
+        // with what they say next.
+        let handle = try XCTUnwrap(counsel.company.flatMap(counsel.handle(of:)))
+        _ = await session.bench.propose("fortify", company: handle, place: "")
+        await session.takeFromBench()
+        XCTAssertNotNil(session.give(try XCTUnwrap(session.offers.first)))
+        session.ask("Is it done?")
+        try await until("the second answer") { !session.answering }
+        XCTAssertEqual(asked.count, 2)
+        XCTAssertTrue(asked[1].hasPrefix("Since you last spoke: Your keeper gave the order: "), asked[1])
+        XCTAssertTrue(asked[1].hasSuffix("\n\nIs it done?"), asked[1])
+        XCTAssertEqual(session.memory.exchanges.count, 2)
+        XCTAssertEqual(Array(session.lines.map(\.text).prefix(said.count)), said, "What was said stays as it was")
+    }
+
+    /// Stopped as it is spoken, an answer stops, says so, and is neither
+    /// taken for the answer nor remembered; stopping is no trouble.
+    func testAStoppedAnswerStopsAndIsNotRemembered() async throws {
+        let counsel = try counsel()
+        let session = spoken(counsel) { [unowned self] _ in
+            AsyncThrowingStream { continuation in
+                continuation.yield("We hold")
+                self.open.append(continuation)
+            }
+        }
+        session.ask("Tell me of every company you know, at length.")
+        try await until("its first words") { session.partial == "We hold" }
+        XCTAssertTrue(session.answering)
+        session.stop()
+        try await until("the answer stopped") { !session.answering }
+        XCTAssertEqual(session.lines.last?.kind, .trouble)
+        XCTAssertEqual(session.lines.last?.text, "Stopped.")
+        XCTAssertFalse(session.lines.contains { $0.kind == .commander }, "No answer taken from words stopped")
+        XCTAssertNil(session.trouble, "Stopping is no trouble")
+        XCTAssertTrue(session.memory.exchanges.isEmpty, "Nothing remembered of an answer stopped")
+        XCTAssertNil(session.partial)
+    }
+
+    /// An answer that never begins is given up, and the keeper told so.
+    func testAnAnswerThatNeverBeginsIsGivenUp() async throws {
+        let counsel = try counsel()
+        let session = spoken(counsel) { [unowned self] _ in
+            AsyncThrowingStream { continuation in self.open.append(continuation) }
+        }
+        session.firstWordsLimit = 0.2
+        session.ask("Speak?")
+        try await until("the answer given up") { !session.answering }
+        XCTAssertEqual(session.trouble, .slow)
+        XCTAssertEqual(session.lines.last?.text, CounselTrouble.slow.said)
+        XCTAssertTrue(session.memory.exchanges.isEmpty)
+    }
+
+    /// Trouble told as itself: counsel outgrown is begun afresh from what
+    /// the commander remembers and answered; the model busy is said to be;
+    /// an answer of nothing is garbled, never shown as an answer.
+    func testTroubleIsToldAndCounselOutgrownIsBegunAfresh() async throws {
+        let counsel = try counsel()
+        var calls = 0
+        let session = spoken(counsel) { _ in
+            calls += 1
+            let call = calls
+            return AsyncThrowingStream { continuation in
+                switch call {
+                case 1: continuation.finish(throwing: CounselTrouble.tooLong)
+                case 2:
+                    continuation.yield("Begun afresh, my keeper.")
+                    continuation.finish()
+                case 3: continuation.finish(throwing: CounselTrouble.busy)
+                default:
+                    continuation.yield("  \u{201C}\u{201D} ")
+                    continuation.finish()
+                }
+            }
+        }
+        session.ask("How long have we spoken?")
+        try await until("the answer begun afresh") { !session.answering }
+        XCTAssertEqual(calls, 2, "Asked again, afresh")
+        XCTAssertEqual(session.lines.last?.text, "Begun afresh, my keeper.")
+        XCTAssertNil(session.trouble)
+        session.ask("Again?")
+        try await until("the busy model") { !session.answering }
+        XCTAssertEqual(session.trouble, .busy)
+        XCTAssertEqual(session.lines.last?.text, CounselTrouble.busy.said)
+        session.ask("Once more?")
+        try await until("nothing said") { !session.answering }
+        XCTAssertEqual(session.trouble, .garbled)
+        XCTAssertEqual(session.lines.last?.kind, .trouble)
+        XCTAssertEqual(session.memory.exchanges.count, 1, "Only the answer given is remembered")
+        // Trouble from elsewhere, told as the system told it.
+        let other = NSError(domain: "lake", code: 3, userInfo: [NSLocalizedDescriptionKey: "the line went still"])
+        XCTAssertEqual(CommanderCounselSession.trouble(from: other), .failed("the line went still"))
+    }
 }
