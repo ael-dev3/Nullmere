@@ -14,7 +14,7 @@ struct AlliancePanel: View {
         let chosen = session.selectedUnit.flatMap { $0.owner == session.player && $0.kind.isMilitary ? $0 : nil }
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                PanelTitle(title: "Alliance", subtitle: board.alliance.map { "\($0.name) · \($0.members.count) of \(board.limit) Houses" }
+                PanelTitle(title: "Alliance", subtitle: board.alliance.map { "\($0.titled) · \($0.members.count) of \(board.limit) Houses" }
                            ?? "Sworn to none")
                 CloseButton(label: "Close the Alliance") { session.panel = nil }
             }
@@ -194,7 +194,7 @@ struct AlliancePanel: View {
             Caps("Invitations", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
             ForEach(board.invitations) { alliance in
                 HStack {
-                    Text(verbatim: "\(alliance.name), led by \(title(alliance.leader))")
+                    Text(verbatim: "\(alliance.titled), led by \(title(alliance.leader))")
                         .font(.nm(11))
                         .foregroundStyle(Palette.text(0.85))
                         .fixedSize(horizontal: false, vertical: true)
@@ -235,7 +235,7 @@ struct AlliancePanel: View {
             ForEach(board.others) { line in
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(verbatim: line.alliance.name).font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                        Text(verbatim: line.alliance.titled).font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
                         Text(verbatim: "Led by \(title(line.alliance.leader)) · \(line.alliance.members.count) of \(board.limit) Houses")
                             .font(.nm(10))
                             .foregroundStyle(Palette.text(0.5))

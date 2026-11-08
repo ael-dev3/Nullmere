@@ -1751,7 +1751,14 @@ final class CompanionLedgerTests: XCTestCase {
         // Gathering: at most the nearest few sites, each one the rules would send it to.
         XCTAssertLessThanOrEqual(company.gathers.count, CompanionLedger.sitesOffered)
         assertTaken(company.gathers, in: state, as: me)
-        for gather in company.gathers { XCTAssertTrue(gather.title.hasPrefix("Gather ")) }
+        for gather in company.gathers {
+            XCTAssertTrue(gather.title.hasPrefix("Gather "))
+            // The site by its name, which way and how far: never "at on the blackwood by" a hold.
+            guard case .gather(_, let siteID, _) = gather.command, let site = state.site(siteID) else { return XCTFail(gather.title) }
+            XCTAssertEqual(gather.title, "Gather \(site.store.title.lowercased()) at \(state.siteSaid(site)), "
+                           + GameState.waySaid(to: site.position, from: spear.position))
+            XCTAssertFalse([" at on ", " at in ", " at at "].contains { gather.title.contains($0) }, gather.title)
+        }
         // Its moves spent, it strikes nothing.
         let index = try XCTUnwrap(state.units.firstIndex { $0.id == spear.id })
         state.units[index].movesLeft = 0

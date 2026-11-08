@@ -248,6 +248,12 @@ extension GameState {
         return unit.gatherFor.map { min(max($0, 1), fill) } ?? fill
     }
 
+    /// A site of the land by its name and level, as a line says it: "the
+    /// Deadfall II", or an alliance's yard by its own name.
+    public func siteSaid(_ site: Site) -> String {
+        "the \(site.title) \(BuildingKind.numeral(site.level))"
+    }
+
     /// What a company out at the land's work is about, as its keeper is
     /// told it on the Mac and the phone alike: at its site and when it will
     /// be full or home, bound for it, or home with its load, and when it
@@ -257,7 +263,7 @@ extension GameState {
         let there = arrivalSaid(of: unit).map { ", there \($0)" } ?? ""
         switch unit.errand {
         case .gather(let siteID)?:
-            let site = self.site(siteID).map { "the \(Site.title(of: $0.store)) \(BuildingKind.numeral($0.level))" } ?? "a site of the land"
+            let site = self.site(siteID).map(siteSaid) ?? "a site of the land"
             if let left = watchesToFill(unit) {
                 let ends = unit.gatherFor.map { $0 <= left } == true ? "home" : "full"
                 return "at \(site), \(ends) " + (left <= 1 ? "as the watch turns" : "in \(left) watches")

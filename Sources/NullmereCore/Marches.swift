@@ -177,6 +177,15 @@ extension GameState {
         Sounding.quarters[quarter(of: hex, from: origin)]
     }
 
+    /// How far and which way one hex lies from another, as a march or an
+    /// order to gather is told: "3 tiles north-east", "1 tile west", or
+    /// "here" where they are one.
+    public static func waySaid(to hex: Hex, from origin: Hex) -> String {
+        let distance = origin.distance(to: hex)
+        guard distance > 0 else { return "here" }
+        return "\(distance) tile\(distance == 1 ? "" : "s") \(direction(of: hex, from: origin))"
+    }
+
     /// When a company on the march should be where it is bound, as the
     /// realm worked it out for the keeper: "as the watch turns", or "in 3
     /// watches"; nil when that isn't known.
@@ -194,8 +203,7 @@ extension GameState {
     /// tiles north-east, there in 2 watches". Nil for a company standing.
     public func marchSaid(of unit: Unit, for viewer: Int) -> String? {
         guard let destination = unit.destination, destination != unit.position else { return nil }
-        let distance = unit.position.distance(to: destination)
-        let way = "\(distance) tile\(distance == 1 ? "" : "s") \(GameState.direction(of: destination, from: unit.position))"
+        let way = GameState.waySaid(to: destination, from: unit.position)
         let there = arrivalSaid(of: unit).map { ", there \($0)" } ?? ""
         if let hold = hold(at: destination) { return "Marching to \(hold.name), \(way)\(there)" }
         let explored = houses.indices.contains(viewer) ? houses[viewer].explored : []

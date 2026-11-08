@@ -132,6 +132,9 @@ final class MarchTests: XCTestCase {
             (Hex(0, 1), "south-east"), (Hex(-1, 1), "south-west"), (Hex(1, -2), "north"), (Hex(-1, 2), "south"),
         ]
         for (step, way) in ways { XCTAssertEqual(GameState.direction(of: here + step, from: here), way, "\(step)") }
+        XCTAssertEqual(GameState.waySaid(to: here + Hex(1, 0), from: here), "1 tile east")
+        XCTAssertEqual(GameState.waySaid(to: here + Hex(-1, 2), from: here), "2 tiles south")
+        XCTAssertEqual(GameState.waySaid(to: here, from: here), "here")
         XCTAssertEqual(Terrain.blackwood.ground, "the blackwood")
         XCTAssertEqual(Terrain.shallows.ground, "the dead shallows")
         XCTAssertEqual(Terrain.ford.ground, "the Moonford")

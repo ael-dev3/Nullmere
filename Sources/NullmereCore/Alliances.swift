@@ -21,6 +21,14 @@ public struct Alliance: Codable, Equatable, Identifiable, Sendable {
     /// first on what its Houses raise for it; absent before it had any.
     public internal(set) var coffers: Stock?
 
+    /// Its name as a line begins with it: "The Still Accord", where the
+    /// stewards' alliances are named to be said within a line ("the Still
+    /// Accord invites your House").
+    public var titled: String { Alliance.titled(name) }
+
+    /// An alliance's name as a line begins with it.
+    public static func titled(_ name: String) -> String { name.prefix(1).uppercased() + name.dropFirst() }
+
     public init(id: Int, name: String, leader: Int, founded: Int) {
         self.id = id
         self.name = name

@@ -1127,7 +1127,7 @@ public struct CompanionLedger: Equatable, Sendable {
             return home.distance(to: seat.position)
         }
         invitations = board.invitations.map { invited in
-            Answer(id: "invited by \(invited.id)", question: "\(invited.name) invites your House to join it.",
+            Answer(id: "invited by \(invited.id)", question: "\(invited.titled) invites your House to join it.",
                    accept: canJoin(player, invited)
                        ? Order(title: "Join \(invited.name)", command: .answerInvitation(alliance: invited.id, accept: true)) : nil,
                    refuse: Order(title: "Decline \(invited.name)", command: .answerInvitation(alliance: invited.id, accept: false)),
@@ -1546,7 +1546,9 @@ public struct CompanionLedger: Equatable, Sendable {
         guard unit.kind.isMilitary, unit.errand == nil else { return [] }
         let nearest = world.sitesInLand.sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
         return nearest.lazy.filter { world.gatherRefusal(unit.id, at: $0.id, as: player) == nil }.prefix(sitesOffered).map { site in
-            Order(title: "Gather \(site.store.title.lowercased()) at \(world.placeName(of: site.position))",
+            // The site by its name, which way and how far from the company,
+            // never "at on the blackwood by" a hold.
+            Order(title: "Gather \(site.store.title.lowercased()) at \(world.siteSaid(site)), \(GameState.waySaid(to: site.position, from: unit.position))",
                   command: .gather(unit: unit.id, site: site.id))
         }
     }

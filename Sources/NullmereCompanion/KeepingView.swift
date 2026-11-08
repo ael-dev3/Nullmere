@@ -931,7 +931,7 @@ struct AllianceTab: View {
                 if let ledger = session.ledger {
                     Section {
                         if let alliance = ledger.alliance {
-                            Text(verbatim: alliance)
+                            Text(verbatim: Alliance.titled(alliance))
                                 .font(Night.heading)
                             Text(verbatim: ledger.allies.joined(separator: ", "))
                                 .font(Night.small)

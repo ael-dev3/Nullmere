@@ -47,6 +47,16 @@ final class AllianceTests: XCTestCase {
         XCTAssertFalse(state.areAllied(me, me), "A House is no ally of itself")
     }
 
+    /// An alliance's name as a line begins with it: the stewards' named to
+    /// be said within a line ("the Still Accord invites your House") begin
+    /// a line in capitals; a keeper's own as they wrote it.
+    func testAnAlliancesNameBeginsALineInCapitals() {
+        XCTAssertEqual(Alliance.titled("the Still Accord"), "The Still Accord")
+        XCTAssertEqual(Alliance(id: 1, name: "the Saltbound Pact", leader: 0, founded: 1).titled, "The Saltbound Pact")
+        XCTAssertEqual(Alliance.titled("The Phone's Accord"), "The Phone's Accord")
+        XCTAssertEqual(Alliance.titled("Hostward"), "Hostward")
+    }
+
     func testInvitationsAndRequests() throws {
         var state = lake("invitations")
         let me = state.player
