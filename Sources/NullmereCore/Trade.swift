@@ -40,6 +40,35 @@ public struct Trade: Codable, Equatable, Hashable, Sendable, CustomStringConvert
     }
 
     public var description: String { "\(given) for \(taken)" }
+
+    /// The terms a keeper's offer starts from, on the Mac and the phone:
+    /// ten of the store their own is worth most in, for ten timber (ten
+    /// stone, when it is timber they give).
+    public static func opening(from stock: Stock) -> Trade {
+        let most = Resource.allCases.max { stock[$0] * $0.worth < stock[$1] * $1.worth } ?? .grain
+        return Trade(give: most, 10, for: most == .timber ? .stone : .timber, 10)
+    }
+
+    /// What an amount of a store moves by as it is chosen: five, or one of
+    /// moonsalt, worth three of any other.
+    public static func step(of resource: Resource) -> Int { resource == .moonsalt ? 1 : 5 }
+
+    /// Why these terms can't be offered from these stores, if they can't,
+    /// in one wording for the Mac's trade popover and the phone.
+    public func problem(with stock: Stock) -> String? {
+        if give == take { return "Choose two different stores." }
+        if !isWellFormed { return "Choose an amount of each." }
+        if stock[give] < giveAmount { return "You have only \(stock[give]) \(give.title.lowercased())." }
+        return nil
+    }
+
+    /// How the terms weigh and who answers them, to a keeper's House or a
+    /// steward's; or why they can't be offered.
+    public func offerSaid(stock: Stock, keeper: Bool) -> String {
+        if let problem = problem(with: stock) { return problem }
+        let who = keeper ? "Their keeper answers by envoy." : "Their steward answers at once; the cunning ask more, allies less."
+        return "\(Trade.note(asking: asking)) \(who)"
+    }
 }
 
 extension GameState {

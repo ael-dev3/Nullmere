@@ -861,6 +861,47 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNotNil(again.why)
     }
 
+    /// Trade from the phone, as the Mac's trade popover offers it, in one
+    /// wording for both: terms that can't be offered say why; good terms to
+    /// a steward's House, how they weigh and that its steward answers at
+    /// once, the offer taken by the rules; to a keeper's, answered by envoy,
+    /// and another while the first waits refused in the rules' words; no
+    /// trade offered across a war.
+    func testThePhoneOffersATrade() throws {
+        var (state, me) = try world()
+        state.houses[me].stock = Stock(grain: 300, timber: 40, stone: 40, moonsalt: 20)
+        let near = try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.first)
+        XCTAssertTrue(near.mayTrade)
+        XCTAssertEqual(Trade.opening(from: state.houses[me].stock), Trade(give: .grain, 10, for: .timber, 10),
+                       "Ten of the store the House's own is worth most in, for timber")
+        XCTAssertEqual([Trade.step(of: .grain), Trade.step(of: .moonsalt)], [5, 1], "Moonsalt, worth three, chosen one at a time")
+        XCTAssertEqual(CompanionLedger.trading(Trade(give: .grain, 10, for: .grain, 10), with: near.id, in: state, player: me),
+                       CompanionLedger.Trading(said: "Choose two different stores.", offer: nil))
+        XCTAssertEqual(CompanionLedger.trading(Trade(give: .moonsalt, 30, for: .grain, 10), with: near.id, in: state, player: me).said,
+                       "You have only 20 moonsalt.")
+        let fair = Trade(give: .grain, 60, for: .timber, 50)
+        let steward = CompanionLedger.trading(fair, with: near.id, in: state, player: me)
+        XCTAssertEqual(steward.said, fair.offerSaid(stock: state.houses[me].stock, keeper: false))
+        XCTAssertTrue(steward.said.hasSuffix("Their steward answers at once; the cunning ask more, allies less."), steward.said)
+        let offer = try XCTUnwrap(steward.offer)
+        XCTAssertEqual(offer.title, "Offer 60 grain for 50 timber to \(state.houses[near.id].title)")
+        assertTaken([offer], in: state, as: me)
+
+        // A keeper's House answers by envoy, and one offer waits at a time.
+        state.houses[near.id].isPlayer = true
+        let keeper = CompanionLedger.trading(fair, with: near.id, in: state, player: me)
+        XCTAssertTrue(keeper.said.hasSuffix("Their keeper answers by envoy."), keeper.said)
+        _ = try state.perform(try XCTUnwrap(keeper.offer).command, as: me)
+        XCTAssertEqual(CompanionLedger.trading(fair, with: near.id, in: state, player: me),
+                       CompanionLedger.Trading(said: RuleError.envoyWaiting.description, offer: nil))
+
+        // No trade crosses a war.
+        let foe = try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.dropFirst().first).id
+        _ = try state.declareWar(by: me, on: foe)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).dealings.first { $0.id == foe }?.mayTrade, false)
+        XCTAssertEqual(CompanionLedger.trading(fair, with: foe, in: state, player: me).said, RuleError.noTradeAcrossWar(foe).description)
+    }
+
     /// The Remembering on the phone, as the Mac's Realm panel sets it: no
     /// riddle, nothing; set, how it stands, its line and each name to
     /// answer, taken by the rules and counted on the House tab; answered

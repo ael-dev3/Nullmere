@@ -953,10 +953,10 @@ struct TradeComposer: View {
         self.house = house
         self.stock = stock
         self.offer = offer
-        // Start from what the keeper has most of.
-        let most = Resource.allCases.max { stock[$0] * $0.worth < stock[$1] * $1.worth } ?? .grain
-        _give = State(initialValue: most)
-        _take = State(initialValue: most == .timber ? .stone : .timber)
+        // Start from what the keeper has most of, as the phone does.
+        let opening = Trade.opening(from: stock)
+        _give = State(initialValue: opening.give)
+        _take = State(initialValue: opening.take)
     }
 
     var trade: Trade { Trade(give: give, giveAmount, for: take, takeAmount) }
@@ -989,17 +989,13 @@ struct TradeComposer: View {
             }
             .labelsHidden()
             .frame(width: 104)
-            AmountField(name: "\(label) amount", amount: amount, most: most, step: resource.wrappedValue == .moonsalt ? 1 : 5)
+            AmountField(name: "\(label) amount", amount: amount, most: most, step: Trade.step(of: resource.wrappedValue))
         }
     }
 
-    /// Why the terms can't be offered, if they can't.
-    static func problem(with trade: Trade, stock: Stock) -> String? {
-        if trade.give == trade.take { return "Choose two different stores." }
-        if !trade.isWellFormed { return "Choose an amount of each." }
-        if stock[trade.give] < trade.giveAmount { return "You have only \(stock[trade.give]) \(trade.give.title.lowercased())." }
-        return nil
-    }
+    /// Why the terms can't be offered, if they can't: the rules' words, as
+    /// the phone says them.
+    static func problem(with trade: Trade, stock: Stock) -> String? { trade.problem(with: stock) }
 
     /// How terms weigh, from the side of the House that would get `asking`
     /// percent of what it gives.
@@ -1007,9 +1003,5 @@ struct TradeComposer: View {
         Trade.note(asking: asking)
     }
 
-    static func line(for trade: Trade, stock: Stock, keeper: Bool) -> String {
-        if let problem = problem(with: trade, stock: stock) { return problem }
-        let who = keeper ? "Their keeper answers by envoy." : "Their steward answers at once; the cunning ask more, allies less."
-        return "\(note(asking: trade.asking)) \(who)"
-    }
+    static func line(for trade: Trade, stock: Stock, keeper: Bool) -> String { trade.offerSaid(stock: stock, keeper: keeper) }
 }

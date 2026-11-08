@@ -484,8 +484,13 @@ a vote on the realm's law to cast.
   to the alliance), Send an envoy with peace, a pact or a demand of tribute
   where the rules would carry it, Send a gift of any store, as much as a
   House takes in gifts in a watch (a hundred, or twenty-five moonsalt),
-  to any House not at war with the keeper's, and Declare war, asked once
-  more first. Letters: those between the keeper's House and other keepers',
+  to any House not at war with the keeper's, Offer a trade to any such
+  House as the Mac's trade popover offers one (so much of one store for
+  so much of another, starting from ten of what the keeper's stores are
+  worth most in; how the terms weigh by barter worth and who answers, a
+  steward at once or a keeper by envoy, or why the terms can't be offered,
+  in the same words as the Mac), and Declare war, asked once more first.
+  Letters: those between the keeper's House and other keepers',
   the latest first, three open and the earlier folded, and a letter written
   to any keeper's House, those it has letters with first, then the nearest,
   read by that keeper alone.

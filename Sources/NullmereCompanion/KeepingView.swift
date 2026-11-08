@@ -1469,6 +1469,76 @@ struct DealingRow: View {
             }
             .font(Night.small)
         }
+        if dealing.mayTrade {
+            TradeRows(session: session, dealing: dealing)
+        }
+    }
+}
+
+/// An offer of trade to another House made from the phone, as the Mac's
+/// trade popover makes one: what to give and what to ask for, how the
+/// terms weigh and who answers them, or why they can't be offered, in the
+/// rules' words; and Offer, where the rules would take it.
+struct TradeRows: View {
+    let session: CompanionSession
+    let dealing: CompanionLedger.Dealing
+    /// The terms as the keeper has set them; until then, the opening ones.
+    @State private var terms: Trade?
+
+    var body: some View {
+        DisclosureGroup("Offer a trade…") {
+            if let world = session.world, let me = session.keeper?.house, world.houses.indices.contains(me) {
+                let stock = world.houses[me].stock
+                let trade = terms ?? Trade.opening(from: stock)
+                StoreAmount(label: "Give", resource: trade.give, amount: trade.giveAmount, most: stock[trade.give]) { resource, amount in
+                    terms = Trade(give: resource, amount, for: trade.take, trade.takeAmount)
+                }
+                StoreAmount(label: "For", resource: trade.take, amount: trade.takeAmount, most: Stock.cap) { resource, amount in
+                    terms = Trade(give: trade.give, trade.giveAmount, for: resource, amount)
+                }
+                let trading = CompanionLedger.trading(trade, with: dealing.id, in: world, player: me)
+                Text(verbatim: trading.said)
+                    .font(Night.small)
+                    .foregroundStyle(trading.offer == nil ? Night.bad : Night.ink.opacity(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+                if let offer = trading.offer {
+                    Button("Offer") {
+                        session.give(offer.command, told: offer.title)
+                        terms = nil
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(offer.title)
+                }
+            }
+        }
+        .font(Night.small)
+    }
+}
+
+/// A store and an amount of it, chosen: the four stores to pick from, and
+/// the amount stepped by five, or by one of moonsalt (`Trade.step`).
+struct StoreAmount: View {
+    let label: String
+    let resource: Resource
+    let amount: Int
+    /// The most it may be: what the House has, or what a store holds.
+    let most: Int
+    let changed: (Resource, Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Picker(label, selection: Binding(get: { resource }, set: { changed($0, amount) })) {
+                ForEach(Resource.allCases, id: \.self) { store in
+                    Text(verbatim: store.title).tag(store)
+                }
+            }
+            .pickerStyle(.menu)
+            Stepper(value: Binding(get: { amount }, set: { changed(resource, $0) }), in: 1...max(1, most), step: Trade.step(of: resource)) {
+                Text(verbatim: "\(amount)")
+                    .monospacedDigit()
+            }
+            .accessibilityLabel("\(label): \(amount) \(resource.title.lowercased())")
+        }
     }
 }
 

@@ -326,6 +326,31 @@ public struct CompanionLedger: Equatable, Sendable {
         /// much as a House takes in gifts in a watch.
         public let gifts: [Order]
         public let war: Order?
+        /// Whether it may be offered a trade: no trade crosses a war.
+        public let mayTrade: Bool
+    }
+
+    /// An offer of trade being made to another House, as the Mac's trade
+    /// popover makes one: how its terms weigh and who answers them, or why
+    /// they can't be offered, in the rules' words (`Trade.offerSaid`, or
+    /// the rules' refusal of the offer); and the offer, where the rules
+    /// would take it.
+    public struct Trading: Equatable, Sendable {
+        public let said: String
+        public let offer: Order?
+    }
+
+    /// The offer of these terms to that House, from the keeper's House.
+    public static func trading(_ trade: Trade, with house: Int, in world: GameState, player: Int) -> Trading {
+        guard world.houses.indices.contains(player), world.houses.indices.contains(house) else {
+            return Trading(said: RuleError.unknownHouse.description, offer: nil)
+        }
+        let stock = world.houses[player].stock
+        if let problem = trade.problem(with: stock) { return Trading(said: problem, offer: nil) }
+        let command = Command.offerTrade(trade, to: house, words: nil)
+        if let refusal = world.refusal(of: command, as: player) { return Trading(said: refusal.description, offer: nil) }
+        return Trading(said: trade.offerSaid(stock: stock, keeper: world.houses[house].isPlayer),
+                       offer: Order(title: "Offer \(trade) to \(world.houses[house].title)", command: command))
     }
 
     /// The caretaker's standing orders, kept by the realm for while the
@@ -1226,7 +1251,7 @@ public struct CompanionLedger: Equatable, Sendable {
             }
             let war = Order(title: "Declare war on \(name)", command: .declareWar(on: house))
             return Dealing(id: house, name: name, stance: stance, envoys: envoys, gifts: gifts,
-                           war: atWar || world.refusal(of: war.command, as: player) != nil ? nil : war)
+                           war: atWar || world.refusal(of: war.command, as: player) != nil ? nil : war, mayTrade: !atWar)
         }
     }
 
