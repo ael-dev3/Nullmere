@@ -82,6 +82,9 @@ WOOD = [(f"VSCO 1 Percussion/varWood/{name}.wav", 0) for name in ("wood_click_f"
 SLAPSTICK = [("VSCO 1 Percussion/varWood/slapstick2.wav", 0)]
 SCRAPE = [("Miscellania Raw/Misc 1/brick_scrape2.wav", 0)]
 DREAD = [("Percussion/bassdrum_rub1_v1.wav", 0), ("Percussion/susCymb1-bow-2.wav", 0)]
+# The double bass plucked, twice alike, named as the basses are an octave
+# below where it sounds: a bowstring loosed.
+TWANG = [(f"Strings/Solo Contrabass/Pizz/BKCtbss_Pizz_G#2_v1_{rr}.wav", 56) for rr in ("rr1", "rr2")]
 DRUMS = [("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_f_1.wav", 0),
          ("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_mf_1.wav", 0),
          ("VSCO 1 Percussion/drums/snare/drum1/snare1_nosnare_mf_1.wav", 0),
@@ -385,6 +388,13 @@ def family(root, files, kind):
             heard = (0, int(1.5 * RATE))
             sounded = 0.0
             loop = None
+        elif kind == "twanged":
+            # A string plucked and let go: its first eight tenths of a second.
+            x = onset(x, below=40)
+            x = cut(x, below=45, longest=0.8, fade=0.3)
+            heard = (0, int(0.2 * RATE))
+            sounded = pitch(x, note, int(0.02 * RATE), int(0.4 * RATE))
+            loop = None
         elif kind == "shaken":
             # A rattle rolled: the first eight tenths of a second of it.
             x = onset(x, below=40)
@@ -501,6 +511,9 @@ def main():
     dread = family(root, DREAD, "swelled")
     even(dread)
     swift(dread, "dread", "A bass drum rubbed, and a suspended cymbal bowed.", os.path.join(out, "DreadFile.swift"))
+    twang = family(root, TWANG, "twanged")
+    even(twang)
+    swift(twang, "twang", "The double bass plucked, twice alike.", os.path.join(out, "TwangFile.swift"))
     drums = family(root, DRUMS, "drum")
     great, field = drums[:2], drums[2:]
     even(great, together=True)

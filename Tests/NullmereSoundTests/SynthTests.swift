@@ -156,7 +156,7 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(decibels(rms(alone(.leaf, rate: 96_000)) / rms(alone(.leaf))), 0, accuracy: 1.5)
         XCTAssertEqual(decibels(rms(alone(.ride, rate: 44_100)) / rms(alone(.ride))), 0, accuracy: 1.5)
         XCTAssertNil(Synth.bands(of: .watch).first, "A bell has no noise to colour")
-        XCTAssertNotNil(Synth.bands(of: .loose).rest, "The arrow's hiss its own")
+        XCTAssertEqual(Synth.bands(of: .loose).first?.centre, 6_000, "The arrow's hiss its own, high")
     }
 
     /// The war horn's, the muster's, the envoy's, a hold taken's and a deed
@@ -214,7 +214,7 @@ final class SynthTests: XCTestCase {
         let strikes: [(SoundCue, Int, Float)] = [(.anvil, 3, -40.1), (.stand, 2, -36.4), (.deny, 2, -42.5), (.lore, 3, -32.7),
                                                  (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7),
                                                  (.coin, 3, -39.4), (.sift, 3, -44.5), (.clash, 1, -38.6), (.ride, 3, -37.1),
-                                                 (.dig, 2, -39.7), (.batter, 2, -33.6)]
+                                                 (.dig, 2, -39.7), (.batter, 2, -33.6), (.loose, 1, -38.7)]
         for (cue, blows, before) in strikes {
             let heard = struck(cue)
             XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")

@@ -1685,12 +1685,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are twenty-four of the
+The score is played on recorded instruments, and so are twenty-five of the
 thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
 bells, the harp's chords, the drums, the forge's anvil, the knocks of wood,
 the watch's gong, the coins' jingle, the salt's rattle, steel struck on
-steel, hooves, spades, a ram on a gate and dread. Every other sound is made
-as it plays.
+steel, hooves, spades, a ram on a gate, dread and a bowstring. Every other
+sound, and an arrow's hiss after its string, is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and as
   each watch turns a recorded gong struck softly, read slower to sound low
@@ -1732,7 +1732,8 @@ as it plays.
   stay out of doors.
 - **Cues.** Each kind of company sounds its own: Riders' hooves (recorded
   wood knocked and read slower, as hooves have long been made), a loosed
-  bowstring, the clash of a blow struck in close (steel on steel as it was
+  bowstring (a recorded double bass plucked, the arrow's hiss after it),
+  the clash of a blow struck in close (steel on steel as it was
   recorded, four blows each in its turn, read a little faster or slower),
   heard as well when the blow falls on yours; a company digging in, two
   spades scraping into stony earth, and a hold's walls battered, the great

@@ -414,6 +414,12 @@ public final class Synth: @unchecked Sendable {
             let steel = Recordings.steelNotes
             let turn = abs(variant % (steel.count * 3))
             return [(steel[turn % steel.count], 0, 1, [1, 1.06, 0.94][turn / steel.count])]
+        case .loose:
+            // A bowstring loosed: the double bass plucked, one of two alike
+            // in its turn, read to sound G.
+            let twang = Recordings.twangNotes
+            let string = twang[abs(variant % twang.count)]
+            return [(string, 0, 1, Double(196 / string.frequency))]
         case .ride:
             // Three hooves on hard ground, close together: wood knocked, read
             // slower, as hooves have long been made.
@@ -549,6 +555,7 @@ public final class Synth: @unchecked Sendable {
         case .watch: return 2
         case .coin: return 2
         case .clash: return 1.43
+        case .loose: return 0.86
         case .ride: return 1.7
         case .dig: return 2.5
         case .batter: return 3.6
@@ -576,12 +583,9 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: f * 8.93, amplitude: 0.015, decay: 1.3),
             ], noise: 0.01, noiseDecay: 6)
         case .loose:
-            // The string's low twang and its click, then the shaft's hiss.
-            note = Note(partials: [
-                Partial(frequency: 196, amplitude: 0.09, decay: 10),
-                Partial(frequency: 392, amplitude: 0.035, decay: 14),
-            ], noise: 0.07, noiseDecay: 80)
-            more = [Note(partials: [], noise: 0.03, noiseDecay: 7, delay: 0.05)]
+            // The bowstring is plucked as it was recorded (`strikes(of:)`);
+            // after it, the shaft's hiss through the air.
+            note = Note(partials: [], noise: 0.03, noiseDecay: 7, delay: 0.05)
         case .muster, .horn:
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
@@ -919,8 +923,8 @@ public final class Synth: @unchecked Sendable {
         case .select: return ((3_200, 0.9), nil)
         case .order: return ((2_200, 0.8), nil)
         case .toll: return ((500, 0.8), nil)
-        // The string's click, then the shaft's hiss through the air.
-        case .loose: return ((2_600, 1), (6_000, 1.6))
+        // The shaft's hiss through the air, after the string recorded.
+        case .loose: return ((6_000, 1.6), nil)
         case .tend: return ((1_000, 0.6), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)

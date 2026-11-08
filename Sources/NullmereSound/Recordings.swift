@@ -64,12 +64,14 @@ enum Recordings {
     static let slapstickNotes = slapstick.map(Recording.init)
     static let scrapeNotes = scrape.map(Recording.init)
     static let dreadNotes = dread.map(Recording.init)
+    /// The double bass plucked, twice alike: a bowstring loosed.
+    static let twangNotes = twang.map(Recording.init)
 
     /// Every note read, so the score never reads one as it plays.
     static func load() {
         let every: [[Recording]] = [harpNotes, glockenspielNotes, celloNotes, violaNotes, bassNotes, hornNotes, clarinetNotes,
                                     anvilNotes, slitDrumNotes, drumNotes, gongNotes, tambourineNotes, cabasaNotes, steelNotes,
-                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes]
+                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes, twangNotes]
         _ = every.count
     }
 
