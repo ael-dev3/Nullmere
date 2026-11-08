@@ -29,6 +29,9 @@ extension GameState {
         units.reduce(0) { $1.owner == house && $1.kind.isMilitary ? $0 + troops(of: $1) : $0 }
     }
 
+    /// A count of companies as a line says it: "1 company", "3 companies".
+    public static func companies(_ count: Int) -> String { count == 1 ? "1 company" : "\(counted(count)) companies" }
+
     /// A count as the realm writes it, its thousands set apart: 12,400.
     public static func counted(_ number: Int) -> String {
         let digits = String(abs(number))

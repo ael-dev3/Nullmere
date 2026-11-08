@@ -92,7 +92,7 @@ extension GameState {
         ripples = nil
         let shownOf = Set(glimpses.map(\.owner)).sorted()
         if !glimpses.isEmpty {
-            record(.omen, shownOf, "The lake lay still as glass, and on it every House saw \(glimpses.count) companies standing on its shore.")
+            record(.omen, shownOf, "The lake lay still as glass, and on it every House saw \(GameState.companies(glimpses.count)) standing on its shore.")
         }
         return [.stillHour(glimpses: glimpses.count, houses: shownOf)]
     }

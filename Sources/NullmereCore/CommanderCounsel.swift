@@ -153,7 +153,8 @@ public struct CommanderCounsel: Sendable {
     public var affairs: String {
         guard state.houses.indices.contains(player) else { return "Your House has fallen." }
         let house = state.houses[player]
-        var lines = ["Your House holds \(state.holds(of: player).count) holds and \(state.units(of: player).count) companies."]
+        let holds = state.holds(of: player).count
+        var lines = ["Your House holds \(holds == 1 ? "1 hold" : "\(holds) holds") and \(GameState.companies(state.units(of: player).count))."]
         lines.append("Its stores: " + Resource.allCases.map { "\(house.stock[$0]) \($0.title.lowercased())" }.joined(separator: ", ") + ".")
         let others = state.livingHouses.filter { $0.id != player }
         let wars = others.filter { state.stance(player, $0.id) == .war }.map(\.title)

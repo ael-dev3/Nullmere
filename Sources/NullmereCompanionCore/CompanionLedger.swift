@@ -1587,7 +1587,7 @@ public struct CompanionLedger: Equatable, Sendable {
         return UnitKind.allCases.filter { kind in
             world.tierRefusal(of: kind, tier: 1, at: hold, for: player) == nil && stock.covers(world.trainingCost(of: kind, tier: 1, for: player))
         }.map { kind in
-            Order(title: "Muster \(kind.title) I", command: .train(hold: hold.id, kind: kind, tier: 1))
+            Order(title: "Muster \(kind.named(tier: 1))", command: .train(hold: hold.id, kind: kind, tier: 1))
         }
     }
 

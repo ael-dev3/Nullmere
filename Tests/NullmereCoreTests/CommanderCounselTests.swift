@@ -123,6 +123,10 @@ final class CommanderCounselTests: XCTestCase {
         var (counsel, world) = try counsel()
         let me = counsel.player
         XCTAssertTrue(counsel.affairs.contains("It is at war with no House."))
+        // Counted as a keeper would say it: "1 hold", never "1 holds".
+        let holds = world.holds(of: me).count, companies = world.units(of: me).count
+        XCTAssertTrue(counsel.affairs.hasPrefix("Your House holds \(holds == 1 ? "1 hold" : "\(holds) holds") and \(GameState.companies(companies))."),
+                      counsel.affairs)
         for resource in Resource.allCases { XCTAssertTrue(counsel.affairs.contains(resource.title.lowercased())) }
         try world.perform(.declareWar(on: 1), as: me)
         counsel = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))

@@ -311,7 +311,7 @@ extension GameState {
             if shown.contains(viewer) {
                 return Tidings("The lake lies still as glass: every House sees your companies on its shore, and \(glimpses) in all.", .bad)
             }
-            return Tidings("The lake lies still as glass: \(glimpses) companies stand mirrored on its shore for all to see.", .neutral)
+            return Tidings("The lake lies still as glass: \(GameState.companies(glimpses)) \(glimpses == 1 ? "stands" : "stand") mirrored on its shore for all to see.", .neutral)
         case .rippleCast(let house, let holdID):
             guard house == viewer else { return nil }
             return Tidings("A ripple-stone cast from \(hold(holdID)?.name ?? "your hold"): at the next Still Hour your companies are not mirrored.", .good)

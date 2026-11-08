@@ -57,6 +57,24 @@ final class StillHourTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// The still water told in the game's words, one company as one: where
+    /// a phone's chronicle read "every House saw 1 companies".
+    func testTheStillWaterIsToldCountingItsCompanies() throws {
+        var (state, me, _, _, _) = try world()
+        XCTAssertEqual(state.tidings(of: .stillHour(glimpses: 1, houses: []), for: me)?.text,
+                       "The lake lies still as glass: 1 company stands mirrored on its shore for all to see.")
+        XCTAssertEqual(state.tidings(of: .stillHour(glimpses: 7, houses: []), for: me)?.text,
+                       "The lake lies still as glass: 7 companies stand mirrored on its shore for all to see.")
+        XCTAssertEqual(GameState.companies(1), "1 company")
+        XCTAssertEqual(GameState.companies(1_200), "1,200 companies")
+        // The Chronicle's line, counting what the hour showed.
+        state.watch = GameState.nextStillHour(from: state.watch)
+        _ = state.layTheLakeStill()
+        let shown = try XCTUnwrap(state.stillHour).glimpses.count
+        XCTAssertTrue(state.chronicle.contains { $0.text == "The lake lay still as glass, and on it every House saw \(GameState.companies(shown)) standing on its shore." },
+                      "\(state.chronicle.suffix(3).map(\.text))")
+    }
+
     func testARippleStoneHidesAHousesCompaniesAtTheNextStillHour() throws {
         var (state, me, other, mine, _) = try world()
         // A hold of the keeper's own on the shore, where its company stands.
