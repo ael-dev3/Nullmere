@@ -402,11 +402,19 @@ enum CompanionCheck {
         // (a seat taken from its steward is kept as it stood); a watch on,
         // what they mustered is done.
         let before = session.ledger?.watch ?? ledger.watch
+        let favoured = session.keeper?.favour
         let readied = Date()
         session.setReady(true)
         if await until(Self.watchTurnWait, { (session.ledger?.watch ?? before) > before }) {
             lines.append(String(format: "Made ready: the watch turned to %ld in %.2f s", session.ledger?.watch ?? before,
                                 Date().timeIntervalSince(readied)))
+            // The keeper's own record told anew as the watch turned: the
+            // favour won for the watch kept, as the realm keeps it.
+            if await until(30, { session.keeper?.favour != favoured }), let keeper = session.keeper {
+                lines.append("Favour: " + keeper.favourSaid)
+            } else {
+                broken.append("the keeper's favour never moved on the phone as the watch turned")
+            }
         } else {
             let left = session.secondsLeft(at: Date()).map { ", its own time \($0) s from its end" } ?? ""
             lines.append(String(format: "Made ready: the watch didn't turn in %.0f s%@: %ld of %ld keepers there ready",
