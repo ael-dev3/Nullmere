@@ -640,31 +640,10 @@ struct UnitPanel: View {
     let session: GameSession
     let unit: Unit
 
-    /// Where a company marches, as a keeper would say it: to a hold by its
-    /// name, into ground not yet seen, or simply on, and how far; and when
-    /// it should be there, when the realm has worked it out.
+    /// Where a company marches, which way and how far, and when it should
+    /// be there, as the phone says it too (`GameState.marchSaid`).
     static func march(of unit: Unit, in state: GameState, viewer: Int) -> String? {
-        guard let destination = unit.destination else { return nil }
-        let distance = unit.position.distance(to: destination)
-        let away = "\(distance) tile\(distance == 1 ? "" : "s")"
-        let there = arrival(of: unit, in: state).map { ", there \($0)" } ?? ""
-        if let hold = state.hold(at: destination) {
-            return "Marching to \(hold.name), \(away) away\(there)."
-        }
-        let explored = state.houses.indices.contains(viewer) ? state.houses[viewer].explored : []
-        if let index = state.map.index(of: destination), explored.indices.contains(index), !explored[index] {
-            return "Marching into the dark, \(away) away\(there)."
-        }
-        return "Marching, \(away) to go\(there)."
-    }
-
-    /// When a company on the march should be where it is bound, as the
-    /// realm worked it out for the keeper: "as the watch turns", or "in 3
-    /// watches"; nil when it isn't known.
-    static func arrival(of unit: Unit, in state: GameState) -> String? {
-        guard unit.destination != nil, let arrives = state.marches?.first(where: { $0.unit == unit.id })?.arrives else { return nil }
-        let watches = arrives - state.watch
-        return watches <= 1 ? "as the watch turns" : "in \(watches) watches"
+        state.marchSaid(of: unit, for: viewer).map { $0 + "." }
     }
 
     var body: some View {

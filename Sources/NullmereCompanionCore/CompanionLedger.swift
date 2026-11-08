@@ -955,7 +955,7 @@ public struct CompanionLedger: Equatable, Sendable {
                 Order(title: "March to \(hold.name)", command: .move(unit: unit.id, to: hold.position))
             }
             return Company(id: unit.id, name: named(unit), troops: GameState.counted(world.troops(of: unit)),
-                           leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world),
+                           leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world, for: player),
                            orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
                            gathers: CompanionLedger.gathers(for: unit, in: world, player: player),
                            rallies: CompanionLedger.rallies(for: unit, in: world, player: player),
@@ -1610,8 +1610,10 @@ public struct CompanionLedger: Equatable, Sendable {
         }
     }
 
-    /// What a company is about, in a few words.
-    static func doing(_ unit: Unit, in world: GameState) -> String {
+    /// What a company is about, in a few words; a march as the Mac's panel
+    /// tells it, which way and how far, for the phone has no map beside the
+    /// list (`GameState.marchSaid`).
+    static func doing(_ unit: Unit, in world: GameState, for player: Int) -> String {
         switch unit.errand {
         case .gather?: return "Gathering"
         case .homeward?: return "Bringing its load home"
@@ -1619,17 +1621,9 @@ public struct CompanionLedger: Equatable, Sendable {
         case .reinforce(let hold)?: return "Keeping the gates of \(world.hold(hold)?.name ?? "an ally's hold")"
         case nil: break
         }
-        if let destination = unit.destination { return "Marching to " + whither(world.placeName(of: destination)) }
+        if let march = world.marchSaid(of: unit, for: player) { return march }
         if unit.fortified { return "Dug in" }
         return "At rest"
-    }
-
-    /// A place as a march's end, its own word for where let go: "at
-    /// Tirford" is "Tirford", "on the barrows by Tirford" is "the barrows by
-    /// Tirford", "in the field" is "the field".
-    static func whither(_ place: String) -> String {
-        for preposition in ["at ", "on ", "in "] where place.hasPrefix(preposition) { return String(place.dropFirst(preposition.count)) }
-        return place
     }
 
     static func watches(_ count: Int) -> String {

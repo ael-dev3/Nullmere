@@ -1747,14 +1747,27 @@ final class CompanionLedgerTests: XCTestCase {
         let seat = try XCTUnwrap(marching.seat(of: me))
         _ = try marching.perform(.move(unit: spear.id, to: seat.position), as: me)
         let moving = try XCTUnwrap(CompanionLedger(world: marching, player: me).companies.first { $0.id == spear.id })
-        if marching.unit(spear.id)?.destination != nil {
-            XCTAssertEqual(moving.doing, "Marching to \(seat.name)", "To a hold by its name, never \"to at\" it")
+        if let walking = marching.unit(spear.id), walking.destination != nil {
+            // As the Mac's panel says it, which way and how far, for the phone
+            // has no map beside its list: run 753's phone said "Lanterns I on
+            // the blackwood by Wenholme, Marching to the blackwood by Wenholme".
+            let distance = walking.position.distance(to: seat.position)
+            XCTAssertTrue(moving.doing.hasPrefix("Marching to \(seat.name), \(distance) tile\(distance == 1 ? "" : "s") "
+                                                 + GameState.direction(of: seat.position, from: walking.position)),
+                          "To a hold by its name, never \"to at\" it: \(moving.doing)")
+            XCTAssertEqual(moving.doing, marching.marchSaid(of: walking, for: me))
             XCTAssertTrue(moving.orders.contains { $0.title == "Halt" })
         }
-        // To open ground, its own words: never "to on" nor "to in" it (run 658's phone said "Marching to on the barrows").
-        XCTAssertEqual(CompanionLedger.whither("on the barrows by Tirford"), "the barrows by Tirford")
-        XCTAssertEqual(CompanionLedger.whither("in the field"), "the field")
-        XCTAssertEqual(CompanionLedger.whither("at Tirford"), "Tirford")
-        XCTAssertEqual(CompanionLedger.whither("Tirford"), "Tirford")
+        // To open ground by what it is, never "to on" nor "to in" it (run 658's phone said "Marching to on the barrows").
+        var ground = state
+        let at = try XCTUnwrap(ground.unitIndex(spear.id))
+        let open = try XCTUnwrap(seat.position.neighbors.first { hex in
+            ground.hold(at: hex) == nil && (ground.map.index(of: hex).map { ground.houses[me].explored[$0] } ?? false)
+        }, "Ground the House has seen beside its seat")
+        ground.units[at].destination = open
+        let from = ground.units[at].position, distance = from.distance(to: open)
+        let onward = try XCTUnwrap(CompanionLedger(world: ground, player: me).companies.first { $0.id == spear.id })
+        XCTAssertEqual(onward.doing, "Marching to \(try XCTUnwrap(ground.map[open]).terrain.ground), "
+                       + "\(distance) tile\(distance == 1 ? "" : "s") \(GameState.direction(of: open, from: from))")
     }
 }

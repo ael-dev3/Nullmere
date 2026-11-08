@@ -739,7 +739,7 @@ extension GameState {
         // A site under a new hold is settled ground now.
         sites?.removeAll { $0.position == hold.position }
         reveal(around: hold.position, range: sight(of: hold), for: house)
-        record(.founding, [house], "\(houses[house].title) founds \(name) on the \(map[hold.position]!.terrain.title.lowercased()).")
+        record(.founding, [house], "\(houses[house].title) founds \(name) on \(map[hold.position]!.terrain.ground).")
         return [.holdFounded(hold: hold.id)]
     }
 

@@ -1143,17 +1143,25 @@ final class TextSizeTests: XCTestCase {
         let index = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
         XCTAssertNil(UnitPanel.march(of: state.units[index], in: state, viewer: me))
         let seat = try XCTUnwrap(state.seat(of: me))
+        // Bound for where it stands, it marches nowhere (run 753's test had it
+        // "Marching to" its own seat, "0 tiles away").
+        state.units[index].destination = state.units[index].position
+        XCTAssertNil(UnitPanel.march(of: state.units[index], in: state, viewer: me))
+        // Two tiles from its seat, bound for it.
+        state.units[index].position = try XCTUnwrap(state.map.hexes.first { hex in
+            hex.distance(to: seat.position) == 2 && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+                && state.map[hex]?.terrain.isPassable == true
+        })
         state.units[index].destination = seat.position
         let distance = state.units[index].position.distance(to: seat.position)
-        XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me),
-                       "Marching to \(seat.name), \(distance) tile\(distance == 1 ? "" : "s") away.")
+        let way = "\(distance) tile\(distance == 1 ? "" : "s") \(GameState.direction(of: seat.position, from: state.units[index].position))"
+        XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me), "Marching to \(seat.name), \(way).")
         // When the realm has worked out when it should be there, that too.
         let id = state.units[index].id
         state.marches = [March(unit: id, owner: me, route: [seat.position], destination: seat.position, arrives: state.watch + 3)]
-        XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me),
-                       "Marching to \(seat.name), \(distance) tile\(distance == 1 ? "" : "s") away, there in 3 watches.")
+        XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me), "Marching to \(seat.name), \(way), there in 3 watches.")
         state.marches = [March(unit: id, owner: me, route: [seat.position], destination: seat.position, arrives: state.watch + 1)]
-        XCTAssertEqual(UnitPanel.arrival(of: state.units[index], in: state), "as the watch turns")
+        XCTAssertEqual(state.arrivalSaid(of: state.units[index]), "as the watch turns")
         state.units[index].errand = .homeward
         state.units[index].load = Stock(grain: 40)
         let homeward = GathererList.line(for: state.units[index], in: state)
@@ -1168,11 +1176,13 @@ final class TextSizeTests: XCTestCase {
         state.units[index].destination = dark
         XCTAssertTrue(try XCTUnwrap(UnitPanel.march(of: state.units[index], in: state, viewer: me)).hasPrefix("Marching into the dark, "))
         let open = try XCTUnwrap(state.map.hexes.first { hex in
-            state.hold(at: hex) == nil && (state.map.index(of: hex).map { state.houses[me].explored[$0] } ?? false)
+            hex != state.units[index].position && state.hold(at: hex) == nil
+                && (state.map.index(of: hex).map { state.houses[me].explored[$0] } ?? false)
         })
         state.units[index].destination = open
         let words = try XCTUnwrap(UnitPanel.march(of: state.units[index], in: state, viewer: me))
-        XCTAssertTrue(words.hasPrefix("Marching, ") && words.hasSuffix(" to go."), words)
+        XCTAssertTrue(words.hasPrefix("Marching to \(try XCTUnwrap(state.map[open]).terrain.ground), "), words)
+        XCTAssertTrue(words.hasSuffix(" \(GameState.direction(of: open, from: state.units[index].position)).") , words)
         XCTAssertFalse(words.contains("("), "No coordinates")
     }
 

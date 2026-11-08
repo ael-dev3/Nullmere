@@ -51,7 +51,7 @@ extension GameState {
     /// its ground by the nearest hold within a few tiles.
     public func placeName(of hex: Hex) -> String {
         if let hold = hold(at: hex) { return "at \(hold.name)" }
-        let ground = map[hex].map { "on the \($0.terrain.title.lowercased())" } ?? "in the field"
+        let ground = map[hex].map { "on \($0.terrain.ground)" } ?? "in the field"
         let near = holds.filter { $0.position.distance(to: hex) <= 4 }
             .min { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }
         return near.map { "\(ground) by \($0.name)" } ?? ground

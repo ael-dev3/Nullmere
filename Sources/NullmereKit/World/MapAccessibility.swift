@@ -38,14 +38,9 @@ enum MapAccessibility {
     }
 
     /// Which way one hex lies from another, as a compass would say it:
-    /// north is up the map.
+    /// north is up the map, as a march is told (`GameState.direction`).
     static func direction(from origin: Hex, to target: Hex) -> String {
-        let layout = HexLayout(size: 1)
-        let a = layout.center(of: origin), b = layout.center(of: target)
-        let angle = atan2(-(b.y - a.y), b.x - a.x) * 180 / .pi
-        let names = ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"]
-        let sector = Int(((angle + 360 + 22.5).truncatingRemainder(dividingBy: 360)) / 45)
-        return names[sector % 8]
+        GameState.direction(of: target, from: origin)
     }
 
     /// "3 tiles north-east"; "beside it, south".

@@ -169,3 +169,40 @@ extension GameState {
         return found
     }
 }
+
+extension GameState {
+    /// Which way one hex lies from another, as a compass would say it,
+    /// north up the map: "east", "south-west" and so on round.
+    public static func direction(of hex: Hex, from origin: Hex) -> String {
+        Sounding.quarters[quarter(of: hex, from: origin)]
+    }
+
+    /// When a company on the march should be where it is bound, as the
+    /// realm worked it out for the keeper: "as the watch turns", or "in 3
+    /// watches"; nil when that isn't known.
+    public func arrivalSaid(of unit: Unit) -> String? {
+        guard unit.destination != nil, let arrives = marches?.first(where: { $0.unit == unit.id })?.arrives else { return nil }
+        let watches = arrives - watch
+        return watches <= 1 ? "as the watch turns" : "in \(watches) watches"
+    }
+
+    /// Where a company marches, as its keeper is told it on the Mac and the
+    /// phone alike: to a hold by its name, into ground the keeper hasn't
+    /// seen, or onto the ground it is bound for by what it is; how far and
+    /// which way, for the phone has no map beside it; and when it should be
+    /// there, when the realm has worked it out. "Marching to Tirford, 3
+    /// tiles north-east, there in 2 watches". Nil for a company standing.
+    public func marchSaid(of unit: Unit, for viewer: Int) -> String? {
+        guard let destination = unit.destination, destination != unit.position else { return nil }
+        let distance = unit.position.distance(to: destination)
+        let way = "\(distance) tile\(distance == 1 ? "" : "s") \(GameState.direction(of: destination, from: unit.position))"
+        let there = arrivalSaid(of: unit).map { ", there \($0)" } ?? ""
+        if let hold = hold(at: destination) { return "Marching to \(hold.name), \(way)\(there)" }
+        let explored = houses.indices.contains(viewer) ? houses[viewer].explored : []
+        if let index = map.index(of: destination), explored.indices.contains(index), !explored[index] {
+            return "Marching into the dark, \(way)\(there)"
+        }
+        if let terrain = map[destination]?.terrain { return "Marching to \(terrain.ground), \(way)\(there)" }
+        return "Marching \(way)\(there)"
+    }
+}

@@ -19,7 +19,7 @@ struct GathererList: View {
     /// full, bound for it, or home with its load, and when it will be there.
     static func line(for unit: Unit, in state: GameState) -> String {
         let name = state.title(of: unit) + (unit.kind.hasTiers ? " " + Narration.roman(unit.tier) : "")
-        let there = UnitPanel.arrival(of: unit, in: state).map { ", there \($0)" } ?? ""
+        let there = state.arrivalSaid(of: unit).map { ", there \($0)" } ?? ""
         let carried = unit.load.flatMap { load in
             Resource.allCases.first { load[$0] > 0 }.map { "\(load[$0]) \($0.title.lowercased())" }
         }

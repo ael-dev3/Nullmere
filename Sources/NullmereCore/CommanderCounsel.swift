@@ -88,8 +88,9 @@ public struct CommanderCounsel: Sendable {
     /// stands, and what it is about.
     func described(_ unit: Unit) -> String {
         var told = "\(SpokenOrders.named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops"
-        if let destination = unit.destination {
-            told += ", marching to \(state.placeName(of: destination))"
+        if let march = state.marchSaid(of: unit, for: player) {
+            // As its keeper is told it, never "marching to on the barrows".
+            told += ", " + march.prefix(1).lowercased() + march.dropFirst()
         } else if unit.fortified {
             told += ", dug in"
         }

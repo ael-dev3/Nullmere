@@ -37,6 +37,16 @@ final class CommanderCounselTests: XCTestCase {
         let company = try XCTUnwrap(counsel.company)
         let handle = try XCTUnwrap(counsel.handle(of: company))
         XCTAssertTrue(counsel.briefing.contains("You lead \(handle), \(SpokenOrders.named(company, in: counsel.state))"))
+        // Its march as its keeper is told it, which way and how far, never
+        // "marching to on" the ground.
+        var marching = counsel.state
+        let index = try XCTUnwrap(marching.unitIndex(company.id))
+        let ground = try XCTUnwrap(company.position.neighbors.first { marching.map[$0] != nil && marching.hold(at: $0) == nil })
+        marching.units[index].destination = ground
+        let told = try XCTUnwrap(CommanderCounsel(state: marching, player: counsel.player, commander: commander.id)).briefing
+        let terrain = try XCTUnwrap(marching.map[ground]?.terrain)
+        XCTAssertTrue(told.contains("marching to \(terrain.ground), 1 tile \(GameState.direction(of: ground, from: company.position))"), told)
+        XCTAssertFalse(told.contains("marching to on") || told.contains("marching to at"), told)
         XCTAssertTrue(counsel.briefing.contains("It is watch \(counsel.state.watch)."))
         XCTAssertTrue(counsel.briefing.contains("Its stores:"))
         for skill in commander.skills { XCTAssertTrue(counsel.briefing.contains(skill.title)) }

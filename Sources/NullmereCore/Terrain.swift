@@ -46,6 +46,13 @@ public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
         }
     }
 
+    /// The ground as a line says it: "the blackwood", "the dead shallows",
+    /// and a name of its own as it is, "the Moonford", never "the the
+    /// moonford".
+    public var ground: String {
+        title.hasPrefix("The ") ? "the " + title.dropFirst(4) : "the " + title.lowercased()
+    }
+
     // These ask by case, not `==`, which for an enum of strings can come
     // to comparing the strings: the search for ways asks them of every
     // tile it looks at.

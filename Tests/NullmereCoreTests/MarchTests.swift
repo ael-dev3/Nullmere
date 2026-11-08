@@ -68,6 +68,76 @@ final class MarchTests: XCTestCase {
         XCTAssertNil(state.marches(seenBy: me).first { $0.unit == spear.id }, "A march done is no march")
     }
 
+    /// A march as its keeper is told it, on the Mac's panel and the phone's
+    /// list alike: to a hold by its name, to ground by what it is, into the
+    /// dark where the House hasn't seen; which way and how far, so two
+    /// marches on one blackwood are told apart, where run 753's phone said
+    /// "on the blackwood by Wenholme, Marching to the blackwood by
+    /// Wenholme"; and when it should be there, when the realm has worked it
+    /// out.
+    func testAMarchIsSaidWhereWhichWayAndWhen() throws {
+        var state = Scene.world("which way", houses: 3, radius: 16)
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.reveal(around: seat.position, range: 9, for: me)
+        var spear = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear })
+        XCTAssertNil(state.marchSaid(of: spear, for: me), "A company standing marches nowhere")
+        // To a hold, by its name.
+        let from = seat.position + Hex(-3, 0)
+        XCTAssertNotNil(state.map[from])
+        spear.position = from
+        spear.destination = seat.position
+        XCTAssertEqual(state.marchSaid(of: spear, for: me), "Marching to \(seat.name), 3 tiles east")
+        // To ground, by what it is, two marches on one blackwood told apart by their way.
+        let east = from + Hex(1, 0), south = from + Hex(-1, 2)
+        for hex in [east, south] {
+            XCTAssertNotNil(state.map.index(of: hex))
+            state.map.set(hex, Tile(terrain: .blackwood))
+            XCTAssertNil(state.hold(at: hex))
+        }
+        XCTAssertEqual(state.placeName(of: east), state.placeName(of: south), "One name for both by where they lie")
+        spear.destination = east
+        XCTAssertEqual(state.marchSaid(of: spear, for: me), "Marching to the blackwood, 1 tile east")
+        spear.destination = south
+        XCTAssertEqual(state.marchSaid(of: spear, for: me), "Marching to the blackwood, 2 tiles south")
+        // The ground's own name as it is, never "the the moonford".
+        state.map.set(south, Tile(terrain: .ford))
+        XCTAssertEqual(state.marchSaid(of: spear, for: me), "Marching to the Moonford, 2 tiles south")
+        XCTAssertEqual(state.placeName(of: south), "on the Moonford by \(seat.name)")
+        // Into ground the House hasn't seen.
+        let dark = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map.index(of: hex).map { !state.houses[me].explored[$0] } ?? false
+        })
+        spear.destination = dark
+        let distance = from.distance(to: dark)
+        XCTAssertEqual(state.marchSaid(of: spear, for: me),
+                       "Marching into the dark, \(distance) tiles \(GameState.direction(of: dark, from: from))")
+        // When it should be there, as the realm worked it out.
+        spear.destination = seat.position
+        state.marches = [March(unit: spear.id, owner: me, route: [seat.position], destination: seat.position, arrives: state.watch + 3)]
+        XCTAssertEqual(state.arrivalSaid(of: spear), "in 3 watches")
+        XCTAssertEqual(state.marchSaid(of: spear, for: me), "Marching to \(seat.name), 3 tiles east, there in 3 watches")
+        state.marches = [March(unit: spear.id, owner: me, route: [seat.position], destination: seat.position, arrives: state.watch + 1)]
+        XCTAssertEqual(state.marchSaid(of: spear, for: me), "Marching to \(seat.name), 3 tiles east, there as the watch turns")
+        spear.destination = nil
+        XCTAssertNil(state.arrivalSaid(of: spear), "No march, no arrival")
+    }
+
+    /// The compass a march is told by, north up the map: the six ways to a
+    /// hex beside it and the two that lie between.
+    func testTheCompassReadsNorthUpTheMap() {
+        let here = Hex(2, -1)
+        let ways: [(Hex, String)] = [
+            (Hex(1, 0), "east"), (Hex(-1, 0), "west"), (Hex(1, -1), "north-east"), (Hex(0, -1), "north-west"),
+            (Hex(0, 1), "south-east"), (Hex(-1, 1), "south-west"), (Hex(1, -2), "north"), (Hex(-1, 2), "south"),
+        ]
+        for (step, way) in ways { XCTAssertEqual(GameState.direction(of: here + step, from: here), way, "\(step)") }
+        XCTAssertEqual(Terrain.blackwood.ground, "the blackwood")
+        XCTAssertEqual(Terrain.shallows.ground, "the dead shallows")
+        XCTAssertEqual(Terrain.ford.ground, "the Moonford")
+        XCTAssertEqual(Terrain.still.ground, "the Still")
+    }
+
     func testAnotherHousesMarchIsSeenOnlyAsFarAsItGoesInSight() throws {
         var state = Scene.world("seen going", houses: 3, radius: 16)
         let me = state.player
