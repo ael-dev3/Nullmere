@@ -65,6 +65,25 @@ public final class Synth: @unchecked Sendable {
         var right: Float
     }
     private var pendingBlown: [Blown] = []
+
+    /// A blow a cue strikes on a recorded instrument, waiting to be struck
+    /// on the audio thread: the note recorded, when it sounds after the cue
+    /// begins, how hard, how much faster than it was recorded it is read,
+    /// and how loud in each ear.
+    private struct Strike {
+        unowned(unsafe) let note: Recording
+        var wait: Float
+        var strength: Float
+        var ratio: Double
+        var left: Float
+        var right: Float
+    }
+    private var pendingStrikes: [Strike] = []
+    /// The cues' recorded blows ringing: the anvil's, the field drum's and
+    /// the slit drum's.
+    private var struck = [Reading](repeating: Reading(note: Recordings.anvilNotes[0]), count: 8)
+    /// How many blows the cues have struck on recorded instruments, for tests.
+    private(set) var cueStrikes = 0
     /// The horn the cues' calls are blown on: the war horn and the muster's.
     private var cueHorns = Horns(sampleRate: 48_000)
     /// How many notes the cues have blown on the horn, for tests.
@@ -153,6 +172,7 @@ public final class Synth: @unchecked Sendable {
         notes.reserveCapacity(64)
         pending.reserveCapacity(24)
         pendingBlown.reserveCapacity(24)
+        pendingStrikes.reserveCapacity(24)
     }
 
     public func setVolumes(effects: Float, ambience: Float, music: Float) {
@@ -297,6 +317,8 @@ public final class Synth: @unchecked Sendable {
         pending.removeAll()
         notes.removeAll()
         pendingBlown.removeAll()
+        pendingStrikes.removeAll()
+        for index in struck.indices { struck[index].sounding = false }
         cueHorns.clear()
         dinHorns.clear()
         hall.clear()
@@ -338,10 +360,36 @@ public final class Synth: @unchecked Sendable {
         let blown = Synth.call(of: cue).map {
             Blown(frequency: $0.frequency, wait: delay + $0.at, hold: $0.hold, strength: $0.strength, left: place.left, right: place.right)
         }
+        let loud = Synth.strikeLevel(of: cue)
+        let strikes = Synth.strikes(of: cue).map {
+            Strike(note: $0.note, wait: delay + $0.at, strength: $0.strength * loud, ratio: $0.ratio, left: place.left, right: place.right)
+        }
         lock.lock()
         if pending.count < 12 { pending.append(contentsOf: made) }
         if pendingBlown.count + blown.count <= 24 { pendingBlown.append(contentsOf: blown) }
+        if pendingStrikes.count + strikes.count <= 24 { pendingStrikes.append(contentsOf: strikes) }
         lock.unlock()
+    }
+
+    /// The blows a cue strikes on recorded instruments, if it is struck:
+    /// each blow's note, when it falls, how hard, and how much faster than
+    /// it was recorded it is read. The forge's three blows on the anvil,
+    /// the last the hardest, left to ring; the field drum's two strokes,
+    /// the second softer, as a company stands down; and two knocks on the
+    /// slit drum, the second a third lower, as the rules refuse an order.
+    static func strikes(of cue: SoundCue) -> [(note: Recording, at: Float, strength: Float, ratio: Double)] {
+        switch cue {
+        case .anvil:
+            let anvil = Recordings.anvilNotes
+            return [(anvil[0], 0, 0.8, 1), (anvil[0], 0.2, 0.9, 0.97), (anvil[1], 0.4, 1, 1)]
+        case .stand:
+            let drums = Recordings.drumNotes
+            return [(drums[2], 0, 1, 1), (drums[3], 0.26, 0.6, 1)]
+        case .deny:
+            let slit = Recordings.slitDrumNotes
+            return [(slit[0], 0, 1, 1), (slit[1], 0.11, 0.85, 0.84)]
+        default: return []
+        }
     }
 
     /// The call a cue blows on the recorded horn, if it is a horn's: each
@@ -353,6 +401,16 @@ public final class Synth: @unchecked Sendable {
         case .horn: return [(110, 0, 0.45, 0.9), (146.8, 0.42, 0.75, 1)]
         case .muster: return [(196, 0, 0.3, 1), (293.7, 0.32, 0.9, 1)]
         default: return []
+        }
+    }
+
+    /// How loud a struck cue's blows are, struck full: each as loud over its
+    /// first moments as the struck partials it took over from.
+    static func strikeLevel(of cue: SoundCue) -> Float {
+        switch cue {
+        case .anvil: return 4
+        case .stand: return 1.8
+        default: return 1.6
         }
     }
 
@@ -475,17 +533,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 392, amplitude: 0.065, decay: 1.8, delay: 0.3),
                 Partial(frequency: 1176, amplitude: 0.02, decay: 2.6, delay: 0.3),
             ], noise: 0.008, noiseDecay: 9)
-        case .stand:
-            // Two strokes on a skin drum, the second softer: stand down.
-            func stroke(_ delay: Float, _ strength: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 130.8, amplitude: 0.09 * strength, decay: 9),
-                    Partial(frequency: 207.7, amplitude: 0.045 * strength, decay: 12),
-                    Partial(frequency: 311, amplitude: 0.02 * strength, decay: 16),
-                ], noise: 0.04 * strength, noiseDecay: 45, delay: delay)
-            }
-            note = stroke(0, 1)
-            more = [stroke(0.26, 0.6)]
         case .complete:
             // Two knocks of the mallet, then a major chord rung bright.
             func knock(_ delay: Float) -> Note {
@@ -504,18 +551,15 @@ public final class Synth: @unchecked Sendable {
         case .muster, .horn:
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
+        case .anvil, .stand, .deny:
+            // Struck on recorded instruments (`strikes(of:)`).
+            return []
         case .leaf:
             // A page turned: paper's brush, and the faintest high note.
             note = Note(partials: [Partial(frequency: 2_637, amplitude: 0.03, decay: 24)], noise: 0.055, noiseDecay: 36)
         case .fold:
             // The page laid down: lower, softer, and quicker gone.
             note = Note(partials: [Partial(frequency: 1_760, amplitude: 0.026, decay: 30)], noise: 0.045, noiseDecay: 44)
-        case .deny:
-            // Two knocks on muffled wood, the second a step lower: not so.
-            note = Note(partials: [Partial(frequency: 196, amplitude: 0.07, decay: 24), Partial(frequency: 588, amplitude: 0.026, decay: 34)],
-                        noise: 0.02, noiseDecay: 70)
-            more = [Note(partials: [Partial(frequency: 165, amplitude: 0.06, decay: 24), Partial(frequency: 495, amplitude: 0.022, decay: 34)],
-                         noise: 0.016, noiseDecay: 70, delay: 0.11)]
         case .refusal:
             // A minor third falling, soft and reedy: not this time.
             note = Note(partials: [
@@ -588,20 +632,6 @@ public final class Synth: @unchecked Sendable {
                         Partial(frequency: 1_568 * 2.76, amplitude: 0.016, decay: 2.6),
                         Partial(frequency: 2_093, amplitude: 0.02, decay: 2, delay: 0.08),
                     ], noise: 0, noiseDecay: 1, delay: 0.36)]
-        case .anvil:
-            // Three blows of the hammer, bright and out of tune with each
-            // other as struck iron is, a dull knock under each; the last
-            // left to ring.
-            func blow(_ delay: Float, _ strength: Float, _ ring: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 1_245, amplitude: 0.05 * strength, decay: ring),
-                    Partial(frequency: 1_245 * 2.31, amplitude: 0.028 * strength, decay: ring * 1.4),
-                    Partial(frequency: 1_245 * 3.87, amplitude: 0.014 * strength, decay: ring * 2),
-                    Partial(frequency: 412, amplitude: 0.02 * strength, decay: 16),
-                ], noise: 0.04 * strength, noiseDecay: 70, delay: delay)
-            }
-            note = blow(0, 0.8, 9)
-            more = [blow(0.2, 0.9, 9), blow(0.4, 1, 2.5)]
         case .honour:
             // A quick fanfare up a major arpeggio to the octave.
             note = Note(partials: [
@@ -641,6 +671,18 @@ public final class Synth: @unchecked Sendable {
             cueHorns.blow(note.frequency, strength: note.strength, hold: note.hold, heard: (note.left, note.right), wait: note.wait)
         }
         pendingBlown.removeAll(keepingCapacity: true)
+        for strike in pendingStrikes {
+            let slot = Reading.free(struck, rate: sampleRate)
+            var voice = Reading(note: strike.note)
+            voice.step = strike.ratio * Double(Recordings.rate / sampleRate)
+            voice.left = strike.left * strike.strength
+            voice.right = strike.right * strike.strength
+            voice.wait = strike.wait
+            voice.sounding = true
+            struck[slot] = voice
+            cueStrikes += 1
+        }
+        pendingStrikes.removeAll(keepingCapacity: true)
         let goal = target
         let rate = fadeRate
         if let music = pendingMusic {
@@ -783,6 +825,16 @@ public final class Synth: @unchecked Sendable {
             let called = cueHorns.sample(dt: dt)
             cueLeft += called.left * Self.hornCueGain
             cueRight += called.right * Self.hornCueGain
+            // And their recorded blows.
+            for index in struck.indices where struck[index].sounding {
+                if struck[index].wait > 0 {
+                    struck[index].wait -= dt
+                    continue
+                }
+                let blow = struck[index].next() * Self.strikeGain
+                cueLeft += blow * struck[index].left
+                cueRight += blow * struck[index].right
+            }
 
             // The din of battle: as loud as the fighting, from where it is.
             din.level += (dinTarget.level - din.level) * min(dt * 2, 1)
@@ -899,18 +951,16 @@ public final class Synth: @unchecked Sendable {
         case .dig: return ((1_400, 0.7), nil)
         case .coin: return ((6_800, 1.2), nil)
         case .parley: return ((1_100, 0.6), nil)
-        case .stand: return ((420, 0.8), nil)
         case .complete: return ((1_100, 0.9), nil)
         // The timber's crack, then the dust settling.
         case .batter: return ((650, 0.8), (300, 0.6))
         case .herald: return ((450, 0.8), nil)
         case .tend: return ((1_000, 0.6), nil)
         case .sift: return ((6_400, 1.3), nil)
-        case .anvil: return ((3_800, 1.2), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
-        case .deny: return ((850, 0.9), nil)
-        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn: return (nil, nil)
+        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny:
+            return (nil, nil)
         }
     }
 
@@ -921,6 +971,8 @@ public final class Synth: @unchecked Sendable {
     /// How loud a cue's call on the recorded horn is: as loud as the horns
     /// of overtones the war horn's and the muster's cues were.
     static let hornCueGain: Float = 0.15
+    /// How loud a cue's recorded blow is struck full.
+    static let strikeGain: Float = 0.1
     /// How loud a war horn across a great host's battle is, and how long
     /// it is held: as loud as the horn of overtones it took over from.
     static let warHornGain: Float = 0.19

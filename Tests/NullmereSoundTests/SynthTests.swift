@@ -185,6 +185,31 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(Synth.call(of: .muster).map(\.frequency), [196, 293.7], "G, then the D a fifth above")
     }
 
+    /// The forge's, a halt's and a refusal's cues are struck on recorded
+    /// instruments: the anvil's three blows, the field drum's two strokes,
+    /// the slit drum's two knocks, each as loud over its first moments as
+    /// the struck partials it took over from (-40.1, -36.4 and -42.5 dB
+    /// over its first 0.4 s, measured on those before); no other cue is.
+    func testTheStruckCuesAreStruckOnRecordedInstruments() {
+        func struck(_ cue: SoundCue) -> (synth: Synth, left: [Float]) {
+            let synth = settled()
+            synth.setVolumes(effects: 1, ambience: 0, music: 0)
+            _ = rendered(synth, seconds: 0.2)
+            synth.trigger(cue)
+            return (synth, rendered(synth, seconds: 1.5).left)
+        }
+        for (cue, blows, before) in [(SoundCue.anvil, 3, Float(-40.1)), (.stand, 2, -36.4), (.deny, 2, -42.5)] {
+            let heard = struck(cue)
+            XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")
+            let first = rms(heard.left[0..<Int(0.4 * SynthTests.rate)])
+            print("SOUND \(cue) struck as recorded \(decibels(first)) dB over its first 0.4 s, struck partials \(before) dB")
+            XCTAssertEqual(decibels(first), before, accuracy: 3, "\(cue) as loud as it was")
+            XCTAssertLessThan(heard.left.suffix(4_800).map(abs).max() ?? 1, 0.001, "\(cue) rung out")
+        }
+        XCTAssertEqual(struck(.clash).synth.cueStrikes, 0, "A clash is struck as it was")
+        XCTAssertEqual(Synth.strikes(of: .anvil).map(\.at), [0, 0.2, 0.4], "Three blows of the hammer")
+    }
+
     /// A cue in the middle is heard alike in both ears; at an edge, in the
     /// nearer one, never gone from the other; far off, quieter.
     func testACueIsHeardFromWhereItHappened() {

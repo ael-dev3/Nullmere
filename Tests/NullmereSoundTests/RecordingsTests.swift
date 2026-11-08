@@ -10,7 +10,10 @@ final class RecordingsTests: XCTestCase {
     private let sets: [(String, [Recording])] = [("harp", Recordings.harpNotes), ("glockenspiel", Recordings.glockenspielNotes),
                                                  ("cellos", Recordings.celloNotes), ("violas", Recordings.violaNotes),
                                                  ("basses", Recordings.bassNotes), ("horns", Recordings.hornNotes),
+                                                 ("anvil", Recordings.anvilNotes), ("slit drum", Recordings.slitDrumNotes),
                                                  ("drums", Recordings.drumNotes)]
+    /// The sets struck with no pitch to sound.
+    private let unpitched: Set = ["drums", "anvil", "slit drum"]
     /// The sets held round a loop for as long as they sound.
     private let held: Set = ["cellos", "violas", "basses", "horns"]
 
@@ -78,7 +81,7 @@ final class RecordingsTests: XCTestCase {
     /// Each note sounds the pitch it says it does, a few cents from the
     /// note it was played as, and the notes of each set rise in order.
     func testEveryNoteSoundsItsPitch() {
-        for (name, notes) in sets where name != "drums" {
+        for (name, notes) in sets where !unpitched.contains(name) {
             var last: Float = 0
             for note in notes {
                 XCTAssertGreaterThan(note.frequency, last, "\(name) in order")

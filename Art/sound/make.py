@@ -57,6 +57,10 @@ BASSES = [(f"Strings/Solo Contrabass/SusVib/BKCtbss_SusVib_{name}_v1_rr1.wav", n
 # each horn note an octave below the one it sounds.
 HORNS = [(f"Brass/F Horn/sus/MOHorn_sus_{name}_v3_1.wav", note) for name, note in
          [("G1", 43), ("A#1", 46), ("D2", 50), ("F2", 53), ("A2", 57), ("C3", 60)]]
+# The forge's anvil, struck at middle strength and hard, a blow of each;
+# and a slit drum of wood, struck mezzo-piano twice alike.
+ANVIL = [(f"Percussion/Anvil_Hit1_{v}_Sum.wav", 0) for v in ("v2", "v3")]
+SLIT = [(f"VSCO 1 Percussion/varWood/log_drum/slitdrum0_mp_{n}.wav", 0) for n in (1, 2)]
 DRUMS = [("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_f_1.wav", 0),
          ("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_mf_1.wav", 0),
          ("VSCO 1 Percussion/drums/snare/drum1/snare1_nosnare_mf_1.wav", 0),
@@ -305,6 +309,13 @@ def family(root, files, kind):
             heard = (start, len(x) - start)
             sounded = tracked(x, note, start, len(x) - start)
             loop = (start, alike)
+        elif kind == "rung":
+            # Unpitched and let ring, as struck iron rings.
+            x = onset(x, below=40)
+            x = cut(x, below=50, longest=3, fade=0.8)
+            heard = (0, int(0.25 * RATE))
+            sounded = 0.0
+            loop = None
         else:
             x = onset(x, below=40)
             x = cut(x, below=55, longest=1.5, fade=0.3)
@@ -379,6 +390,12 @@ def main():
     horns = family(root, HORNS, "blown")
     even(horns)
     swift(horns, "horns", "The French horn, held forte: six notes, G2 to C4.", os.path.join(out, "HornsFile.swift"))
+    anvil = family(root, ANVIL, "rung")
+    even(anvil, together=True)
+    swift(anvil, "anvil", "The anvil, struck at middle strength and hard.", os.path.join(out, "AnvilFile.swift"))
+    slit = family(root, SLIT, "drum")
+    even(slit, together=True)
+    swift(slit, "slitDrum", "A slit drum of wood, struck mezzo-piano twice.", os.path.join(out, "SlitDrumFile.swift"))
     drums = family(root, DRUMS, "drum")
     great, field = drums[:2], drums[2:]
     even(great, together=True)
