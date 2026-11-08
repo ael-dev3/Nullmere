@@ -1,8 +1,8 @@
 import Foundation
 
 /// The score's instruments as they were recorded: notes of a harp, a
-/// glockenspiel, cellos, violas, a double bass and the war's drums from the
-/// VS Chamber Orchestra: Community Edition (VSCO-2-CE, recorded by Sam
+/// glockenspiel, cellos, violas, a double bass, a French horn and the war's
+/// drums from the VS Chamber Orchestra: Community Edition (VSCO-2-CE, recorded by Sam
 /// Gossner and Simon Dalzell, CC0 1.0), made into the package by
 /// Art/sound/make.py (see Recorded/), and read here once, the first time the
 /// score needs them, before it plays.
@@ -32,12 +32,15 @@ enum Recordings {
     static let celloNotes = cellos.map(Recording.init)
     static let violaNotes = violas.map(Recording.init)
     static let bassNotes = basses.map(Recording.init)
+    /// The French horn held forte, the war's calls blown on it.
+    static let hornNotes = horns.map(Recording.init)
     /// The great drum forte and mezzo-forte, then the field drum twice.
     static let drumNotes = drums.map(Recording.init)
 
     /// Every note read, so the score never reads one as it plays.
     static func load() {
-        _ = (harpNotes.count, glockenspielNotes.count, celloNotes.count, violaNotes.count, bassNotes.count, drumNotes.count)
+        _ = (harpNotes.count, glockenspielNotes.count, celloNotes.count, violaNotes.count, bassNotes.count, hornNotes.count,
+             drumNotes.count)
     }
 
     /// The samples a note's blocks hold, from -1 to 1: each block a byte

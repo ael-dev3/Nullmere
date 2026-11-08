@@ -301,6 +301,98 @@ final class Glockenspiel {
     }
 }
 
+/// The horns: a French horn recorded held forte on six notes from G2 to
+/// C4, each note read from the one nearest it, round the stretch of its
+/// sustain that loops for as long as it is held; up to four sounding at
+/// once. A note swells in as the player's breath fills the horn and falls
+/// away when it is let go, so it never starts or stops on a click.
+final class Horns {
+    static let voices = 4
+    /// How loud a note blown full is heard.
+    static let level: Float = 1
+    /// Seconds a note takes to swell in, and to fall away once let go.
+    static let swell: Float = 0.08
+    static let fall: Float = 0.5
+
+    struct Voice {
+        var reading: Reading
+        /// Seconds it is still held, before it falls away.
+        var held: Float
+        /// How far it has swelled, 0 to 1.
+        var breath: Float = 0
+    }
+
+    let sampleRate: Float
+    private(set) var voices: [Voice]
+    /// How many notes have been blown, for tests.
+    private(set) var blown = 0
+
+    init(sampleRate: Float) {
+        self.sampleRate = sampleRate
+        voices = Array(repeating: Voice(reading: Reading(note: Recordings.hornNotes[0]), held: 0), count: Horns.voices)
+    }
+
+    /// How many sound now.
+    var sounding: Int { voices.filter(\.reading.sounding).count }
+
+    /// Blows a note: how hard (0...1), held how many seconds before it is
+    /// let go, where it is heard across the ears (-1 left to 1 right), and
+    /// after how long.
+    func blow(_ frequency: Float, strength: Float, hold: Float, pan: Float = 0, wait: Float = 0) {
+        let nearest = Recordings.nearest(Recordings.hornNotes, to: frequency)
+        // A silent voice, or the one nearest done.
+        var slot = 0, least = Float.infinity
+        for (index, voice) in voices.enumerated() {
+            guard voice.reading.sounding else {
+                slot = index
+                break
+            }
+            let rest = voice.reading.wait + max(voice.held, 0) + voice.breath * Horns.fall
+            if rest < least {
+                least = rest
+                slot = index
+            }
+        }
+        var reading = Reading(note: Recordings.hornNotes[nearest.index])
+        reading.step = nearest.ratio * Double(Recordings.rate / sampleRate)
+        let loud = min(max(strength, 0), 1) * Horns.level, heard = ears(pan)
+        reading.left = heard.left * loud
+        reading.right = heard.right * loud
+        reading.wait = max(wait, 0)
+        reading.sounding = true
+        voices[slot] = Voice(reading: reading, held: max(hold, 0))
+        blown += 1
+    }
+
+    /// The horns' next sample in each ear.
+    @inline(__always)
+    func sample(dt: Float) -> (left: Float, right: Float) {
+        var left: Float = 0, right: Float = 0
+        for index in voices.indices where voices[index].reading.sounding {
+            if voices[index].reading.wait > 0 {
+                voices[index].reading.wait -= dt
+                continue
+            }
+            if voices[index].held > 0 {
+                voices[index].held -= dt
+                voices[index].breath = min(1, voices[index].breath + dt / Horns.swell)
+            } else {
+                voices[index].breath -= dt / Horns.fall
+                if voices[index].breath <= 0 {
+                    voices[index].reading.sounding = false
+                    continue
+                }
+            }
+            // Eased, so the swell and the fall have no corners.
+            let b = voices[index].breath
+            let value = voices[index].reading.next() * b * b * (3 - 2 * b)
+            left += value * voices[index].reading.left
+            right += value * voices[index].reading.right
+        }
+        return (left, right)
+    }
+}
+
 /// A note of a body of strings bowed, as it was recorded: the cellos' up to
 /// B flat 3 and the violas' from B3, softly with vibrato, or under a chord
 /// the double bass's; the recorded note nearest it read to sound true, and

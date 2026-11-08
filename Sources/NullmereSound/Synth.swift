@@ -94,7 +94,11 @@ public final class Synth: @unchecked Sendable {
     private var pendingHost: Float?
     private var roarLow: Float = 0, roarHigh: Float = 0
     private var nextHorn: Float = 2
-    private var horn: (phase: Float, frequency: Float, age: Float) = (0, 0, 9)
+    /// The war horns calling across a great host's battle: the horn the
+    /// score's calls are blown on, recorded.
+    private var dinHorns = Horns(sampleRate: 48_000)
+    /// How many war horns have called across battles, for tests.
+    var warHornsBlown: Int { dinHorns.blown }
     private var clamourLow: Float = 0
     private var clamourHigh: Float = 0
     private var tramp: Float = 0
@@ -254,6 +258,7 @@ public final class Synth: @unchecked Sendable {
         if hall.sampleRate != sampleRate { hall = Hall(sampleRate: sampleRate) }
         if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
         if shores.sampleRate != sampleRate { shores = Shore(sampleRate: sampleRate) }
+        if dinHorns.sampleRate != sampleRate { dinHorns = Horns(sampleRate: sampleRate) }
         score.prepare(sampleRate: sampleRate)
     }
 
@@ -782,21 +787,15 @@ public final class Synth: @unchecked Sendable {
                     roarLow += (deep - roarLow) * roarBottom
                     roarHigh += (deep - roarHigh) * roarTop
                     let surge = 0.65 + 0.35 * Float(sin(time * 0.37)) * Float(sin(time * 0.11 + 1))
-                    var call: Float = 0
-                    // Now and then a war horn: two partials, swelling, held, dying.
+                    // Now and then a war horn across the field, on A or on
+                    // D: a horn as it was recorded, held, falling away.
                     nextHorn -= dt
                     if nextHorn <= 0 {
-                        horn = (0, abs(random()) > 0.5 ? 110 : 146.8, 0)
+                        dinHorns.blow(abs(random()) > 0.5 ? 110 : 146.8, strength: 1, hold: Self.warHornHeld)
                         nextHorn = 5 + 6 * abs(random())
                     }
-                    if horn.age < 2.6 {
-                        horn.age += dt
-                        horn.phase += tau * horn.frequency * dt
-                        if horn.phase > tau { horn.phase -= tau }
-                        let shape = min(horn.age / 0.35, 1) * min(max((2.6 - horn.age) / 1.2, 0), 1)
-                        call = (sin(horn.phase) + 0.5 * sin(horn.phase * 2) + 0.3 * sin(horn.phase * 3)) * shape
-                    }
-                    battle += ((roarHigh - roarLow) * 3.2 * surge + call * 0.05) * host * din.level
+                    let call = dinHorns.sample(dt: dt).left * Self.warHornGain
+                    battle += ((roarHigh - roarLow) * 3.2 * surge + call) * host * din.level
                 }
             }
             let dinAngle = (din.pan + 1) * .pi / 4
@@ -891,6 +890,10 @@ public final class Synth: @unchecked Sendable {
     static let townGain: Float = 0.15
     /// How loud the shore is, at its nearest: about as loud as the night.
     static let shoreGain: Float = 0.2
+    /// How loud a war horn across a great host's battle is, and how long
+    /// it is held: as loud as the horn of overtones it took over from.
+    static let warHornGain: Float = 0.19
+    static let warHornHeld: Float = 1.4
 
     /// How much of the score, and of the cues, the hall is given.
     static let musicSend: Float = 0.45

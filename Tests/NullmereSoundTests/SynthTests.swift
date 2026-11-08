@@ -529,4 +529,29 @@ final class GreatHostSoundTests: XCTestCase {
         XCTAssertGreaterThan(rms(low(host)), rms(low(skirmish)) * 1.5, "the throng's roar, deep under the clamour")
         XCTAssertLessThan(host.map(abs).max() ?? 0, 0.95, "and never clips")
     }
+
+    /// War horns call across a great host's battle now and then: a horn as
+    /// it was recorded, held and falling away, as loud as the horn of
+    /// overtones it took over from (three partials, a twentieth of full),
+    /// and never across a skirmish.
+    func testWarHornsCallAcrossAGreatHost() {
+        func din(host: Float, seconds: Float) -> Synth {
+            let synth = Synth()
+            synth.prepare(sampleRate: 48_000)
+            synth.settle()
+            synth.setDin(level: 1, pan: 0)
+            synth.setHost(host)
+            _ = rendered(synth, seconds: seconds)
+            return synth
+        }
+        XCTAssertEqual(din(host: 1, seconds: 4).warHornsBlown, 1, "A war horn two seconds in")
+        XCTAssertEqual(din(host: 0, seconds: 4).warHornsBlown, 0, "None across a skirmish")
+        let rate: Float = 48_000
+        let horn = Horns(sampleRate: rate)
+        horn.blow(146.8, strength: 1, hold: Synth.warHornHeld)
+        let blown = (0..<Int(1.2 * rate)).map { _ in horn.sample(dt: 1 / rate).left * Synth.warHornGain }
+        let overtones = Float((1 + 0.25 + 0.09) / 2).squareRoot() * 0.05
+        print("SOUND war horn \(decibels(rms(blown[Int(0.2 * rate)...]))) dB, the horn of overtones \(decibels(overtones)) dB")
+        XCTAssertEqual(decibels(rms(blown[Int(0.2 * rate)...]) / overtones), 0, accuracy: 3)
+    }
 }

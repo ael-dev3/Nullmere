@@ -9,7 +9,10 @@ import XCTest
 final class RecordingsTests: XCTestCase {
     private let sets: [(String, [Recording])] = [("harp", Recordings.harpNotes), ("glockenspiel", Recordings.glockenspielNotes),
                                                  ("cellos", Recordings.celloNotes), ("violas", Recordings.violaNotes),
-                                                 ("basses", Recordings.bassNotes), ("drums", Recordings.drumNotes)]
+                                                 ("basses", Recordings.bassNotes), ("horns", Recordings.hornNotes),
+                                                 ("drums", Recordings.drumNotes)]
+    /// The sets held round a loop for as long as they sound.
+    private let held: Set = ["cellos", "violas", "basses", "horns"]
 
     /// Blocks read back exactly: foretold from nothing, from the last
     /// sample, and from the line through the last two, each counted in its
@@ -56,14 +59,14 @@ final class RecordingsTests: XCTestCase {
                 XCTAssertGreaterThan(note.heard, 0)
                 XCTAssertEqual(note.sample(-1), 0)
                 if let loop = note.loop {
-                    XCTAssertTrue(name == "cellos" || name == "violas" || name == "basses")
+                    XCTAssertTrue(held.contains(name), name)
                     XCTAssertGreaterThan(loop, Int(0.3 * Recordings.rate), "\(name) \(note.note) loops after the bow sets")
                     XCTAssertGreaterThan(Float(note.count - loop), 2.3 * Recordings.rate, "\(name) \(note.note) loops long")
                     // Across the join the loop's start follows its end.
                     XCTAssertEqual(note.sample(note.count), note.sample(loop))
                     XCTAssertEqual(note.sample(note.count + 1), note.sample(loop + 1))
                 } else {
-                    XCTAssertFalse(name == "cellos" || name == "violas" || name == "basses")
+                    XCTAssertFalse(held.contains(name), name)
                     let tail = samples.suffix(Int(Recordings.rate / 100))
                     XCTAssertLessThan(tail.map(abs).max() ?? 1, 0.002, "\(name) \(note.note) dies to silence")
                     XCTAssertEqual(note.sample(note.count), 0)

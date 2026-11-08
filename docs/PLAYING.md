@@ -1701,7 +1701,12 @@ it plays.
   pluck leaving less of its highs, and as the chord changes it may roll the
   new one softly up. At war the chords darken and a great drum and a field
   drum with its snares off keep a slow march, the great drum's softer
-  strokes struck mezzo-forte. While the moon is eaten and the drowned age
+  strokes struck mezzo-forte; and French horns, recorded held forte, call
+  over them from left of the middle, where the brass sit: as war begins, and
+  now and then as the chord changes, the chord's root, its fifth and its
+  octave, rising, the last held long and falling away. Across a great
+  host's battle in sight a war horn calls now and then, on the same
+  recorded horn. While the moon is eaten and the drowned age
   walks, the score turns strange: chords of stacked minor thirds and
   tritones, low and slow, and a line from the scale of tones and half tones
   that never settles, on the glockenspiel far apart, each answered on the

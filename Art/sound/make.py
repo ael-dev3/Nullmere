@@ -52,6 +52,11 @@ BASSES = [(f"Strings/Solo Contrabass/SusVib/BKCtbss_SusVib_{name}_v1_rr1.wav", n
           [("A#0", 34), ("C1", 36), ("D1", 38), ("E1", 40)]]
 # The war's drums: a great drum struck with a mallet, forte and mezzo-forte,
 # and a field drum with its snares off, struck twice alike.
+# The war's horns: a French horn held forte, six notes a third or so apart
+# across the octave and a half the calls are blown in. The library names
+# each horn note an octave below the one it sounds.
+HORNS = [(f"Brass/F Horn/sus/MOHorn_sus_{name}_v3_1.wav", note) for name, note in
+         [("G1", 43), ("A#1", 46), ("D2", 50), ("F2", 53), ("A2", 57), ("C3", 60)]]
 DRUMS = [("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_f_1.wav", 0),
          ("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_mf_1.wav", 0),
          ("VSCO 1 Percussion/drums/snare/drum1/snare1_nosnare_mf_1.wav", 0),
@@ -294,7 +299,7 @@ def family(root, files, kind):
             heard = (0, int(0.4 * RATE))
             sounded = pitch(x, note, int(0.02 * RATE), int(1.0 * RATE))
             loop = None
-        elif kind == "bowed":
+        elif kind in ("bowed", "blown"):
             x = onset(x, below=50)
             x, start, alike = looped(x)
             heard = (start, len(x) - start)
@@ -371,6 +376,9 @@ def main():
           "The violas, bowed with vibrato, softly: three notes, B3 to F4.", os.path.join(out, "ViolasFile.swift"))
     swift(strings[len(CELLOS) + len(VIOLAS):], "basses",
           "The double bass, bowed with vibrato, softly: four notes, A sharp 1 to E2.", os.path.join(out, "BassesFile.swift"))
+    horns = family(root, HORNS, "blown")
+    even(horns)
+    swift(horns, "horns", "The French horn, held forte: six notes, G2 to C4.", os.path.join(out, "HornsFile.swift"))
     drums = family(root, DRUMS, "drum")
     great, field = drums[:2], drums[2:]
     even(great, together=True)

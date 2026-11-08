@@ -6,11 +6,12 @@ import NullmereCore
 /// Cellos and violas bow slow chords in D minor over a double bass; a
 /// harp's sparse line wanders the minor pentatonic above them, and as the
 /// chord changes the harp may roll the new one softly up; at war a great
-/// drum and a field drum keep a slow march and the chords darken. Over the
-/// launcher, the title theme of the lake the keeper's realm last lay on,
-/// each lake in its own mode and its own voice, harp or glockenspiel. It
-/// renders on the audio thread inside `Synth`, from its own seeded
-/// generator, so the same seed always plays the same music.
+/// drum and a field drum keep a slow march, the chords darken, and French
+/// horns call over them as war begins and now and then as the chord
+/// changes. Over the launcher, the title theme of the lake the keeper's
+/// realm last lay on, each lake in its own mode and its own voice, harp or
+/// glockenspiel. It renders on the audio thread inside `Synth`, from its own
+/// seeded generator, so the same seed always plays the same music.
 public struct Score {
     public enum Mood: Equatable, Sendable {
         case peace
@@ -48,6 +49,20 @@ public struct Score {
     static let plucking: Float = 0.25
     static let ringing: Float = 0.05
     static let drumming: Float = 0.11
+    /// How loud the horns sound in the score.
+    static let calling: Float = 0.09
+    /// How likely the horns call as the chord changes at war: always as
+    /// war begins.
+    static let callChance: Float = 0.6
+    /// The horns' call over a chord: its root, then its fifth, then its
+    /// octave, rising, the last held long; each note's step above the
+    /// root, when it is blown, how long it is held and how hard, in seconds.
+    static let call: [(step: Int, at: Float, hold: Float, strength: Float)] = [
+        (0, 0, 0.3, 0.8), (7, 0.42, 0.3, 0.85), (12, 0.84, 1.5, 1),
+    ]
+    /// The lowest note a call begins on: the chord's root is taken up by
+    /// octaves to it, so every call lies where the horns were recorded.
+    static let callFloor = 43
     /// The march the drums keep at war: eight steps a bar, each struck this
     /// hard (nothing is no stroke), the bar's first and middle on the low
     /// drum, the rest on the high.
@@ -73,14 +88,20 @@ public struct Score {
     private var bells: Glockenspiel
     private var lowDrum: Drum
     private var highDrum: Drum
+    private var horns: Horns
     private var drumClock: Float = 0
     private var drumStep = 0
+    /// The mood the score last played in, so it knows when war begins.
+    private var heardMood: Mood = .peace
 
     /// What has been played, for tests: the melody's MIDI notes in order,
     /// chord changes, and drum strokes.
     private(set) var playedNotes: [Int] = []
     private(set) var chordChanges = 0
     private(set) var drumStrokes = 0
+    /// The horns' calls, and the notes blown in them, for tests.
+    private(set) var hornCalls = 0
+    private(set) var calledNotes: [Int] = []
 
     init(seed: UInt32 = 0x0D15_EA5E, sampleRate: Float = 48_000) {
         self.seed = seed
@@ -91,10 +112,12 @@ public struct Score {
         bells = Glockenspiel(sampleRate: sampleRate)
         lowDrum = Drum(.great, sampleRate: sampleRate)
         highDrum = Drum(.field, sampleRate: sampleRate)
+        horns = Horns(sampleRate: sampleRate)
         // Room enough up front that the audio thread never has to find more.
         current.reserveCapacity(6)
         previous.reserveCapacity(6)
         playedNotes.reserveCapacity(4096)
+        calledNotes.reserveCapacity(4096)
         bow(Score.chords[0], as: Theme.peace)
     }
 
@@ -107,6 +130,7 @@ public struct Score {
         bells = Glockenspiel(sampleRate: sampleRate)
         lowDrum = Drum(.great, sampleRate: sampleRate)
         highDrum = Drum(.field, sampleRate: sampleRate)
+        horns = Horns(sampleRate: sampleRate)
         current = current.map { Bowed(frequency: $0.frequency, corner: $0.corner, sampleRate: sampleRate, bass: $0.bass) }
         previous.removeAll(keepingCapacity: true)
         crossfade = 1
@@ -135,7 +159,7 @@ public struct Score {
         }
     }
 
-    private mutating func nextChord() {
+    private mutating func nextChord(calling: Bool = false) {
         let theme = Theme.of(mood)
         let pool = theme.chords
         let chord = pool[Int(random() * Float(pool.count)) % pool.count]
@@ -156,6 +180,23 @@ public struct Score {
                 rolledNotes += 1
             }
         }
+        // At war the horns call over the new chord, now and then.
+        if mood == .war, calling || random() < Score.callChance {
+            call(chord)
+        }
+    }
+
+    /// The horns' call over a chord, from left of the middle, where the
+    /// brass sit: its root taken up to where the horns were recorded.
+    private mutating func call(_ chord: [Int]) {
+        guard var root = chord.first else { return }
+        while root < Score.callFloor { root += 12 }
+        for (index, note) in Score.call.enumerated() {
+            horns.blow(Score.frequency(root + note.step), strength: note.strength, hold: note.hold,
+                       pan: -0.35 + 0.1 * Float(index), wait: note.at)
+            if calledNotes.count < 4096 { calledNotes.append(root + note.step) }
+        }
+        hornCalls += 1
     }
 
     private mutating func nextBell() {
@@ -192,6 +233,15 @@ public struct Score {
     /// line's next note sounding, and at war the drums' march struck. Every
     /// sample is drawn from it, and tests may run it alone.
     private mutating func advance(dt: Float) {
+        if mood != heardMood {
+            heardMood = mood
+            if mood == .war {
+                // War begun: the chords turn to war's at once, and the
+                // horns call it.
+                chordClock = 0
+                nextChord(calling: true)
+            }
+        }
         chordClock += dt
         if chordClock >= chordLength {
             chordClock = 0
@@ -251,6 +301,11 @@ public struct Score {
         let rung = bells.sample(dt: dt)
         left += plucked.left * Score.plucking + rung.left * Score.ringing
         right += plucked.right * Score.plucking + rung.right * Score.ringing
+
+        // At war, the horns' calls; what was blown falls away after.
+        let blown = horns.sample(dt: dt)
+        left += blown.left * Score.calling
+        right += blown.right * Score.calling
 
         // At war, the drums' slow march; what was struck rings out after.
         if lowDrum.isSounding || highDrum.isSounding {
