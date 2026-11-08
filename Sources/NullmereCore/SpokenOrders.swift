@@ -237,7 +237,7 @@ public enum SpokenOrders {
                 guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
                 guard let watches = span(after: forAt) else { return nil }
                 return given(.swear(.peace, to: other, watches: watches),
-                             "Your House swears peace with \(state.houses[other].title) for \(watches) watches; the realm will hold it to its word.")
+                             "Your House swears peace with \(state.houses[other].title) for \(GameState.watches(watches)); the realm will hold it to its word.")
             }
             if upper.count >= 10, upper[0] == "TO", upper[1] == "SEND", let toAt = upper[3...].firstIndex(of: "TO"),
                let eachAt = upper.lastIndex(of: "EACH"), toAt + 1 < eachAt, eachAt + 2 < upper.count,
@@ -249,7 +249,7 @@ public enum SpokenOrders {
                 guard let watches = span(after: eachAt + 2) else { return nil }
                 return given(.swear(.send(resource, amount), to: other, watches: watches),
                              "Your House swears to send \(GameState.counted(amount)) \(resource.title.lowercased()) to \(state.houses[other].title) "
-                                + "each watch for \(watches) watches.")
+                                + "each watch for \(GameState.watches(watches)).")
             }
             return nil
         case "RENOUNCE":

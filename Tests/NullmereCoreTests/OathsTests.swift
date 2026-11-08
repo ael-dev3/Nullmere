@@ -150,6 +150,13 @@ final class OathsTests: XCTestCase {
         let send = try XCTUnwrap(SpokenOrders.read(line: "SWEAR TO SEND 25 timber TO \(title) EACH WATCH FOR 8 WATCHES", in: state, player: me))
         XCTAssertEqual(send.command, .swear(.send(.timber, 25), to: other, watches: 8))
         XCTAssertTrue(send.told.hasPrefix("Your House swears to send 25 timber"))
+        XCTAssertTrue(peace.told.contains(" for 12 watches; "), peace.told)
+        // One watch is said as one.
+        let brief = try XCTUnwrap(SpokenOrders.read(line: "SWEAR PEACE WITH \(title) FOR 1 WATCH", in: state, player: me))
+        XCTAssertTrue(brief.told.contains(" for 1 watch; "), brief.told)
+        let once = try XCTUnwrap(SpokenOrders.read(line: "SWEAR TO SEND 25 timber TO \(title) EACH WATCH FOR 1 WATCH", in: state, player: me))
+        XCTAssertTrue(once.told.hasSuffix("each watch for 1 watch."), once.told)
+        XCTAssertEqual([GameState.watches(1), GameState.watches(12), GameState.watches(1_200)], ["1 watch", "12 watches", "1,200 watches"])
         XCTAssertEqual(SpokenOrders.read(line: "SWEAR PEACE WITH Nobody FOR 3 WATCHES", in: state, player: me)?.command, nil)
         XCTAssertNil(SpokenOrders.read(line: "SWEAR LOUDLY", in: state, player: me))
         XCTAssertNil(SpokenOrders.read(line: "SWEAR PEACE WITH \(title) FOR EVER", in: state, player: me))

@@ -32,6 +32,9 @@ extension GameState {
     /// A count of companies as a line says it: "1 company", "3 companies".
     public static func companies(_ count: Int) -> String { count == 1 ? "1 company" : "\(counted(count)) companies" }
 
+    /// A count of watches as a line says it: "1 watch", "12 watches".
+    public static func watches(_ count: Int) -> String { count == 1 ? "1 watch" : "\(counted(count)) watches" }
+
     /// A count as the realm writes it, its thousands set apart: 12,400.
     public static func counted(_ number: Int) -> String {
         let digits = String(abs(number))

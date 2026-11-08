@@ -24,7 +24,14 @@ final class FalseReflectionTests: XCTestCase {
         XCTAssertEqual(events, [.reflectionCast(house: me, at: shore)])
         XCTAssertEqual(state.houses[me].stock.moonsalt, salt - GameState.falseReflectionCost.moonsalt)
         XCTAssertEqual(state.refusal(of: .castReflection(hold: hold.id, at: shore, kind: .spear), as: me), .reflectionThere)
-        XCTAssertNotNil(state.tidings(of: events[0], for: me))
+        let next = GameState.nextStillHour(from: state.watch + 1) - state.watch
+        let told = try XCTUnwrap(state.tidings(of: events[0], for: me)).text
+        XCTAssertTrue(told.contains(next <= 1 ? ": as the watch turns the lake will mirror" : ": in \(next) watches the lake will mirror"), told)
+        // Cast the watch before a Still Hour, it is mirrored as the watch turns, not "in 1 watches".
+        var eve = state
+        eve.watch = GameState.nextStillHour(from: state.watch + 1) - 1
+        let soon = try XCTUnwrap(eve.tidings(of: events[0], for: me)).text
+        XCTAssertTrue(soon.contains(": as the watch turns the lake will mirror a company of yours there that is not."), soon)
         XCTAssertEqual(state.events(events, heardBy: other), [], "Its secret")
         XCTAssertNil(state.view(for: other).reflections)
         XCTAssertEqual(state.view(for: me).falseReflections(of: me).count, 1)
