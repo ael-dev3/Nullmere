@@ -324,6 +324,14 @@ public final class GameSession {
     public var onPosting: ((Float) -> Void)?
     private var postingTold: Float = 0
     @ObservationIgnored var townTold: (level: Float, pan: Float) = (0, 0)
+    /// The lake at its edge near the view, told to the sound as it changes:
+    /// how near, and where across the view.
+    public var onShore: ((Float, Float) -> Void)?
+    @ObservationIgnored var shoreTold: (level: Float, pan: Float) = (0, 0)
+    /// The strand last found about the view's middle, and for which view:
+    /// found again only as the view's middle moves to another hex, comes
+    /// nearer or draws back, or the watch turns.
+    @ObservationIgnored private var strandFound: (centre: Hex, reach: Int, watch: Int, edges: [Hex])?
     /// Called with the advisor's counsel as each new charge comes.
     public var onCounsel: ((String) -> Void)?
     /// The charge last counselled: the one the keeper had as the session
@@ -2054,6 +2062,37 @@ public final class GameSession {
         guard abs(level - townTold.level) > 0.02 || abs(pan - townTold.pan) > 0.05 || (level == 0 && townTold.level != 0) else { return }
         townTold = (level, pan)
         onTown?(level, pan)
+    }
+
+    /// The lake at its edge near the view, as it is heard (`ShoreSound`):
+    /// only as the view comes down to the land, the more strand about the
+    /// view's middle the louder, from where it lies across the view, and the
+    /// quieter the calmer the Still lies; water the House has not seen is
+    /// not heard, nor the open lake far from any strand.
+    func shoreSound() -> (level: Float, pan: Float)? {
+        guard camera.scale > ShoreSound.faintest else { return nil }
+        let reach = ShoreSound.reach(at: camera.scale)
+        let centre = camera.centreHex
+        let edges: [Hex]
+        if let found = strandFound, found.centre == centre, found.reach == reach, found.watch == state.watch {
+            edges = found.edges
+        } else {
+            edges = ShoreSound.edges(about: centre, reach: reach, in: state.map) { self.isExplored($0) }
+            strandFound = (centre, reach, state.watch, edges)
+        }
+        guard let heard = ShoreSound.heard(edges, from: camera) else { return nil }
+        let level = heard.level * ShoreSound.stilled(by: state.stillCalm)
+        return level > 0.001 ? (level, heard.pan) : nil
+    }
+
+    /// Tells the sound the shore near the view when it has changed enough
+    /// to hear; still under Reduce Motion's stillest, as the towns are.
+    func hearShore() {
+        let shore = motion == .still ? nil : shoreSound()
+        let level = shore?.level ?? 0, pan = shore?.pan ?? 0
+        guard abs(level - shoreTold.level) > 0.02 || abs(pan - shoreTold.pan) > 0.05 || (level == 0 && shoreTold.level != 0) else { return }
+        shoreTold = (level, pan)
+        onShore?(level, pan)
     }
 
     /// Sounds a cue, from where in the world it happened.

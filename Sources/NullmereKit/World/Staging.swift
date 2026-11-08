@@ -282,10 +282,11 @@ extension GameSession {
             let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
             frame.motes += frame.weather.motes(around: camera.focus, extent: extent, time: t)
         }
-        // The sound of the fields in sight, and of the towns near the view,
-        // follows the picture of them.
+        // The sound of the fields in sight, and of the towns and the lake's
+        // edge near the view, follows the picture of them.
         hearBattles()
         hearTowns()
+        hearShore()
         return frame
     }
 

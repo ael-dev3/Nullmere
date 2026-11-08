@@ -1733,8 +1733,14 @@ it plays.
   view comes down close to a hold, its town is heard beneath the night,
   about as loud: two murmurs of talk rising and falling syllable by
   syllable, their vowels changing as they go, and now and then a hammer's
-  blow, the louder the more the hold has raised. Both are still under the
-  stillest motion.
+  blow, the louder the more the hold has raised. As it comes down to the
+  land, the lake is heard where its water meets the strand the House has
+  seen about the middle of the view: small waves washing up and drawing
+  back over the shingle, never on a beat, now and then a drop falling back,
+  from where the strand lies across the view and the louder the more of it
+  there is; never out on the open Still, far from any strand, and the
+  quieter the calmer the Still lies, a whisper at its calmest. All three are
+  still under the stillest motion.
 - **The interface**, quietly: a leaf turned as a panel opens and laid down
   as it closes, and two muted knocks on wood when the rules refuse an
   order; on a Mac whose trackpad gives them, a light tap as an order is

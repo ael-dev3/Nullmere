@@ -2,7 +2,8 @@ import Foundation
 import NullmereCore
 
 /// The synthesiser behind the Mac's `Ambience`: the night's drone and
-/// wind, the din of battles in sight, the towns near the view, every cue,
+/// wind, the din of battles in sight, the towns and the lake's edge near
+/// the view, every cue,
 /// and the score, the score and the cues heard in a hall of their own. It renders on the audio
 /// thread; the main thread only queues cues, under a lock.
 public final class Synth: @unchecked Sendable {
@@ -116,6 +117,12 @@ public final class Synth: @unchecked Sendable {
     private var pendingForging: Float?
     private var pendingPosting: Float?
     private var towns = Town(sampleRate: 48_000)
+    /// The lake at its edge near the view as heard, easing toward what it
+    /// was last told, and what it sounds.
+    private var shore: (level: Float, pan: Float) = (0, 0)
+    private var shoreTarget: (level: Float, pan: Float) = (0, 0)
+    private var pendingShore: (level: Float, pan: Float)?
+    private var shores = Shore(sampleRate: 48_000)
 
     /// The drone's partials.
     private static let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
@@ -160,6 +167,13 @@ public final class Synth: @unchecked Sendable {
     /// and where across the view, from the left (-1) to the right (1).
     public func setTown(level: Float, pan: Float) {
         lock.lock(); pendingTown = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
+    }
+
+    /// How near the lake's edge is to the view (0 none, 1 the strand all
+    /// about its middle, close) and where across it, from the left (-1) to
+    /// the right (1).
+    public func setShore(level: Float, pan: Float) {
+        lock.lock(); pendingShore = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
     }
 
     /// How much of the towns heard is sawpits at work, 0 to 1.
@@ -223,6 +237,12 @@ public final class Synth: @unchecked Sendable {
         return town
     }
 
+    /// The shore as it is heard, for tests.
+    var shoreHeard: (level: Float, pan: Float) {
+        lock.lock(); defer { lock.unlock() }
+        return shore
+    }
+
     /// The din as it is heard, for tests.
     var dinHeard: (level: Float, pan: Float) {
         lock.lock(); defer { lock.unlock() }
@@ -233,6 +253,7 @@ public final class Synth: @unchecked Sendable {
         self.sampleRate = sampleRate
         if hall.sampleRate != sampleRate { hall = Hall(sampleRate: sampleRate) }
         if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
+        if shores.sampleRate != sampleRate { shores = Shore(sampleRate: sampleRate) }
         score.prepare(sampleRate: sampleRate)
     }
 
@@ -612,6 +633,10 @@ public final class Synth: @unchecked Sendable {
             townTarget = next
             pendingTown = nil
         }
+        if let next = pendingShore {
+            shoreTarget = next
+            pendingShore = nil
+        }
         if let next = pendingSawing {
             towns.sawing = next
             pendingSawing = nil
@@ -790,6 +815,18 @@ public final class Synth: @unchecked Sendable {
                 townRight = heardTown * sin(townAngle) * 1.414
             }
 
+            // The lake at its edge near the view: as near as the view
+            // comes to the strand, from where it lies across the view.
+            shore.level += (shoreTarget.level - shore.level) * min(dt * 1.2, 1)
+            shore.pan += (shoreTarget.pan - shore.pan) * min(dt * 1.2, 1)
+            var shoreLeft: Float = 0, shoreRight: Float = 0
+            if shore.level > 0.0005 {
+                let lapping = shores.sample(dt: dt) * Self.shoreGain * shore.level * heard.ambience * level
+                let shoreAngle = (0.75 * shore.pan + 1) * .pi / 4
+                shoreLeft = lapping * cos(shoreAngle) * 1.414
+                shoreRight = lapping * sin(shoreAngle) * 1.414
+            }
+
             cueLeft *= heard.effects
             cueRight *= heard.effects
             drone *= heard.ambience
@@ -809,8 +846,8 @@ public final class Synth: @unchecked Sendable {
             if hallQuiet < hall.seconds * 3 {
                 (hallLeft, hallRight) = hall.process(left: sentLeft, right: sentRight)
             }
-            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft + townLeft)
-            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight + townRight)
+            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft + townLeft + shoreLeft)
+            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight + townRight + shoreRight)
         }
         notes.removeAll { $0.age > $0.end }
     }
@@ -852,6 +889,8 @@ public final class Synth: @unchecked Sendable {
 
     /// How loud a town is, close by: about as loud as the night beneath it.
     static let townGain: Float = 0.15
+    /// How loud the shore is, at its nearest: about as loud as the night.
+    static let shoreGain: Float = 0.2
 
     /// How much of the score, and of the cues, the hall is given.
     static let musicSend: Float = 0.45

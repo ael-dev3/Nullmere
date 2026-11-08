@@ -237,6 +237,53 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(loud.dinHeard.level, 0, accuracy: 0.01)
     }
 
+    /// The lake at its edge near the view laps at the strand, about as loud
+    /// as the night beneath it, from where it lies across the view, wave by
+    /// wave: each washing up in a moment and drawing back slowly, never on
+    /// a beat, now and then a drop falling back; gone again once the view
+    /// draws back. The night sounds as it did beneath it.
+    func testTheShoreNearTheViewLapsFromWhereItLies() {
+        let still = settled()
+        let quiet = rendered(still, seconds: 10)
+        let near = settled()
+        near.setShore(level: 1, pan: 0.8)
+        let heard = rendered(near, seconds: 10)
+        let held = (3 * 48_000)..<(10 * 48_000)
+        // The night the same beneath, so what differs is the shore's.
+        let left = zip(heard.left[held], quiet.left[held]).map { $0 - $1 }
+        let right = zip(heard.right[held], quiet.right[held]).map { $0 - $1 }
+        let night = rms(quiet.right[held])
+        print("SOUND shore \(String(format: "%.1f", decibels(rms(right)))) dBFS rms beside a night of \(String(format: "%.1f", decibels(night)))")
+        XCTAssertGreaterThan(rms(right), night * 0.4, "Heard over the night")
+        XCTAssertLessThan(rms(right), night * 2, "and no louder than about it")
+        XCTAssertGreaterThan(rms(right), rms(left) * 1.5, "from the right, where it lies")
+        // Wave by wave: its loudness in quarter seconds rises and falls.
+        let quarters = stride(from: 0, to: right.count - 12_000, by: 12_000).map { rms(right[$0..<($0 + 12_000)]) }
+        XCTAssertGreaterThan((quarters.max() ?? 0) / max(quarters.min() ?? 1, 1e-9), 3, "Each wave swells and ebbs")
+        XCTAssertEqual(near.shoreHeard.level, 1, accuracy: 0.05)
+        near.setShore(level: 0, pan: 0)
+        _ = rendered(near, seconds: 6)
+        _ = rendered(still, seconds: 6)
+        XCTAssertEqual(near.shoreHeard.level, 0, accuracy: 0.01)
+        let after = rendered(near, seconds: 2), bed = rendered(still, seconds: 2)
+        let lingering = zip(after.right, bed.right).map { $0 - $1 }
+        XCTAssertLessThan(rms(lingering), rms(bed.right) * 0.05, "Gone again with the view, the night as it was")
+
+        var shore = Shore(sampleRate: 48_000)
+        let sound = (0..<(48_000 * 20)).map { _ in shore.sample(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(shore.waves, 5, "Wave after wave comes in")
+        XCTAssertGreaterThanOrEqual(shore.drops, 3, "Now and then a drop falls back")
+        XCTAssertGreaterThan(shore.gaps.longest, shore.gaps.shortest + 0.5, "Never on a beat")
+        XCTAssertGreaterThanOrEqual(shore.gaps.shortest, 2, "A wave at a time")
+        XCTAssertFalse(sound.contains { $0.isNaN || $0.isInfinite })
+        XCTAssertLessThan(sound.map(abs).max() ?? 1, 1)
+        // The same at another rate: as loud, its waves as long.
+        var faster = Shore(sampleRate: 96_000)
+        let doubled = (0..<(96_000 * 20)).map { _ in faster.sample(dt: 1 / 96_000) }
+        XCTAssertEqual(faster.waves, shore.waves)
+        XCTAssertEqual(rms(doubled), rms(sound), accuracy: rms(sound) * 0.35, "As loud at any rate")
+    }
+
     /// The towns near the view are heard talking and at work, about as
     /// loud as the night beneath them, from where they lie across the view,
     /// talk rising and falling and now and then a hammer's blow; gone again

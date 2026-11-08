@@ -1030,6 +1030,7 @@ public final class GameApp {
         session.onDin = { [weak self] level, pan in self?.ambience.setDin(level: level, pan: pan) }
         session.onHost = { [weak self] mass in self?.ambience.setHost(mass) }
         session.onTown = { [weak self] level, pan in self?.ambience.setTown(level: level, pan: pan) }
+        session.onShore = { [weak self] level, pan in self?.ambience.setShore(level: level, pan: pan) }
         session.onSawing = { [weak self] share in self?.ambience.setSawing(share) }
         session.onChiselling = { [weak self] share in self?.ambience.setChiselling(share) }
         session.onBurning = { [weak self] share in self?.ambience.setBurning(share) }
