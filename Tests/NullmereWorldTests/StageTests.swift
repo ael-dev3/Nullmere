@@ -60,28 +60,62 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(stage.furnish(occupied: [], holds: []), all, "kept, not laid out again")
         XCTAssertEqual(stage.furnitureVersion, 1)
 
-        // A company comes to a wooded hex: its heart is cleared, and nothing else moves.
-        let wooded = try XCTUnwrap(Self.state.map.hexes.first { hex in
-            Scatter.pieces(in: hex, map: Self.state.map, relief: Self.relief).contains {
-                let centre = Relief.centre(of: hex)
-                let p = $0.position
-                return ((p.x - centre.x) * (p.x - centre.x) + (p.z - centre.z) * (p.z - centre.z)).squareRoot() < Scatter.heart
-            }
-        })
+        // A company comes to a wooded hex: whatever would rise among its
+        // ranks gives way, in its hex and the edges of those beside it, and
+        // nothing moves; what lies underfoot stays (run 753's battle had
+        // firs standing through its formations).
+        let map = Self.state.map
+        let wooded = try XCTUnwrap(map.hexes.first { hex in
+            map[hex]?.terrain == .blackwood && hex.neighbors.allSatisfy { map[$0]?.terrain == .blackwood }
+        }, "A blackwood hex in the blackwood")
         let cleared = stage.furnish(occupied: [wooded], holds: [])
         XCTAssertEqual(stage.furnitureVersion, 2, "laid out again, and sent again")
         let centre = Relief.centre(of: wooded)
-        for instance in cleared.flatMap(\.instances) where instance.hex == SIMD2(Int32(wooded.q), Int32(wooded.r)) {
+        func reach(_ instance: ModelInstance) -> Float {
             let p = instance.model.c3
-            XCTAssertGreaterThanOrEqual(((p.x - centre.x) * (p.x - centre.x) + (p.z - centre.z) * (p.z - centre.z)).squareRoot(),
-                                        Scatter.heart - 0.001)
+            return ((p.x - centre.x) * (p.x - centre.x) + (p.z - centre.z) * (p.z - centre.z)).squareRoot()
         }
-        let others = { (batches: [ModelBatch]) in
-            batches.flatMap(\.instances).filter { $0.hex != SIMD2(Int32(wooded.q), Int32(wooded.r)) }.map(\.model.c3)
+        func ground(_ furnishing: Furnishing, _ instance: ModelInstance) -> Float {
+            let c = instance.model.c0
+            return Scatter.held + Scatter.footprint(furnishing) * (c.x * c.x + c.y * c.y + c.z * c.z).squareRoot()
         }
-        XCTAssertEqual(Set(others(cleared).map { "\($0)" }), Set(others(all).map { "\($0)" }), "every other hex as it was")
-        // And when it goes, the hex is as it was before.
-        XCTAssertEqual(count(stage.furnish(occupied: [], holds: [])), count(all))
+        let stood = Set(all.flatMap(\.instances).map { "\($0.model.c3)" })
+        XCTAssertTrue(cleared.flatMap(\.instances).allSatisfy { stood.contains("\($0.model.c3)") }, "nothing moves")
+        for batch in cleared {
+            guard case .furnishing(let furnishing) = batch.key, Scatter.height(furnishing) > Scatter.underfoot else { continue }
+            for instance in batch.instances {
+                XCTAssertGreaterThanOrEqual(reach(instance), ground(furnishing, instance) - 0.001, "\(furnishing) clear of its ranks")
+            }
+        }
+        let standing = Set(cleared.flatMap(\.instances).map { "\($0.model.c3)" })
+        var gave = 0
+        for batch in all {
+            guard case .furnishing(let furnishing) = batch.key else { continue }
+            for instance in batch.instances where !standing.contains("\(instance.model.c3)") {
+                XCTAssertGreaterThan(Scatter.height(furnishing), Scatter.underfoot, "only what rises gives way: \(furnishing)")
+                XCTAssertLessThan(reach(instance), ground(furnishing, instance) + 0.001, "only what stood in its way")
+                gave += 1
+            }
+        }
+        XCTAssertGreaterThan(gave, 0, "the firs in its way give way")
+        XCTAssertTrue(cleared.contains { batch in
+            guard case .furnishing(let furnishing) = batch.key, Scatter.height(furnishing) <= Scatter.underfoot else { return false }
+            return batch.instances.contains { reach($0) < Scatter.held }
+        }, "ferns and pebbles stay underfoot")
+        // And when it goes, the land is as it was before.
+        XCTAssertEqual(stage.furnish(occupied: [], holds: []), all)
+        // At half the Detail, a company changes nothing beyond its ground:
+        // what was kept elsewhere is kept still.
+        stage.furnitureShare = 0.5
+        let half = stage.furnish(occupied: [], holds: []).flatMap(\.instances)
+        let halfHeld = stage.furnish(occupied: [wooded], holds: []).flatMap(\.instances)
+        let halfStood = Set(half.map { "\($0.model.c3)" }), halfStanding = Set(halfHeld.map { "\($0.model.c3)" })
+        XCTAssertTrue(halfStanding.isSubset(of: halfStood), "Nothing moves or comes at half")
+        for instance in half where !halfStanding.contains("\(instance.model.c3)") {
+            XCTAssertLessThan(reach(instance), Scatter.held + 0.5, "Only what stood in its way gives way at half")
+        }
+        stage.furnitureShare = 1
+        XCTAssertEqual(stage.furnish(occupied: [], holds: []), all)
 
         // A hold founded: the ground round it is bare.
         let seat = try XCTUnwrap(Self.state.holds.first)

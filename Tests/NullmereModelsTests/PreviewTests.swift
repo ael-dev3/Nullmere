@@ -173,8 +173,7 @@ final class PreviewTests: XCTestCase {
         }
         let near = state.map.hexes.filter { $0.distance(to: seat) <= 5 }
         for hex in near {
-            pieces += Scatter.pieces(in: hex, map: state.map, relief: relief, clearHeart: occupied.contains(hex) || hex == seat,
-                                     holds: [seat])
+            pieces += Scatter.pieces(in: hex, map: state.map, relief: relief, occupied: occupied, holds: [seat])
         }
         var mesh = Mesh()
         let centre = Relief.centre(of: seat)

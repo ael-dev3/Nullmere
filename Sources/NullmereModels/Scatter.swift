@@ -5,21 +5,54 @@ import NullmereCore
 /// feature: firs in the blackwood, crags on the Spine, mounds and stones on
 /// the barrows, crystals on the flats, reeds and driftwood on the strand.
 /// The same map always gives the same pieces. Each hex's pieces stand
-/// within it and never reach a neighbour's heart, so a hex can be laid out
-/// again alone when a company comes or goes; where a company stands its
-/// heart is left clear, and round a hold the ground its works stand on.
+/// within it and never reach a neighbour's heart; round a hold the ground
+/// its works stand on is left bare. Where a company stands, whatever would
+/// rise among its ranks gives way to it, in its hex and the edges of those
+/// beside it, and comes back when it goes: nothing else moves.
 public enum Scatter {
-    /// The radius of a hex's heart, left clear where a company stands.
+    /// The radius of a hex's heart, which no neighbour's piece reaches,
+    /// left clear at a hold.
     public static let heart: Float = 0.62
+    /// The ground a company holds: as far as its figures reach from its
+    /// hex's heart, turned any way.
+    public static let held: Float = Formation.hexInner
+    /// What stands no higher than this, a third of a man, is left
+    /// underfoot where a company stands: grass, heather, ferns, pebbles, a
+    /// boulder, a shoal's stepping stones. Anything taller gives way to it.
+    public static let underfoot: Float = 0.14
     /// How far each piece is sunk below the ground at its foot.
     public static let sink: Float = 0.01
 
     /// Every hex's furnishings. `occupied` names the hexes where a company
-    /// or hold stands; `holds` the hexes of holds, whose works' ground,
-    /// within `HoldLayout.reach` of their hearts, is left bare.
+    /// stands, or a site, lair or standard; `holds` the hexes of holds,
+    /// whose works' ground, within `HoldLayout.reach` of their hearts, is
+    /// left bare.
     public static func pieces(map: WorldMap, relief: Relief, occupied: Set<Hex> = [], holds: Set<Hex> = []) -> [Piece] {
-        map.hexes.flatMap {
-            pieces(in: $0, map: map, relief: relief, clearHeart: occupied.contains($0) || holds.contains($0), holds: holds)
+        map.hexes.flatMap { pieces(in: $0, map: map, relief: relief, occupied: occupied, holds: holds) }
+    }
+
+    /// One hex's furnishings with companies standing in `occupied`: laid
+    /// out as on open ground, then whatever rises above `underfoot` within
+    /// the ground a company holds here or beside it left out, so a company
+    /// coming or going moves no piece, only clears those in its way or
+    /// brings them back.
+    public static func pieces(in hex: Hex, map: WorldMap, relief: Relief, occupied: Set<Hex>, holds: Set<Hex> = []) -> [Piece] {
+        cleared(pieces(in: hex, map: map, relief: relief, clearHeart: holds.contains(hex), holds: holds), in: hex, occupied: occupied)
+    }
+
+    /// A hex's pieces as laid out on open ground, with whatever rises above
+    /// `underfoot` in the ground a company holds, here or beside it, left
+    /// out.
+    public static func cleared(_ laid: [Piece], in hex: Hex, occupied: Set<Hex>) -> [Piece] {
+        guard !occupied.isEmpty else { return laid }
+        let held = ([hex] + hex.neighbors).filter(occupied.contains).map { Relief.centre(of: $0) }
+        guard !held.isEmpty else { return laid }
+        return laid.filter { piece in
+            guard case .furnishing(let furnishing) = piece.key, height(furnishing) > underfoot else { return true }
+            let column = piece.transform.c0
+            let radius = footprint(furnishing) * (column.x * column.x + column.y * column.y + column.z * column.z).squareRoot()
+            let at = piece.position
+            return held.allSatisfy { ((at.x - $0.x) * (at.x - $0.x) + (at.z - $0.z) * (at.z - $0.z)).squareRoot() >= Scatter.held + radius }
         }
     }
 
@@ -141,6 +174,15 @@ public enum Scatter {
     public static func footprint(_ furnishing: Furnishing) -> Float {
         footprints[furnishing] ?? 0
     }
+
+    /// How high a furnishing stands from its foot, at its own size.
+    public static func height(_ furnishing: Furnishing) -> Float {
+        heights[furnishing] ?? 0
+    }
+
+    private static let heights: [Furnishing: Float] = Dictionary(uniqueKeysWithValues: Furnishing.allCases.map { furnishing in
+        (furnishing, Library.model(.furnishing(furnishing)).mesh.vertices.reduce(0) { max($0, $1.position.y) })
+    })
 
     private static let footprints: [Furnishing: Float] = Dictionary(uniqueKeysWithValues: Furnishing.allCases.map { furnishing in
         (furnishing, Library.model(.furnishing(furnishing)).mesh.vertices.reduce(0) {

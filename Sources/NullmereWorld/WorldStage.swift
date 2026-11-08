@@ -206,6 +206,11 @@ public final class WorldStage: @unchecked Sendable {
     public let map: WorldMap
     public let relief: Relief
     private var furnitureByHex: [Hex: [Piece]] = [:]
+    /// Each hex's furnishings as on open ground, round the holds there
+    /// were: laid out again only where a hold comes or goes, and cleared
+    /// where companies stand for `furnitureByHex`.
+    private var openByHex: [Hex: [Piece]] = [:]
+    private var openHolds: Set<Hex>?
     private var furnished: (occupied: Set<Hex>, holds: Set<Hex>)?
     private var furniture: [ModelBatch] = []
     /// Moves each time the furniture is laid out again.
@@ -252,30 +257,44 @@ public final class WorldStage: @unchecked Sendable {
 
     // MARK: The land's furniture
 
-    /// The land's furniture, with the hearts of `occupied` hexes clear and
-    /// the ground round `holds` bare; only the hexes whose lot changed are
-    /// laid out again.
+    /// The land's furniture, with whatever would rise among a company's
+    /// ranks given way where `occupied` hexes are held and the ground round
+    /// `holds` bare; only the hexes whose lot changed, and those beside a
+    /// company come or gone, are laid out again.
     public func furnish(occupied: Set<Hex>, holds: Set<Hex>) -> [ModelBatch] {
         if let furnished, furnished.occupied == occupied, furnished.holds == holds { return furniture }
+        // The open ground, laid out again only round a hold come or gone.
+        var reopened: Set<Hex> = []
+        if let openHolds {
+            for hold in openHolds.symmetricDifference(holds) { reopened.formUnion(hold.spiral(3).filter { map[$0] != nil }) }
+        } else {
+            reopened = Set(map.hexes)
+        }
+        for hex in reopened {
+            openByHex[hex] = Scatter.pieces(in: hex, map: map, relief: relief, clearHeart: holds.contains(hex), holds: holds)
+        }
+        openHolds = holds
         var changed: Set<Hex>
         if let furnished {
-            changed = furnished.occupied.symmetricDifference(occupied)
-            for hold in furnished.holds.symmetricDifference(holds) {
-                changed.formUnion(hold.spiral(3).filter { map[$0] != nil })
-            }
+            let moved = furnished.occupied.symmetricDifference(occupied)
+            // A company's ground reaches into the edges of the hexes beside it.
+            changed = reopened.union(moved).union(moved.flatMap(\.neighbors).filter { map[$0] != nil })
         } else {
             changed = Set(map.hexes)
         }
         for hex in changed {
-            furnitureByHex[hex] = Scatter.pieces(in: hex, map: map, relief: relief,
-                                                 clearHeart: occupied.contains(hex) || holds.contains(hex), holds: holds)
+            furnitureByHex[hex] = Scatter.cleared(openByHex[hex] ?? [], in: hex, occupied: occupied)
         }
         var placed: [(ModelKey, ModelInstance)] = []
         let share = min(max(furnitureShare, 0), 1)
         for hex in map.hexes {
-            for (index, piece) in (furnitureByHex[hex] ?? []).enumerated()
-            where share >= 1 || WorldStage.isLandmark(piece.key)
-                || Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), UInt32(41 + index)) < share {
+            // Each piece thinned by its place on open ground, so one given
+            // way to a company never changes which others are kept.
+            let open = openByHex[hex] ?? [], kept = furnitureByHex[hex] ?? []
+            for (index, piece) in open.enumerated()
+            where (share >= 1 || WorldStage.isLandmark(piece.key)
+                || Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), UInt32(41 + index)) < share)
+                && (kept.count == open.count || kept.contains(piece)) {
                 placed.append((piece.key, ModelInstance(model: piece.transform, phase: WorldStage.phase(of: piece.hex, salt: 3),
                                                         hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
             }
