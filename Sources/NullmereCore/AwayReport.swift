@@ -69,11 +69,37 @@ public struct AwayReport: Equatable, Sendable {
         for index in (lakes + [omen].compactMap { $0 }).sorted().reversed() where told.count < AwayReport.lines {
             told.append(index)
         }
-        news = told.sorted().map { chronicle[$0].text }
+        let title = world.houses[player].title
+        news = told.sorted().map { AwayReport.told(chronicle[$0].text, to: title) }
         more = theirs.count + lakes.count + (omen == nil ? 0 : 1) - told.count
         let orders = world.standingOrders(of: player)
         standing = watches >= RealmState.caretakerAfter && !orders.isEmpty
             ? "A caretaker kept your House by your standing orders, which still stand." : nil
+    }
+
+    /// A chronicle line as the keeper it is told to reads it: their own
+    /// House named as theirs, "Your House founds Dremmarch", "refuses
+    /// tribute to your House"; the Chronicle itself names every House alike.
+    public static func told(_ line: String, to title: String) -> String {
+        guard !title.isEmpty else { return line }
+        var said = ""
+        var rest = Substring(line)
+        while let found = rest.range(of: title) {
+            let before = rest[..<found.lowerBound]
+            let lastBefore = before.last ?? said.last
+            let after = found.upperBound < rest.endIndex ? rest[found.upperBound] : nil
+            // Only the whole name: not "House Aurel" within "House Aurelin".
+            guard !(after?.isLetter ?? false), !(lastBefore?.isLetter ?? false) else {
+                said += rest[..<found.upperBound]
+                rest = rest[found.upperBound...]
+                continue
+            }
+            said += before
+            let opening = said.isEmpty || [". ", "! ", "? "].contains { said.hasSuffix($0) }
+            said += opening ? "Your House" : "your House"
+            rest = rest[found.upperBound...]
+        }
+        return said + rest
     }
 
     /// The Chronicle's share of the rest, when there is more than is told.

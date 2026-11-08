@@ -59,7 +59,8 @@ final class AwayReportTests: XCTestCase {
         let lakes = since.filter { !$0.houses.contains(state.player) && [.fall, .ending].contains($0.kind) }
         let omens = since.filter { !$0.houses.contains(state.player) && $0.kind == .omen }
         for entry in theirs.suffix(AwayReport.lines) {
-            XCTAssertTrue(report.news.contains(entry.text), "What touched the House is told before the lake's news: \(entry.text)")
+            XCTAssertTrue(report.news.contains(AwayReport.told(entry.text, to: state.houses[state.player].title)),
+                          "What touched the House is told before the lake's news, the House named as the keeper's: \(entry.text)")
         }
         XCTAssertLessThanOrEqual(report.news.filter { line in omens.contains { $0.text == line } }.count, 1, "One omen at most")
         let worthTelling = theirs.count + lakes.count + min(omens.count, 1)
