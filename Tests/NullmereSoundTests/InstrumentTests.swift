@@ -29,6 +29,27 @@ func pitch(of x: ArraySlice<Float>, rate: Float, near: Float) -> Float {
 /// How far one frequency lies from another, in cents.
 func cents(_ heard: Float, from wanted: Float) -> Float { 1_200 * log2(heard / wanted) }
 
+/// What `values.sorted()[index]` is, found without sorting the whole of it
+/// (Hoare's selection): a quantile of a sound's millions of samples in a
+/// fraction of the time a sort takes.
+func nth(_ values: [Float], _ index: Int) -> Float {
+    var values = values
+    return values.withUnsafeMutableBufferPointer { b -> Float in
+        var low = 0, high = b.count - 1
+        while low < high {
+            let pivot = b[low + (high - low) / 2]
+            var i = low, j = high
+            while i <= j {
+                while b[i] < pivot { i += 1 }
+                while b[j] > pivot { j -= 1 }
+                if i <= j { b.swapAt(i, j); i += 1; j -= 1 }
+            }
+            if index <= j { high = j } else if index >= i { low = i } else { return b[index] }
+        }
+        return b[index]
+    }
+}
+
 /// How strongly a sound holds one frequency (Goertzel's single bin).
 func strength(of x: ArraySlice<Float>, at frequency: Float, rate: Float) -> Float {
     let w = 2 * Float.pi * frequency / rate
@@ -188,12 +209,25 @@ final class InstrumentTests: XCTestCase {
                 let windows = stride(from: Int(rate), to: left.count - Int(rate / 10), by: Int(rate / 10)).map { rms(left[$0..<($0 + Int(rate / 10))]) }
                 XCTAssertLessThan(decibels(windows.max()!) - decibels(windows.min()!), 12, "Even through the loop, \(frequency) Hz")
                 let steps = zip(left, left.dropFirst()).map { abs($1 - $0) }
-                let typical = steps.sorted()[steps.count * 99 / 100]
+                let typical = nth(steps, steps.count * 99 / 100)
                 XCTAssertLessThan(steps.max()!, typical * 4, "No click at the loop's join, \(frequency) Hz at \(rate)")
             }
         }
         XCTAssertTrue(Recordings.celloNotes.allSatisfy { $0.frequency < Bowed.violas })
         XCTAssertTrue(Recordings.violaNotes.allSatisfy { $0.frequency >= Bowed.violas * 0.99 })
+    }
+
+    /// The selection the strings' test reads a quantile by finds what a
+    /// sort would, duplicates and all.
+    func testASelectionFindsWhatASortWould() {
+        var random = SystemRandomNumberGenerator()
+        for count in [1, 2, 3, 10, 101, 1_000] {
+            let values = (0..<count).map { _ in Float(Int.random(in: 0..<(count / 3 + 2), using: &random)) / 7 }
+            let sorted = values.sorted()
+            for index in Set([0, count / 2, count * 99 / 100, count - 1]) {
+                XCTAssertEqual(nth(values, index), sorted[index], "\(index) of \(count)")
+            }
+        }
     }
 
     /// The bodies' low-pass passes what is under its corner and takes away

@@ -22,11 +22,13 @@ func wave(_ sound: (left: [Float], right: [Float]), rate: Float) -> Data {
     put(UInt16(16))
     data.append(contentsOf: Array("data".utf8))
     put(UInt32(frames * 4))
+    // Every sample at once, interleaved, rather than a few bytes at a time.
+    var pcm = [Int16](repeating: 0, count: frames * 2)
     for frame in 0..<frames {
-        for sample in [sound.left[frame], sound.right[frame]] {
-            put(Int16((min(max(sample, -1), 1) * 32_767).rounded()))
-        }
+        pcm[2 * frame] = Int16((min(max(sound.left[frame], -1), 1) * 32_767).rounded()).littleEndian
+        pcm[2 * frame + 1] = Int16((min(max(sound.right[frame], -1), 1) * 32_767).rounded()).littleEndian
     }
+    pcm.withUnsafeBytes { data.append(contentsOf: $0) }
     return data
 }
 
