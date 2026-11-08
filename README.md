@@ -24,8 +24,9 @@ and plays every House no keeper holds. When an age ends, its holds lie
 drowned beneath the next age's lake, for new keepers to find.
 
 It is a native Mac app for Apple silicon: SwiftUI and AppKit, every frame
-drawn with Metal, every model, sound and note of music made in code for this
-game alone. Envoys, a chronicler, a clerk who reads orders written in plain
+drawn with Metal, every model made for this game alone, its score written as
+it plays on recorded orchestral instruments, as are many of its cues, and its
+night, its battles and its towns sounded in code. Envoys, a chronicler, a clerk who reads orders written in plain
 words and the House's own commanders, taking counsel with their keeper,
 speak through Apple's on-device model, on each keeper's own Mac. Nullmere
 Companion, its iPhone app, keeps the keeper's House from their phone beside
@@ -116,7 +117,8 @@ is there, what CI has shown of it and what is still missing.
   under the [GNU Affero General Public License, version 3 only](LICENSE)
   (AGPL-3.0-only). Whoever runs a modified realm or client for others over a
   network must offer them its source.
-- The score's instruments are notes of the
+- The score's instruments, and the horn, the clarinet, the bells, the harp,
+  the drums, the anvil and the wood many cues are sounded on, are notes of the
   [VS Chamber Orchestra: Community Edition](https://github.com/sgossner/VSCO-2-CE),
   recorded by Sam Gossner and Simon Dalzell and given to the public domain
   (CC0 1.0); as `Art/sound/make.py` makes them into the game they are under
