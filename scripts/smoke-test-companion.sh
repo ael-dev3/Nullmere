@@ -13,9 +13,11 @@
 # raised, the line in the Ring, the watch turned and the hold at work; and, seeing the company dug
 # in, the Mac says so to the realm and the phone hears its answer come back.
 # The phone reaches the realm through a line of its own (scripts/line-relay.py),
-# which is cut and mended: it says the realm is out of reach and keeps the
-# House, says words to the realm while it is, and once the line is mended is
-# in reach again by its own key, its words carried out and heard on the Mac.
+# which is cut and mended: it says the realm is out of reach, for how long
+# and that it tries again, and keeps the House, says words to the realm while
+# it is, and once the line is mended is in reach again by its own key, told
+# back in step after how long, its words carried out and heard on the Mac
+# (build/companion-lost.png and build/companion-mended.png).
 # Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
@@ -278,6 +280,8 @@ for _ in $(seq 1 150); do
     grep -qE "came back to the realm|^Broken" "$LOST" 2>/dev/null && break
     sleep 1
 done
+# Back in step: the House tab tells after how long out of touch.
+shot mended 1
 cp "$LOST" "$LOST_REPORT" 2>/dev/null || echo "The companion wrote no report of its line cut." >"$LOST_REPORT"
 cat "$LOST_REPORT"; echo
 CUT_OFF="$(sed -n 's/^Said while cut off: //p' "$LOST_REPORT" | head -n 1)"

@@ -209,6 +209,13 @@ enum CompanionCheck {
             return
         }
         lines.append("Out of reach: \(said)" + since(cut))
+        // The link told as it goes, as the phone's tabs tell it: out of
+        // touch, for how long, and trying again.
+        if case .outOfTouch(let told)? = session.link(at: Date()) {
+            lines.append("Told: \(told)")
+        } else {
+            broken.append("not told it was out of touch: \(session.link(at: Date())?.text ?? "nothing")")
+        }
         if session.phase != .keeping || session.ledger == nil {
             broken.append("let the House go while out of reach")
         }
@@ -222,6 +229,12 @@ enum CompanionCheck {
             return
         }
         lines.append("In reach again" + since(mended))
+        // Back in step, and after how long out of touch.
+        if case .backInStep(let told)? = session.link(at: Date()) {
+            lines.append("Told: \(told)")
+        } else {
+            broken.append("not told it was back in step: \(session.link(at: Date())?.text ?? "nothing")")
+        }
         if await until(60, { session.word?.awaited == false }), let word = session.word {
             lines.append("Once in reach: \(word.text)" + since(mended))
             if word.refused { broken.append("the realm refused the words said while cut off: \(word.text)") }

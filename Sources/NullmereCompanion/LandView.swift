@@ -23,7 +23,7 @@ struct LandTab: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 330)
                         List {
-                            if session.outOfReach != nil {
+                            if session.linkTold {
                                 Section {
                                     ReachLine(session: session)
                                 }

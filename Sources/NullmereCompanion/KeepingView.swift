@@ -126,10 +126,33 @@ struct ReachLine: View {
     let session: CompanionSession
 
     var body: some View {
-        if let reach = session.outOfReach {
-            Text(verbatim: reach)
-                .font(Night.small)
-                .foregroundStyle(Night.bad)
+        // Nothing at all while the link is as it should be.
+        if session.linkTold {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                VStack(alignment: .leading, spacing: 4) {
+                    if let reach = session.outOfReach {
+                        Text(verbatim: reach)
+                            .font(Night.small)
+                            .foregroundStyle(Night.bad)
+                    }
+                    // How long it has been out of touch and that it tries
+                    // again; once back, after how long: as
+                    // `CompanionSession.link` says.
+                    switch session.link(at: context.date) {
+                    case .outOfTouch(let text)?:
+                        Text(verbatim: text)
+                            .font(Night.small)
+                            .foregroundStyle(Night.bad.opacity(0.85))
+                    case .backInStep(let text)?:
+                        Text(verbatim: text)
+                            .font(Night.small)
+                            .foregroundStyle(Night.good)
+                    default:
+                        EmptyView()
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 }
@@ -170,6 +193,15 @@ struct HouseTab: View {
                                 Text(verbatim: "\(status.online) \(status.online == 1 ? "keeper" : "keepers") there, \(status.ready) ready")
                                     .font(Night.small)
                                     .foregroundStyle(Night.ink.opacity(0.7))
+                            }
+                            // The phone in step with the realm its Mac keeps, and
+                            // when it last heard from it, second by second.
+                            TimelineView(.periodic(from: .now, by: 1)) { context in
+                                if case .inStep(let text)? = session.link(at: context.date) {
+                                    Text(verbatim: text)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.6))
+                                }
                             }
                             // What still waits for orders, as the Mac's top bar says it.
                             if let waiting = ledger.waiting {
@@ -496,7 +528,7 @@ struct MarketPage: View {
     var body: some View {
         List {
             if let ledger = session.ledger {
-                if session.outOfReach != nil {
+                if session.linkTold {
                     Section {
                         ReachLine(session: session)
                     }
@@ -555,7 +587,7 @@ struct VenturesPage: View {
     var body: some View {
         List {
             if let ledger = session.ledger {
-                if session.outOfReach != nil {
+                if session.linkTold {
                     Section {
                         ReachLine(session: session)
                     }
@@ -607,7 +639,7 @@ struct RealmPage: View {
     var body: some View {
         List {
             if let ledger = session.ledger {
-                if session.outOfReach != nil {
+                if session.linkTold {
                     Section {
                         ReachLine(session: session)
                     }

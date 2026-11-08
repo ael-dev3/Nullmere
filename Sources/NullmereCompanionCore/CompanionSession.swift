@@ -81,6 +81,27 @@ public final class CompanionSession {
     public private(set) var isReady = false
     /// The realm can't be reached just now, and why.
     public private(set) var outOfReach: String?
+    /// When the realm was last heard from: a status it published, the
+    /// House's view moved on, an order answered.
+    public private(set) var lastHeard: Date?
+    /// When the realm went out of reach, while it is, and how many of the
+    /// phone's tries at it have failed since: the link tries again on its
+    /// own, waiting twice as long after each.
+    public private(set) var lostAt: Date?
+    public private(set) var triesSinceLost = 0
+    /// The realm in reach again: how long it was out of touch, and when it
+    /// came back, told until the realm's first word once `mendedShown` has
+    /// passed.
+    public private(set) var mended: Mended?
+
+    /// A link mended: how long the phone was out of touch, and when.
+    public struct Mended: Equatable, Sendable {
+        public let away: TimeInterval
+        public let at: Date
+    }
+
+    /// How long the phone tells of a mending once the realm is back.
+    public static let mendedShown: TimeInterval = 60
 
     /// What a phone the realm no longer links to anyone is told.
     public static let unlinked = "This phone no longer speaks for a keeper of this realm. Link it again from the keeper's Mac."
@@ -265,6 +286,13 @@ public final class CompanionSession {
     }
 
     func hear(_ event: RealmEvent) {
+        // What only the realm says is word from it; what the link says of
+        // itself (out of reach, an order too old to send, a refusal it made
+        // up from a failure) is not.
+        switch event {
+        case .unreachable, .orderRefused, .refused, .settled: break
+        default: heardFromTheRealm()
+        }
         switch event {
         case .status(let status):
             self.status = status
@@ -316,11 +344,62 @@ public final class CompanionSession {
             isReady = ready
         case .unreachable(let why):
             outOfReach = why
+            if lostAt == nil {
+                lostAt = clock()
+                mended = nil
+            }
+            triesSinceLost += 1
         case .heard(let events):
             if let world { file(events, in: world) }
         case .keeperChanged(let keeper):
             // Their favour and the watches kept, as the watch left them.
             self.keeper = keeper
+        }
+    }
+
+    /// The realm heard from: back in step, if it was out of reach.
+    private func heardFromTheRealm() {
+        let now = clock()
+        if let lost = lostAt {
+            mended = Mended(away: now.timeIntervalSince(lost), at: now)
+            lostAt = nil
+            triesSinceLost = 0
+            outOfReach = nil
+        } else if let told = mended, now.timeIntervalSince(told.at) >= Self.mendedShown {
+            mended = nil
+        }
+        lastHeard = now
+    }
+
+    /// The phone's link to the realm as its keeper reads it at a moment:
+    /// out of touch and trying again, back in step for a while after, or in
+    /// step and when the realm was last heard from.
+    public func link(at now: Date) -> Link? {
+        if let lost = lostAt {
+            return .outOfTouch(LinkSaid.outOfTouch(for: now.timeIntervalSince(lost), tries: triesSinceLost))
+        }
+        // Told until the realm's first word a while after (`mendedShown`).
+        if let mended {
+            return .backInStep(LinkSaid.backInStep(after: mended.away))
+        }
+        guard phase == .keeping, let lastHeard else { return nil }
+        return .inStep(LinkSaid.inStep(heardAgo: now.timeIntervalSince(lastHeard)))
+    }
+
+    /// Whether there is anything of the link to tell at the head of a tab:
+    /// out of reach, or mended lately.
+    public var linkTold: Bool { outOfReach != nil || lostAt != nil || mended != nil }
+
+    /// The link as told: each with its words.
+    public enum Link: Equatable, Sendable {
+        case inStep(String)
+        case outOfTouch(String)
+        case backInStep(String)
+
+        public var text: String {
+            switch self {
+            case .inStep(let text), .outOfTouch(let text), .backInStep(let text): return text
+            }
         }
     }
 

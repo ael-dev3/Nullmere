@@ -239,7 +239,11 @@ it is told at once (a chest's contents, a venture's end), stays a few
 seconds at the foot of whichever tab the keeper is on, wherever they have
 scrolled to give it, a refusal twice as long, and is said there alone, not
 again at the head of every tab; while the realm is out of reach, the head
-of each tab says so. An order still unanswered when the phone is set aside
+of each tab says so, for how long it has been out of touch and that the
+phone tries again on its own ("Out of touch for 48 s, and trying again (3
+tries so far)"), and once it answers, after how long the phone is back in
+step; the House tab's head says, second by second, when the realm was last
+heard from ("In step with the realm, heard from 3 s ago"). An order still unanswered when the phone is set aside
 is said to have been. The House, Army and Alliance tabs carry a count of
 what waits on the keeper there: envoys to answer, foes gathered near the
 House's holds, wounded it may heal, the Lyceum sitting and the
