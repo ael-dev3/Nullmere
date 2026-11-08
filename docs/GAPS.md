@@ -358,8 +358,8 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   standing stone on a cairn in the water, its ripples turning out about it,
   faster once it has heard; a dread note heard when it hears; wary stewards
   at war sink one.
-- [x] **The Lyceum** (Rise of Kingdoms' Lyceum of Wisdom): twice in every
-  ten watches the realm's scholars sit and every keeper's House is set the
+- [x] **The Lyceum** (Rise of Kingdoms' Lyceum of Wisdom): for two
+  watches in every ten the realm's scholars sit and every keeper's House is set the
   same five questions on the lake's lore, drawn by the realm from its
   studies, items and omens, the right answer among four by the draw. Each
   House answers each once, its answers its own until the Lyceum rises;

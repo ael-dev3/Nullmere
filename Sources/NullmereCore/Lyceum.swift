@@ -1,5 +1,5 @@
-/// The Lyceum (after Rise of Kingdoms' Lyceum of Wisdom): twice in every
-/// ten watches the realm's scholars sit, and every keeper's House is set
+/// The Lyceum (after Rise of Kingdoms' Lyceum of Wisdom): for two watches
+/// in every ten the realm's scholars sit, and every keeper's House is set
 /// the same five questions on the lore of the lake: its studies, its
 /// items, its omens. Each House answers each once, and its answers are its
 /// own until the Lyceum rises; then the realm judges them all, pays
