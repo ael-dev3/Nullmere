@@ -2609,20 +2609,20 @@ final class DepthPanelTests: XCTestCase {
         let state = world("favour shown")
         let (session, _) = session(state)
         var keeper = Keeper(id: "k", name: "Ama", house: state.player, isReady: false, isOnline: true, arrival: 0)
-        XCTAssertEqual(RealmPanel.favourLine(keeper), "No favour yet: 0 won; 60 more to I.")
+        XCTAssertEqual(RealmPanel.favourLine(keeper), "No favour yet: 0 favour won, 60 more to Favour I.")
         XCTAssertEqual(RealmPanel.favourProgress(0), 0)
         XCTAssertEqual(RealmPanel.streakLine(keeper),
                        "0 watches kept unbroken: the next brings 10 favour, and a favour chest comes in 10 watches.")
         keeper.favour = 300
         keeper.streak = 9
-        XCTAssertEqual(RealmPanel.favourLine(keeper), "Favour II: 300 won; 100 more to III.")
+        XCTAssertEqual(RealmPanel.favourLine(keeper), "Favour II: 300 favour won, 100 more to Favour III.")
         XCTAssertEqual(RealmPanel.favourProgress(300), Double(300 - 180) / Double(400 - 180), accuracy: 1e-9)
         XCTAssertEqual(RealmPanel.streakLine(keeper), "9 watches kept unbroken: the next brings 28 favour, and a favour chest comes in 1 watch.")
         session.keeper = keeper
         draw(RealmPanel(session: session))
         keeper.favour = 12_000
         keeper.streak = 1
-        XCTAssertEqual(RealmPanel.favourLine(keeper), "Favour X: 12000 won, the highest there is.")
+        XCTAssertEqual(RealmPanel.favourLine(keeper), "Favour X: 12,000 favour won, the highest there is.")
         XCTAssertEqual(RealmPanel.favourProgress(12_000), 1)
         XCTAssertEqual(RealmPanel.streakLine(keeper), "1 watch kept unbroken: the next brings 12 favour, and a favour chest comes in 9 watches.")
         session.keeper = keeper

@@ -275,8 +275,8 @@ a vote on the realm's law to cast.
   Labours, favour and happenings, as the Mac's Realm
   panel tells them: the watch's labours, folded beneath how far the House
   has come with them and its vigour toward the moon's next chest; the
-  keeper's favour ("Favour II: 300 won; 100 more to III."), folded beneath
-  it what it gives the House, the watches kept unbroken until the next
+  keeper's favour ("Favour II: 300 favour won, 100 more to Favour III."),
+  folded beneath it what it gives the House, the watches kept unbroken until the next
   favour chest, and the renown and titles the keeper has won over the ages; and the happening under way (until when, what counts in it, the House's points
   toward its next mark and its place) or when the next begins; the way to
   Barter, the Inn and the satchel,

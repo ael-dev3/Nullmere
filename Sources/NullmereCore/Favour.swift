@@ -70,8 +70,10 @@ extension Keeper {
         let won = favour ?? 0
         let level = Favour.level(of: won)
         let standing = level > 0 ? "Favour \(BuildingKind.numeral(level))" : "No favour yet"
-        let next = Favour.next(after: won).map { "; \($0 - won) more to \(BuildingKind.numeral(level + 1))" } ?? ", the highest there is"
-        return "\(standing): \(won) won\(next)."
+        let next = Favour.next(after: won).map {
+            "\(GameState.counted($0 - won)) more to Favour \(BuildingKind.numeral(level + 1))"
+        } ?? "the highest there is"
+        return "\(standing): \(GameState.counted(won)) favour won, \(next)."
     }
 
     /// What their favour gives their House.
@@ -83,7 +85,7 @@ extension Keeper {
     /// the phone tell it; nil before any.
     public var renownSaid: String? {
         guard let renown, renown > 0 else { return nil }
-        return "\(renown) renown won over the ages"
+        return "\(GameState.counted(renown)) renown won over the ages"
     }
 
     /// The watches they have kept unbroken: what the next brings, and when
