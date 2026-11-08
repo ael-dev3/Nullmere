@@ -136,25 +136,33 @@ struct ChargeCard: View {
     var body: some View {
         let board = session.state.realmBoard(for: session.player)
         if !hidden, let charge = board.charge {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
+                // What to do first, then how far along and the ways to it:
+                // the count and its buttons ran over the card's width on
+                // one line with the close, folding the count onto two.
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(verbatim: charge.title)
+                        .font(.nm(12, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .help(ChargeGuide.how(charge))
+                    Spacer(minLength: 4)
+                    CloseButton(label: "Hide the charges") { withAnimation(.easeOut(duration: 0.2)) { hidden = true } }
+                        .help("Hide the charges")
+                }
                 HStack(alignment: .center, spacing: 6) {
                     Caps("Charge \(board.chargesKept + 1) of \(Charge.allCases.count)", size: 8, weight: .medium)
                         .foregroundStyle(Palette.glowWords)
-                    Spacer()
+                        .lineLimit(1)
+                        .fixedSize()
+                    Spacer(minLength: 4)
                     QuietButton(title: "Show me", size: 8.5, name: "Show me how to \(charge.title.lowercased())") {
                         ChargeGuide.show(charge, in: session)
                     }
                     QuietButton(title: open ? "Less" : "More", size: 8.5, name: open ? "Less of this charge" : "More of this charge") {
                         withAnimation(.easeOut(duration: 0.2)) { open.toggle() }
                     }
-                    CloseButton(label: "Hide the charges") { withAnimation(.easeOut(duration: 0.2)) { hidden = true } }
-                        .help("Hide the charges")
                 }
-                Text(verbatim: charge.title)
-                    .font(.nm(12, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .help(ChargeGuide.how(charge))
                 if open {
                     Text(verbatim: ChargeGuide.how(charge))
                         .font(.nm(11, weight: .light))
