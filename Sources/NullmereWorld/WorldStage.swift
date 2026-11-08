@@ -892,6 +892,36 @@ public final class WorldStage: @unchecked Sendable {
                 Mote(at: hand, size: 0.11, light: flame * 0.1, cover: 0)]
     }
 
+    /// Below this scale the holds begin to glow from afar, and below
+    /// `glowFull` they glow at their brightest.
+    public static let glowFrom: Double = 32
+    public static let glowFull: Double = 14
+    /// A hold's glow, over its keep's top, so the keep never hides it.
+    static let glowHeight: Float = 1.2
+
+    /// How the holds the keeper knows of show from afar at night, for a
+    /// view at `scale`: a soft warm glow over each keep, so the realm's
+    /// holds ring the black lake in small lights, coming as the view draws
+    /// away from where their own windows and fires are seen (below
+    /// `glowFrom`, brightest below `glowFull`) and keeping its size on the
+    /// screen as it does. A seat's is the brighter and wider; one whose
+    /// ward is broken below half burns red and brighter. Light only: it
+    /// hides nothing.
+    public func glows(_ sights: [HoldSight], scale: Double) -> [Mote] {
+        let fade = 1 - WorldStage.smoothstep(Float(WorldStage.glowFull), Float(WorldStage.glowFrom), Float(scale))
+        guard fade > 0 else { return [] }
+        return sights.map { sight in
+            let centre = Relief.centre(of: sight.hold.position)
+            let keep = Vec3(centre.x, ground(atX: centre.x, z: centre.z) + WorldStage.glowHeight, centre.z)
+            let seat = sight.hold.isSeat
+            let burning = sight.hold.ward * 2 < sight.hold.maximumWard
+            let size = Float(7 / max(scale, 1)) * (seat ? 1.3 : 1)
+            let strength = (seat ? 0.3 : 0.17) * (burning ? 1.8 : 1) * fade
+            let colour = burning ? Vec3(1.0, 0.36, 0.12) : WorldStage.lanternFlame
+            return Mote(at: keep, size: size, light: colour * strength, cover: 0)
+        }
+    }
+
     /// How far one walking the town's lanes steps aside to let another by:
     /// most of the way to the lane's edge, never past it, so never into a
     /// home.

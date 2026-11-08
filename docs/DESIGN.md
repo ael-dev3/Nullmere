@@ -59,7 +59,10 @@ the keeper's realm last lay on, made as it plays.
   heard, fainter the calmer the Still lies; and the lights by it, a
   fisher's lantern or a fire on the shore, lie on it as the moon does, each
   a short trembling streak of its own colour toward the eye, whole as in a
-  mirror at the Still's calm. What the keeper
+  mirror at the Still's calm. From afar each hold the keeper knows glows
+  warm over its keep, so the Houses ring the black lake in small lights, a
+  seat's the brighter and one burning red, coming as the view draws away
+  from where the keeps' own windows and fires are seen. What the keeper
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
 - **The moon's shadows.** Close in, everything that stands on the land

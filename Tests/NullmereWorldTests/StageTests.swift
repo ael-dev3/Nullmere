@@ -1114,3 +1114,47 @@ final class ExpeditionFieldTests: XCTestCase {
         XCTAssertTrue(none.allSatisfy { $0.key != .prop(.waystoneLit) }, "none lit before the first is won")
     }
 }
+
+final class HoldGlowTests: XCTestCase {
+    /// From afar each hold the keeper knows glows warm over its keep, so the
+    /// realm's holds ring the black lake in small lights: one glow for each,
+    /// high over its middle, light only; a seat's brighter and wider than a
+    /// hold's, one burning red and brighter still; coming as the view draws
+    /// away and keeping its size on the screen as it does; none as close as
+    /// the keeps' own windows and fires are seen.
+    func testHoldsGlowFromAfar() throws {
+        let state = GameState(settings: GameSettings(seedText: "glows", houseCount: 4, radius: 12, keepers: 1))
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        var seat = try XCTUnwrap(state.holds.first { $0.isSeat })
+        seat.ward = seat.maximumWard
+        var hold = seat
+        hold.isSeat = false
+        var burning = hold
+        burning.ward = burning.maximumWard / 2 - 1
+        hold.ward = hold.maximumWard
+        let colour = Vec4(0.5, 0.5, 0.5, 1)
+        let sights = [seat, hold, burning].map { HoldSight(hold: $0, colour: colour) }
+
+        let far = stage.glows(sights, scale: Camera.minimumScale)
+        XCTAssertEqual(far.count, 3, "One glow for each")
+        let centre = Relief.centre(of: seat.position)
+        XCTAssertEqual(far[0].place.x, centre.x)
+        XCTAssertEqual(far[0].place.z, centre.z)
+        XCTAssertGreaterThan(far[0].place.y, stage.ground(atX: centre.x, z: centre.z), "High over its keep")
+        XCTAssertTrue(far.allSatisfy { $0.colour.w == 0 }, "Light only")
+        XCTAssertTrue(far.allSatisfy { $0.colour.x > 2 * $0.colour.z }, "Warm")
+        XCTAssertGreaterThan(far[0].colour.x, far[1].colour.x, "A seat's brighter")
+        XCTAssertGreaterThan(far[0].place.w, far[1].place.w, "and wider")
+        XCTAssertGreaterThan(far[2].colour.x, far[1].colour.x, "One burning brighter")
+        XCTAssertGreaterThan(far[2].colour.x / far[2].colour.y, far[1].colour.x / far[1].colour.y, "and redder")
+
+        let nearer = stage.glows(sights, scale: 22)
+        XCTAssertEqual(nearer.count, 3)
+        XCTAssertLessThan(nearer[0].colour.x, far[0].colour.x, "Fainter as the view comes down")
+        XCTAssertEqual(Double(nearer[0].place.w) * 22, Double(far[0].place.w) * Camera.minimumScale, accuracy: 1e-4,
+                       "The same size on the screen")
+        XCTAssertTrue(stage.glows(sights, scale: WorldStage.glowFrom).isEmpty, "None where the keeps' own lights are seen")
+        XCTAssertTrue(stage.glows(sights, scale: Camera.maximumScale).isEmpty)
+        XCTAssertTrue(stage.glows([], scale: Camera.minimumScale).isEmpty)
+    }
+}

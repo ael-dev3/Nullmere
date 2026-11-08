@@ -285,6 +285,9 @@ extension GameSession {
             let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
             frame.motes += frame.weather.motes(around: camera.focus, extent: extent, time: t)
         }
+        // From afar each hold the keeper knows glows over its keep, still
+        // where motion is reduced: it does not move.
+        frame.motes += stage.glows(shown, scale: camera.scale)
         // The sound of the fields in sight, and of the towns and the lake's
         // edge near the view, follows the picture of them.
         hearBattles()

@@ -160,8 +160,12 @@ final class WorldPreviewTests: XCTestCase {
         var fishersView = Camera(scale: 60, tilt: 0.85)
         fishersView.focus(on: Hex(0, 0))
         let scene = WorldPreviewTests.stage(state)
+        // The whole realm from afar, its holds glowing round the lake.
+        var afar = scene
+        afar.motes += WorldStage(map: state.map, relief: Relief(map: state.map))
+            .glows(state.holds.map { HoldSight(hold: $0, colour: Vec4(1, 1, 1, 1)) }, scale: far.scale)
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
-            ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, nil), ("turned", turned, whole, nil),
+            ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
             ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene),
         ]
