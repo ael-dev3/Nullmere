@@ -414,6 +414,24 @@ public final class Synth: @unchecked Sendable {
             let steel = Recordings.steelNotes
             let turn = abs(variant % (steel.count * 3))
             return [(steel[turn % steel.count], 0, 1, [1, 1.06, 0.94][turn / steel.count])]
+        case .ride:
+            // Three hooves on hard ground, close together: wood knocked, read
+            // slower, as hooves have long been made.
+            let wood = Recordings.woodNotes
+            return [(wood[0], 0, 1, 0.45), (wood[1], 0.12, 0.8, 0.48), (wood[2], 0.21, 0.9, 0.43)]
+        case .dig:
+            // Two spades into stony earth, the second softer: a brick scraped.
+            let scrape = Recordings.scrapeNotes[0]
+            return [(scrape, 0, 1, 1), (scrape, 0.34, 0.85, 0.92)]
+        case .batter:
+            // A ram on the gate: the great drum's deep thud, the timber
+            // cracking with it.
+            return [(Recordings.drumNotes[0], 0, 1, 0.8), (Recordings.slapstickNotes[0], 0.01, 0.5, 0.7)]
+        case .dread:
+            // A bass drum rubbed, swelling and dying away, under a cymbal
+            // bowed.
+            let dread = Recordings.dreadNotes
+            return [(dread[0], 0, 1, 1), (dread[1], 0, 0.6, 1)]
         case .anvil:
             let anvil = Recordings.anvilNotes
             return [(anvil[0], 0, 0.8, 1), (anvil[0], 0.2, 0.9, 0.97), (anvil[1], 0.4, 1, 1)]
@@ -531,6 +549,10 @@ public final class Synth: @unchecked Sendable {
         case .watch: return 2
         case .coin: return 2
         case .clash: return 1.43
+        case .ride: return 1.7
+        case .dig: return 2.5
+        case .batter: return 3.6
+        case .dread: return 2.75
         default: return 1.6
         }
     }
@@ -544,17 +566,6 @@ public final class Synth: @unchecked Sendable {
             note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
         case .order:
             note = Note(partials: [Partial(frequency: 660, amplitude: 0.09, decay: 14), Partial(frequency: 990, amplitude: 0.04, decay: 18)], noise: 0.02, noiseDecay: 60)
-        case .dread:
-            // Low, and with overtones a laptop's small speakers can give, so
-            // it is heard there too, its depth implied.
-            note = Note(partials: [
-                Partial(frequency: 46.25, amplitude: 0.14, decay: 0.7),
-                Partial(frequency: 69.3, amplitude: 0.065, decay: 0.9),
-                Partial(frequency: 97.99, amplitude: 0.04, decay: 1.2),
-                Partial(frequency: 185, amplitude: 0.05, decay: 1.1),
-                Partial(frequency: 277.2, amplitude: 0.032, decay: 1.4),
-                Partial(frequency: 370, amplitude: 0.014, decay: 1.8),
-            ], noise: 0.026, noiseDecay: 3)
         case .toll:
             // An inharmonic bell, very low and very long.
             let f: Float = 55
@@ -571,33 +582,11 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 392, amplitude: 0.035, decay: 14),
             ], noise: 0.07, noiseDecay: 80)
             more = [Note(partials: [], noise: 0.03, noiseDecay: 7, delay: 0.05)]
-        case .ride:
-            // Three hooves on hard ground, close together.
-            func hoof(_ delay: Float, _ strength: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 110, amplitude: 0.09 * strength, decay: 25),
-                    Partial(frequency: 70, amplitude: 0.06 * strength, decay: 20),
-                    // The knock of it, which small speakers give.
-                    Partial(frequency: 240, amplitude: 0.04 * strength, decay: 32),
-                ], noise: 0.06 * strength, noiseDecay: 50, delay: delay)
-            }
-            note = hoof(0, 1)
-            more = [hoof(0.12, 0.8), hoof(0.21, 0.9)]
-        case .dig:
-            // The blade's dull bite, the grit it throws, a ring off a stone.
-            func spade(_ delay: Float, _ strength: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 82, amplitude: 0.08 * strength, decay: 22),
-                    Partial(frequency: 164, amplitude: 0.04 * strength, decay: 26),
-                    Partial(frequency: 1530, amplitude: 0.018 * strength, decay: 30),
-                ], noise: 0.07 * strength, noiseDecay: 16, delay: delay)
-            }
-            note = spade(0, 1)
-            more = [spade(0.34, 0.85)]
         case .muster, .horn:
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
-        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift, .clash:
+        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift, .clash, .ride, .dig, .batter,
+             .dread:
             // Struck on recorded instruments (`strikes(of:)`).
             return []
         case .envoy, .triumph, .honour, .banner:
@@ -612,15 +601,6 @@ public final class Synth: @unchecked Sendable {
         case .fold:
             // The page laid down: lower, softer, and quicker gone.
             note = Note(partials: [Partial(frequency: 1_760, amplitude: 0.026, decay: 30)], noise: 0.045, noiseDecay: 44)
-        case .batter:
-            // A ram on the gate: the deep thud, the timber's crack, the dust.
-            note = Note(partials: [
-                Partial(frequency: 58, amplitude: 0.13, decay: 8),
-                Partial(frequency: 92, amplitude: 0.07, decay: 10),
-                Partial(frequency: 174, amplitude: 0.05, decay: 13),
-                Partial(frequency: 1_130, amplitude: 0.025, decay: 34),
-            ], noise: 0.09, noiseDecay: 22)
-            more = [Note(partials: [], noise: 0.025, noiseDecay: 4, delay: 0.06)]
         case .tend:
             // A warm hum a fifth deep, and over it a small bell struck
             // twice, the second softer: the healers at their work.
@@ -938,19 +918,14 @@ public final class Synth: @unchecked Sendable {
         switch cue {
         case .select: return ((3_200, 0.9), nil)
         case .order: return ((2_200, 0.8), nil)
-        case .dread: return ((220, 0.7), nil)
         case .toll: return ((500, 0.8), nil)
         // The string's click, then the shaft's hiss through the air.
         case .loose: return ((2_600, 1), (6_000, 1.6))
-        case .ride: return ((380, 0.8), nil)
-        case .dig: return ((1_400, 0.7), nil)
-        // The timber's crack, then the dust settling.
-        case .batter: return ((650, 0.8), (300, 0.6))
         case .tend: return ((1_000, 0.6), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
-             .complete, .herald, .parley, .coin, .sift, .clash:
+             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread:
             return (nil, nil)
         }
     }

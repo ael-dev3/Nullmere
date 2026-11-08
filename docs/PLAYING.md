@@ -1685,11 +1685,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are twenty of the
+The score is played on recorded instruments, and so are twenty-four of the
 thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
 bells, the harp's chords, the drums, the forge's anvil, the knocks of wood,
-the watch's gong, the coins' jingle, the salt's rattle and steel struck on
-steel. Every other sound is made as it plays.
+the watch's gong, the coins' jingle, the salt's rattle, steel struck on
+steel, hooves, spades, a ram on a gate and dread. Every other sound is made
+as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and as
   each watch turns a recorded gong struck softly, read slower to sound low
@@ -1729,11 +1730,15 @@ steel. Every other sound is made as it plays.
   breath of silence, a wash of early echoes, then a dark, wide tail some two
   and a half seconds long, its highs dying first. The night's drone and wind
   stay out of doors.
-- **Cues.** Each kind of company sounds its own: Riders' hooves, a loosed
+- **Cues.** Each kind of company sounds its own: Riders' hooves (recorded
+  wood knocked and read slower, as hooves have long been made), a loosed
   bowstring, the clash of a blow struck in close (steel on steel as it was
   recorded, four blows each in its turn, read a little faster or slower),
-  heard as well when the blow falls on yours. A company lost or hungry, or a seat lost, sounds
-  dread; a work or company finished, a company risen in rank or a drowned
+  heard as well when the blow falls on yours; a company digging in, two
+  spades scraping into stony earth, and a hold's walls battered, the great
+  drum's thud with timber cracking. A company lost or hungry, or a seat
+  lost, sounds dread, a recorded bass drum rubbed under a bowed cymbal,
+  swelling and dying away; a work or company finished, a company risen in rank or a drowned
   ruin searched rises; a gift received, a peace or a pact sounds accord; and
   an order that begins a war sounds as war, refusing a steward's tribute
   too. A war horn (a rally called, a commander's skill loosed, an edict put,
@@ -1755,9 +1760,9 @@ steel. Every other sound is made as it plays.
   gentle sixth. Goods and gifts changing hands are three coins counted out
   on a recorded tambourine's jingles, and an hourglass turned is a recorded
   cabasa's roll, salt running, then a small glass chime on the
-  glockenspiel. Each cue's noise is coloured by what makes it: a page turned rustles
-  high and soft, hooves and skins thud low, grit and dust sit about the
-  middle, steel rings bright and salt hisses brighter. What a watch brings
+  glockenspiel. Each cue made as it plays has its noise coloured by what makes it: a page
+  turned rustles high and soft, and a loosed arrow's shaft hisses through
+  the air after the string's click. What a watch brings
   sounds one after another after its gong, never all at once, and the low
   sounds carry overtones a laptop's speakers give.
 - **Where it happened.** A sound is heard from where it happened: a battle

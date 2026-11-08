@@ -118,8 +118,9 @@ is there, what CI has shown of it and what is still missing.
   (AGPL-3.0-only). Whoever runs a modified realm or client for others over a
   network must offer them its source.
 - The score's instruments, and the horn, the clarinet, the bells, the harp,
-  the drums, the anvil, the wood, the gong, the tambourine, the cabasa and
-  the steel many cues are sounded on, are notes of the
+  the drums, the anvil, the wood, the gong, the tambourine, the cabasa, the
+  steel, the slapstick, the brick and the rubbed drum and bowed cymbal many
+  cues are sounded on, are notes and sounds of the
   [VS Chamber Orchestra: Community Edition](https://github.com/sgossner/VSCO-2-CE),
   recorded by Sam Gossner and Simon Dalzell and given to the public domain
   (CC0 1.0); as `Art/sound/make.py` makes them into the game they are under

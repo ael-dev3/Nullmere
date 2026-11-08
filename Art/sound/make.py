@@ -75,6 +75,13 @@ CABASA = [("VSCO 1 Percussion/varMetal/various/cabasa_roll1.wav", 0)]
 # Steel struck on steel, four blows: for a company's blow struck in close,
 # and the din of a battle's ringing steel.
 STEEL = [(f"Miscellania Raw/Misc 1/metal_hit{n}.wav", 0) for n in (1, 2, 3, 4)]
+# Wood knocked, three clicks, read slower for hooves on hard ground; a
+# slapstick's crack, for a ram's timber; a brick scraped, for a spade in
+# stony earth; and a bass drum rubbed and a cymbal bowed, for dread.
+WOOD = [(f"VSCO 1 Percussion/varWood/{name}.wav", 0) for name in ("wood_click_f", "wood_click_f2", "wood_click3")]
+SLAPSTICK = [("VSCO 1 Percussion/varWood/slapstick2.wav", 0)]
+SCRAPE = [("Miscellania Raw/Misc 1/brick_scrape2.wav", 0)]
+DREAD = [("Percussion/bassdrum_rub1_v1.wav", 0), ("Percussion/susCymb1-bow-2.wav", 0)]
 DRUMS = [("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_f_1.wav", 0),
          ("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_mf_1.wav", 0),
          ("VSCO 1 Percussion/drums/snare/drum1/snare1_nosnare_mf_1.wav", 0),
@@ -354,6 +361,30 @@ def family(root, files, kind):
             heard = (0, int(0.1 * RATE))
             sounded = 0.0
             loop = None
+        elif kind == "knocked":
+            # A knock or a crack: let go once forty decibels down, at most
+            # three tenths of a second on.
+            x = onset(x, below=40)
+            x = cut(x, below=40, longest=0.3, fade=0.1)
+            heard = (0, int(0.05 * RATE))
+            sounded = 0.0
+            loop = None
+        elif kind == "scraped":
+            # A scrape: its first six tenths of a second, the last quarter
+            # of a second fading out.
+            x = onset(x, below=40)
+            x = cut(x, below=60, longest=0.6, fade=0.25)
+            heard = (0, int(0.2 * RATE))
+            sounded = 0.0
+            loop = None
+        elif kind == "swelled":
+            # A swell rubbed or bowed, rising and dying away, three and a
+            # half seconds of it at most.
+            x = onset(x, below=40)
+            x = cut(x, below=50, longest=3.5, fade=1.2)
+            heard = (0, int(1.5 * RATE))
+            sounded = 0.0
+            loop = None
         elif kind == "shaken":
             # A rattle rolled: the first eight tenths of a second of it.
             x = onset(x, below=40)
@@ -458,6 +489,18 @@ def main():
     steel = family(root, STEEL, "clanged")
     even(steel)
     swift(steel, "steel", "Steel struck on steel, four blows.", os.path.join(out, "SteelFile.swift"))
+    wood = family(root, WOOD, "knocked")
+    even(wood)
+    swift(wood, "wood", "Wood knocked, three clicks.", os.path.join(out, "WoodFile.swift"))
+    slapstick = family(root, SLAPSTICK, "knocked")
+    even(slapstick)
+    swift(slapstick, "slapstick", "A slapstick's crack.", os.path.join(out, "SlapstickFile.swift"))
+    scrape = family(root, SCRAPE, "scraped")
+    even(scrape)
+    swift(scrape, "scrape", "A brick scraped.", os.path.join(out, "ScrapeFile.swift"))
+    dread = family(root, DREAD, "swelled")
+    even(dread)
+    swift(dread, "dread", "A bass drum rubbed, and a suspended cymbal bowed.", os.path.join(out, "DreadFile.swift"))
     drums = family(root, DRUMS, "drum")
     great, field = drums[:2], drums[2:]
     even(great, together=True)

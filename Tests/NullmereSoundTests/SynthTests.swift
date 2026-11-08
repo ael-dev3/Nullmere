@@ -213,7 +213,8 @@ final class SynthTests: XCTestCase {
         }
         let strikes: [(SoundCue, Int, Float)] = [(.anvil, 3, -40.1), (.stand, 2, -36.4), (.deny, 2, -42.5), (.lore, 3, -32.7),
                                                  (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7),
-                                                 (.coin, 3, -39.4), (.sift, 3, -44.5), (.clash, 1, -38.6)]
+                                                 (.coin, 3, -39.4), (.sift, 3, -44.5), (.clash, 1, -38.6), (.ride, 3, -37.1),
+                                                 (.dig, 2, -39.7), (.batter, 2, -33.6)]
         for (cue, blows, before) in strikes {
             let heard = struck(cue)
             XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")
@@ -226,6 +227,14 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(Set(turns.map { ObjectIdentifier($0.note) }).count, Recordings.steelNotes.count, "Every blow of steel in its turn")
         XCTAssertEqual(Set(turns.map { "\(ObjectIdentifier($0.note))\($0.ratio)" }).count, 12, "and no two of twelve alike")
         XCTAssertEqual(Synth.strikes(of: .anvil).map(\.at), [0, 0.2, 0.4], "Three blows of the hammer")
+        // Dread swells and dies away, a bass drum rubbed under a cymbal
+        // bowed: over its first three seconds as heavy as the partials were.
+        let dreaded = struck(.dread)
+        XCTAssertEqual(dreaded.synth.cueStrikes, 2, "A drum rubbed and a cymbal bowed")
+        let dread = rms(dreaded.left[0..<Int(3 * SynthTests.rate)])
+        print("SOUND dread as recorded \(decibels(dread)) dB over its first three seconds, as partials -31.5 dB")
+        XCTAssertEqual(decibels(dread), -31.5, accuracy: 1.5, "Dread as heavy as it was")
+        XCTAssertLessThan(dreaded.left.suffix(4_800).map(abs).max() ?? 1, 0.001, "and died away")
         // The salt runs, then its chime: over its first second as loud as
         // the patter and the chime of partials were.
         let sifted = struck(.sift).left

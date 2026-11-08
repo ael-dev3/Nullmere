@@ -1,11 +1,12 @@
 import Foundation
 
 /// The score's instruments as they were recorded, and the cues' horn, reed,
-/// anvil, wood, gong, jingles, rattle and steel: notes of a harp, a
+/// anvil, wood, gong, jingles, rattle, steel and foley: notes of a harp, a
 /// glockenspiel, cellos, violas, a double bass, a French horn and the war's
 /// drums, a clarinet, an anvil's blows, a slit drum's knocks, a gong's soft
-/// stroke, a tambourine's jingles, a cabasa's roll and steel struck on
-/// steel, from the VS Chamber Orchestra:
+/// stroke, a tambourine's jingles, a cabasa's roll, steel struck on steel,
+/// wood knocked, a slapstick's crack, a brick scraped, a bass drum rubbed
+/// and a cymbal bowed, from the VS Chamber Orchestra:
 /// Community Edition (VSCO-2-CE, recorded by Sam
 /// Gossner and Simon Dalzell, CC0 1.0), made into the package by
 /// Art/sound/make.py (see Recorded/), and read here once, the first time the
@@ -56,12 +57,20 @@ enum Recordings {
     /// Steel struck on steel, four blows: a company's blow struck in close,
     /// and the ringing steel of a battle's din.
     static let steelNotes = steel.map(Recording.init)
+    /// Wood knocked, three clicks, read slower for hooves on hard ground; a
+    /// slapstick's crack, a ram's timber splitting; a brick scraped, a spade
+    /// in stony earth; and a bass drum rubbed and a cymbal bowed, dread.
+    static let woodNotes = wood.map(Recording.init)
+    static let slapstickNotes = slapstick.map(Recording.init)
+    static let scrapeNotes = scrape.map(Recording.init)
+    static let dreadNotes = dread.map(Recording.init)
 
     /// Every note read, so the score never reads one as it plays.
     static func load() {
-        _ = (harpNotes.count, glockenspielNotes.count, celloNotes.count, violaNotes.count, bassNotes.count, hornNotes.count,
-             clarinetNotes.count, anvilNotes.count, slitDrumNotes.count, drumNotes.count, gongNotes.count, tambourineNotes.count,
-             cabasaNotes.count, steelNotes.count)
+        let every: [[Recording]] = [harpNotes, glockenspielNotes, celloNotes, violaNotes, bassNotes, hornNotes, clarinetNotes,
+                                    anvilNotes, slitDrumNotes, drumNotes, gongNotes, tambourineNotes, cabasaNotes, steelNotes,
+                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes]
+        _ = every.count
     }
 
     /// The samples a note's blocks hold, from -1 to 1: each block a byte
