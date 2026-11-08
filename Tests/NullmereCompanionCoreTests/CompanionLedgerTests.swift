@@ -737,6 +737,31 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(CompanionLedger.sealing("Again.", in: seat.id, world: state, player: me))
     }
 
+    /// Another keeper's words reported from the phone to the realm's
+    /// steward, as the Mac's Words report them: offered for another's line,
+    /// never the House's own, taken by the rules; reported, marked so and
+    /// offered no more.
+    func testThePhoneReportsAnotherKeepersWords() throws {
+        var (state, me) = try world()
+        let other = try XCTUnwrap(state.houses.first { $0.id != me }?.id)
+        state.houses[other].isPlayer = true
+        _ = try state.perform(.say(words: "Hear me, all of you.", toAlliance: false), as: other)
+        _ = try state.perform(.say(words: "And hear me.", toAlliance: false), as: me)
+        var ledger = CompanionLedger(world: state, player: me)
+        let theirs = try XCTUnwrap(ledger.realmWords.first { !$0.isOwn })
+        let mine = try XCTUnwrap(ledger.realmWords.first { $0.isOwn })
+        XCTAssertNil(mine.report, "Not the House's own")
+        let report = try XCTUnwrap(theirs.report)
+        XCTAssertEqual(report.title, "Report to the realm's steward")
+        XCTAssertFalse(theirs.reported)
+        assertTaken([report], in: state, as: me)
+        _ = try state.perform(report.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let reported = try XCTUnwrap(ledger.realmWords.first { $0.id == theirs.id })
+        XCTAssertTrue(reported.reported)
+        XCTAssertNil(reported.report, "Reported once")
+    }
+
     /// A bottle on the water from the phone, as the Mac's hold record
     /// offers it: a hold on the shore offers one, one inland none; words
     /// cast, signed or not, taken by the rules; cast, none more this watch.

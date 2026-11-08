@@ -421,7 +421,9 @@ a vote on the realm's law to cast.
   whole, what the House has laid up there, with Lay up and Take back, a
   measure at a time (100 grain, timber or stone, 10 moonsalt) or all it
   laid up; what was said in it lately, and to the whole realm, the
-  latest three of each open and the earlier folded beneath them; and a
+  latest three of each open and the earlier folded beneath them, another
+  keeper's line reported to the realm's steward from its menu (Report to
+  the realm's steward, once, marked reported after); and a
   line to say to either. On a page of their own, The realm's law, oaths
   and auguries, whose way from the Alliance tab says only what waits
   there (a vote to cast on the edict before the realm, prophecies open to

@@ -1075,11 +1075,11 @@ struct AllianceTab: View {
                     }
                     if ledger.alliance != nil {
                         Section("Said in the alliance") {
-                            SaidLines(lines: ledger.allianceWords)
+                            SaidLines(session: session, lines: ledger.allianceWords)
                         }
                     }
                     Section("Said to the realm") {
-                        SaidLines(lines: ledger.realmWords)
+                        SaidLines(session: session, lines: ledger.realmWords)
                     }
                 }
             }
@@ -2201,6 +2201,7 @@ struct OrdersMenu: View {
 }
 
 struct SaidLines: View {
+    let session: CompanionSession
     let lines: [CompanionLedger.Said]
 
     var body: some View {
@@ -2213,12 +2214,12 @@ struct SaidLines: View {
         // chronicle, the letters and the reports are.
         let latest = Array(lines.reversed())
         ForEach(latest.prefix(CompanionLedger.reportsOpen)) { said in
-            SaidLine(said: said)
+            SaidLine(session: session, said: said)
         }
         if latest.count > CompanionLedger.reportsOpen {
             DisclosureGroup("\(latest.count - CompanionLedger.reportsOpen) earlier") {
                 ForEach(latest.dropFirst(CompanionLedger.reportsOpen)) { said in
-                    SaidLine(said: said)
+                    SaidLine(session: session, said: said)
                 }
             }
             .font(Night.small)
@@ -2226,13 +2227,16 @@ struct SaidLines: View {
     }
 }
 
-/// A line said, who said it and when, the keeper's own brighter.
+/// A line said, who said it and when, the keeper's own brighter; another
+/// keeper's reported to the realm's steward from its menu, as on the Mac,
+/// and marked once reported.
 struct SaidLine: View {
+    let session: CompanionSession
     let said: CompanionLedger.Said
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(verbatim: "\(said.from) · watch \(said.watch)")
+            Text(verbatim: "\(said.from) · watch \(said.watch)" + (said.reported ? " · reported" : ""))
                 .font(Night.small)
                 .foregroundStyle(said.isOwn ? Night.moon : Night.ink.opacity(0.6))
             Text(verbatim: said.text)
@@ -2240,6 +2244,16 @@ struct SaidLine: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
+        .contextMenu {
+            if let report = said.report {
+                Button(report.title, role: .destructive) { session.give(report.command, told: report.title) }
+            }
+        }
+        .accessibilityActions {
+            if let report = said.report {
+                Button(report.title) { session.give(report.command, told: report.title) }
+            }
+        }
     }
 }
 
