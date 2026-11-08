@@ -41,7 +41,10 @@ public enum Folk {
     /// elder do; a carter hauls with both hands, a farmhand bears a
     /// pitchfork and a salter a basket, and a child carries none.
     public static func carriesLantern(_ variant: Int) -> Bool {
-        [porter, householder, waterCarrier, elder].contains(variant)
+        switch variant {
+        case porter, householder, waterCarrier, elder: return true
+        default: return false
+        }
     }
 
     /// How high above the ground townsfolk of a variant carry a lantern:

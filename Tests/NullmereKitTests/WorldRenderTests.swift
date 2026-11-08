@@ -457,8 +457,12 @@ final class WorldRenderTests: XCTestCase {
         let map = world.state.map
         let isLand = { (hex: Hex) -> Bool in !(map[hex]?.terrain.isWater ?? true) }
         let seat = try XCTUnwrap(world.state.seat(of: world.state.player)).position
-        let shore = try XCTUnwrap(map.hexes.filter { map[$0]?.terrain == .still && $0.neighbors.contains(where: isLand) }
-            .min { $0.distance(to: seat) < $1.distance(to: seat) }, "The lake has a shore")
+        // The lake's own water, the still and the shallows that rim it, where
+        // it meets the land.
+        let lakeWater: Set<Terrain> = [.still, .shallows]
+        let shore = try XCTUnwrap(map.hexes.filter { hex in
+            map[hex].map { lakeWater.contains($0.terrain) } == true && hex.neighbors.contains(where: isLand)
+        }.min { $0.distance(to: seat) < $1.distance(to: seat) }, "The lake has a shore")
         var camera = Camera(scale: 40)
         camera.focus(on: shore)
         let drawn = try draw(washed, "strand", camera: camera, tiles: world.whole)

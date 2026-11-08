@@ -853,8 +853,10 @@ public final class WorldStage: @unchecked Sendable {
                                                          colour: sight.colour, phase: Float(errand.salt % 17) * 0.31, hex: hex,
                                                          palette: start)))
                 if case .folk(let variant) = errand.key, Folk.carriesLantern(variant), errand.salt % WorldStage.lanternEvery == 0 {
-                    frame.motes += WorldStage.lantern(at: foot, heading: heading, height: Folk.lanternHeight(variant),
-                                                      time: time, salt: errand.salt)
+                    let lantern = WorldStage.lantern(at: foot, heading: heading, height: Folk.lanternHeight(variant),
+                                                     time: time, salt: errand.salt)
+                    frame.motes.append(lantern.flame)
+                    frame.motes.append(lantern.glow)
                 }
             }
             guard crowds else { continue }
@@ -880,7 +882,7 @@ public final class WorldStage: @unchecked Sendable {
     /// with the step and its flame flickering, each walker's in its own
     /// time (`salt`), in a faint glow of its own light. Light only: it
     /// hides nothing behind it.
-    public static func lantern(at foot: Vec3, heading: Float, height: Float, time: Float, salt: Int) -> [Mote] {
+    public static func lantern(at foot: Vec3, heading: Float, height: Float, time: Float, salt: Int) -> (flame: Mote, glow: Mote) {
         let c = Float(cos(Double(heading))), s = Float(sin(Double(heading)))
         let own = Float(salt % 11) * 0.57
         let swing = 0.014 * Float(sin(Double(time * 5.2 + own)))
@@ -888,8 +890,7 @@ public final class WorldStage: @unchecked Sendable {
         let hand = foot + Vec3(c * side + s * ahead, height, -s * side + c * ahead)
         let flicker = 0.86 + 0.14 * Float(sin(Double(time * 13.1 + own)) * sin(Double(time * 7.7 + 2 * own)))
         let flame = lanternFlame * flicker
-        return [Mote(at: hand, size: 0.022, light: flame * 1.3, cover: 0),
-                Mote(at: hand, size: 0.11, light: flame * 0.1, cover: 0)]
+        return (Mote(at: hand, size: 0.022, light: flame * 1.3, cover: 0), Mote(at: hand, size: 0.11, light: flame * 0.1, cover: 0))
     }
 
     /// Below this scale the holds begin to glow from afar, and below

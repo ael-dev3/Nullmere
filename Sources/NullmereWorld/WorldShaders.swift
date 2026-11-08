@@ -445,13 +445,15 @@ public enum WorldShaders {
         if (offshore >= 0.55) {
             return 0.0;
         }
-        float cycle = fract(time * 0.09 + 1.5 * nm_noise(p * 0.35));
+        // Each wave comes round about every eleven seconds, a whole number
+        // of times in the clock's period, so none jumps as it starts over.
+        float cycle = fract(nm_spin(time, 0.09 * kTau) / kTau + 1.5 * nm_noise(p * 0.35));
         float reach = cycle < 0.2 ? cycle / 0.2 : 1.0 - (cycle - 0.2) / 0.8;
         float front = 0.45 * (1.0 - reach);
         float line = 1.0 - smoothstep(0.0, 0.08, abs(offshore - front));
         float foam = offshore > front ? 0.35 * (1.0 - smoothstep(front, front + 0.18, offshore)) : 0.0;
         // Broken into flecks and gaps, as froth lies.
-        float grain = smoothstep(0.2, 0.8, nm_noise(p * 11.0 + float2(time * 0.3, 0.0)));
+        float grain = smoothstep(0.2, 0.8, nm_noise(p * 11.0 + nm_drift(time, 0.3)));
         float rise = 1.0 - smoothstep(0.35, 0.55, offshore);
         return min(1.0, (line + foam) * (0.2 + 0.8 * grain)) * rise * (1.0 - 0.85 * calm);
     }
