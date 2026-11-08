@@ -117,11 +117,13 @@ public struct CommanderCounsel: Sendable {
 
     /// What lies about the commander's company within some tiles, as their
     /// House sees it: the companies of other Houses, the holds, and the
-    /// holy sites and lairs, the nearest first.
+    /// holy sites and lairs, the nearest first, each with which way and how
+    /// far as every line says it ("2 tiles north-east", "here").
     public func lookAround(within radius: Int) -> String {
         guard let unit = company else { return "You lead no company to look out from." }
         let reach = min(max(radius, 1), 8)
         let here = unit.position
+        func way(_ hex: Hex) -> String { GameState.waySaid(to: hex, from: here) }
         var seen: [(distance: Int, told: String)] = []
         for other in state.units where other.owner != player {
             let distance = other.position.distance(to: here)
@@ -129,23 +131,23 @@ public struct CommanderCounsel: Sendable {
             let owner = state.houses.indices.contains(other.owner) ? state.houses[other.owner].title : "the wilds"
             let stance = state.houses.indices.contains(other.owner) ? ", \(state.stance(player, other.owner).standing)" : ""
             seen.append((distance, "\(owner)'s \(SpokenOrders.named(other, in: state)), \(GameState.counted(state.troops(of: other))) troops, "
-                + "\(distance) tiles off\(stance)"))
+                + "\(way(other.position))\(stance)"))
         }
         for hold in state.holds where hold.position.distance(to: here) <= reach {
             let owner = state.houses.indices.contains(hold.owner) ? state.houses[hold.owner].title : "no House"
             let distance = hold.position.distance(to: here)
-            seen.append((distance, "\(hold.name), a hold of \(owner == houseTitle ? "your House" : owner), \(distance) tiles off"))
+            seen.append((distance, "\(hold.name), a hold of \(owner == houseTitle ? "your House" : owner), \(way(hold.position))"))
         }
         for site in state.holySites where site.position.distance(to: here) <= reach {
-            seen.append((site.position.distance(to: here), "\(site.title), a holy site, \(site.position.distance(to: here)) tiles off"))
+            seen.append((site.position.distance(to: here), "\(site.title), a holy site, \(way(site.position))"))
         }
         for lair in state.lairsStanding where lair.position.distance(to: here) <= reach {
-            seen.append((lair.position.distance(to: here), "\(lair.title), a lair of the wilds, \(lair.position.distance(to: here)) tiles off"))
+            seen.append((lair.position.distance(to: here), "\(lair.title), a lair of the wilds, \(way(lair.position))"))
         }
-        let place = state.placeName(of: here)
-        guard !seen.isEmpty else { return "Within \(reach) tiles of your company, \(place), your House sees nothing but the land." }
+        let place = state.placeName(of: here), within = reach == 1 ? "1 tile" : "\(reach) tiles"
+        guard !seen.isEmpty else { return "Within \(within) of your company, \(place), your House sees nothing but the land." }
         let nearest = seen.sorted { ($0.distance, $0.told) < ($1.distance, $1.told) }.prefix(CommanderCounsel.mostSeen)
-        return "Within \(reach) tiles of your company, \(place), your House sees: " + nearest.map(\.told).joined(separator: "; ") + "."
+        return "Within \(within) of your company, \(place), your House sees: " + nearest.map(\.told).joined(separator: "; ") + "."
     }
 
     /// The House's affairs: its holds and companies, its stores, and how it

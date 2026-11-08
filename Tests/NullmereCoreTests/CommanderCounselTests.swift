@@ -105,11 +105,14 @@ final class CommanderCounselTests: XCTestCase {
         let look = counsel.lookAround(within: 4)
         XCTAssertTrue(look.hasPrefix("Within 4 tiles of your company, \(counsel.state.placeName(of: here)), your House sees:"), look)
         XCTAssertTrue(look.contains("\(world.houses[1].title)'s"), look)
-        XCTAssertTrue(look.contains("\(near.distance(to: here)) tiles off, at war") || look.contains("\(near.distance(to: here)) tiles off, at peace"), look)
+        // Which way and how far, as every line says it: never "1 tiles off".
+        let way = GameState.waySaid(to: near, from: here)
+        XCTAssertTrue(look.contains("\(way), at war") || look.contains("\(way), at peace"), look)
+        XCTAssertFalse(look.contains("tiles off"), look)
         XCTAssertFalse(look.contains(world.houses[2].title + "'s"), "Out of sight, out of counsel: \(look)")
         // The widest look is eight tiles, the narrowest one.
         XCTAssertTrue(counsel.lookAround(within: 40).hasPrefix("Within 8 tiles"))
-        XCTAssertTrue(counsel.lookAround(within: 0).hasPrefix("Within 1 tiles"))
+        XCTAssertTrue(counsel.lookAround(within: 0).hasPrefix("Within 1 tile of"))
         // A commander leading no company has nothing to look out from.
         var idle = counsel.state
         if let index = idle.units.firstIndex(where: { $0.leader == counsel.commander.id }) { idle.units[index].leader = nil }
