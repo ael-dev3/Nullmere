@@ -166,9 +166,13 @@ extension GameState {
         return kind.recipe.mapValues { max(1, ($0 * quality.multiplier * thrift + 50) / 100) }
     }
 
-    /// What a House keeps of each making, as the Mac and the phone say it.
+    /// What a House keeps of each making, as the Mac and the phone say it:
+    /// each, once it keeps any, so a House with none is told so rather than
+    /// shown a row of noughts.
     public func makingsSaid(of house: Int) -> String {
-        "Makings: " + Making.allCases.map { "\(makings($0, of: house)) \($0.title.lowercased())" }.joined(separator: ", ") + "."
+        let kept = Making.allCases.map { (making: $0, count: makings($0, of: house)) }
+        guard kept.contains(where: { $0.count > 0 }) else { return "No makings yet." }
+        return "Makings: " + kept.map { "\($0.count) \($0.making.title.lowercased())" }.joined(separator: ", ") + "."
     }
 
     /// What forging a piece this fine takes, in words.

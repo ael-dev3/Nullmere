@@ -176,6 +176,16 @@ final class ForgeTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// What a House keeps of each making, as both apps say it: none told
+    /// so, not as a row of noughts; once it keeps any, each of the four.
+    func testTheMakingsAreSaidAsKept() throws {
+        var state = Scene.world("makings said")
+        let me = state.player
+        XCTAssertEqual(state.makingsSaid(of: me), "No makings yet.")
+        _ = state.give(makings: [.iron: 4], to: me)
+        XCTAssertEqual(state.makingsSaid(of: me), "Makings: 0 hide, 4 iron, 0 heartwood, 0 moonglass.")
+    }
+
     func testMakingsAreTheHousesOwnToKnowAndKeptInSaves() throws {
         var stage = try staged("makings kept")
         XCTAssertEqual(stage.state.view(for: stage.me).makings(.iron, of: stage.me), 60)

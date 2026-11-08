@@ -2638,7 +2638,7 @@ final class DepthPanelTests: XCTestCase {
         PressableButtons.isListening = true
         draw(CommandersPanel(session: bare), width: 360, height: 2400)
         XCTAssertFalse(PressableButtons.press("Forge"), "Nothing to forge with")
-        XCTAssertEqual(ForgeView.makingsLine(bare.state, me), "Makings: 0 hide, 0 iron, 0 heartwood, 0 moonglass.")
+        XCTAssertEqual(ForgeView.makingsLine(bare.state, me), "No makings yet.")
         XCTAssertTrue(ForgeView.noForge.hasPrefix("Raise a Forge at one of your holds"))
         // A Forge of the second level, with makings: the finest it makes is chosen.
         state.holds[try XCTUnwrap(state.holdIndex(seat.id))].levels[.forge] = 2
