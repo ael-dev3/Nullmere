@@ -19,7 +19,7 @@ struct GathererList: View {
     /// (`GameState.gatheringSaid`): at its site and when it will be full,
     /// bound for it, or home with its load, and when it will be there.
     static func line(for unit: Unit, in state: GameState) -> String {
-        let name = state.title(of: unit) + (unit.kind.hasTiers ? " " + Narration.roman(unit.tier) : "")
+        let name = state.named(unit)
         if let doing = state.gatheringSaid(of: unit) { return "\(name) \(doing)" }
         let carried = unit.load.flatMap { load in
             Resource.allCases.first { load[$0] > 0 }.map { "\(load[$0]) \($0.title.lowercased())" }

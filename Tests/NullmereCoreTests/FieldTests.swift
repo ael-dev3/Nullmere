@@ -323,7 +323,9 @@ final class FieldTests: XCTestCase {
         let report = try XCTUnwrap(state.report(of: over, id: 1, for: foe))
         XCTAssertEqual(report.outcome, .held)
         XCTAssertEqual(report.title, "Neither side gave way, 1 company against 1")
-        XCTAssertEqual(report.lines, ["Your Spears V slew 600, lost 1,800, and fell"])
+        // Its people's own name for their finest, as the Mac's panel names it.
+        XCTAssertEqual(report.lines, ["Your \(state.named(.spear, tier: 5, of: foe)) slew 600, lost 1,800, and fell"])
+        XCTAssertEqual(state.named(.spear, tier: 5, of: foe) == "Spears V", state.heritage(of: foe).signature != .spear)
         over.held = 1
         XCTAssertEqual(state.report(of: over, id: 1, for: foe)?.outcome, .won)
         XCTAssertEqual(state.report(of: over, id: 1, for: me)?.title, "Your side was driven from the field, 1 company against 1")

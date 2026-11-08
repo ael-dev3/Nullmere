@@ -58,7 +58,7 @@ public enum SpokenOrders {
 
     /// A company as the briefing and the orders name it.
     public static func named(_ unit: Unit, in state: GameState) -> String {
-        "\(unit.named) \(state.placeName(of: unit.position))"
+        "\(state.named(unit)) \(state.placeName(of: unit.position))"
     }
 
     /// Each of a House's companies by name, told apart where two would be

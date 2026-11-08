@@ -143,6 +143,18 @@ extension GameState {
         isSignature(unit) ? heritage(of: unit.owner).signatureTitle : unit.kind.title
     }
 
+    /// A company as every line names it, on the Mac and the phone alike
+    /// and in the briefings the on-device model reads: its people's own
+    /// name for their finest ("Salt Wardens"), or its kind and tier
+    /// ("Spears V", "Lanterns").
+    public func named(_ kind: UnitKind, tier: Int, of owner: Int) -> String {
+        houses.indices.contains(owner) && tier == Unit.highestTier && kind == heritage(of: owner).signature
+            ? heritage(of: owner).signatureTitle : kind.named(tier: tier)
+    }
+
+    /// A company as every line names it (`named(_:tier:of:)`).
+    public func named(_ unit: Unit) -> String { named(unit.kind, tier: unit.tier, of: unit.owner) }
+
     /// Why a House can't take up a heritage, if it can't.
     func heritageRefusal(_ heritage: Heritage, for house: Int) -> RuleError? {
         guard heritage != self.heritage(of: house) else { return .alreadyOfHeritage }

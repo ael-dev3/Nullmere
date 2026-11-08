@@ -86,6 +86,13 @@ final class HeritageTests: XCTestCase {
         XCTAssertFalse(state.isSignature(lesser), "Only at the fifth tier")
         XCTAssertEqual(state.title(of: wardens), "Salt Wardens")
         XCTAssertEqual(state.title(of: theirs), "Spears")
+        // Every line names it so, the Mac's and the phone's alike: its
+        // people's name, or its kind and tier.
+        XCTAssertEqual(state.named(wardens), "Salt Wardens")
+        XCTAssertEqual(state.named(theirs), "Spears V")
+        XCTAssertEqual(state.named(lesser), "Spears IV")
+        XCTAssertTrue(SpokenOrders.named(wardens, in: state).hasPrefix("Salt Wardens "))
+        XCTAssertEqual(state.named(.lantern, tier: 1, of: me), "Lanterns")
         let might = NullmereCore.Unit.tierMight[NullmereCore.Unit.tierIndex(5, of: .spear)]
         XCTAssertEqual(state.attackPercent(of: wardens), might * 105 / 100)
         XCTAssertEqual(state.defensePercent(of: wardens), might * 105 / 100)

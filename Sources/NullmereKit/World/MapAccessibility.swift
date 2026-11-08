@@ -107,7 +107,7 @@ enum MapAccessibility {
             var offered: [Order] = []
             // Foes it can strike now, with the odds the forecast gives.
             for hex in state.strikeTargets(of: unit).sorted(by: { unit.position.distance(to: $0) < unit.position.distance(to: $1) }) {
-                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" }
+                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \(state.title(of: $0)) of \(state.houses[$0.owner].title)" }
                     ?? state.wild(at: hex).map(\.called) ?? "the enemy"
                 let odds = state.forecast(unit: unit.id, at: hex).map { ": " + MapAccessibility.odds($0) } ?? ""
                 offered.append(Order(name: "Strike \(what), \(way(from: unit.position, to: hex))\(odds)", hex: hex))
@@ -165,7 +165,7 @@ enum MapAccessibility {
         var companies: [Item] = []
         for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
             let rank = unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) " : ""
-            var parts = ["\(rank)\(unit.kind.title), \(whose(unit.owner)), \(place(unit.position))", "health \(unit.health)"]
+            var parts = ["\(rank)\(state.title(of: unit)), \(whose(unit.owner)), \(place(unit.position))", "health \(unit.health)"]
             if unit.kind.hasTiers { parts.append("tier \(unit.tier)") }
             if state.field(of: unit.id) != nil { parts.append("in battle") }
             if unit.owner == player {

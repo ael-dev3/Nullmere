@@ -195,7 +195,7 @@ public struct CompanionChart: Equatable, Sendable {
         }
         for unit in world.units where reached(unit.position) {
             marks.append(Mark(id: "company \(unit.id)", hex: unit.position, thing: .company, side: side(unit.owner),
-                              name: "\(CompanionChart.capitalized(whose(unit.owner))) \(unit.named), "
+                              name: "\(CompanionChart.capitalized(whose(unit.owner))) \(world.named(unit)), "
                                 + "\(GameState.counted(world.troops(of: unit))) troops",
                               bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil))
         }
