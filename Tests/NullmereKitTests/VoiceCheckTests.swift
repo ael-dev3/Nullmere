@@ -103,8 +103,10 @@ final class VoiceCheckTests: XCTestCase {
         struct Heedless: Voice {
             func speak(_ moment: VoiceMoment) async -> String? { nil }
             func read(orders words: String, briefing: String) async -> String? {
+                // Well past the allowance, however late the stop comes on a
+                // loaded runner.
                 await withCheckedContinuation { done in
-                    DispatchQueue.global().asyncAfter(deadline: .now() + VoiceCheck.stopAllowance + 0.5) { done.resume() }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + VoiceCheck.stopAllowance + 3) { done.resume() }
                 }
                 return "FORTIFY C1"
             }

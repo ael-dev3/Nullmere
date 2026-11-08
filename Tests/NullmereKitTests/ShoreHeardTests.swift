@@ -43,7 +43,8 @@ final class ShoreHeardTests: XCTestCase {
         camera.scale = ShoreSound.fullest
         session.camera = camera
         let close = try XCTUnwrap(session.shoreSound())
-        XCTAssertGreaterThan(close.level, 0.3, "The strand all about the view's middle, close")
+        // Over half: the view halfway back hears at most half.
+        XCTAssertGreaterThan(close.level, 0.5, "The strand all about the view's middle, close")
         XCTAssertLessThanOrEqual(abs(close.pan), 1)
         camera.scale = (ShoreSound.faintest + ShoreSound.fullest) / 2
         session.camera = camera
