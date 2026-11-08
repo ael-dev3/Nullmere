@@ -25,8 +25,9 @@ drowned beneath the next age's lake, for new keepers to find.
 
 It is a native Mac app for Apple silicon: SwiftUI and AppKit, every frame
 drawn with Metal, every model made for this game alone, its score written as
-it plays on recorded orchestral instruments, as are many of its cues, and its
-night, its battles and its towns sounded in code. Envoys, a chronicler, a clerk who reads orders written in plain
+it plays on recorded orchestral instruments, nearly all its cues recorded
+sounds as well, and its night, its towns and the roar of its battles sounded
+in code. Envoys, a chronicler, a clerk who reads orders written in plain
 words and the House's own commanders, taking counsel with their keeper,
 speak through Apple's on-device model, on each keeper's own Mac. Nullmere
 Companion, its iPhone app, keeps the keeper's House from their phone beside
