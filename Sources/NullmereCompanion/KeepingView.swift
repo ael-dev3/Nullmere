@@ -199,10 +199,17 @@ struct HouseTab: View {
                                 .foregroundStyle(Night.bad)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        // Lit while the veil lies; while the House is short of
+                        // moonsalt for it, what it is short of beneath.
                         Text(verbatim: ledger.veil)
                             .font(Night.small)
-                            .foregroundStyle(ledger.drawVeil == nil ? Night.moon : Night.ink.opacity(0.75))
+                            .foregroundStyle(ledger.veiled ? Night.moon : Night.ink.opacity(0.75))
                             .fixedSize(horizontal: false, vertical: true)
+                        if let short = ledger.veilShort {
+                            Text(verbatim: short)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.55))
+                        }
                         if let draw = ledger.drawVeil {
                             Button(draw.title) { session.give(draw.command, told: draw.title) }
                                 .buttonStyle(.bordered)

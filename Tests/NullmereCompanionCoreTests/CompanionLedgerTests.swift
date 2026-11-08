@@ -242,9 +242,13 @@ final class CompanionLedgerTests: XCTestCase {
                        + "strike your holds, unless you strike first.")
         let draw = try XCTUnwrap(ledger.drawVeil)
         XCTAssertEqual(draw.command, .drawVeil)
+        XCTAssertFalse(ledger.veiled)
+        XCTAssertNil(ledger.veilShort, "Moonsalt enough, nothing short")
         assertTaken([draw], in: state, as: me)
         _ = try state.perform(draw.command, as: me)
         ledger = CompanionLedger(world: state, player: me)
+        XCTAssertTrue(ledger.veiled)
+        XCTAssertNil(ledger.veilShort, "Lying, its words say until when")
         let until = state.watch + GameState.veilLasts
         XCTAssertEqual(ledger.veil, "Veiled until watch \(until): none may strike, rally on or scout your holds, unless you strike first.")
         XCTAssertNil(ledger.drawVeil, "Drawn already")
@@ -255,8 +259,11 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(ledger.drawVeil)
         state.watch = until + GameState.veilRest
         XCTAssertNotNil(CompanionLedger(world: state, player: me).drawVeil, "Rested")
-        state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 0)
-        XCTAssertNil(CompanionLedger(world: state, player: me).drawVeil, "No moonsalt for it")
+        state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 6)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertNil(ledger.drawVeil, "Too little moonsalt for it")
+        XCTAssertEqual(ledger.veilShort, "Short of 24 moonsalt.", "What it is short of, as the Mac's seat record says it")
+        XCTAssertFalse(ledger.veiled)
     }
 
     /// The Lyceum on the phone, as the Mac's card sets it: nothing while it

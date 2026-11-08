@@ -1366,10 +1366,7 @@ struct VeilLine: View {
     /// Why the veil can't be drawn now, where its words don't say so
     /// already: the moonsalt the House is short of. Resting, its words say
     /// when it may be drawn again.
-    static func short(_ state: GameState, house: Int) -> String? {
-        guard let refusal = state.veilRefusal(as: house), case .shortOf = refusal else { return nil }
-        return refusal.description
-    }
+    static func short(_ state: GameState, house: Int) -> String? { state.veilShortSaid(of: house) }
 
     var body: some View {
         let state = session.state, me = session.player

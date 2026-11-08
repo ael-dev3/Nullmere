@@ -585,6 +585,11 @@ public struct CompanionLedger: Equatable, Sendable {
     public let waiting: String?
     /// How the House's veil of the Still stands, in the Mac's words.
     public let veil: String
+    /// Whether the veil lies over the House's holds now.
+    public let veiled: Bool
+    /// Why the veil can't be drawn now, where its words don't say so: the
+    /// moonsalt the House is short of, as the Mac's seat record says it.
+    public let veilShort: String?
     /// Drawing the veil over the House's holds, where the rules would now.
     public let drawVeil: Order?
     public let companies: [Company]
@@ -797,7 +802,7 @@ public struct CompanionLedger: Equatable, Sendable {
 
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
-            && a.veil == b.veil && a.drawVeil == b.drawVeil && a.waiting == b.waiting
+            && a.veil == b.veil && a.veiled == b.veiled && a.veilShort == b.veilShort && a.drawVeil == b.drawVeil && a.waiting == b.waiting
             && a.companies == b.companies && a.commanders == b.commanders && a.prisoners == b.prisoners && a.law == b.law && a.ring == b.ring && a.forge == b.forge && a.armoury == b.armoury && a.oathsSworn == b.oathsSworn && a.oathsToUs == b.oathsToUs && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
@@ -914,6 +919,8 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         gatherings = world.gatherings(against: player).map(world.words(of:))
         veil = world.veilSaid(of: player)
+        veiled = world.isVeiled(player)
+        veilShort = world.veilShortSaid(of: player)
         waiting = world.waitingSaid(for: player)
         drawVeil = world.veilRefusal(as: player) == nil ? Order(title: "Draw the veil", command: .drawVeil) : nil
         let holds = world.holds(of: player).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }

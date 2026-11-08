@@ -53,6 +53,15 @@ extension GameState {
         return nil
     }
 
+    /// Why a House can't draw its veil now, where its words don't say so
+    /// already: the moonsalt it is short of, in the rules' words, on the
+    /// Mac's seat record and the phone alike. Lying or resting, the veil's
+    /// own words say until when.
+    public func veilShortSaid(of house: Int) -> String? {
+        guard let refusal = veilRefusal(as: house), case .shortOf = refusal else { return nil }
+        return refusal.description
+    }
+
     /// How a House's veil stands, in a line, as the Mac and the phone tell
     /// it: lying, and until when; resting, and when it may be drawn again;
     /// or what drawing it costs and does.
