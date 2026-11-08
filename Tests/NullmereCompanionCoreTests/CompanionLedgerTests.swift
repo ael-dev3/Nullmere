@@ -874,6 +874,27 @@ final class CompanionLedgerTests: XCTestCase {
     /// once, the offer taken by the rules; to a keeper's, answered by envoy,
     /// and another while the first waits refused in the rules' words; no
     /// trade offered across a war.
+    /// The trade the phone's CI check offers (CompanionCheck): at an age's
+    /// start, with a House's first stores, the phone's opening terms to the
+    /// nearest House at peace a steward keeps are an offer the rules take,
+    /// and the steward answers it at once.
+    func testTheTradeThePhonesCheckOffersIsTakenAndAnsweredAtOnce() throws {
+        var state = GameState(settings: GameSettings(seedText: "the phone's check", houseCount: 12, radius: 36, keepers: 1))
+        let me = state.player
+        let ledger = CompanionLedger(world: state, player: me)
+        let dealing = try XCTUnwrap(ledger.dealings.first { dealing in
+            dealing.mayTrade && state.houses.indices.contains(dealing.id) && !state.houses[dealing.id].isPlayer
+        }, "A steward's House at peace among the nearest")
+        let trading = CompanionLedger.trading(Trade.opening(from: state.houses[me].stock), with: dealing.id, in: state, player: me)
+        let offer = try XCTUnwrap(trading.offer, trading.said)
+        XCTAssertNil(state.refusal(of: offer.command, as: me))
+        let events = try state.perform(offer.command, as: me)
+        XCTAssertTrue(events.contains { event in
+            if case .tradeAnswered(_, me, dealing.id, _) = event { return true }
+            return false
+        }, "Answered at once: \(events)")
+    }
+
     func testThePhoneOffersATrade() throws {
         var (state, me) = try world()
         state.houses[me].stock = Stock(grain: 300, timber: 40, stone: 40, moonsalt: 20)

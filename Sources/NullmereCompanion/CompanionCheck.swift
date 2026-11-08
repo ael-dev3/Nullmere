@@ -13,7 +13,8 @@ import NullmereCounsel
 /// caretaker's standing orders given, a commander given a company and one
 /// sent up the Spine, another company marched from the chart of the House's
 /// land, the keeper made ready for the watch to turn and the silver key it
-/// brings spent at the Lantern Inn, a hold set to work),
+/// brings spent at the Lantern Inn, a hold set to work, a trade offered to
+/// a steward's House),
 /// hearing
 /// the realm's word on each, is
 /// set aside and comes in again, and writes
@@ -453,6 +454,23 @@ enum CompanionCheck {
             } else {
                 lines.append("Nothing the House could give toward the study")
             }
+        }
+        // A trade offered from the phone, once the hold is at work and the
+        // study given toward, to the nearest House at peace a steward keeps,
+        // which answers at once: the phone's own opening terms, offered only
+        // where the rules would take them, the answer in the realm's word.
+        if let world = session.world, let house = session.keeper?.house, world.houses.indices.contains(house),
+           let dealing = session.ledger?.dealings.first(where: { dealing in
+               dealing.mayTrade && world.houses.indices.contains(dealing.id) && !world.houses[dealing.id].isPlayer
+           }) {
+            let trading = CompanionLedger.trading(Trade.opening(from: world.houses[house].stock), with: dealing.id, in: world, player: house)
+            if let offer = trading.offer {
+                await give(offer.command, told: offer.title, as: "Traded")
+            } else {
+                lines.append("No trade offered \(dealing.name): \(trading.said)")
+            }
+        } else {
+            lines.append("No House at peace a steward keeps, to trade with")
         }
         write(done: false)
         // Set aside and back, by its own key: in again, the order kept.
