@@ -173,7 +173,7 @@ final class SynthTests: XCTestCase {
             return (synth, heard.left, heard.right)
         }
         let calls: [(SoundCue, Int, Float)] = [(.horn, 2, -36.2), (.muster, 2, -38.4), (.envoy, 2, -35.5), (.triumph, 4, -34.4),
-                                               (.honour, 4, -36.8)]
+                                               (.honour, 4, -36.8), (.banner, 6, -35.5)]
         for (cue, notes, before) in calls {
             let heard = blown(cue)
             XCTAssertEqual(heard.synth.cueHornsBlown, notes, "\(cue): \(notes) notes on the horn")

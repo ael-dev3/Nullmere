@@ -432,7 +432,8 @@ public final class Synth: @unchecked Sendable {
     /// and then the D a fourth above; the muster's call up a fifth, G to D;
     /// an envoy at the gate, a fifth across the water, soft; a hold taken,
     /// a triad rising to its octave, D major; a deed honoured, a quick
-    /// fanfare up C major to the octave.
+    /// fanfare up C major to the octave; a banner raised, two stately
+    /// chords, D major and then G, its fourth.
     static func call(of cue: SoundCue) -> [(frequency: Float, at: Float, hold: Float, strength: Float)] {
         switch cue {
         case .horn: return [(110, 0, 0.45, 0.9), (146.8, 0.42, 0.75, 1)]
@@ -440,6 +441,9 @@ public final class Synth: @unchecked Sendable {
         case .envoy: return [(110, 0, 0.5, 0.75), (164.8, 0.55, 0.6, 0.8)]
         case .triumph: return [(146.8, 0, 0.25, 0.9), (185, 0.14, 0.25, 0.9), (220, 0.28, 0.25, 0.95), (293.7, 0.42, 0.9, 1)]
         case .honour: return [(130.8, 0, 0.12, 0.9), (164.8, 0.09, 0.12, 0.9), (196, 0.18, 0.12, 0.95), (261.6, 0.27, 0.8, 1)]
+        case .banner:
+            return [(146.8, 0, 0.3, 0.85), (185, 0, 0.3, 0.75), (220, 0, 0.3, 0.75),
+                    (196, 0.36, 0.9, 0.9), (246.9, 0.36, 0.9, 0.8), (293.7, 0.36, 0.9, 0.8)]
         default: return []
         }
     }
@@ -573,7 +577,7 @@ public final class Synth: @unchecked Sendable {
         case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord:
             // Struck on recorded instruments (`strikes(of:)`).
             return []
-        case .envoy, .triumph, .honour:
+        case .envoy, .triumph, .honour, .banner:
             // Blown on the recorded horn (`call(of:)`).
             return []
         case .leaf:
@@ -599,14 +603,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 1_130, amplitude: 0.025, decay: 34),
             ], noise: 0.09, noiseDecay: 22)
             more = [Note(partials: [], noise: 0.025, noiseDecay: 4, delay: 0.06)]
-        case .banner:
-            // Two chords, the second the first's fourth: a banner raised.
-            func chord(_ root: Float, _ delay: Float) -> [Partial] {
-                [Partial(frequency: root, amplitude: 0.05, decay: 1.5, delay: delay),
-                 Partial(frequency: root * 1.26, amplitude: 0.04, decay: 1.7, delay: delay),
-                 Partial(frequency: root * 1.5, amplitude: 0.04, decay: 1.9, delay: delay)]
-            }
-            note = Note(partials: chord(293.7, 0) + chord(392, 0.36), noise: 0, noiseDecay: 1)
         case .tend:
             // A warm hum a fifth deep, and over it a small bell struck
             // twice, the second softer: the healers at their work.
