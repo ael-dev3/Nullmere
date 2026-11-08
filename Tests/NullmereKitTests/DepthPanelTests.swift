@@ -2715,7 +2715,7 @@ final class DepthPanelTests: XCTestCase {
         let briefing = SeatBriefing(world: state, player: me)
         XCTAssertEqual(briefing.facts[1], SeatBriefing.heritageLine(state, me))
         XCTAssertTrue(briefing.facts[1].hasPrefix("Your House comes of \(dealt.title): \(dealt.strengths[0]), and \(dealt.strengths[1])."))
-        XCTAssertTrue(briefing.facts[1].hasSuffix("take up another from the Realm (6), the first time freely."), briefing.facts[1])
+        XCTAssertTrue(briefing.facts[1].hasSuffix("of the fifth tier. You may take up another heritage in the Realm (6), the first time freely."), briefing.facts[1])
         // The Realm shows it, and takes up another, the first time freely.
         let (session, link) = session(state)
         PressableButtons.isListening = true
@@ -2731,7 +2731,7 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertFalse(PressableButtons.press("Take up \(third.title)"), "Short of moonsalt")
         XCTAssertEqual(RealmPanel.heritageChange(session.state, player: me), "Take up another instead, for 30 moonsalt:")
         XCTAssertEqual(RealmPanel.heritageChange(state, player: me), "Take up another instead, the first time freely:")
-        XCTAssertTrue(SeatBriefing.heritageLine(session.state, me).hasSuffix("another costs 30 moonsalt in the Realm (6)."))
+        XCTAssertTrue(SeatBriefing.heritageLine(session.state, me).hasSuffix("of the fifth tier. Another heritage costs 30 moonsalt in the Realm (6)."))
         XCTAssertEqual(RealmPanel.heritageLine(.fenfolk),
                        "Its Bows strike a tenth harder; its companies see a tile further. Its own company: the Reed Bows, Bows of the fifth tier.")
         // A company of its own is named so in its panel.

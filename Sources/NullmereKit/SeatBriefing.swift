@@ -55,11 +55,13 @@ struct SeatBriefing: Equatable {
     /// up another.
     static func heritageLine(_ world: GameState, _ player: Int) -> String {
         let heritage = world.heritage(of: player)
+        // Its own sentence, so that "another" can't be read as another
+        // company.
         let another = world.houses[player].heritage == nil
-            ? "take up another from the Realm (6), the first time freely"
-            : "another costs \(Heritage.changeCost) in the Realm (6)"
+            ? "You may take up another heritage in the Realm (6), the first time freely"
+            : "Another heritage costs \(Heritage.changeCost.listedSaid) in the Realm (6)"
         return "Your House comes of \(heritage.title): \(heritage.strengths[0]), and \(heritage.strengths[1]). Its own company is the "
-            + "\(heritage.signatureTitle), \(heritage.signature.title) of the fifth tier; \(another)."
+            + "\(heritage.signatureTitle), \(heritage.signature.title) of the fifth tier. \(another)."
     }
 
     static func ordinal(_ n: Int) -> String { briefOrdinal(n) }
