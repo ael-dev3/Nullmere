@@ -135,7 +135,7 @@ extension GameState {
     /// As the watch turns, after all it brought is counted: each labour
     /// done is worth its vigour, chests open at their marks; then the new
     /// watch's labours are set, the vigour kept through the moon and begun
-    /// again at its new.
+    /// again at the full, where each moon begins.
     mutating func turnLabours() -> [GameEvent] {
         var events: [GameEvent] = []
         var book = labourBook ?? [:]

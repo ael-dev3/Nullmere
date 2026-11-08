@@ -673,7 +673,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unexplored: return "Your House hasn't seen that ground."
         case .standardGround: return "A standard stands only on open land, with nothing on it."
         case .standardTooFar: return "A standard stands within four tiles of your alliance's holds, standards or hall."
-        case .standardsEnough: return "Your alliance keeps as many standards as it may: one, and one more for each of its Houses."
+        case .standardsEnough: return "Your alliance keeps as many standards as it may: one, and one more for each of its Houses, eight at most."
         case .noSuchStandard: return "No standard stands there."
         case .standardWhole: return "That standard stands whole already."
         case .standardHelped: return "Your House has given that standard its hand already."
