@@ -936,6 +936,10 @@ public struct CompanionLedger: Equatable, Sendable {
         // The House's companies told apart where two would be named alike.
         let names = SpokenOrders.distinctNames(in: world, player: player)
         func named(_ unit: Unit) -> String { names[unit.id] ?? SpokenOrders.named(unit, in: world) }
+        // Which stretch of passable ground each hex lies on: a hold on
+        // another is no march, and wants no search for a way to know it.
+        let parts = world.map.passableParts()
+        func part(_ hex: Hex) -> Int32 { world.map.index(of: hex).map { parts[$0] } ?? -1 }
         companies = SpokenOrders.companies(in: world, player: player).map { unit in
             // Each order where it would do something: dig in a company of war
             // not dug in, halt one on the march, call home one gathering or
@@ -957,7 +961,14 @@ public struct CompanionLedger: Equatable, Sendable {
                     .map { Order(title: "Scout \($0.name)", command: .scout(unit: unit.id, hold: $0.id)) }
                 : []
             let orders = offered.filter(\.2).map { Order(title: $0.0, command: $0.1) } + scouts
-            let marches = holds.filter { $0.position != unit.position && unit.destination != $0.position }.map { hold in
+            // Only where there is a way, as the realm would march it: a hold
+            // across the water, or walled in by the Spine, is no march. A
+            // company off the land (on a barge) is asked of every hold.
+            let from = part(unit.position)
+            let marches = holds.filter {
+                $0.position != unit.position && unit.destination != $0.position
+                    && (from < 0 || part($0.position) == from) && world.path(for: unit, to: $0.position) != nil
+            }.map { hold in
                 Order(title: "March to \(hold.name)", command: .move(unit: unit.id, to: hold.position))
             }
             return Company(id: unit.id, name: named(unit), troops: GameState.counted(world.troops(of: unit)),

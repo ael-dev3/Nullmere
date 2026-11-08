@@ -140,7 +140,10 @@ enum MapAccessibility {
             let known = state.holds
                 .filter { session.isExplored($0.position) && $0.position != unit.position }
                 .sorted { (unit.position.distance(to: $0.position), $0.id) < (unit.position.distance(to: $1.position), $1.id) }
+            // Only those there is a way to, as the realm would march it.
             for hold in known where !offered.contains(where: { $0.hex == hold.position }) {
+                guard offered.count < ordersOffered else { break }
+                guard state.path(for: unit, to: hold.position) != nil else { continue }
                 offered.append(Order(name: "March to \(hold.name), \(way(from: unit.position, to: hold.position))", hex: hold.position))
             }
             return Array(offered.prefix(ordersOffered))

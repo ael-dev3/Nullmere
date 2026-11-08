@@ -22,6 +22,34 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// A march to one of the House's holds is offered only where there is
+    /// a way there, as the realm would march it: a hold walled in by the
+    /// Spine is offered to none, an open one to every company that can go.
+    func testMarchesAreOfferedOnlyWhereThereIsAWay() throws {
+        var (state, me) = try world()
+        func open(_ hex: Hex) -> Bool {
+            state.map[hex]?.terrain.isSettleable == true && state.unit(at: hex) == nil
+                && state.holds.allSatisfy { $0.position.distance(to: hex) >= 4 }
+        }
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let near = state.map.hexes.filter(open).sorted { ($0.distance(to: seat.position), $0) < ($1.distance(to: seat.position), $1) }
+        let walled = try XCTUnwrap(near.first { $0.neighbors.allSatisfy { state.unit(at: $0) == nil && state.hold(at: $0) == nil } })
+        state.holds.append(Hold(id: state.takeID(), name: "Walled Keep", owner: me, position: walled, isSeat: false, foundedWatch: 1))
+        for hex in walled.neighbors where state.map[hex] != nil {
+            state.map.set(hex, Tile(terrain: .spine))
+        }
+        let reachable = try XCTUnwrap(near.first { hex in
+            open(hex) && hex.distance(to: walled) >= 4 && state.units(of: me).contains { state.path(for: $0, to: hex) != nil }
+        })
+        state.holds.append(Hold(id: state.takeID(), name: "Open Keep", owner: me, position: reachable, isSeat: false, foundedWatch: 1))
+        XCTAssertEqual(state.refusal(of: .move(unit: try XCTUnwrap(state.units(of: me).first).id, to: walled), as: me), .noPath)
+        let ledger = CompanionLedger(world: state, player: me)
+        let marches = ledger.companies.flatMap(\.marches)
+        XCTAssertFalse(marches.contains { $0.title == "March to Walled Keep" }, "No way there, so no march offered")
+        XCTAssertTrue(marches.contains { $0.title == "March to Open Keep" })
+        assertTaken(marches, in: state, as: me)
+    }
+
     /// Letters on the phone: the House's own, the latest first, lined as the
     /// Mac lines them; the keepers it may write to, never a steward's House,
     /// those it has letters with first; a letter written taken by the rules.
