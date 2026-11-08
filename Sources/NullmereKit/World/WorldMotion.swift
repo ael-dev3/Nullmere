@@ -1,4 +1,5 @@
 import LauncherCore
+import NullmereWorld
 import SwiftUI
 
 extension EnvironmentValues {
@@ -12,4 +13,7 @@ extension EnvironmentValues {
     /// The display settings' resolution, the launcher's: the most of the
     /// screen's pixels the map is drawn at.
     @Entry var worldQuality: RenderQuality = .native
+    /// The realm's Settings' night: how much moonlight the world is drawn
+    /// with.
+    @Entry var worldNight: Night = .dark
 }

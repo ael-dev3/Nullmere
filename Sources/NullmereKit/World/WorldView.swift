@@ -14,6 +14,7 @@ struct WorldView: View {
     @Environment(\.worldMotion) private var motion
     @Environment(\.worldFrameRate) private var frameRate
     @Environment(\.worldQuality) private var quality
+    @Environment(\.worldNight) private var night
     @State private var metalFailed = false
 
     var body: some View {
@@ -21,7 +22,7 @@ struct WorldView: View {
             if metalFailed || WorldMetalView.systemDevice == nil {
                 WorldFallback(session: session)
             } else {
-                WorldMetalRepresentable(session: session, motion: motion, frameRate: frameRate, quality: quality) {
+                WorldMetalRepresentable(session: session, motion: motion, frameRate: frameRate, quality: quality, night: night) {
                     metalFailed = true
                 } onFaltering: {
                     // A detail down, before the painting.
@@ -79,6 +80,7 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
     let motion: ResolvedMotion
     let frameRate: FrameRateCap
     let quality: RenderQuality
+    let night: Night
     let onFailure: () -> Void
     let onFaltering: () -> Void
 
@@ -118,6 +120,7 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
         view.motion = motion
         view.frameRateCap = frameRate
         view.quality = quality
+        view.exposure = night.exposure
         view.setTiles(session.tileBytes, side: TileTexture.side(for: session.state.map), version: session.tilesVersion)
     }
 }

@@ -37,6 +37,11 @@ final class WorldMetalView: MTKView {
     var selected: Hex? {
         didSet { if selected != oldValue { redraw() } }
     }
+    /// The realm's Settings' night: what every colour of the world is
+    /// multiplied by as it is drawn (`Night.exposure`).
+    var exposure: Float = 1 {
+        didSet { if exposure != oldValue { redraw() } }
+    }
     var radius = 24
     /// The land under the view, for finding the hex under the pointer.
     var relief: Relief?
@@ -330,7 +335,7 @@ final class WorldMetalView: MTKView {
         let time = clock.advance(to: CACurrentMediaTime(), rate: motion.clockRate)
         var frame = FrameUniforms.make(camera: camera, size: bounds.size, pixelsPerPoint: pixelsPerPoint, time: Float(time),
                                        motion: Float(motion.clockRate), radius: radius, terrain: land.terrain,
-                                       hovered: hovered, selected: selected)
+                                       hovered: hovered, selected: selected, exposure: exposure)
         let staged = scene?(time, bounds.size) ?? SceneFrame()
         frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
         frame.weather(staged.weather)

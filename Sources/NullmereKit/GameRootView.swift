@@ -2,6 +2,7 @@ import AppKit
 import LauncherCore
 import LauncherKit
 import NullmereCore
+import NullmereWorld
 import SwiftUI
 
 /// The world's window: the model gate, the realm's front door, or the lake.
@@ -85,6 +86,17 @@ public struct GameRootView: View {
 
 /// A game in progress: the map, with the interface laid over its edges.
 struct PlayView: View {
+    /// The night the world is drawn with: as the realm's Settings keep it;
+    /// for the smoke test, as NULLMERE_NIGHT names it, without keeping it.
+    static func night(stored: Int, environment: [String: String] = ProcessInfo.processInfo.environment) -> Night {
+        #if DEBUG
+        if let named = environment["NULLMERE_NIGHT"], let night = Night.allCases.first(where: { $0.title.lowercased() == named.lowercased() }) {
+            return night
+        }
+        #endif
+        return Night(stored: stored)
+    }
+
     let app: GameApp
     let session: GameSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -95,6 +107,8 @@ struct PlayView: View {
     @AppStorage(MiniMap.shownKey) private var mapShown = false
     /// The charges put away: counsel may speak in their place.
     @AppStorage("charges.hidden") private var chargesHidden = false
+    /// The night's brightness, as the realm's Settings keep it.
+    @AppStorage(Night.key) private var storedNight = Night.dark.rawValue
     /// The window's height, for the share of it a card may take.
     @State private var windowHeight: CGFloat = 982
 
@@ -317,6 +331,7 @@ struct PlayView: View {
         .environment(\.worldMotion, motion)
         .environment(\.worldFrameRate, app.displaySettings.frameRate)
         .environment(\.worldQuality, app.displaySettings.quality)
+        .environment(\.worldNight, PlayView.night(stored: storedNight))
         .onChange(of: motion, initial: true) { _, motion in session.motion = motion }
         // The display setting's Detail, Auto read for this Mac.
         .onChange(of: app.displaySettings.detail, initial: true) { _, chosen in

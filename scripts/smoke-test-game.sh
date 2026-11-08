@@ -3,7 +3,8 @@
 # realm hosted on this Mac as a keeper, past the on-device model check. It
 # must still be running after a while, and its world must be rendering
 # with Metal. Saves screenshots of the keeper's first watch with a company
-# selected and the Houses panel open; of the same realm eight watches on
+# selected and the Houses panel open, and the same with the night drawn
+# Bright, as a keeper may choose it; of the same realm eight watches on
 # as a keeper sees it most of the time, nothing chosen and no panel open;
 # and forty watches on, a steward having played the keeper's House, with
 # the larger type; and the Still from low over its deepest water; and
@@ -15,7 +16,7 @@
 #   swift build && scripts/smoke-test-game.sh
 #
 # Only debug builds honour NULLMERE_MODEL_STATE, NULLMERE_LAUNCHER_KEYS,
-# NULLMERE_REALM and NULLMERE_KEEPER.
+# NULLMERE_REALM, NULLMERE_KEEPER and NULLMERE_NIGHT.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -75,6 +76,11 @@ WORLD_LOG="$LOG"
 # The same realm as a keeper sees it most of the time: nothing chosen, no
 # panel open, how much of the world the interface leaves in view.
 run build/game-plain.png 8 ""
+WORLD_LOG="$WORLD_LOG
+$LOG"
+# The first view again with the night drawn Bright, as a keeper may choose
+# it in the realm's Settings, to judge beside the night as it was made.
+NULLMERE_NIGHT=bright run build/game-world-bright.png 0 unit,houses
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The Still close and low, nothing chosen: the black water, the moon's

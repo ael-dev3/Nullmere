@@ -1,6 +1,7 @@
 import LauncherCore
 @testable import LauncherKit
 import NullmereRealm
+import NullmereWorld
 import SwiftUI
 import XCTest
 @testable import NullmereCore
@@ -224,6 +225,18 @@ final class RootRenderTests: XCTestCase {
         XCTAssertEqual(GameRootView.settingsHeight(in: 674), 564, "A small screen's window: the settings scroll")
         XCTAssertEqual(GameRootView.settingsHeight(in: 1400), 800, "No taller than they are")
         XCTAssertEqual(GameRootView.settingsHeight(in: 300), 280, "Never squeezed to nothing")
+    }
+
+    /// The night the world is drawn with: as the realm's Settings keep it,
+    /// dark as made where nothing is kept; for the smoke test, as
+    /// NULLMERE_NIGHT names it, without keeping it.
+    func testTheNightIsDrawnAsTheSettingsKeepIt() {
+        XCTAssertEqual(PlayView.night(stored: Night.dark.rawValue, environment: [:]), .dark)
+        XCTAssertEqual(PlayView.night(stored: Night.bright.rawValue, environment: [:]), .bright)
+        XCTAssertEqual(PlayView.night(stored: 42, environment: [:]), .dark)
+        XCTAssertEqual(PlayView.night(stored: Night.dark.rawValue, environment: ["NULLMERE_NIGHT": "Bright"]), .bright)
+        XCTAssertEqual(PlayView.night(stored: Night.bright.rawValue, environment: ["NULLMERE_NIGHT": "moonlit"]), .moonlit)
+        XCTAssertEqual(PlayView.night(stored: Night.moonlit.rawValue, environment: ["NULLMERE_NIGHT": "noon"]), .moonlit, "Only a night it names")
     }
 
     func testEveryKindOfNewsCanBeTold() {

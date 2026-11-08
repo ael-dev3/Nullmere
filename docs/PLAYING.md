@@ -1758,7 +1758,9 @@ it plays.
   picture, and as the app quits, and back in from silence.
 - **Controls.** Music, in the launcher's Settings and the realm's, is one
   choice. The realm's Settings (⌘,) also hold its sound (on or off, the
-  effects, the night, the music and its score's volume), counsel, and how
+  effects, the night, the music and its score's volume), counsel, the
+  night's brightness (Dark, as the lake was made; Moonlit or Bright, the
+  whole world drawn with more of the moon's light for an easier eye), and how
   the voices stand on this Mac by Apple's own word on its model: who speaks
   through it, or, where it can't be asked, who falls silent and why; ⇧⌘M
   turns all sound off or on, and ⇧⌘U the music alone, once the realm shows.
