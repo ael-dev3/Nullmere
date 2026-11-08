@@ -51,11 +51,37 @@ struct OrdersCard: View {
                             why: blank ? "Write what you would have done." : nil, action: read)
                 CloseButton(label: "Put the orders away") { session.toggleOrders() }
             }
-            if orders.reading {
-                Text(verbatim: session.readsOrders ? "Your clerk reads your words…" : "Reading…")
+            if !orders.reading, let why = session.ordersReadAsWritten {
+                // No model reads the words on this Mac now: why, plainly.
+                Text(verbatim: why)
                     .font(.nm(10.5, weight: .light))
                     .foregroundStyle(Palette.text(0.6))
-            } else if orders.unread {
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if orders.reading {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    // The seconds the model has taken so far, as they pass.
+                    TimelineView(.periodic(from: .now, by: 0.1)) { context in
+                        Text(verbatim: Self.readingLine(byModel: session.readsOrders, began: orders.began, now: context.date))
+                            .font(.nm(10.5, weight: .light).monospacedDigit())
+                            .foregroundStyle(Palette.text(0.6))
+                    }
+                    Spacer(minLength: 8)
+                    QuietButton(title: "Stop", size: 8.5, name: "Stop reading the orders") { session.stopReadingOrders() }
+                }
+            } else if let summary = orders.summary {
+                Text(verbatim: summary)
+                    .font(.nm(10.5, weight: .light))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !orders.reading, let trouble = orders.trouble {
+                Text(verbatim: trouble)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.bad)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !orders.reading, orders.unread {
                 Text(verbatim: "No orders could be read from those words. Name a company, a place, a work or a kind of company.")
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.text(0.6))
@@ -100,6 +126,13 @@ struct OrdersCard: View {
     }
 
     private var blank: Bool { words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// While a reading is under way: the clerk at it, and for how long.
+    static func readingLine(byModel: Bool, began: Date?, now: Date) -> String {
+        guard byModel else { return "Reading…" }
+        guard let began else { return "Your clerk reads your words…" }
+        return String(format: "Your clerk reads your words… %.1f s", max(0, now.timeIntervalSince(began)))
+    }
 
     private func read() {
         guard !blank else { return }

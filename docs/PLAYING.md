@@ -1503,7 +1503,15 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   realm would take, or said not to be one, and shown with what it would
   do or why it can't be given; those that can are given together only
   when the keeper gives them, and the realm judges each as it does any
-  order. Without the model, the order book's lines are read as written.
+  order. While the model reads, the card counts its seconds, and Stop
+  ends the reading there, the model's asking stopped with it and nothing
+  read; read, the card says by whom and in how many seconds, and how many
+  of the lines the realm would take. Without the model, the card says why
+  before the keeper writes (Apple Intelligence turned off, the model still
+  downloading, a Mac that can't run it), and the order book's lines are
+  read as written; where the model reads nothing when asked (it would
+  not, it was busy, the words were too long for it), the card says so,
+  plainly, and they are read as written in the same way.
 - **Standing orders.** On the same orders card a keeper may write what
   their House should do while they are away ("while I'm gone, muster only
   bows, keep everyone home and pay no tribute"), read into the order

@@ -562,8 +562,9 @@ public final class GameSession {
     /// The counsel the keeper is taking of one of their commanders, spoken
     /// by Apple's on-device model on this Mac; nil while none is open.
     public private(set) var commanderCounsel: CommanderCounselSession?
-    /// Whether Apple's on-device model can be asked, for tests to set: nil
-    /// asks the Foundation Models framework, as the app always does.
+    /// Whether Apple's on-device model can be asked, for counsel and the
+    /// orders card, for tests to set: nil asks the Foundation Models
+    /// framework, as the app always does.
     @ObservationIgnored var counselAvailability: (() -> SystemLanguageModel.Availability)?
 
     /// Opens counsel with one of the keeper's commanders, who remembers what
@@ -2277,16 +2278,42 @@ public final class GameSession {
         var serial = 0
         /// Whether the words last read made no orders.
         var unread = false
+        /// When the reading under way began, for the card to count its
+        /// seconds.
+        var began: Date?
+        /// What the last reading came to, in a line: by whom and in how
+        /// long, or stopped (`SpokenOrders.Reading.summary`).
+        var summary: String?
+        /// Why this Mac's model didn't read the words, where it didn't, as
+        /// the keeper is told it.
+        var trouble: String?
     }
+
+    /// The model's reading under way, to be stopped.
+    @ObservationIgnored private var readingOrders: Task<Void, Never>?
 
     /// Whether this Mac's model reads the keeper's words; without it, the
     /// order book's lines are read as they are written.
     var readsOrders: Bool { voice != nil }
 
+    /// Where this Mac's model doesn't read the keeper's words, why, from
+    /// Apple's own word on its model, as the card tells it before they
+    /// write; nil where the model reads them (or is ready, though the game
+    /// began before it was).
+    var ordersReadAsWritten: String? {
+        guard voice == nil else { return nil }
+        return CommanderCounselSession.trouble(for: counselAvailability?() ?? SystemLanguageModel.default.availability)?.ordersReadAsWritten
+    }
+
     /// Opens the card for orders in the keeper's own words, or puts it
     /// away: it opens only while the age goes on and the House stands.
     func toggleOrders() {
         guard ordersInWords != nil || (state.outcome == nil && !playerHouse.isEliminated) else { return }
+        // Put away, a reading under way is stopped with it.
+        if ordersInWords != nil {
+            readingOrders?.cancel()
+            readingOrders = nil
+        }
         withAnimation(.easeOut(duration: 0.2)) { ordersInWords = ordersInWords == nil ? OrdersInWords() : nil }
     }
 
@@ -2298,24 +2325,60 @@ public final class GameSession {
     func readOrders(_ words: String) {
         let words = words.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var orders = ordersInWords, !words.isEmpty else { return }
+        let began = Date()
         orders.serial += 1
         orders.reading = true
+        orders.began = began
+        orders.summary = nil
+        orders.trouble = nil
         ordersInWords = orders
         let serial = orders.serial
         let seen = state
         let briefing = SpokenOrders.briefing(for: seen, player: player)
         let voice = voice
         let player = player
-        Task { [weak self] in
-            let answer = await voice?.read(orders: words, briefing: briefing)
-            let lines = SpokenOrders.read(answer ?? words, in: seen, player: player)
+        readingOrders?.cancel()
+        readingOrders = Task { [weak self] in
+            let heard = await voice?.reading(orders: words, briefing: briefing)
+            // Stopped, or outdone by words read again: nothing of it is kept.
+            guard !Task.isCancelled else { return }
+            let reading: SpokenOrders.Reading
+            if let lines = heard?.lines {
+                reading = SpokenOrders.Reading(lines: SpokenOrders.read(lines, in: seen, player: player), byModel: true, trouble: nil,
+                                               seconds: Date().timeIntervalSince(began))
+            } else if let heard {
+                reading = SpokenOrders.reading(words, answer: nil, trouble: heard.trouble, seconds: nil, in: seen, player: player)
+            } else {
+                // No model on this Mac: the order book's lines as written, as
+                // the card already said they would be.
+                reading = SpokenOrders.Reading(lines: SpokenOrders.read(words, in: seen, player: player), byModel: false, trouble: nil,
+                                               seconds: nil)
+            }
             guard let self, self.ordersInWords?.serial == serial else { return }
             withAnimation(.easeOut(duration: 0.3)) {
-                self.ordersInWords?.lines = lines
+                self.ordersInWords?.lines = reading.lines
                 self.ordersInWords?.reading = false
-                self.ordersInWords?.unread = lines.isEmpty
+                self.ordersInWords?.began = nil
+                self.ordersInWords?.unread = reading.lines.isEmpty
+                self.ordersInWords?.summary = reading.summary
+                self.ordersInWords?.trouble = reading.trouble
             }
         }
+    }
+
+    /// Stops the model's reading under way: its task cancelled, nothing
+    /// read, and said so.
+    func stopReadingOrders() {
+        guard ordersInWords?.reading == true else { return }
+        readingOrders?.cancel()
+        readingOrders = nil
+        ordersInWords?.serial += 1
+        ordersInWords?.reading = false
+        ordersInWords?.began = nil
+        ordersInWords?.lines = []
+        ordersInWords?.unread = false
+        ordersInWords?.summary = SpokenOrders.Reading.stopped.summary
+        ordersInWords?.trouble = nil
     }
 
     /// Gives the orders read that the realm would take, one after another,

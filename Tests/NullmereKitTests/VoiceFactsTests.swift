@@ -198,6 +198,18 @@ final class OnDeviceVoiceTests: XCTestCase {
         }
         let mute = await Mute().read(orders: "Dig in.", briefing: "")
         XCTAssertNil(mute)
+
+        // And why it read none, as the keeper is told it: the model not
+        // ready here, the model's own refusal, or a voice that reads none.
+        let heard = await clerk.reading(orders: "Dig in.", briefing: "")
+        XCTAssertEqual(heard, OrdersHeard(lines: "FORTIFY C1", trouble: nil))
+        let notReady = await OnDeviceVoice(isReady: { false }) { _, _ in "FORTIFY C1" }.reading(orders: "Dig in.", briefing: "")
+        XCTAssertNil(notReady.lines)
+        guard case .unavailable = notReady.trouble else { return XCTFail("Not ready, yet told \(String(describing: notReady.trouble))") }
+        let refused = await OnDeviceVoice(isReady: { true }) { _, _ in throw CounselTrouble.refused }.reading(orders: "Dig in.", briefing: "")
+        XCTAssertEqual(refused, OrdersHeard(lines: nil, trouble: .refused))
+        let muteHeard = await Mute().reading(orders: "Dig in.", briefing: "")
+        XCTAssertEqual(muteHeard, OrdersHeard(lines: nil, trouble: .silent))
     }
 
     func testTheLiveVoiceAnswersWhetherTheModelIsReady() async {

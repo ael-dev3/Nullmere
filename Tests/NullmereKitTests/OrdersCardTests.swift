@@ -1,4 +1,5 @@
 import AppKit
+import FoundationModels
 import LauncherKit
 import SwiftUI
 import XCTest
@@ -26,6 +27,28 @@ final class OrdersCardTests: XCTestCase {
         func read(orders words: String, briefing: String) async -> String? {
             asked.append((words, briefing))
             return answer
+        }
+    }
+
+    /// Reads slowly, until stopped, and keeps that it was.
+    private actor SlowClerk: Voice {
+        private(set) var stopped = false
+
+        func speak(_ moment: VoiceMoment) async -> String? { nil }
+
+        func read(orders words: String, briefing: String) async -> String? {
+            try? await Task.sleep(for: .seconds(30))
+            if Task.isCancelled { stopped = true }
+            return nil
+        }
+    }
+
+    /// Reads nothing, and says why.
+    private struct TroubledClerk: Voice {
+        func speak(_ moment: VoiceMoment) async -> String? { nil }
+
+        func reading(orders words: String, briefing: String) async -> OrdersHeard {
+            OrdersHeard(lines: nil, trouble: .slow)
         }
     }
 
@@ -99,6 +122,11 @@ final class OrdersCardTests: XCTestCase {
         XCTAssertEqual(OrderLine.spoken(lines[2]), "\(lines[2].told) Can't be given: No company goes by the name Dragons.")
         XCTAssertEqual(OrderLine.spoken(lines[0]), lines[0].told)
         XCTAssertFalse(session.ordersInWords?.unread ?? true)
+        // Who read them and in how long, and no trouble to tell.
+        let summary = try XCTUnwrap(session.ordersInWords?.summary)
+        XCTAssertTrue(summary.hasPrefix("Read by Apple's on-device model in "), summary)
+        XCTAssertTrue(summary.hasSuffix(" s: 2 of 3 orders the realm would take."), summary)
+        XCTAssertNil(session.ordersInWords?.trouble)
 
         // Those the realm would take, given together; the card put away.
         let givable = lines.filter { $0.command != nil && $0.why == nil }
@@ -121,6 +149,19 @@ final class OrdersCardTests: XCTestCase {
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.dismissSeatBriefing()
         XCTAssertFalse(session.readsOrders)
+        // Why no model reads the words, from Apple's own word on it.
+        session.counselAvailability = { .unavailable(.appleIntelligenceNotEnabled) }
+        XCTAssertEqual(session.ordersReadAsWritten,
+                       "Apple Intelligence is turned off in System Settings, so your words are read as the order book's lines, as written.")
+        session.counselAvailability = { .unavailable(.deviceNotEligible) }
+        XCTAssertEqual(session.ordersReadAsWritten,
+                       "This device can't run Apple's on-device model, so your words are read as the order book's lines, as written.")
+        session.counselAvailability = { .available }
+        XCTAssertNil(session.ordersReadAsWritten, "Ready since the game began: nothing to excuse")
+        session.counselAvailability = { .unavailable(.modelNotReady) }
+        let reader = GameSession(state: state, store: LocalStore(directory: dir), voice: Clerk(answer: nil))
+        reader.counselAvailability = { .unavailable(.deviceNotEligible) }
+        XCTAssertNil(reader.ordersReadAsWritten, "A Mac whose model reads them makes no excuse before")
         XCTAssertEqual(OrdersCard.prompt(readByModel: false), "Order book lines, as MARCH C1 TO a place")
         XCTAssertEqual(OrdersCard.prompt(readByModel: true), "Your orders, in your own words")
         XCTAssertEqual(OrdersCard.giveTitle(1), "Give the order")
@@ -136,6 +177,8 @@ final class OrdersCardTests: XCTestCase {
         session.readOrders("FORTIFY \(handle)")
         try await waitForReading(in: session)
         XCTAssertEqual(session.ordersInWords?.lines.map(\.command), [.fortify(unit: first.id)], "The later reading stands")
+        XCTAssertEqual(session.ordersInWords?.summary, "Read as the order book's lines, as written: 1 of 1 order the realm would take.")
+        XCTAssertNil(session.ordersInWords?.trouble, "No model on this Mac, as the card's prompt already said")
         draw(OrdersCard(session: session))
 
         session.readOrders("Bring me the moon in a bucket")
@@ -153,6 +196,57 @@ final class OrdersCardTests: XCTestCase {
         XCTAssertTrue(session.handle(.orders))
         XCTAssertNil(session.ordersInWords, "Its key puts it away too")
         XCTAssertEqual(session.panel, .guide, "The panel open stays open")
+    }
+
+    /// The model's reading counted in seconds as it goes, and stopped by the
+    /// keeper with nothing read, its task stopped with it; where the model
+    /// reads nothing, why, plainly, the words read as the order book's
+    /// lines.
+    func testAReadingIsTimedMayBeStoppedAndSaysWhyNot() async throws {
+        let state = world()
+        let me = state.player
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let first = try XCTUnwrap(companies.first { $0.kind.isMilitary })
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == first.id }) + 1)"
+        let slow = SlowClerk()
+        let session = GameSession(state: state, store: LocalStore(directory: dir), voice: slow)
+        session.dismissSeatBriefing()
+        session.toggleOrders()
+        session.readOrders("Dig in my first company.")
+        XCTAssertEqual(session.ordersInWords?.reading, true)
+        let began = try XCTUnwrap(session.ordersInWords?.began)
+        XCTAssertEqual(OrdersCard.readingLine(byModel: true, began: began, now: began.addingTimeInterval(2.46)),
+                       "Your clerk reads your words… 2.5 s")
+        XCTAssertEqual(OrdersCard.readingLine(byModel: false, began: began, now: began), "Reading…")
+        XCTAssertEqual(OrdersCard.readingLine(byModel: true, began: nil, now: began), "Your clerk reads your words…")
+        draw(OrdersCard(session: session))
+        XCTAssertTrue(PressableButtons.press("Stop"), "Among \(shown)")
+        XCTAssertEqual(session.ordersInWords?.reading, false)
+        XCTAssertEqual(session.ordersInWords?.summary, "Stopped: nothing was read.")
+        XCTAssertEqual(session.ordersInWords?.lines, [])
+        let serial = session.ordersInWords?.serial
+        session.stopReadingOrders()
+        XCTAssertEqual(session.ordersInWords?.serial, serial, "Nothing under way, nothing to stop")
+        var waited = 0
+        while await slow.stopped == false, waited < 300 {
+            try await Task.sleep(for: .milliseconds(10))
+            waited += 1
+        }
+        let stopped = await slow.stopped
+        XCTAssertTrue(stopped, "The model's own task stopped, not left to run on")
+        draw(OrdersCard(session: session))
+
+        // A model that reads nothing says why: told so, plainly, and the
+        // words read as the order book's lines.
+        let troubled = GameSession(state: state, store: LocalStore(directory: dir), voice: TroubledClerk())
+        troubled.dismissSeatBriefing()
+        troubled.toggleOrders()
+        troubled.readOrders("FORTIFY \(handle)")
+        try await waitForReading(in: troubled)
+        XCTAssertEqual(troubled.ordersInWords?.lines.map(\.command), [.fortify(unit: first.id)])
+        XCTAssertEqual(troubled.ordersInWords?.summary, "Read as the order book's lines, as written: 1 of 1 order the realm would take.")
+        XCTAssertEqual(troubled.ordersInWords?.trouble, CounselTrouble.slow.unreadOrders)
+        draw(OrdersCard(session: troubled))
     }
 
     /// Standing orders read from the keeper's words and given, shown at the

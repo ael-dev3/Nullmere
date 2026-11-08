@@ -17,11 +17,30 @@ public protocol Voice: Sendable {
     /// briefing of what their House has and knows; nil from a voice that
     /// reads none.
     func read(orders words: String, briefing: String) async -> String?
+    /// The same reading, with why the voice wrote no lines where it wrote
+    /// none, as the keeper is told it.
+    func reading(orders words: String, briefing: String) async -> OrdersHeard
 }
 
 extension Voice {
     public func compose(_ moment: VoiceMoment) async -> String? { nil }
     public func read(orders words: String, briefing: String) async -> String? { nil }
+    public func reading(orders words: String, briefing: String) async -> OrdersHeard {
+        let lines = await read(orders: words, briefing: briefing)
+        return OrdersHeard(lines: lines, trouble: lines == nil ? .silent : nil)
+    }
+}
+
+/// What a voice made of a keeper's own words: the order book's lines it
+/// wrote, or why it wrote none.
+public struct OrdersHeard: Sendable, Equatable {
+    public let lines: String?
+    public let trouble: CounselTrouble?
+
+    public init(lines: String?, trouble: CounselTrouble?) {
+        self.lines = lines
+        self.trouble = trouble
+    }
 }
 
 /// A moment worth a few spoken words, with everything the speaker may know.
@@ -163,13 +182,24 @@ public struct OnDeviceVoice: Voice {
     }
 
     public func read(orders words: String, briefing: String) async -> String? {
-        guard isReady() else { return nil }
+        await reading(orders: words, briefing: briefing).lines
+    }
+
+    /// The keeper's words read by the model, or why they weren't: not ready
+    /// on this Mac, or the model's own trouble as counsel names it.
+    public func reading(orders words: String, briefing: String) async -> OrdersHeard {
+        guard isReady() else { return OrdersHeard(lines: nil, trouble: OnDeviceVoice.trouble() ?? .unavailable(.modelNotReady)) }
         do {
-            return try await respond(OnDeviceVoice.clerk, Self.orders(words, briefing: briefing))
+            return OrdersHeard(lines: try await respond(OnDeviceVoice.clerk, Self.orders(words, briefing: briefing)), trouble: nil)
         } catch {
             OnDeviceVoice.logger.notice("Orders went unread: \(String(describing: error), privacy: .public)")
-            return nil
+            return OrdersHeard(lines: nil, trouble: CommanderCounselSession.trouble(from: error, availability: { SystemLanguageModel.default.availability }))
         }
+    }
+
+    /// Why Apple's on-device model can't be asked on this Mac now, or nil.
+    static func trouble() -> CounselTrouble? {
+        CommanderCounselSession.trouble(for: SystemLanguageModel.default.availability)
     }
 
     /// What the clerk is asked: the briefing, then the keeper's words.
