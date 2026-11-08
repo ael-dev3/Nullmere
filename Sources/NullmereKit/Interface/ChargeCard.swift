@@ -12,9 +12,9 @@ enum ChargeGuide {
     static func how(_ charge: Charge) -> String {
         switch charge {
         case .raiseGranary:
-            return "Choose your seat (H) and build a Granary: it keeps more of every store."
+            return "Choose your seat (H) and build a Granary: it raises the grain your seat yields."
         case .musterCompany:
-            return "At your seat, train Spears, Bows or Riders: companies of war defend, strike and gather."
+            return "Raise a Muster Hall at your seat and train Spears there, Bows once it is II and Riders at III: companies of war defend, strike and gather."
         case .raiseArchive:
             return "Build an Archive at your seat. Studies are learned there, one at a time."
         case .learnStudy:

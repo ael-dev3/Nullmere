@@ -180,7 +180,7 @@ final class GameSessionTests: XCTestCase {
         XCTAssertEqual(said, [], "Nothing said before the keeper is in the world")
         session.dismissSeatBriefing()
         XCTAssertEqual(said, [ChargeGuide.counsel(.raiseGranary)])
-        XCTAssertEqual(said.first, "A new charge, keeper. Raise a Granary at your seat. Choose your seat and build a Granary: it keeps more of every store.")
+        XCTAssertEqual(said.first, "A new charge, keeper. Raise a Granary at your seat. Choose your seat and build a Granary: it raises the grain your seat yields.")
         session.endWatch()
         XCTAssertEqual(said.count, 2, "The next charge, counselled as it comes")
         let next = try XCTUnwrap(session.state.charge(of: session.player))
