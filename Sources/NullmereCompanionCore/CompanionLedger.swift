@@ -1619,7 +1619,7 @@ public struct CompanionLedger: Equatable, Sendable {
         // when full or home, and what it carries.
         if let gathering = world.gatheringSaid(of: unit) { return gathering.prefix(1).uppercased() + gathering.dropFirst() }
         switch unit.errand {
-        case .rally?: return "With a rally"
+        case .rally(let id)?: return world.rallySaid(id)
         case .reinforce(let hold)?: return "Keeping the gates of \(world.hold(hold)?.name ?? "an ally's hold")"
         case .gather?, .homeward?, nil: break
         }

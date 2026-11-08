@@ -142,6 +142,9 @@ final class RallyTests: XCTestCase {
         let joined = try state.perform(.joinRally(rally: id, unit: theirs), as: 1)
         XCTAssertEqual(joined.first, .rallyJoined(rally: id, unit: theirs, house: 1))
         XCTAssertEqual(state.unit(theirs)?.errand, .rally(id))
+        // Its keeper told against what, on the Mac's panel and the phone alike.
+        XCTAssertEqual(state.rallySaid(id), "Sent to the rally against \(try XCTUnwrap(state.targetName(stage.target)))")
+        XCTAssertEqual(state.rallySaid(4_242), "Sent to the rally")
         XCTAssertEqual(refusal(.joinRally(rally: id, unit: theirs), in: state, as: 1), .alreadyRallying)
         _ = try state.perform(.joinRally(rally: id, unit: spear), as: me)
         XCTAssertEqual(state.rally(id)?.companies, [theirs, spear])

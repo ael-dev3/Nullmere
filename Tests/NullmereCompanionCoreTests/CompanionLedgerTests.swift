@@ -1509,6 +1509,7 @@ final class CompanionLedgerTests: XCTestCase {
         // Sent to it, it is offered neither again, nor any gates, while on its errand.
         _ = try state.perform(.joinRally(rally: rally.id, unit: spear.id), as: me)
         company = try XCTUnwrap(CompanionLedger(world: state, player: me).companies.first { $0.id == spear.id })
+        XCTAssertEqual(company.doing, "Sent to the rally against \(foeSeat.name)", "As the Mac's panel says it")
         XCTAssertTrue(company.rallies.isEmpty)
         XCTAssertTrue(company.gates.isEmpty)
         XCTAssertEqual(state.joinRallyRefusal(rally.id, with: spear.id, as: me), .alreadyRallying)

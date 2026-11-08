@@ -840,8 +840,7 @@ struct UnitPanel: View {
         case .homeward?:
             return "Bringing \(load ?? "its load") home."
         case .rally(let id)?:
-            let target = state.rally(id).flatMap { state.targetName($0.target) }.map { " against \($0)" } ?? ""
-            return "Sent to the rally\(target)."
+            return state.rallySaid(id) + "."
         case .reinforce(let holdID)?:
             return "Keeping the gates of \(state.hold(holdID)?.name ?? "an ally's hold")."
         case nil:

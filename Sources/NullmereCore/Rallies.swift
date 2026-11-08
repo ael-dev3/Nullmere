@@ -101,6 +101,13 @@ extension GameState {
         hold(id)?.name ?? lair(id).map { "the \($0.title)" }
     }
 
+    /// A company sent to a rally, as its keeper is told it on the Mac and
+    /// the phone alike: "Sent to the rally against Tirford", or a lair by
+    /// its name; the rally alone where its target isn't known.
+    public func rallySaid(_ id: Int) -> String {
+        "Sent to the rally" + (rally(id).flatMap { targetName($0.target) }.map { " against \($0)" } ?? "")
+    }
+
     /// Whether a House's company may march with a host on its target: on
     /// a lair, any of its side's; on a hold, those at war with its House.
     func mayStrike(_ house: Int, _ target: RallyTarget) -> Bool {
