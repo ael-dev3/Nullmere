@@ -1458,7 +1458,7 @@ struct StoneRow: View {
         }
         let quarters = Array(Set(heard.map(\.quarter))).sorted().map { Sounding.quarters[$0] }
         return "The stone heard \(heard.count == 1 ? "a march" : "\(heard.count) marches") out of sight, "
-            + "\(heard.contains(where: \.near) ? "near" : "far off"), to the \(listed(quarters))."
+            + "\(heard.contains(where: \.near) ? "near" : "far off"), to the \(NullmereCore.listed(quarters))."
     }
 
     var body: some View {
