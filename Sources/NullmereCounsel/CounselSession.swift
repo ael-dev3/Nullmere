@@ -259,6 +259,16 @@ public final class CommanderCounselSession: ObservableObject {
         }
     }
 
+    /// The trouble an error stands for, where the system said nothing of
+    /// why told by the model's own word on why it can't be asked now, if it
+    /// has one, asked again after the failure (Apple Intelligence turned off
+    /// meanwhile, the model gone unready); else as the error stands.
+    public nonisolated static func trouble(from error: Error, availability: () -> SystemLanguageModel.Availability) -> CounselTrouble {
+        let told = CommanderCounselSession.trouble(from: error)
+        guard told == .silent, let reason = CommanderCounselSession.trouble(for: availability()) else { return told }
+        return reason
+    }
+
     /// The trouble an error from the model, or one of its tools, stands for.
     public nonisolated static func trouble(from error: Error) -> CounselTrouble {
         if let error = error as? CounselTrouble { return error }
@@ -373,7 +383,7 @@ public final class CommanderCounselSession: ObservableObject {
             await takeFromBench()
             let trouble: CounselTrouble = error is CancellationError || Task.isCancelled
                 ? (gaveUp ? .slow : .failed("stopped by the keeper"))
-                : CommanderCounselSession.trouble(from: error)
+                : CommanderCounselSession.trouble(from: error, availability: availability)
             if trouble == .failed("stopped by the keeper") {
                 add(.trouble, "Stopped.")
             } else {

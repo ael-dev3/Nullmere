@@ -64,6 +64,27 @@ final class OrderClerkTests: XCTestCase {
         XCTAssertEqual(strange.trouble, CounselTrouble.failed("The stars are wrong.").unreadOrders)
     }
 
+    /// A silent failure, the model asked again why it can't read now: its
+    /// reason told where it gives one (Apple Intelligence turned off
+    /// meanwhile), the words read as written.
+    func testASilentModelIsAskedWhyAgain() async {
+        let (world, me) = world()
+        final class Asked: @unchecked Sendable {
+            private let lock = NSLock()
+            private var count = 0
+            func next() -> Int { lock.lock(); defer { lock.unlock() }; count += 1; return count }
+        }
+        let asked = Asked()
+        let stock = NSError(domain: "FoundationModels.LanguageModelSession.GenerationError", code: -1)
+        let clerk = OrderClerk(trouble: { asked.next() == 1 ? nil : .unavailable(.appleIntelligenceOff) }) { _ in throw stock }
+        let reading = await clerk.read("FORTIFY C1", in: world, player: me)
+        XCTAssertFalse(reading.byModel)
+        XCTAssertEqual(reading.trouble, CounselTrouble.unavailable(.appleIntelligenceOff).unreadOrders)
+        XCTAssertEqual(reading.lines, SpokenOrders.read("FORTIFY C1", in: world, player: me))
+        let still = await OrderClerk(trouble: { nil }) { _ in throw stock }.read("FORTIFY C1", in: world, player: me)
+        XCTAssertEqual(still.trouble, CounselTrouble.silent.unreadOrders, "Still able to be asked: the silence, as it was")
+    }
+
     func testASlowModelIsGivenUp() async {
         let (world, me) = world()
         let slow = OrderClerk(trouble: { nil }, patience: 0.2) { _ in

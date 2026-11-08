@@ -259,6 +259,33 @@ final class CounselSessionTests: XCTestCase {
         XCTAssertTrue(session.memory.exchanges.isEmpty)
     }
 
+    /// No answer, and the system said nothing of why: where the model, asked
+    /// again after the failure, says why it can't be asked now (Apple
+    /// Intelligence turned off meanwhile), that is told; where it can still
+    /// be asked, the silence is, as it was.
+    func testASilentFailureTellsWhyTheModelCantBeAskedWhereItSays() async throws {
+        let counsel = try counsel()
+        let stock = NSError(domain: "FoundationModels.LanguageModelSession.GenerationError", code: -1)
+        var asked = 0
+        let session = CommanderCounselSession(counsel: counsel, memory: CounselMemory(commander: counsel.commander.id, age: 1),
+                                              availability: {
+                                                  asked += 1
+                                                  return asked == 1 ? .available : .unavailable(.appleIntelligenceNotEnabled)
+                                              })
+        session.speaker = { _ in AsyncThrowingStream { $0.finish(throwing: stock) } }
+        session.ask("Speak?")
+        try await until("the silence told") { !session.answering }
+        XCTAssertEqual(session.trouble, .unavailable(.appleIntelligenceOff))
+        XCTAssertEqual(session.lines.last?.text, CounselTrouble.unavailable(.appleIntelligenceOff).said)
+        let still = spoken(counsel) { _ in AsyncThrowingStream { $0.finish(throwing: stock) } }
+        still.ask("Speak?")
+        try await until("the silence") { !still.answering }
+        XCTAssertEqual(still.trouble, .silent)
+        XCTAssertEqual(CommanderCounselSession.trouble(from: stock, availability: { .unavailable(.modelNotReady) }), .unavailable(.modelNotReady))
+        XCTAssertEqual(CommanderCounselSession.trouble(from: CounselTrouble.busy, availability: { .unavailable(.modelNotReady) }), .busy,
+                       "Only silence is asked about again")
+    }
+
     /// Trouble told as itself: counsel outgrown is begun afresh from what
     /// the commander remembers and answered; the model busy is said to be;
     /// an answer of nothing is garbled, never shown as an answer.

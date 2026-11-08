@@ -74,7 +74,9 @@ public struct OrderClerk: Sendable {
             return SpokenOrders.reading(words, answer: answer, trouble: nil, seconds: Date().timeIntervalSince(began), in: world, player: player)
         } catch {
             if Task.isCancelled || error is CancellationError { return .stopped }
-            return SpokenOrders.reading(words, answer: nil, trouble: CommanderCounselSession.trouble(from: error), seconds: nil,
+            // Silent, the model asked again why it can't read now, if it says.
+            let failed = CommanderCounselSession.trouble(from: error)
+            return SpokenOrders.reading(words, answer: nil, trouble: failed == .silent ? (trouble() ?? failed) : failed, seconds: nil,
                                         in: world, player: player)
         }
     }
