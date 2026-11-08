@@ -1492,7 +1492,7 @@ public struct CompanionLedger: Equatable, Sendable {
     /// the healing of those still waiting where the rules would pay for it.
     static func infirmary(at hold: NullmereCore.Hold, in world: GameState, player: Int) -> (String?, Order?) {
         guard let wounded = hold.wounded, !wounded.isEmpty else { return (nil, nil) }
-        let said = "Infirmary, \(wounded.count) of \(hold.beds) beds: \(Wounded.lying(wounded))"
+        let said = "Infirmary, \(wounded.count) of \(hold.beds) beds: \(world.lying(at: hold))"
         let waiting = wounded.filter { !$0.healing }.count
         guard waiting > 0, world.refusal(of: .heal(hold: hold.id), as: player) == nil else { return (said, nil) }
         return (said, Order(title: "Heal \(waiting) for \(world.healingCost(at: hold))", command: .heal(hold: hold.id)))

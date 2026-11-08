@@ -2157,7 +2157,7 @@ final class DepthPanelTests: XCTestCase {
         let (session, link) = session(state)
         session.selection = .hold(seat.id)
         draw(SelectionPanel(session: session), width: 330, height: 1100)
-        XCTAssertEqual(InfirmaryRows.lying(try XCTUnwrap(session.state.hold(seat.id)?.wounded)), "Spears II · Bows I, healing")
+        XCTAssertEqual(session.state.lying(at: try XCTUnwrap(session.state.hold(seat.id))), "Spears II · Bows I, healing")
         XCTAssertTrue(PressableButtons.press("Heal 1"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .heal(hold: seat.id))
         XCTAssertEqual(session.state.hold(seat.id)?.wounded?.map(\.healing), [true, true], "Paid for at once on the keeper's copy")

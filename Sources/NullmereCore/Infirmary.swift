@@ -20,12 +20,13 @@ public struct Wounded: Codable, Equatable, Sendable {
     }
 }
 
-extension Wounded {
-    /// Who lies in a hold's beds, each with its tier, and those being
-    /// healed, as the Mac and the phone tell it: "Spears II · Bows I, healing".
-    public static func lying(_ wounded: [Wounded]) -> String {
-        wounded.map { company in
-            company.kind.named(tier: company.tier) + (company.healing ? ", healing" : "")
+extension GameState {
+    /// Who lies in a hold's beds, each named as every line names a company
+    /// of its House (`named(_:tier:of:)`), and those being healed, as the
+    /// Mac and the phone tell it: "Spears II · Bows I, healing".
+    public func lying(at hold: Hold) -> String {
+        (hold.wounded ?? []).map { company in
+            named(company.kind, tier: company.tier, of: hold.owner) + (company.healing ? ", healing" : "")
         }.joined(separator: " · ")
     }
 }

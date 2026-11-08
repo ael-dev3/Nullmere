@@ -275,7 +275,7 @@ struct InfirmaryRows: View {
             }
             .accessibilityElement(children: .combine)
             if !wounded.isEmpty {
-                Text(verbatim: InfirmaryRows.lying(wounded))
+                Text(verbatim: session.state.lying(at: hold))
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.text(0.65))
                 HStack(spacing: 10) {
@@ -291,10 +291,6 @@ struct InfirmaryRows: View {
             }
         }
     }
-
-    /// Who lies in the beds, each with its tier, and those being healed,
-    /// in the words the phone tells it in too.
-    static func lying(_ wounded: [Wounded]) -> String { Wounded.lying(wounded) }
 }
 
 private struct ProgressLine: View {

@@ -93,6 +93,11 @@ final class HeritageTests: XCTestCase {
         XCTAssertEqual(state.named(lesser), "Spears IV")
         XCTAssertTrue(SpokenOrders.named(wardens, in: state).hasPrefix("Salt Wardens "))
         XCTAssertEqual(state.named(.lantern, tier: 1, of: me), "Lanterns")
+        // And so in its beds, wounded, on the Mac's hold panel and the phone.
+        let beds = try XCTUnwrap(state.holdIndex(seat.id))
+        state.holds[beds].wounded = [Wounded(kind: .spear, tier: 5, experience: 0, since: 0),
+                                     Wounded(kind: .bow, tier: 2, experience: 0, since: 0, healing: true)]
+        XCTAssertEqual(state.lying(at: state.holds[beds]), "Salt Wardens · Bows II, healing")
         let might = NullmereCore.Unit.tierMight[NullmereCore.Unit.tierIndex(5, of: .spear)]
         XCTAssertEqual(state.attackPercent(of: wardens), might * 105 / 100)
         XCTAssertEqual(state.defensePercent(of: wardens), might * 105 / 100)
