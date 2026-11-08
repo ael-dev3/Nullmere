@@ -399,7 +399,7 @@ extension GameState {
             let quarters = Array(Set(heard.map(\.quarter))).sorted().map { Sounding.quarters[$0] }
             let near = heard.contains(where: \.near)
             return Tidings("The stone before \(hold(sunk.hold)?.name ?? "your hold") hears \(marches == 1 ? "a march" : "\(marches) marches") "
-                + "out of sight, \(near ? "near" : "far off"), to the \(quarters.joined(separator: " and "))", .bad)
+                + "out of sight, \(near ? "near" : "far off"), to the \(listed(quarters)).", .bad)
         case .stoneLost(_, let house):
             guard house == viewer else { return nil }
             return Tidings("A listening stone is lost with the hold it was sunk before.", .bad)

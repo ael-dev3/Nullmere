@@ -311,6 +311,12 @@ extension GameState {
     }
 }
 
+/// Things said in a line as a list: "east", "east and north", "east,
+/// north and north-east".
+public func listed(_ items: [String]) -> String {
+    items.count <= 1 ? items.first ?? "" : items.dropLast().joined(separator: ", ") + " and " + items.last!
+}
+
 /// A number's ordinal in words to the tenth, and in figures past it.
 public func ordinal(_ number: Int) -> String {
     switch number {

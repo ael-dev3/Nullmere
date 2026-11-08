@@ -285,7 +285,7 @@ extension GameState {
                 events += giveSculptures(count, to: house)
             }
             let host = sides.map { houses[$0].title }
-            let named = host.count == 1 ? host[0] : host.dropLast().joined(separator: ", ") + " and " + host.last!
+            let named = listed(host)
             record(.hunt, sides, target.gate == nil ? "A host of \(named) breaks \(target.named) \(placeName(of: target.position))."
                    : "A host of \(named) breaks \(target.named): the way to the Heartstone lies open there.")
         }

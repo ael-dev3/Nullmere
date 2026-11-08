@@ -75,7 +75,10 @@ final class ListeningStoneTests: XCTestCase {
         XCTAssertEqual(sounding.quarter, GameState.quarter(of: step, from: stone.at))
         XCTAssertEqual(sounding.near, step.distance(to: stone.at) <= GameState.stoneReach / 2)
         let told = try XCTUnwrap(state.tidings(of: events[0], for: me)).text
-        XCTAssertTrue(told.contains("to the \(sounding.quarterName)"), told)
+        XCTAssertTrue(told.hasSuffix("to the \(sounding.quarterName)."), "Ended as every tiding is: \(told)")
+        XCTAssertEqual(listed(["east"]), "east")
+        XCTAssertEqual(listed(["east", "north"]), "east and north")
+        XCTAssertEqual(listed(["east", "north", "north-east"]), "east, north and north-east")
         XCTAssertFalse(told.contains(state.houses[other].title), "Whose it is, the stone can't tell")
         // Its House alone knows: the other's view holds no stone nor sounding.
         XCTAssertEqual(state.view(for: other).listeningStones, nil)

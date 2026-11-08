@@ -379,7 +379,7 @@ extension GameState {
         if field.fighters.count >= Field.told {
             func named(_ side: Int) -> String {
                 let titles = field.sides[side].map { houses[$0].title }
-                return titles.count == 1 ? titles[0] : titles.dropLast().joined(separator: ", ") + " and " + titles.last!
+                return listed(titles)
             }
             let leaders = field.sides.map { houses[$0[0]].title }
             let held = field.held.map { "\(leaders[$0])'s side holds the field" } ?? "neither side gives way"

@@ -337,7 +337,7 @@ extension GameState {
         let taken = hold(target.id).map { $0.owner != defender } ?? false
         events.append(.rallyStruck(rally: rallyID, caller: rally.caller, target: target.id, defender: defender, taken: taken))
         let host = sides.map { houses[$0].title }
-        let named = host.count == 1 ? host[0] : host.dropLast().joined(separator: ", ") + " and " + host.last!
+        let named = listed(host)
         record(.rally, sides + [defender], "A host of \(named) falls upon \(target.name)" + (taken ? " and takes it." : ", but it holds."))
         return events
     }
