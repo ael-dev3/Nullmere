@@ -99,6 +99,20 @@ final class LocalRealmTests: XCTestCase {
             XCTAssertTrue(earA.events.contains { if case .watchTurned = $0 { return true } else { return false } })
             XCTAssertTrue(earB.events.contains { if case .watchTurned = $0 { return true } else { return false } })
             XCTAssertEqual(realm.state.world.watch, 2)
+            // Each keeper's own record told as the watch left it, its favour
+            // and the watches kept among it, before what the watch brought.
+            let told = earA.events.compactMap { event -> Keeper? in
+                if case .keeperChanged(let keeper) = event { return keeper } else { return nil }
+            }
+            XCTAssertEqual(told.last, realm.state.keeper("a"))
+            let order = earA.events.compactMap { event -> String? in
+                switch event {
+                case .keeperChanged: return "keeper"
+                case .watchTurned: return "watch"
+                default: return nil
+                }
+            }
+            XCTAssertEqual(order.suffix(2), ["keeper", "watch"])
         }
     }
 

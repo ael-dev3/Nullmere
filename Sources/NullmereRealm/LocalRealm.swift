@@ -165,6 +165,9 @@ public final class LocalRealm {
                 // A new age: every keeper is seated afresh.
                 deliver(.arrived(keeper, world(for: identity)), to: identity)
             } else {
+                // Their own record as the watch left it: favour, the watches
+                // kept unbroken, renown.
+                if let keeper = state.keeper(identity) { deliver(.keeperChanged(keeper), to: identity) }
                 deliver(.watchTurned(world(for: identity), heard(events, by: identity)), to: identity)
             }
         }

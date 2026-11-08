@@ -1163,6 +1163,9 @@ public final class GameSession {
             // A keeper already in the world is seated anew: in a new age, or
             // in a free House taken up after their own fell.
             onNewAge?(keeper, world)
+        case .keeperChanged(let keeper):
+            // Their favour, the watches kept, renown and titles, as they stand.
+            self.keeper = keeper
         case .refused(.unknownKeeper):
             // The realm has forgotten this keeper altogether.
             onForgotten?()

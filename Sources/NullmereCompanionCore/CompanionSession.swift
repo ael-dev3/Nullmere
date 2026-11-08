@@ -318,6 +318,9 @@ public final class CompanionSession {
             outOfReach = why
         case .heard(let events):
             if let world { file(events, in: world) }
+        case .keeperChanged(let keeper):
+            // Their favour and the watches kept, as the watch left them.
+            self.keeper = keeper
         }
     }
 

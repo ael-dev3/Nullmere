@@ -423,6 +423,29 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// The keeper's own record kept fresh on the phone as the watches turn,
+    /// over the network: the favour won and the watches kept as the realm
+    /// keeps them, not as they stood when the phone came in.
+    func testThePhoneKeepsTheKeepersFavourAsTheWatchesTurn() async throws {
+        let (db, running, mac, _, _) = try await realm()
+        defer { running.cancel() }
+        let phone = CompanionSession(memory: PassingMemory()) { _ in
+            NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05)
+        }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping }
+        let before = phone.keeper
+        let watch = try XCTUnwrap(phone.world?.watch)
+        mac.setReady(true)
+        try await until("the watch turned on the phone") { (phone.world?.watch ?? 0) > watch }
+        try await until("the keeper's record told anew") { phone.keeper != before }
+        XCTAssertGreaterThan(phone.keeper?.favour ?? 0, before?.favour ?? 0, "Favour won for the watch kept")
+        XCTAssertEqual(phone.keeper?.id, before?.id, "The same keeper")
+        phone.unlink()
+        mac.close()
+    }
+
     /// A chest of the Lantern Inn opened from the phone: the realm's word on
     /// it says what it held, as the Mac tells it, and the key is spent.
     func testAChestOfTheInnOpenedFromThePhoneSaysWhatItHeld() async throws {

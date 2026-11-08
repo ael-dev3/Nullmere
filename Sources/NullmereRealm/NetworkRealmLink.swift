@@ -593,6 +593,10 @@ public final class NetworkRealmLink: RealmLink {
         let events = batches.filter { $0.version > heardThrough }.flatMap(\.events)
         heardThrough = max(heardThrough, batches.map(\.version).max() ?? 0)
         guard let previous else { return }
+        // The keeper's own record, freshly told before what the watch brought.
+        if fresh.age == previous.age, fresh.keeper != previous.keeper {
+            onEvent?(.keeperChanged(fresh.keeper))
+        }
         if fresh.age != previous.age {
             onEvent?(.arrived(fresh.keeper, fresh.world))
         } else if fresh.world.watch != previous.world.watch {

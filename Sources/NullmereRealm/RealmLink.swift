@@ -29,6 +29,9 @@ public enum RealmEvent: Sendable {
     /// The realm counts the keeper as ready, or not, otherwise than the
     /// keeper last asked: readiness lost while away, put right.
     case readiness(Bool)
+    /// The keeper's own record changed while they are in the world: their
+    /// favour, the watches kept unbroken, their renown or titles.
+    case keeperChanged(Keeper)
 }
 
 /// A keeper's line to the realm. The realm holds the world; the client
