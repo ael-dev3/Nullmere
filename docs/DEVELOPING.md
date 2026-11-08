@@ -64,8 +64,9 @@ only, so tested on Linux too).
   set aside and comes in again; the Mac must see the phone's order. Then
   the phone takes counsel of a commander through its own on-device model,
   as the Mac's check does (unverified where the simulator's Mac can't run
-  the model). CI builds the companion right after the Mac app, runs both
-  together on every push, and keeps the companion's screens.
+  the model). CI builds the companion and runs both apps together on
+  every push, in a Mac job of its own beside the one that tests and
+  bundles the Mac app, and keeps the companion's screens with the Mac's.
 
 ## Releasing
 
@@ -115,7 +116,9 @@ scripts/check-voices.sh    # the voices, spoken by this Mac's on-device model th
 
 CI runs all of these on a macOS 26 runner for every pull request and every
 push to `main` or a working branch that touches the code, and keeps the
-screenshots of the launcher, the realm's front door and the world.
+screenshots of the launcher, the realm's front door, the world and the
+phone, and each test's time, slowest first, beside them on the `ci-shots`
+branch (`<run>/test-times.txt`; `scripts/push-ci-shots.sh`).
 
 Line coverage is held to a floor for each module, on macOS and, for the
 rules, the realm and the launcher's logic, on Linux too (`scripts/coverage.py`). On macOS,

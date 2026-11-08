@@ -226,5 +226,31 @@ phone_run env SWIFT_BIN_PATH_FAILS=1 "$PHONE/scripts/build-companion.sh"
 check "build-companion.sh stops when a step after the build fails" "$(cat "$WORK/phone.status")" "3"
 check "and says where" "$(grep -q "^error: build-companion.sh stopped at line [0-9]*: " "$WORK/phone.out" && echo said)" "said"
 
+# push-ci-shots.sh: two jobs of one run keep their screenshots in its
+# folder, another run's at the same moment, against a bare repository
+# standing in for GitHub's: none forced away, the branch begun if it isn't.
+git init -q --bare "$WORK/shots.git"
+mkdir -p "$WORK/mac" "$WORK/phone" "$WORK/next" "$WORK/none"
+echo mac > "$WORK/mac/game-world.png"
+echo "1.5 Tests.slowest" > "$WORK/mac/test-times.txt"
+echo phone > "$WORK/phone/companion-house.png"
+echo next > "$WORK/next/game-world.png"
+shots() { CI_SHOTS_URL="file://$WORK/shots.git" RUN="$1" SHA="$2" scripts/push-ci-shots.sh "$3" >/dev/null 2>"$WORK/shots-$1-$(basename "$3").err"; }
+on_branch() { git --git-dir="$WORK/shots.git" show "ci-shots:$1" 2>/dev/null || echo missing; }
+shots 746 abc "$WORK/mac"
+check "push-ci-shots.sh begins the branch with the run's screenshots" "$(on_branch 746/game-world.png)" "mac"
+check "and each test's time beside them" "$(on_branch 746/test-times.txt)" "1.5 Tests.slowest"
+check "and the run's commit" "$(on_branch 746/COMMIT)" "abc"
+shots 746 abc "$WORK/phone" & phone_job=$!
+shots 747 def "$WORK/next" & next_run=$!
+wait "$phone_job"; phone_status=$?
+wait "$next_run"; next_status=$?
+check "two pushes at once both keep theirs" "$phone_status $next_status" "0 0"
+check "the other job's screenshot joins the run's folder" "$(on_branch 746/companion-house.png)" "phone"
+check "the first job's is still there" "$(on_branch 746/game-world.png)" "mac"
+check "the next run's in a folder of its own" "$(on_branch 747/game-world.png)" "next"
+check "each a commit of its own, none forced away" "$(git --git-dir="$WORK/shots.git" rev-list --count ci-shots)" "3"
+check "a job with no screenshots keeps nothing" "$(CI_SHOTS_URL="file://$WORK/shots.git" RUN=748 SHA=ghi scripts/push-ci-shots.sh "$WORK/none")" "No screenshots to keep."
+
 [ "$failures" = 0 ] && echo "The scripts do what they say."
 exit "$failures"

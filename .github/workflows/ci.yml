@@ -75,9 +75,11 @@ jobs:
       contents: write
     # The tests alone take some twenty-five to thirty minutes now that the
     # world's models, motes and lights are rendered on the GPU; then the
-    # bundle, the release rehearsal, the screenshots of the game and the
-    # realm and the keeper's phone beside their Mac: about fifty-five
-    # minutes in all (53 min 20 s in run 696, 54 min 50 s in run 707).
+    # bundle, the release rehearsal and the screenshots of the game and the
+    # realm. The keeper's phone beside their Mac, some ten minutes of it,
+    # runs in a job of its own beside this one (companion, below): with it,
+    # this job had grown to 58 min 15 s on a slow runner (run 735, whose
+    # plain work went 1.74 times slower than the baseline's).
     timeout-minutes: 60
     # "bash" runs with -o pipefail, so a failure piped through tee still fails.
     defaults:
@@ -104,27 +106,20 @@ jobs:
             exit 1
           fi
 
-      - name: Build the companion for the iOS Simulator
-        id: companion
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        # Early, so its errors show minutes into the run, not at its end; a
-        # failure here still fails the job, at "The companion was built".
-        continue-on-error: true
-        timeout-minutes: 20
-        # bash -eo pipefail: the script's own failure fails the step, not tee's success.
-        # Its errors are raised as annotations too, readable however long the log.
-        shell: bash
-        run: |
-          mkdir -p build
-          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
-            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
-              echo "::error title=Companion for iOS::${line}"
-            done
-            exit 1
-          fi
-
       - name: Test
         run: NULLMERE_KEEP_RENDERS="$PWD/build" swift test --enable-code-coverage 2>&1 | tee build-test.log
+
+      # Each test's time, the slowest first, kept on the ci-shots branch
+      # beside the screenshots (test-times.txt): what the tests' twenty-odd
+      # minutes are made of, for whoever would make them fewer.
+      - name: Each test's time
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          mkdir -p build
+          grep -hE "^Test Case '.*' (passed|failed|skipped) \(" build-test.log \
+            | sed -E "s/^Test Case '-\[([^ ]+) ([^]]+)\]' ([a-z]+) \(([0-9.]+) seconds\)\.?$/\4 \1.\2 \3/" \
+            | sort -rn > build/test-times.txt || true
+          head -n 12 build/test-times.txt || true
 
       # How much of each module the tests run, held to a floor.
       - name: Coverage
@@ -282,35 +277,6 @@ jobs:
           STEWARD=background CONFIGURATION=debug STEWARD_LOG="$PWD/build/steward.log" \
             NULLMERE_REALM_SEED="black moon" scripts/raise-realm.sh local
 
-      # Nullmere Companion, the keeper's iPhone app, built for the iOS
-      # Simulator from the same package, bundled and signed to run there.
-      # Both real apps on the realm raised above: the Mac enters and offers
-      # a link; the phone, in the simulator, takes it, digs a company in,
-      # speaks to the realm, makes its keeper ready so the watch turns and
-      # sets a hold to work, is set aside and comes in again, and the Mac
-      # sees each of them; its line to the realm is cut and mended, and it
-      # comes back, the words it said while cut off heard on the Mac. Then
-      # the phone takes
-      # counsel through its own on-device model: unverified where the
-      # runner's model can't be asked, as so far it can't. It goes before
-      # the keeper entering across the network, who would be away from the
-      # realm by then: a watch lasts at least a third of its length while a
-      # keeper whose House stands is away, so the phone's ready waited on
-      # that keeper's absence (97 s in run 707).
-      - name: The keeper's phone beside their Mac
-        if: ${{ !cancelled() && steps.companion.outcome == 'success' && steps.realm.outcome == 'success' }}
-        timeout-minutes: 15
-        shell: bash
-        env:
-          NULLMERE_REALM: http://127.0.0.1:3000/nullmere
-        run: scripts/smoke-test-companion.sh 2>&1 | tee build/smoke-companion.log
-
-      - name: The companion was built
-        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.companion.outcome != 'success' }}
-        run: |
-          echo "::error title=Companion for iOS::The companion didn't build for the iOS Simulator; its errors are above, in its own step."
-          exit 1
-
       - name: Enter the realm across the network
         if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
         env:
@@ -326,30 +292,15 @@ jobs:
           if-no-files-found: warn
 
       # The screenshots, full size, on the ci-shots branch: one folder per
-      # run, so they can be fetched with git alone.
+      # run, so they can be fetched with git alone; the companion's job keeps
+      # its own in the same folder.
       - name: Push the screenshots to ci-shots
         if: always() && github.event_name == 'push'
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN: ${{ github.run_number }}
           SHA: ${{ github.sha }}
-        run: |
-          set -eu
-          ls build/*.png >/dev/null 2>&1 || exit 0
-          dir=$(mktemp -d)
-          cd "$dir"
-          git init -q
-          git config user.name "ci-shots"
-          git config user.email "ci-shots@users.noreply.github.com"
-          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          if git fetch -q --depth 1 "$url" ci-shots 2>/dev/null; then git checkout -q FETCH_HEAD; else git checkout -q --orphan ci-shots; fi
-          git checkout -q -B ci-shots
-          mkdir -p "$RUN"
-          cp "$GITHUB_WORKSPACE"/build/*.png "$RUN"/
-          echo "$SHA" > "$RUN/COMMIT"
-          git add "$RUN"
-          git commit -q -m "Screenshots of run $RUN ($SHA)"
-          for _ in 1 2 3; do if git push -q -f "$url" ci-shots; then break; fi; sleep 5; done
+        run: scripts/push-ci-shots.sh build
 
       # The score's themes and every cue, rendered by the tests, to be listened to.
       - name: Keep the sounds
@@ -467,12 +418,6 @@ jobs:
           sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 | awk 1 || true
           # Whose counsel was taken, and its verdict.
           ends build/counsel-report.txt
-          # The keeper's phone beside their Mac: what it did, and what the Mac saw.
-          awk 1 build/companion-report.txt 2>/dev/null || true
-          awk 1 build/companion-lost-report.txt 2>/dev/null || true
-          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
-          # Counsel taken on the phone, through its own model: whose, and its verdict.
-          ends build/counsel-phone-report.txt
           # The ballad the runner's own model made, as a keeper's Mac makes one.
           grep -h "^ballad of " build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true
@@ -490,16 +435,117 @@ jobs:
           # Each pass of a frame's staging timed, its slowest frames named,
           # near the foot for when a staging figure is over its allowance.
           grep -h "PERF staging" build-test.log 2>/dev/null | tail -3 || true
-          # The companion's build for iOS, where it failed: its errors and its last lines.
-          if [ -s build/companion-build.log ] && ! grep -q "^Bundled " build/companion-build.log; then
-            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 || true
-            tail -n 15 build/companion-build.log || true
-          fi
           # Failures last, at the log's very foot, where its tail finds them.
           grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
           # A figure over its allowance among them, with the runner's pace it
           # was allowed, and those recorded without a baseline yet.
           grep -hE "CPU figures allowed|paced by|REGRESSED|MISSING|TOO FAST|RECORDED|PERF-CHECK failed" build/perf-check.log 2>/dev/null || true
+          echo "::endgroup::"
+
+  # Nullmere Companion, the keeper's iPhone app, beside their Mac: in a job
+  # of its own beside the Mac's long one, so neither waits on the other.
+  # Built for the iOS Simulator from the same package, bundled and signed
+  # to run there; then both real apps on a realm raised on this runner, as
+  # on maincloud: the Mac enters and offers a link; the phone, in the
+  # simulator, takes it, digs a company in, speaks to the realm, makes its
+  # keeper ready so the watch turns and sets a hold to work, is set aside
+  # and comes in again, and the Mac sees each of them; its line to the
+  # realm is cut and mended, and it comes back, the words it said while
+  # cut off heard on the Mac. Then the phone takes counsel through its own
+  # on-device model: unverified where the runner's model can't be asked,
+  # as so far it can't. No other keeper enters this realm, so the watch
+  # turns as soon as the phone's keeper is ready.
+  companion:
+    name: The keeper's phone beside their Mac
+    runs-on: macos-26
+    # Write only to keep its screenshots on the ci-shots branch.
+    permissions:
+      contents: write
+    # The Mac app's build and the companion's, a realm raised and the
+    # phone's steps: about a quarter of an hour.
+    timeout-minutes: 40
+    # "bash" runs with -o pipefail, so a failure piped through tee still fails.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # The keeper's Mac, a debug build: the side of the link the phone takes.
+      - name: Build
+        run: swift build 2>&1 | tee build.log
+
+      # Its errors are raised as annotations too, readable however long the log.
+      - name: Build the companion for the iOS Simulator
+        timeout-minutes: 20
+        run: |
+          mkdir -p build
+          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
+              echo "::error title=Companion for iOS::${line}"
+            done
+            exit 1
+          fi
+
+      - name: Raise a realm on SpacetimeDB
+        timeout-minutes: 20
+        run: |
+          command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
+          # The same one command that raises the realm proper.
+          STEWARD=background CONFIGURATION=debug STEWARD_LOG="$PWD/build/steward.log" \
+            NULLMERE_REALM_SEED="black moon" scripts/raise-realm.sh local
+
+      - name: The keeper's phone beside their Mac
+        timeout-minutes: 15
+        env:
+          NULLMERE_REALM: http://127.0.0.1:3000/nullmere
+        run: scripts/smoke-test-companion.sh 2>&1 | tee build/smoke-companion.log
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: companion-screenshots
+          path: build/*.png
+          if-no-files-found: warn
+
+      # In the run's folder on the ci-shots branch, beside the Mac job's.
+      - name: Push the screenshots to ci-shots
+        if: always() && github.event_name == 'push'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+        run: scripts/push-ci-shots.sh build
+
+      # Last, so it survives a trimmed log: what the phone did and what the
+      # Mac saw, its counsel's verdict, and the companion's build where it failed.
+      - name: Summary
+        if: always()
+        run: |
+          echo "::group::Summary"
+          # A report of one line is its first and last: each printed once, and ended.
+          ends() { awk '{ last = $0 } NR == 1 { print } END { if (NR > 1) print last }' "$1" 2>/dev/null || true; }
+          awk 1 build/companion-report.txt 2>/dev/null || true
+          awk 1 build/companion-lost-report.txt 2>/dev/null || true
+          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^The phone hears\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
+          # Counsel taken on the phone, through its own model: whose, and its verdict.
+          ends build/counsel-phone-report.txt
+          grep -hE "^error|^warning" build/smoke-companion.log 2>/dev/null | head -20 || true
+          tail -n 15 build/steward.log 2>/dev/null || true
+          if [ -s build/companion-build.log ] && ! grep -q "^Bundled " build/companion-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 || true
+            tail -n 15 build/companion-build.log || true
+          fi
           echo "::endgroup::"
 
   # The app as VoiceOver and Accessibility Inspector meet it, through the
