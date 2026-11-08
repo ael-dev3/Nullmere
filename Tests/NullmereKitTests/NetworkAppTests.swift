@@ -564,6 +564,9 @@ final class NetworkAppTests: XCTestCase {
         try await until("the phone in as Ama") { arrived != nil }
         XCTAssertEqual(arrived?.name, "Ama")
         defer { phone.close() }
+        // The Mac sees its phone in the realm with Ama.
+        try await until("the Mac to see its phone in the realm") { mac.session?.keeper?.companionsHere == 1 }
+        XCTAssertEqual(mac.session?.keeper?.companionsSaid(now: Date().timeIntervalSince1970), "Your phone is in the realm with you.")
 
         // Put away, then offered again: one device speaks for her.
         XCTAssertTrue(PressableButtons.press("Done"))
@@ -611,7 +614,7 @@ final class NetworkAppTests: XCTestCase {
         try await until("this Mac's House reported") {
             let report = (try? String(contentsOfFile: reportFile, encoding: .utf8)) ?? ""
             return report.contains("\(company.id)") && report.contains("\(seat.id):\(raised.rawValue)") && report.contains("said: Heard on the Mac")
-                && report.contains("alliance said: Heard by the accord")
+                && report.contains("alliance said: Heard by the accord") && report.contains("phone: none")
         }
         mac.stopLinkReport()
         let report = try String(contentsOfFile: reportFile, encoding: .utf8).split(separator: "\n").map(String.init)

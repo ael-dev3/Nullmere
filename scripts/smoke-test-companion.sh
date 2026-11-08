@@ -10,7 +10,8 @@
 # a hold set to work), each
 # carried out by the realm, is set aside and comes in again by its own key;
 # and the Mac sees the company dug in, hears the words, sees the alliance
-# raised, the line in the Ring, the watch turned and the hold at work; and, seeing the company dug
+# raised, the line in the Ring, the watch turned and the hold at work, and
+# its phone in the realm with it; and, seeing the company dug
 # in, the Mac says so to the realm and the phone hears its answer come back.
 # The phone reaches the realm through a line of its own (scripts/line-relay.py),
 # which is cut and mended: it says the realm is out of reach, for how long
@@ -180,6 +181,15 @@ if [ -n "$COMPANY" ]; then
 fi
 echo "The Mac sees the phone's order: $SEEN ($(head -n 1 "$MAC_REPORT" 2>/dev/null || echo "no report"))"
 
+# The Mac sees its keeper's phone in the realm with them, by the realm's
+# word on the devices it has heard from lately.
+PHONE_SEEN=no
+for _ in $(seq 1 30); do
+    if grep -qE "^phone: in" "$MAC_REPORT" 2>/dev/null; then PHONE_SEEN=yes; break; fi
+    sleep 1
+done
+echo "The Mac sees its phone in the realm: $PHONE_SEEN ($(grep '^phone: ' "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+
 # The Mac sees the hold the phone set to work, and hears the words it said.
 WORK="$(sed -n 's/^At work: //p' "$REPORT" | head -n 1)"
 WORKING=no
@@ -338,6 +348,10 @@ if [ "$SEEN" != yes ]; then
 fi
 if [ "$WORKING" != yes ]; then
     echo "error: the Mac never saw the hold the phone set to work" >&2
+    exit 1
+fi
+if [ "$PHONE_SEEN" != yes ]; then
+    echo "error: the Mac never saw its phone in the realm" >&2
     exit 1
 fi
 if [ "$HEARD" != yes ]; then

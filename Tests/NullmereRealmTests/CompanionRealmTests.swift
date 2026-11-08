@@ -98,6 +98,10 @@ final class CompanionRealmTests: XCTestCase {
         XCTAssertNotEqual(phoneIdentity, macKeeper?.id, "Under its own identity: the Mac's key never leaves the Mac")
         let linked = await db.companions
         XCTAssertEqual(linked, [try XCTUnwrap(phoneIdentity): try XCTUnwrap(macKeeper?.id)])
+        // The Mac sees its phone in the realm with Ama.
+        try await until("the Mac to see its phone in the realm") { macEar.toldKeeper?.companionsHere == 1 }
+        let quietBefore = await MainActor.run { macEar.toldKeeper?.companionLastHeard }
+        XCTAssertNil(quietBefore)
 
         // An order from the phone is seen on the Mac.
         let house = try XCTUnwrap(macKeeper?.house)
@@ -160,6 +164,10 @@ final class CompanionRealmTests: XCTestCase {
         XCTAssertEqual(leavings, 1, "The phone's leaving carried out")
         let online = await steward.state.keeper(try XCTUnwrap(macKeeper?.id))?.isOnline
         XCTAssertEqual(online, true, "Ama is still there, on her Mac")
+        // And her Mac sees the phone gone, and when it was last in the realm.
+        try await until("the Mac to see its phone gone") {
+            macEar.toldKeeper?.companionsHere == nil && macEar.toldKeeper?.companionLastHeard == 1
+        }
 
         // Back on the phone, by its own identity kept: in as Ama again, the
         // world as it now stands.
@@ -171,6 +179,7 @@ final class CompanionRealmTests: XCTestCase {
         let afterwards = await MainActor.run { macEar.world?.houses[house].stock }
         await MainActor.run { again.accompany() }
         try await until("the phone in again as Ama") { againEar.keeper?.name == "Ama" }
+        try await until("the Mac to see its phone back") { macEar.toldKeeper?.companionsHere == 1 }
         let caughtUp = await MainActor.run { againEar.world?.houses[house].stock }
         XCTAssertEqual(caughtUp, afterwards, "The phone back sees what was done while it was away")
 

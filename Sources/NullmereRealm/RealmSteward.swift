@@ -115,6 +115,9 @@ public actor RealmSteward {
     /// one device leaving takes its keeper away only when none of their
     /// others has been heard from lately.
     private var devicesHeard: [String: (keeper: String, at: Double)] = [:]
+    /// When each keeper's companions were last heard from, by any of them:
+    /// told in the keeper's record once none is heard from any longer.
+    private var companionsHeard: [String: Double] = [:]
     /// Who speaks for whom as SpacetimeDB keeps it, companion by companion:
     /// nil until read back from the server, or once a call writing it failed.
     private var keptLinks: [String: String]?
@@ -356,6 +359,10 @@ public actor RealmSteward {
             // for once it is carried out: a link just taken, theirs.
             let answered = state.keeperID(speakingFor: request.keeper) ?? request.keeper
             unanswered.append(Answer(id: request.id, nonce: request.nonce, keeper: answered, reply: reply))
+            // A device that took a link just now is the keeper's from now
+            // on; and a companion of a keeper's, heard, is when one was last.
+            if answered != keeper, state.keeper(answered) != nil { devicesHeard[request.keeper] = (answered, now) }
+            if request.keeper != answered, state.keeper(answered) != nil { companionsHeard[answered] = now }
         }
 
         // The silent have left.
@@ -368,9 +375,19 @@ public actor RealmSteward {
         // realm nor the steward grows with every identity ever heard from.
         if state.forgetTheLongGone(now: now) { changed = true }
         if await hearBorders(now: now) { changed = true }
+        // Whose phones are in the realm with them, as many as have been
+        // heard from lately, for their Mac to show, and when the last was
+        // once none is: told as it changes, before the steward forgets
+        // what it heard of those gone.
+        var phones: [String: Int] = [:]
+        for (device, entry) in devicesHeard where device != entry.keeper && now - entry.at <= RealmSteward.silence {
+            phones[entry.keeper, default: 0] += 1
+        }
+        if state.hearCompanions(phones, lastHeard: companionsHeard) { changed = true }
         let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
         heard = heard.filter { there.contains($0.key) }
         devicesHeard = devicesHeard.filter { there.contains($0.value.keeper) && now - $0.value.at <= RealmSteward.silence }
+        companionsHeard = companionsHeard.filter { there.contains($0.key) }
         left = left.filter { now - $0.value < RealmSteward.leavingGrace }
         if let turned = state.tick(now: now) {
             pendingEvents += turned

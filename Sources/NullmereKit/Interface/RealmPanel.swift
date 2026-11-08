@@ -80,6 +80,19 @@ struct RealmPanel: View {
                         Rule(opacity: 0.18)
                         favour(keeper)
                     }
+                    // Their phone, where one is linked: in the realm with
+                    // them now, or when it last was.
+                    if let keeper = session.keeper, keeper.companions?.isEmpty == false {
+                        Rule(opacity: 0.18)
+                        Caps((keeper.companions?.count ?? 0) > 1 ? "Your phones" : "Your phone", size: 9, weight: .medium)
+                            .foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+                        TimelineView(.periodic(from: .now, by: 15)) { context in
+                            Text(verbatim: keeper.companionsSaid(now: context.date.timeIntervalSince1970) ?? "")
+                                .font(.nm(10.5))
+                                .foregroundStyle(Palette.text(keeper.companionsHere == nil ? 0.6 : 0.85))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     if let keeper = session.keeper, (keeper.renown ?? 0) > 0 || !(keeper.titles ?? []).isEmpty {
                         Rule(opacity: 0.18)
                         Caps("Your renown", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)

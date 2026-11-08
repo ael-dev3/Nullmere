@@ -2628,6 +2628,19 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(RealmPanel.streakLine(keeper), "1 watch kept unbroken: the next brings 12 favour, and a favour chest comes in 9 watches.")
         session.keeper = keeper
         draw(RealmPanel(session: session))
+
+        // Their phone, once one is linked: in the realm with them, or when
+        // it last was.
+        keeper.companions = ["phone-of-ama"]
+        keeper.companionsHere = 1
+        XCTAssertEqual(keeper.companionsSaid(now: Date().timeIntervalSince1970), "Your phone is in the realm with you.")
+        session.keeper = keeper
+        draw(RealmPanel(session: session))
+        keeper.companionsHere = nil
+        keeper.companionLastHeard = Date().timeIntervalSince1970 - 300
+        XCTAssertEqual(keeper.companionsSaid(now: Date().timeIntervalSince1970), "Your phone was last in the realm 5 min ago.")
+        session.keeper = keeper
+        draw(RealmPanel(session: session))
     }
 
     func testTheForgeShowsItsMakingsAndForgesAPieceOfASet() throws {

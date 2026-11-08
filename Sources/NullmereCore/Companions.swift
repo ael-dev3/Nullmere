@@ -116,6 +116,8 @@ extension RealmState {
         guard let index = keepers.firstIndex(where: { $0.id == id }) else { throw .unknownKeeper }
         keepers[index].companions = nil
         keepers[index].linkOffer = nil
+        keepers[index].companionsHere = nil
+        keepers[index].companionLastHeard = nil
     }
 
     /// A companion lets itself go: it speaks for its keeper no more.
@@ -125,6 +127,68 @@ extension RealmState {
         guard let index = keepers.firstIndex(where: { $0.companions?.contains(identity) == true }) else { return false }
         let left = keepers[index].companions?.filter { $0 != identity } ?? []
         keepers[index].companions = left.isEmpty ? nil : left
+        if left.isEmpty {
+            keepers[index].companionsHere = nil
+            keepers[index].companionLastHeard = nil
+        }
         return true
+    }
+
+    /// Which keepers' devices the realm has heard from lately, as many as
+    /// it has of each keeper's (`heard`), and when each keeper's were last
+    /// heard from (`lastHeard`): set in their records, for their Mac to
+    /// show their phone in the realm with them, or when it last was. A
+    /// keeper with no device linked keeps neither. Whether any record
+    /// changed.
+    @discardableResult
+    public mutating func hearCompanions(_ heard: [String: Int], lastHeard: [String: Double]) -> Bool {
+        var changed = false
+        for index in keepers.indices where keepers[index].companions != nil || keepers[index].companionsHere != nil
+            || keepers[index].companionLastHeard != nil {
+            let id = keepers[index].id
+            let linked = keepers[index].companions != nil
+            let count = linked ? min(heard[id] ?? 0, keepers[index].companions?.count ?? 0) : 0
+            let here: Int? = count > 0 ? count : nil
+            let last: Double? = !linked || here != nil ? nil : lastHeard[id] ?? keepers[index].companionLastHeard
+            if keepers[index].companionsHere != here || keepers[index].companionLastHeard != last {
+                keepers[index].companionsHere = here
+                keepers[index].companionLastHeard = last
+                changed = true
+            }
+        }
+        return changed
+    }
+}
+
+extension Keeper {
+    /// Whether the keeper's phone is in the realm with them, as their Mac
+    /// tells it at `now` (the realm's clock, in seconds): with them now, or
+    /// when it last was; nil while no device is linked to them.
+    public func companionsSaid(now: Double) -> String? {
+        guard let linked = companions?.count, linked > 0 else { return nil }
+        if let here = companionsHere, here > 0 {
+            if linked == 1 { return "Your phone is in the realm with you." }
+            if here >= linked { return linked == 2 ? "Both your phones are in the realm with you." : "All \(linked) of your phones are in the realm with you." }
+            return "\(here) of your \(linked) phones \(here == 1 ? "is" : "are") in the realm with you."
+        }
+        let phones = linked == 1 ? "Your phone" : "Your phones"
+        guard let last = companionLastHeard else {
+            return "\(phones) \(linked == 1 ? "hasn't" : "haven't") been in the realm lately."
+        }
+        return "\(phones) \(linked == 1 ? "was" : "were") last in the realm \(Keeper.ago(now - last))."
+    }
+
+    /// How long ago, as a keeper says it: "a moment ago", "4 min ago",
+    /// "3 hours ago", "2 days ago".
+    static func ago(_ seconds: Double) -> String {
+        let seconds = max(seconds, 0)
+        if seconds < 60 { return "a moment ago" }
+        if seconds < 3_600 { return "\(Int(seconds / 60)) min ago" }
+        if seconds < 86_400 {
+            let hours = Int(seconds / 3_600)
+            return hours == 1 ? "an hour ago" : "\(hours) hours ago"
+        }
+        let days = Int(seconds / 86_400)
+        return days == 1 ? "a day ago" : "\(days) days ago"
     }
 }

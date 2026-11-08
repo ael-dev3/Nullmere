@@ -635,6 +635,9 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let peeked = (try? await transport.query("SELECT * FROM companion", token: stranger.token)) ?? []
         XCTAssertTrue(peeked.isEmpty, "No stranger reads who speaks for whom")
         print(String(format: "REALM a keeper's phone took the link their Mac offered and came in as them in %.2f s", linking))
+        // Their Mac sees the phone in the realm with them.
+        let phoneSeen = try await waitedFor("the Mac to see its phone in the realm") { macEar.toldKeeper?.companionsHere == 1 }
+        print(String(format: "REALM the keeper's Mac saw their phone in the realm with them %.2f s after it came in", phoneSeen))
 
         // An order from the phone, seen on the Mac; one from the Mac, on the phone.
         let world = try XCTUnwrap(phoneEar.world)
@@ -673,6 +676,11 @@ final class SpacetimeIntegrationTests: XCTestCase {
         }
         let online = await steward.state.keeper(keeper.id)?.isOnline
         XCTAssertEqual(online, true, "Still there, on their Mac")
+        // And the Mac sees the phone gone, and when it was last in the realm.
+        let phoneGone = try await waitedFor("the Mac to see its phone gone") {
+            macEar.toldKeeper?.companionsHere == nil && macEar.toldKeeper?.companionLastHeard != nil
+        }
+        print(String(format: "REALM the keeper's Mac saw their phone leave the realm, and when it last was, %.2f s after it left", phoneGone))
 
         // Let go from the Mac: the phone is told the realm links it to no one.
         let unlinked = Answered<String?>()

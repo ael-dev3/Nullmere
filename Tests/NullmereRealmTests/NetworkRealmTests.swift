@@ -26,6 +26,18 @@ final class Listener {
         return nil
     }
 
+    /// The keeper as the realm last told them: on arriving, or as their
+    /// record changed since.
+    var toldKeeper: Keeper? {
+        for event in events.reversed() {
+            switch event {
+            case .arrived(let keeper, _), .keeperChanged(let keeper): return keeper
+            default: continue
+            }
+        }
+        return nil
+    }
+
     var world: GameState? {
         for event in events.reversed() {
             switch event {

@@ -55,6 +55,12 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var companions: [String]?
     /// A link their Mac offered and no device has taken yet.
     public internal(set) var linkOffer: LinkOffer?
+    /// How many of those devices the realm has heard from lately, for their
+    /// Mac to show; absent while none has been.
+    public internal(set) var companionsHere: Int?
+    /// When one of them was last heard from, by the realm's clock, once none
+    /// is heard from any longer; absent while one is, or none has been.
+    public internal(set) var companionLastHeard: Double?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -474,6 +480,8 @@ public struct RealmState: Codable, Equatable, Sendable {
         keepers[index].id = id
         keepers[index].companions = nil
         keepers[index].linkOffer = nil
+        keepers[index].companionsHere = nil
+        keepers[index].companionLastHeard = nil
         return try arrive(id, name: nil, now: now)
     }
 

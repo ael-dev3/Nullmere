@@ -138,4 +138,84 @@ final class CompanionLinkTests: XCTestCase {
         XCTAssertNil(realm.keeperID(speakingFor: "phone-of-ama"), "The phone of the old Mac speaks for no one")
         XCTAssertThrowsError(try realm.takeLink("someone", code: "WAXTXNG22222", now: 5), "The old Mac's offer lapsed with it")
     }
+
+    /// A keeper's record tells their Mac whether their phone is in the
+    /// realm with them, as many as the realm has heard from lately, and
+    /// once none is, when the last was; a keeper with no device linked
+    /// keeps neither, nor does one who lets them go or is taken to another
+    /// Mac.
+    func testTheRecordTellsWhetherTheKeepersPhoneIsInTheRealm() throws {
+        var realm = try realm()
+        XCTAssertFalse(realm.hearCompanions(["mac-of-ama": 1], lastHeard: ["mac-of-ama": 5]), "No device linked: nothing to tell")
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionsHere)
+        try realm.offerLink("mac-of-ama", digest: LinkCode.digest(of: "KQ7MX4RT2PZZ"), now: 10)
+        try realm.takeLink("phone-of-ama", code: "KQ7MX4RT2PZZ", now: 20)
+
+        // Heard: in the realm with her.
+        XCTAssertTrue(realm.hearCompanions(["mac-of-ama": 1], lastHeard: ["mac-of-ama": 20]))
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsHere, 1)
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionLastHeard)
+        XCTAssertFalse(realm.hearCompanions(["mac-of-ama": 1], lastHeard: ["mac-of-ama": 50]), "Unchanged while it is heard")
+        XCTAssertNil(realm.keeper("mac-of-bo")?.companionsHere, "Bo has no phone")
+        XCTAssertEqual(realm.hearCompanions(["mac-of-ama": 3], lastHeard: [:]), false, "No more than are linked")
+
+        // Quiet: when it was last heard, kept until it is heard again.
+        XCTAssertTrue(realm.hearCompanions([:], lastHeard: ["mac-of-ama": 80]))
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionsHere)
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionLastHeard, 80)
+        XCTAssertFalse(realm.hearCompanions([:], lastHeard: [:]), "The steward's memory gone, the record keeps it")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionLastHeard, 80)
+        XCTAssertTrue(realm.hearCompanions(["mac-of-ama": 1], lastHeard: ["mac-of-ama": 200]))
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsHere, 1)
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionLastHeard)
+
+        // Told in the record as it travels; absent from one with no phone.
+        let encoded = try JSONEncoder().encode(realm.keeper("mac-of-ama"))
+        XCTAssertEqual(try JSONDecoder().decode(Keeper.self, from: encoded).companionsHere, 1)
+        let bo = String(decoding: try JSONEncoder().encode(realm.keeper("mac-of-bo")), as: UTF8.self)
+        XCTAssertFalse(bo.contains("companion"), bo)
+
+        // Let go, the phone is told of no longer.
+        try realm.unlinkCompanions("mac-of-ama")
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionsHere)
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionLastHeard)
+        XCTAssertFalse(realm.hearCompanions(["mac-of-ama": 1], lastHeard: ["mac-of-ama": 300]))
+        try realm.offerLink("mac-of-ama", digest: LinkCode.digest(of: "BBBBCCCCDDDD"), now: 400)
+        try realm.takeLink("phone-of-ama", code: "BBBBCCCCDDDD", now: 410)
+        realm.hearCompanions(["mac-of-ama": 1], lastHeard: [:])
+        XCTAssertTrue(realm.unlink(companion: "phone-of-ama"))
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionsHere, "The last one letting itself go")
+    }
+
+    /// As the keeper's Mac says it: their phone with them now, or when it
+    /// last was; nothing while none is linked.
+    func testTheMacSaysWhetherThePhoneIsInTheRealm() throws {
+        var realm = try realm()
+        XCTAssertNil(realm.keeper("mac-of-ama")?.companionsSaid(now: 0), "No phone linked, nothing said")
+        try realm.offerLink("mac-of-ama", digest: LinkCode.digest(of: "KQ7MX4RT2PZZ"), now: 10)
+        try realm.takeLink("phone-of-ama", code: "KQ7MX4RT2PZZ", now: 20)
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 30), "Your phone hasn't been in the realm lately.")
+        realm.hearCompanions(["mac-of-ama": 1], lastHeard: [:])
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 30), "Your phone is in the realm with you.")
+        realm.hearCompanions([:], lastHeard: ["mac-of-ama": 100])
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 130), "Your phone was last in the realm a moment ago.")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 100 + 4 * 60 + 5), "Your phone was last in the realm 4 min ago.")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 100 + 3_600), "Your phone was last in the realm an hour ago.")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 100 + 3 * 3_600), "Your phone was last in the realm 3 hours ago.")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 100 + 86_400), "Your phone was last in the realm a day ago.")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 100 + 2 * 86_400), "Your phone was last in the realm 2 days ago.")
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 50), "Your phone was last in the realm a moment ago.",
+                       "A clock behind the realm's is never told a time to come")
+
+        // Two phones: one or both in the realm.
+        try realm.offerLink("mac-of-ama", digest: LinkCode.digest(of: "BBBBCCCCDDDD"), now: 200)
+        try realm.takeLink("tablet-of-ama", code: "BBBBCCCCDDDD", now: 210)
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 220), "Your phones were last in the realm 2 min ago.")
+        realm.hearCompanions(["mac-of-ama": 1], lastHeard: [:])
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 220), "1 of your 2 phones is in the realm with you.")
+        realm.hearCompanions(["mac-of-ama": 2], lastHeard: [:])
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 220), "Both your phones are in the realm with you.")
+        realm.hearCompanions([:], lastHeard: [:])
+        XCTAssertEqual(realm.keeper("mac-of-ama")?.companionsSaid(now: 220), "Your phones haven't been in the realm lately.")
+    }
 }

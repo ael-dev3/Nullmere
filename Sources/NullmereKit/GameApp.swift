@@ -578,16 +578,19 @@ public final class GameApp {
     /// What this Mac sees of its House, written for the smoke test.
     func writeLinkReport(to path: String) {
         guard let session else { return }
-        try? GameApp.linkReport(of: session.state, player: session.player).write(toFile: path, atomically: true, encoding: .utf8)
+        try? GameApp.linkReport(of: session.state, player: session.player, keeper: session.keeper)
+            .write(toFile: path, atomically: true, encoding: .utf8)
     }
 
     /// What a Mac sees of its House, as the phone's smoke test reads it: its
     /// companies dug in, what its holds are at work on (each as its hold and
     /// the work raised or company mustered there), the watch, the alliance
     /// it is sworn to, the caretaker's standing orders as the keeper is told
-    /// them, the commanders of the line it stands in the Ring, and the last
-    /// words said to the whole realm and to its alliance, a line each.
-    static func linkReport(of state: GameState, player: Int) -> String {
+    /// them, the commanders of the line it stands in the Ring, whether the
+    /// keeper's phone is in the realm with them as the realm last told this
+    /// Mac, and the last words said to the whole realm and to its alliance,
+    /// a line each.
+    static func linkReport(of state: GameState, player: Int, keeper: Keeper? = nil) -> String {
         let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
         let working = state.holds(of: player).flatMap { hold in
             [hold.project.map { "\(hold.id):\($0.kind.rawValue)" }, hold.training.map { "\(hold.id):\($0.kind.rawValue)" }].compactMap { $0 }
@@ -600,8 +603,9 @@ public final class GameApp {
         let sworn = state.alliance(of: player).map { ["alliance: \($0.name)"] } ?? []
         let standing = ["standing: \(state.standingOrders(of: player).said)"]
         let ring = ["ring: " + (state.ringLine(of: player) ?? []).map(String.init).joined(separator: " ")]
+        let phone = ["phone: " + (keeper?.companionsHere.map { "in, \($0)" } ?? (keeper?.companions == nil ? "none" : "away"))]
         return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + sworn + standing
-                + ring + said + allied).joined(separator: "\n") + "\n"
+                + ring + phone + said + allied).joined(separator: "\n") + "\n"
     }
 
     func stopLinkReport() {
