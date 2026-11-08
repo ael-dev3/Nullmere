@@ -174,7 +174,7 @@ extension GameState {
             if grade == AllianceStudy.grades { lore.pursuit = nil }
             events.append(.allianceStudied(alliance: id, study: study, grade: grade))
             record(.alliance, alliances![index].members,
-                   "\(alliances![index].name) learns \(study.title) \(BuildingKind.numeral(grade)) together.")
+                   "\(alliances![index].titled) learns \(study.title) \(BuildingKind.numeral(grade)) together.")
         }
         alliances![index].lore = lore
         let hourglasses = (before + worth) / GameState.givenPerHourglass - before / GameState.givenPerHourglass

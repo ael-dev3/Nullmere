@@ -249,9 +249,10 @@ extension GameState {
     }
 
     /// A site of the land by its name and level, as a line says it: "the
-    /// Deadfall II", or an alliance's yard by its own name.
+    /// Deadfall II"; an alliance's yard by its own name alone, "the Salt
+    /// Works", as its alliance's yards are told.
     public func siteSaid(_ site: Site) -> String {
-        "the \(site.title) \(BuildingKind.numeral(site.level))"
+        site.isYard ? "the \(site.title)" : "the \(site.title) \(BuildingKind.numeral(site.level))"
     }
 
     /// What a company out at the land's work is about, as its keeper is

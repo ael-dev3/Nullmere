@@ -534,7 +534,7 @@ extension GameState {
             return house == viewer ? Tidings("The banner of \(name) passes to you.", .good)
                 : Tidings("\(houses[house].title) takes up the banner of \(name).", .neutral)
         case .allianceDisbanded(_, let name):
-            return Tidings("\(name) is no more.", .neutral)
+            return Tidings("\(Alliance.titled(name)) is no more.", .neutral)
         case .helpGiven(let by, let to, let count):
             let works = count == 1 ? "work" : "works"
             if to == viewer { return Tidings("\(houses[by].title) helps \(count) of your \(works).", .good) }

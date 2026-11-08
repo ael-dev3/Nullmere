@@ -425,6 +425,7 @@ final class AllianceStoresTests: XCTestCase {
         XCTAssertEqual(events, [.yardRaised(site: yard.id, alliance: id, house: me, store: .timber, at: stage.spot)])
         XCTAssertEqual(yard.alliance, id)
         XCTAssertTrue(yard.isYard)
+        XCTAssertEqual(stage.state.siteSaid(yard), "the \(yard.title)", "By its own name, as the alliance's yards are told, with no level")
         XCTAssertEqual(yard.store, .timber)
         XCTAssertEqual(yard.remaining, Yard.richness(of: .timber))
         XCTAssertEqual(yard.title, "Timber Yard")

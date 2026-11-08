@@ -216,7 +216,7 @@ extension GameState {
         let alliance = alliances![index]
         guard !alliance.members.isEmpty else {
             alliances!.remove(at: index)
-            record(.alliance, [], "\(alliance.name) is no more.")
+            record(.alliance, [], "\(alliance.titled) is no more.")
             return [.allianceDisbanded(alliance: allianceID, name: alliance.name)]
         }
         guard alliance.leader == house else { return [] }

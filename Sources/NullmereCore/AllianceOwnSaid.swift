@@ -6,6 +6,8 @@ extension GameState {
     public func standardsSaid(of alliance: Alliance) -> String {
         let raised = standards(of: alliance.id).count
         let allowed = standardsAllowed(for: alliance)
+        // Once it keeps as many as it may, no more are offered to raise.
+        guard raised < allowed else { return "Standards: \(raised) of \(allowed), as many as it may keep; the land about each is the alliance's." }
         return "Standards: \(raised) of \(allowed). Raise one on open ground near your alliance's holds, chosen on the map; "
             + "the land about it is the alliance's."
     }

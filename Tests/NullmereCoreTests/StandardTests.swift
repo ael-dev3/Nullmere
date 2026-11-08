@@ -113,6 +113,10 @@ final class StandardTests: XCTestCase {
         XCTAssertEqual(Standard.allowed(members: 2), 3)
         many.standards = (0..<3).map { Standard(id: 900 + $0, alliance: alliance, raisedBy: me, position: Hex(50 + $0, 0), raised: 0) }
         XCTAssertEqual(many.refusal(of: .raiseStandard(at: near), as: me), .standardsEnough)
+        // Told so on the Mac's panel and the phone, and offered none to raise.
+        let full = try XCTUnwrap(many.alliance(of: me))
+        XCTAssertEqual(many.standardsSaid(of: full), "Standards: 3 of 3, as many as it may keep; the land about each is the alliance's.")
+        XCTAssertTrue(stage.state.standardsSaid(of: full).contains("Raise one on open ground"))
         XCTAssertEqual(Standard.allowed(members: 30), 8, "Eight at most")
         XCTAssertEqual(RuleError.standardTooFar.description, "A standard stands within four tiles of your alliance's holds, standards or hall.")
     }
