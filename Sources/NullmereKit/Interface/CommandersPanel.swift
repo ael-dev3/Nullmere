@@ -59,9 +59,7 @@ struct CommandersPanel: View {
     }
 
     /// A company as a commander's row names it: its kind and tier.
-    static func named(_ unit: Unit) -> String {
-        unit.kind.hasTiers ? "\(unit.kind.title) \(Narration.roman(unit.tier))" : unit.kind.title
-    }
+    static func named(_ unit: Unit) -> String { unit.named }
 
     /// Where a commander stands: held prisoner, at the head of a company,
     /// mending, or free.

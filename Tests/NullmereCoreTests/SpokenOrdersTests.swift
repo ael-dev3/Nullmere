@@ -21,6 +21,21 @@ final class SpokenOrdersTests: XCTestCase {
         for (index, unit) in companies.enumerated() {
             XCTAssertTrue(briefing.contains("C\(index + 1): \(SpokenOrders.named(unit, in: state))"), briefing)
         }
+        // A company named as every line names it: a tier for the companies
+        // of war, none for Lanterns and Founders, who have none to tell,
+        // where run 755's phone chart said "Lanterns I" and "Founders I".
+        XCTAssertEqual(UnitKind.spear.named(tier: 2), "Spears II")
+        XCTAssertEqual(UnitKind.mangonel.named(tier: 5), "Mangonels V")
+        XCTAssertEqual(UnitKind.lantern.named(tier: 1), "Lanterns")
+        XCTAssertEqual(UnitKind.founder.named(tier: 1), "Founders")
+        for kind in UnitKind.allCases {
+            XCTAssertEqual(kind.named(tier: 1) == kind.title, !kind.hasTiers, "\(kind)")
+        }
+        var founded = state
+        let founder = Unit(id: founded.takeID(), kind: .founder, owner: me, position: try XCTUnwrap(state.seat(of: me)).position)
+        founded.units.append(founder)
+        XCTAssertEqual(SpokenOrders.named(founder, in: founded), "Founders \(founded.placeName(of: founder.position))")
+        XCTAssertFalse(SpokenOrders.briefing(for: founded, player: me).contains("Founders I "))
         let seat = try XCTUnwrap(state.seat(of: me))
         XCTAssertTrue(briefing.contains("Your holds: \(seat.name)"))
         XCTAssertTrue(briefing.contains("Granary"))

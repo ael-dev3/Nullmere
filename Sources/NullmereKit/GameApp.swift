@@ -572,7 +572,7 @@ public final class GameApp {
     /// What this Mac says of a company newly dug in, the first of those seen.
     static func answer(toDug companies: Set<Int>, in state: GameState) -> String? {
         guard let id = companies.min(), let unit = state.unit(id) else { return nil }
-        return "Seen on the Mac: the \(unit.kind.title) \(BuildingKind.numeral(unit.tier)) dug in."
+        return "Seen on the Mac: the \(unit.named) dug in."
     }
 
     /// What this Mac sees of its House, written for the smoke test.

@@ -134,6 +134,11 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Its highest tier: V for a company of war, I for the rest.
     public var highestTier: Int { hasTiers ? Unit.highestTier : 1 }
 
+    /// A company of this kind at a tier, as every line names it, on the
+    /// Mac and the phone alike: "Spears II", but "Lanterns" and
+    /// "Founders", who muster in one and have no tier to tell.
+    public func named(tier: Int) -> String { hasTiers ? "\(title) \(BuildingKind.numeral(tier))" : title }
+
     /// The Muster Hall level a tier of this kind needs: the kind's own, and
     /// for a tier beyond the first, as high as the tier.
     public func requiredMuster(tier: Int) -> Int {
@@ -372,4 +377,9 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
             way = nil
         }
     }
+}
+
+extension Unit {
+    /// As every line names it: "Spears II", "Lanterns" (`UnitKind.named(tier:)`).
+    public var named: String { kind.named(tier: tier) }
 }

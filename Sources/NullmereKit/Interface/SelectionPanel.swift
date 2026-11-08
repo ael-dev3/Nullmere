@@ -183,7 +183,7 @@ struct OwnHoldDetails: View {
                 // Trained, with no free ground within three tiles to
                 // stand on, it waits there, and the hold trains no more.
                 ProgressLine(
-                    title: training.kind.hasTiers ? "\(training.kind.title) \(Narration.roman(training.tier ?? 1))" : training.kind.title,
+                    title: training.kind.named(tier: training.tier ?? 1),
                     detail: training.watchesLeft == 0 ? "Trained; waits for room to stand"
                         : training.watchesLeft == 1 ? "Ready next watch" : "\(training.watchesLeft) watches left",
                     fraction: 1 - Double(training.watchesLeft) / Double(max(state.trainingWatches(of: training.kind, tier: training.tier ?? 1, at: hold), 1))
@@ -409,7 +409,7 @@ private struct TrainingRow: View {
         let tier = min(chosen ?? highest, highest)
         let allowed = hold.level(.musterHall) >= kind.requiredMuster
         let cost = state.trainingCost(of: kind, tier: tier, for: session.player)
-        let named = kind.hasTiers ? "\(kind.title) \(Narration.roman(tier))" : kind.title
+        let named = kind.named(tier: tier)
         HStack(alignment: .top, spacing: 8) {
             Portrait(key: .company(kind, tier: tier, heritage: state.heritage(of: hold.owner)), colour: Portrait.colour(of: hold.owner, in: state), size: 34)
             details(state: state, highest: highest, tier: tier, allowed: allowed, cost: cost, named: named)

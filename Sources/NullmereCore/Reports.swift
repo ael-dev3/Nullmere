@@ -81,7 +81,7 @@ extension GameState {
         var lines: [String] = []
         let own = field.fighters.filter { $0.owner == viewer }
         for fighter in own.prefix(BattleReport.companiesTold) {
-            let named = "Your \(fighter.kind.title)" + (fighter.kind.hasTiers ? " \(BuildingKind.numeral(fighter.tier))" : "")
+            let named = "Your \(fighter.kind.named(tier: fighter.tier))"
             let led = fighter.leader.map { ", led by \($0)," } ?? ""
             let fate = fighter.fell ? "fell" : fighter.standing ? "held" : "drew off"
             lines.append("\(named)\(led) slew \(GameState.counted(fighter.slain)), lost \(GameState.counted(fighter.lost)), and \(fate)")
@@ -161,7 +161,7 @@ extension GameState {
         func company(_ seen: ScoutReport.Company) -> String {
             // Whose it is with what it is, before how it stands: "Spears I of
             // House Venn, 80 strong", never "Hardened of House Venn".
-            var words = seen.kind.title + (seen.kind.hasTiers ? " \(BuildingKind.numeral(seen.tier))" : "")
+            var words = seen.kind.named(tier: seen.tier)
             if seen.owner != scouting.owner, houses.indices.contains(seen.owner) { words += " of \(houses[seen.owner].title)" }
             if seen.health < 100 { words += ", \(seen.health) strong" }
             if seen.rank > 0 { words += ", \(Unit.rankTitles[seen.rank])" }

@@ -25,8 +25,7 @@ extension Wounded {
     /// healed, as the Mac and the phone tell it: "Spears II · Bows I, healing".
     public static func lying(_ wounded: [Wounded]) -> String {
         wounded.map { company in
-            let tier = company.kind.hasTiers ? " \(BuildingKind.numeral(company.tier))" : ""
-            return company.kind.title + tier + (company.healing ? ", healing" : "")
+            company.kind.named(tier: company.tier) + (company.healing ? ", healing" : "")
         }.joined(separator: " · ")
     }
 }

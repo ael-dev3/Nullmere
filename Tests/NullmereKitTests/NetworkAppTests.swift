@@ -593,7 +593,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertTrue(mac.session?.perform(.fortify(unit: company.id)) == true)
         mac.answerPhone()
         mac.answerPhone()
-        let answer = "Seen on the Mac: the \(company.kind.title) \(BuildingKind.numeral(company.tier)) dug in."
+        let answer = "Seen on the Mac: the \(company.named) dug in."
         try await until("the Mac's answer said") { mac.session?.state.wordsSaid.contains { $0.text == answer } == true }
         XCTAssertEqual(mac.session?.state.wordsSaid.filter { $0.text.hasPrefix("Seen on the Mac: ") }.count, 1, "Answered once")
         XCTAssertNil(GameApp.answer(toDug: [], in: try XCTUnwrap(mac.session?.state)))

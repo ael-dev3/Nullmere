@@ -195,7 +195,7 @@ public struct CompanionChart: Equatable, Sendable {
         }
         for unit in world.units where reached(unit.position) {
             marks.append(Mark(id: "company \(unit.id)", hex: unit.position, thing: .company, side: side(unit.owner),
-                              name: "\(CompanionChart.capitalized(whose(unit.owner))) \(unit.kind.title) \(BuildingKind.numeral(unit.tier)), "
+                              name: "\(CompanionChart.capitalized(whose(unit.owner))) \(unit.named), "
                                 + "\(GameState.counted(world.troops(of: unit))) troops",
                               bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil))
         }
@@ -236,7 +236,10 @@ public struct CompanionChart: Equatable, Sendable {
         for unit in own {
             for strike in CompanionLedger.strikes(for: unit, in: world, player: player) {
                 guard case .attack(_, let target) = strike.command, target == hex else { continue }
-                strikes.append(CompanionLedger.Order(title: "\(strike.title) with the \(named(unit))", command: strike.command))
+                // A comma after a label that has its own: "Strike Barrowkin,
+                // level II, with the Spears I at Wenholme".
+                let after = strike.title.contains(",") ? "," : ""
+                strikes.append(CompanionLedger.Order(title: "\(strike.title)\(after) with the \(named(unit))", command: strike.command))
             }
         }
         // The House's Lanterns in reach sent to scout another House's hold here.

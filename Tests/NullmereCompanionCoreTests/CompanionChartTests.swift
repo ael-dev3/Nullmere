@@ -61,7 +61,9 @@ final class CompanionChartTests: XCTestCase {
             let mark = try XCTUnwrap(chart.marks.first { $0.id == "company \(unit.id)" })
             XCTAssertEqual(mark.hex, unit.position)
             XCTAssertEqual(mark.side, .own)
-            XCTAssertEqual(mark.name, "Your \(unit.kind.title) \(BuildingKind.numeral(unit.tier)), \(GameState.counted(state.troops(of: unit))) troops")
+            XCTAssertEqual(mark.name, "Your \(unit.named), \(GameState.counted(state.troops(of: unit))) troops")
+            // A tier only for the companies of war: never "Your Lanterns I".
+            XCTAssertFalse(!unit.kind.hasTiers && mark.name.hasPrefix("Your \(unit.kind.title) I"), mark.name)
         }
         for mark in chart.marks {
             XCTAssertLessThanOrEqual(mark.hex.distance(to: chart.center), chart.radius, "\(mark.name) on the chart")
@@ -184,6 +186,19 @@ final class CompanionChartTests: XCTestCase {
         let ours = try XCTUnwrap(SpokenOrders.distinctNames(in: view, player: me)[spear.id])
         XCTAssertEqual(strike.title, "Strike \(state.houses[foe].title)'s \(SpokenOrders.named(theirs, in: view)) with the \(ours)")
         assertTaken(place.orders, in: view, as: me)
+        // A company of the wilds struck from the chart, named as the map
+        // labels it, the company sent after a comma of its own.
+        var wilder = state
+        let lair = try XCTUnwrap(spear.position.neighbors.first { hex in
+            hex != beside && wilder.map[hex]?.terrain.isPassable == true && wilder.unit(at: hex) == nil && wilder.hold(at: hex) == nil
+                && wilder.wild(at: hex) == nil && wilder.lair(at: hex) == nil
+        })
+        wilder.wilds = (wilder.wilds ?? []) + [Wild(id: wilder.takeID(), kind: .barrowkin, level: 2, position: lair, raised: wilder.watch)]
+        let wild = wilder.view(for: me)
+        let struck = try XCTUnwrap(CompanionChart(world: wild, player: me).place(at: lair, in: wild, player: me).strikes
+            .first { $0.command == .attack(unit: spear.id, target: lair) })
+        XCTAssertEqual(struck.title, "Strike Barrowkin, level II, with the \(try XCTUnwrap(SpokenOrders.distinctNames(in: wild, player: me)[spear.id]))")
+        assertTaken([struck], in: wild, as: me)
         for march in place.marches {
             guard case .move(let id, let to) = march.command else { return XCTFail("\(march.title) is no march") }
             XCTAssertEqual(to, beside)

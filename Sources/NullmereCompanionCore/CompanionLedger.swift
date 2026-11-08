@@ -1054,7 +1054,7 @@ public struct CompanionLedger: Equatable, Sendable {
                     + CompanionLedger.watches(project.watchesLeft))
             }
             if let training = hold.training {
-                work.append("Mustering \(training.kind.title) \(BuildingKind.numeral(training.musteredTier)), "
+                work.append("Mustering \(training.kind.named(tier: training.musteredTier)), "
                     + CompanionLedger.watches(training.watchesLeft))
             }
             let (infirmary, heal) = CompanionLedger.infirmary(at: hold, in: world, player: player)
