@@ -212,6 +212,23 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertTrue(CounselTrouble.failed("the stars are wrong").said.hasSuffix("the stars are wrong"))
     }
 
+    /// The foot of the counsel sheet, on the Mac and the phone alike: who
+    /// speaks and how long the last answer took; and where the model can't
+    /// be asked, never that it speaks there, only that nothing answers in
+    /// its place, whatever an earlier answer took.
+    func testTheFootSaysWhoSpeaksAndNeverClaimsAVoiceThatCantSpeak() {
+        XCTAssertEqual(CommanderCounsel.foot(on: "Mac", canAsk: true), "Spoken by Apple's on-device model on this Mac")
+        XCTAssertEqual(CommanderCounsel.foot(on: "iPhone", canAsk: true, firstWords: 0.84, whole: 3.12),
+                       "Spoken by Apple's on-device model on this iPhone · first words 0.8 s, all of it 3.1 s")
+        XCTAssertEqual(CommanderCounsel.foot(on: "Mac", canAsk: true, firstWords: 0.84), "Spoken by Apple's on-device model on this Mac",
+                       "No timing told until the whole answer is in")
+        for device in ["Mac", "iPhone"] {
+            let foot = CommanderCounsel.foot(on: device, canAsk: false, firstWords: 1.2, whole: 4.5)
+            XCTAssertEqual(foot, "Only Apple's on-device model gives counsel, and nothing answers in its place")
+            XCTAssertFalse(foot.contains("Spoken"), "Never a voice claimed where it can't speak")
+        }
+    }
+
     /// How the voices stand where Apple's model can't be asked, as the Mac's
     /// settings tell it: who falls silent and why, for every reason; and
     /// where it can be, who speaks through it.

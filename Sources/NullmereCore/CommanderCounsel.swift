@@ -1,3 +1,5 @@
+import Foundation
+
 /// Counsel taken of a House's commander: who they are, what they know and
 /// what they may put to the keeper, all of it from the keeper's own view of
 /// the realm. A commander knows what their House knows and no more: the
@@ -350,6 +352,19 @@ public enum CounselTrouble: Equatable, Sendable, Error {
         case .silent: return "The commander gave no counsel, and Apple's on-device model said nothing of why. Ask again in a while."
         case .failed(let reason): return "The commander gave no counsel: \(reason)"
         }
+    }
+}
+
+extension CommanderCounsel {
+    /// The foot of a counsel sheet, on the Mac and the phone alike: who
+    /// speaks for the commander there, and how long its last answer took;
+    /// where Apple's on-device model can't be asked there, not that it
+    /// speaks, but that nothing answers in its place.
+    public static func foot(on device: String, canAsk: Bool, firstWords: Double? = nil, whole: Double? = nil) -> String {
+        guard canAsk else { return "Only Apple's on-device model gives counsel, and nothing answers in its place" }
+        let spoken = "Spoken by Apple's on-device model on this \(device)"
+        guard let firstWords, let whole else { return spoken }
+        return spoken + String(format: " · first words %.1f s, all of it %.1f s", firstWords, whole)
     }
 }
 

@@ -80,7 +80,7 @@ struct CounselView: View {
                             .accessibilityLabel("Ask \(commander.name)")
                     }
                 }
-                Text(verbatim: footer)
+                Text(verbatim: footer(canAsk: unavailable == nil))
                     .font(Night.small.monospacedDigit())
                     .foregroundStyle(Night.ink.opacity(0.45))
             }
@@ -115,13 +115,10 @@ struct CounselView: View {
         counsel.counsel.company.map { "leads the \(SpokenOrders.named($0, in: counsel.counsel.state))" } ?? "leads no company"
     }
 
-    /// Who answers, and how long they took: Apple's on-device model, here.
-    private var footer: String {
-        var said = "Spoken by Apple's on-device model on this iPhone"
-        if let timing = counsel.timing {
-            said += String(format: " · first words %.1f s, all of it %.1f s", timing.firstWords, timing.whole)
-        }
-        return said
+    /// Who answers, and how long they took: Apple's on-device model, here,
+    /// or, where it can't be asked, nothing in its place.
+    private func footer(canAsk: Bool) -> String {
+        CommanderCounsel.foot(on: "iPhone", canAsk: canAsk, firstWords: counsel.timing?.firstWords, whole: counsel.timing?.whole)
     }
 
     private func ask() {
