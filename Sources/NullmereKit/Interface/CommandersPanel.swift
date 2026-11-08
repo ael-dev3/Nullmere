@@ -508,7 +508,7 @@ private struct TalentRow: View {
                         .foregroundStyle(Palette.text(line.rank > 0 ? 0.85 : 0.6))
                     LevelPips(level: line.rank, maximum: talent.ranks)
                 }
-                Text(verbatim: talent.effect)
+                Text(verbatim: commander.effectSaid(of: talent))
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)

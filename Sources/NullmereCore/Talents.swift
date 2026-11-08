@@ -235,6 +235,15 @@ extension Commander {
         return nil
     }
 
+    /// What a rank of a talent does for the company this commander leads,
+    /// on the Mac's talent rows: the talent's own words, but where Battle
+    /// Rage can't hasten a skill that fires every second battle already,
+    /// that it does nothing but open the crown past it.
+    public func effectSaid(of talent: Talent) -> String {
+        guard talent == .battleRage, archetype.active.cadence <= 2 else { return talent.effect }
+        return "\(archetype.active.title) fires every second battle already: for this commander it only opens \(Talent.moonsteel.title)"
+    }
+
     /// Battles its fury takes to rise before its active skill fires: a
     /// battle sooner with Battle Rage, never sooner than every second.
     public var cadence: Int {

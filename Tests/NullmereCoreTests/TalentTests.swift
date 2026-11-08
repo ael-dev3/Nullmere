@@ -173,6 +173,25 @@ final class TalentTests: XCTestCase {
         state.commanders![commander - 1].fury = Skill.fellCharge.cadence - 2
         XCTAssertEqual(state.furyReady(of: led), .fellCharge, "Ready a battle sooner")
         XCTAssertEqual(state.commander(commander)?.pointsLeft, 0)
+        XCTAssertEqual(try XCTUnwrap(state.commander(commander)).effectSaid(of: .battleRage), Talent.battleRage.effect)
+    }
+
+    /// Battle Rage can't hasten a skill that fires every second battle
+    /// already: an Outrider's or a Gleaner's commander is told it only opens
+    /// Moonsteel, learned all the same on the way to the crown.
+    func testBattleRageSaysWhatItDoesForTheCommanderItIsLearnedBy() throws {
+        for archetype in Archetype.allCases {
+            let (state, _, commander, _) = try world(level: 30, archetype: archetype)
+            let leader = try XCTUnwrap(state.commander(commander))
+            let said = leader.effectSaid(of: .battleRage)
+            if archetype.active.cadence <= 2 {
+                XCTAssertEqual(said, "\(archetype.active.title) fires every second battle already: for this commander it only opens Moonsteel")
+            } else {
+                XCTAssertEqual(said, "Its skill fires a battle sooner, though never sooner than every second battle")
+            }
+            XCTAssertEqual(leader.effectSaid(of: .keenEdge), Talent.keenEdge.effect)
+        }
+        XCTAssertEqual(Talent.moonsteel.openers, [.battleRage], "Learned all the same: the crown opens past it")
     }
 
     func testTalentsForgottenForMoonsaltToLearnAnew() throws {
