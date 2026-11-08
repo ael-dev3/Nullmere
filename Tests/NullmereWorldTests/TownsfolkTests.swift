@@ -437,4 +437,62 @@ extension TownsfolkTests {
             XCTAssertTrue(staged.contains { abs($0.model.c3.x - at.x) < 1e-4 && abs($0.model.c3.z - at.z) < 1e-4 }, "Staged where it steps")
         }
     }
+
+    /// Through the night one in three of the town's folk with a hand free
+    /// carries a lantern: a warm point of flame at their hand beside them,
+    /// in a fainter, wider glow, light only, staged with them in the
+    /// frame's motes; it swings with the step and its flame flickers, so it
+    /// moves frame by frame. Carters, farmhands, salters and children carry
+    /// none, and none walk with one about a burning hold.
+    func testOneInThreeWithAHandFreeCarriesALantern() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let hold = try seat([.walls: 2, .granary: 3, .sawpit: 2, .quarry: 2, .saltworks: 1, .infirmary: 1, .forge: 1, .beacon: 1])
+        let sight = HoldSight(hold: hold, colour: Vec4(0.6, 0.2, 0.2, 1))
+        func bearers(_ errands: [WorldStage.Errand]) -> Int {
+            errands.filter { errand in
+                guard case .folk(let variant) = errand.key else { return false }
+                return Folk.carriesLantern(variant) && errand.salt % WorldStage.lanternEvery == 0
+            }.count
+        }
+        XCTAssertEqual((0..<9).filter(Folk.carriesLantern), [4, 5, 6, 7], "Porters, householders, water-carriers and elders")
+        let works = stage.errands(of: sight) + stage.porters(of: sight)
+        let close = bearers(works + stage.strolls(of: sight))
+        XCTAssertGreaterThanOrEqual(close, 3, "A grown seat's lanes have lanterns in them")
+
+        var frame = SceneFrame()
+        let walkers = stage.townsfolk([sight], time: 12, crowds: true, into: &frame).flatMap { batch in
+            batch.instances.map { (key: batch.key, foot: Vec3($0.model.c3.x, $0.model.c3.y, $0.model.c3.z)) }
+        }
+        XCTAssertEqual(frame.motes.count, 2 * close, "A flame and its glow for each")
+        for pair in stride(from: 0, to: frame.motes.count - 1, by: 2) {
+            let flame = frame.motes[pair], glow = frame.motes[pair + 1]
+            XCTAssertEqual(flame.colour.w, 0, "Light only")
+            XCTAssertEqual(glow.colour.w, 0, "Light only")
+            XCTAssertGreaterThan(flame.colour.x, 2 * flame.colour.z, "Warm")
+            XCTAssertGreaterThan(glow.place.w, 3 * flame.place.w, "In a wider glow")
+            XCTAssertLessThan(glow.colour.x, 0.2 * flame.colour.x, "A faint one")
+            XCTAssertEqual(glow.place.x, flame.place.x)
+            XCTAssertEqual(glow.place.z, flame.place.z)
+            let at = Vec3(flame.place.x, flame.place.y, flame.place.z)
+            // At the hand of one with a hand free, beside them.
+            XCTAssertTrue(walkers.contains { walker in
+                guard case .folk(let variant) = walker.key, Folk.carriesLantern(variant) else { return false }
+                return flat(at, walker.foot) < 0.08 && abs(at.y - walker.foot.y - Folk.lanternHeight(variant)) < 1e-4
+            }, "At a bearer's hand, beside them")
+        }
+        var later = SceneFrame()
+        _ = stage.townsfolk([sight], time: 12.1, crowds: true, into: &later)
+        XCTAssertEqual(later.motes.count, frame.motes.count)
+        XCTAssertNotEqual(later.motes, frame.motes, "Swinging and flickering as they go")
+
+        // From afar the works' folk and porters walk alone, with theirs.
+        var far = SceneFrame()
+        _ = stage.townsfolk([sight], time: 12, into: &far)
+        XCTAssertEqual(far.motes.count, 2 * bearers(works))
+        var burning = hold
+        burning.ward = burning.maximumWard / 2 - 1
+        var dark = SceneFrame()
+        _ = stage.townsfolk([HoldSight(hold: burning, colour: sight.colour)], time: 12, crowds: true, into: &dark)
+        XCTAssertTrue(dark.motes.isEmpty, "None walk out of a burning hold")
+    }
 }

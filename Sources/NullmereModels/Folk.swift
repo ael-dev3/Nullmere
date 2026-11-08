@@ -36,6 +36,20 @@ public enum Folk {
         }
     }
 
+    /// Whether townsfolk of a variant have a hand free to carry a lantern
+    /// through the night: a porter, a householder, a water-carrier and an
+    /// elder do; a carter hauls with both hands, a farmhand bears a
+    /// pitchfork and a salter a basket, and a child carries none.
+    public static func carriesLantern(_ variant: Int) -> Bool {
+        [porter, householder, waterCarrier, elder].contains(variant)
+    }
+
+    /// How high above the ground townsfolk of a variant carry a lantern:
+    /// at the hand, a little below the hip.
+    public static func lanternHeight(_ variant: Int) -> Float {
+        gait(variant).size * 0.42
+    }
+
     /// How tall a townsfolk of a variant is and how far each stride goes,
     /// which make their pace: their walks are keyed to hold the ground at it.
     static func gait(_ variant: Int) -> Gait {

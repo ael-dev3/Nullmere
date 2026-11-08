@@ -91,7 +91,9 @@ final class WorldPreviewTests: XCTestCase {
             happenings.furies = [Happenings.Fury(at: heart + Vec3(-1.6, 0, 1.1), start: 19.6, look: .ward, seed: 7),
                                  Happenings.Fury(at: heart + Vec3(1.7, 0, 1.2), start: 19.75, look: .blaze, seed: 9)]
         }
-        (frame.motes, frame.lights) = happenings.effects(at: 20)
+        let (motes, lights) = happenings.effects(at: 20)
+        frame.motes += motes
+        frame.lights += lights
         return frame
     }
 

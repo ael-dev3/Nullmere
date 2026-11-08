@@ -255,7 +255,10 @@ extension GameSession {
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + flights
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
-            (frame.motes, frame.lights) = happened.effects(at: t)
+            // Beside the lanterns the townsfolk carry, staged with them.
+            let (motes, lights) = happened.effects(at: t)
+            frame.motes += motes
+            frame.lights += lights
             // Commanders' skills at work where they fired, each its look made whole.
             let skillsAtWork = WorldStage.furies(happened.furies, time: t, into: &frame)
             frame.batches += skillsAtWork

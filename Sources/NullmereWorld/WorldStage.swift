@@ -829,8 +829,9 @@ public final class WorldStage: @unchecked Sendable {
     /// each on the land under it, posed as it walks or stands, those
     /// gathered each at their own moment of what they do there, those
     /// walking stepping aside of each other as they pass (see
-    /// `stepsAside`). None about a hold whose ward is broken below half:
-    /// they keep within.
+    /// `stepsAside`), one in three of those with a hand free carrying a
+    /// lantern, its light added to the frame's motes (see `lantern`). None
+    /// about a hold whose ward is broken below half: they keep within.
     public func townsfolk(_ sights: [HoldSight], time: Float, crowds: Bool = false, into frame: inout SceneFrame) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
         var shared: [PoseKey: UInt32] = [:]
@@ -846,10 +847,15 @@ public final class WorldStage: @unchecked Sendable {
             for (index, errand) in errands.enumerated() {
                 let (walked, heading, clip) = walks[index]
                 let at = walked + aside[index]
+                let foot = Vec3(at.x, ground(atX: at.x, z: at.z), at.z)
                 let start = WorldStage.pose(errand.key, clip, at: time + Float(errand.salt % 13) * 0.29, shared: &shared, into: &frame)
-                placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),
+                placed.append((errand.key, ModelInstance(model: .translation(foot) * .rotationY(heading),
                                                          colour: sight.colour, phase: Float(errand.salt % 17) * 0.31, hex: hex,
                                                          palette: start)))
+                if case .folk(let variant) = errand.key, Folk.carriesLantern(variant), errand.salt % WorldStage.lanternEvery == 0 {
+                    frame.motes += WorldStage.lantern(at: foot, heading: heading, height: Folk.lanternHeight(variant),
+                                                      time: time, salt: errand.salt)
+                }
             }
             guard crowds else { continue }
             for (index, folk) in gathered.enumerated() {
@@ -861,6 +867,29 @@ public final class WorldStage: @unchecked Sendable {
             }
         }
         return WorldStage.batches(placed)
+    }
+
+    /// One in this many of the townsfolk with a hand free carries a lantern.
+    public static let lanternEvery = 3
+    /// A lantern's flame, linear: warm, as the hearths' are.
+    static let lanternFlame = Vec3(1.0, 0.62, 0.26)
+
+    /// The lantern one walking the town carries at their side, standing at
+    /// `foot` and facing `heading`: a warm point of flame at the hand
+    /// (`height` above the ground), swinging a little ahead and behind
+    /// with the step and its flame flickering, each walker's in its own
+    /// time (`salt`), in a faint glow of its own light. Light only: it
+    /// hides nothing behind it.
+    public static func lantern(at foot: Vec3, heading: Float, height: Float, time: Float, salt: Int) -> [Mote] {
+        let c = Float(cos(Double(heading))), s = Float(sin(Double(heading)))
+        let own = Float(salt % 11) * 0.57
+        let swing = 0.014 * Float(sin(Double(time * 5.2 + own)))
+        let side: Float = 0.05, ahead = 0.02 + swing
+        let hand = foot + Vec3(c * side + s * ahead, height, -s * side + c * ahead)
+        let flicker = 0.86 + 0.14 * Float(sin(Double(time * 13.1 + own)) * sin(Double(time * 7.7 + 2 * own)))
+        let flame = lanternFlame * flicker
+        return [Mote(at: hand, size: 0.022, light: flame * 1.3, cover: 0),
+                Mote(at: hand, size: 0.11, light: flame * 0.1, cover: 0)]
     }
 
     /// How far one walking the town's lanes steps aside to let another by:

@@ -365,7 +365,11 @@ figure, 3,000 for a work, 4,500 for a keep or an alliance's hall);
   market a stallholder behind each stall's counter and two of its folk at
   the stall's ends. Each stands clear of the lanes where the others walk,
   facing what they gathered at and posed at their own moment of what they
-  do there (`HoldLayout.gatherings`). They keep within a hold
+  do there (`HoldLayout.gatherings`). One in three of those walking with
+  a hand free (porters, householders, water-carriers and elders) carries a
+  lantern at their side through the night: a warm point of flame at the
+  hand, swinging a little with the step and flickering, in a faint glow of
+  its own (`WorldStage.lantern`). They keep within a hold
   whose ward is broken, and stay in where motion is reduced. A cart goes on the way between each hold and
   the nearest other of its House within seven hexes, where unbroken land
   runs between, from beyond one's walls to beyond the other's and back,
