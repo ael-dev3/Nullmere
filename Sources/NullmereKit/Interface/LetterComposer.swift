@@ -23,7 +23,7 @@ struct LetterComposer: View {
 
     /// What the hold that keeps the House's letter says of it.
     static func kept(_ letter: Letter) -> String {
-        "Your letter to the age to come lies under these stones: “\(letter.words)”"
+        letter.keptSaid
     }
 
     var body: some View {
@@ -41,8 +41,7 @@ struct LetterComposer: View {
                 QuietButton(title: open ? "A letter to the age to come" : "A letter to the age to come…", size: 8.5,
                             name: open ? "Fold the letter away" : "Write a letter to the age to come") { open.toggle() }
                 if open {
-                    Text(verbatim: "Sealed under these stones, it goes down with them when the age drowns; whoever searches "
-                         + "their ruin in the age after finds it, and every House reads it. It costs \(GameState.letterCost), one an age.")
+                    Text(verbatim: GameState.letterSaid)
                         .font(.nm(10))
                         .foregroundStyle(Palette.text(0.55))
                         .fixedSize(horizontal: false, vertical: true)

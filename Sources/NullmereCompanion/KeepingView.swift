@@ -2087,6 +2087,16 @@ struct HoldRows: View {
                 .font(Night.small)
                 .accessibilityLabel("\(heal.title) at \(hold.name)")
         }
+        // The House's letter to the age to come, kept under these stones, or
+        // one to seal here, as the Mac's hold record offers it.
+        if let kept = hold.letterKept {
+            Text(verbatim: kept)
+                .font(Night.small)
+                .foregroundStyle(Night.moon)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if hold.maySealLetter {
+            LetterRows(session: session, hold: hold)
+        }
         if !hold.works.isEmpty || !hold.musters.isEmpty {
             HStack(spacing: 10) {
                 OrdersMenu(title: "Raise", orders: hold.works, label: "Raise a work at \(hold.name)") { order in
@@ -2098,6 +2108,38 @@ struct HoldRows: View {
             }
             .font(Night.small)
         }
+    }
+}
+
+/// A letter to the age to come sealed at a hold, as the Mac's hold record
+/// offers it: what one is and costs, the words, and Seal where the rules
+/// would take them.
+struct LetterRows: View {
+    let session: CompanionSession
+    let hold: CompanionLedger.Hold
+    @State private var draft = ""
+
+    var body: some View {
+        DisclosureGroup("A letter to the age to come…") {
+            Text(verbatim: GameState.letterSaid)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("Words for the age to come", text: $draft, axis: .vertical)
+                .font(Night.body)
+                .lineLimit(1...4)
+            if let world = session.world, let me = session.keeper?.house {
+                let seal = CompanionLedger.sealing(draft, in: hold.id, world: world, player: me)
+                Button("Seal") {
+                    if let seal { session.give(seal.command, told: "\(seal.title) at \(hold.name)") }
+                    draft = ""
+                }
+                .buttonStyle(.bordered)
+                .disabled(seal == nil)
+                .accessibilityLabel(seal?.title ?? "Seal the letter")
+            }
+        }
+        .font(Night.small)
     }
 }
 

@@ -7,6 +7,12 @@
 /// the nearest hold that does. Only a keeper seals one, so a world of
 /// stewards goes as it always did.
 public struct Letter: Codable, Equatable, Sendable {
+    /// What the hold that keeps it says of it to the House that sealed it,
+    /// on the Mac and the phone.
+    public var keptSaid: String {
+        "Your letter to the age to come lies under these stones: \u{201C}\(words)\u{201D}"
+    }
+
     public let id: Int
     public internal(set) var words: String
     /// The House that sealed it, and the hold, as they were then: by index
@@ -39,6 +45,13 @@ public struct Letter: Codable, Equatable, Sendable {
 extension GameState {
     /// What sealing a letter costs.
     public static let letterCost = Stock(moonsalt: 20)
+
+    /// What a letter to the age to come is, said where one may be sealed,
+    /// on the Mac and the phone.
+    public static var letterSaid: String {
+        "Sealed under these stones, it goes down with them when the age drowns; whoever searches "
+            + "their ruin in the age after finds it, and every House reads it. It costs \(letterCost), one an age."
+    }
 
     /// The letters sealed in this age, for the age to come.
     public var lettersSealed: [Letter] { letters ?? [] }

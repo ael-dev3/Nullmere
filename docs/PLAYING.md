@@ -285,7 +285,10 @@ a vote on the realm's law to cast.
   its Infirmary while any lie in its beds (who lies there, and those being
   healed) with Heal for half what mustering them anew costs, and Raise and
   Muster: the works it may raise a level and the companies it may muster
-  at the first tier now, the House able to pay; While you are away, the
+  at the first tier now, the House able to pay, and, while the House has
+  sealed none this age, A letter to the age to come…, its words sealed
+  under that hold's stones for 20 moonsalt where the rules take them, the
+  hold that keeps it saying so after; While you are away, the
   caretaker's standing orders as they stand, with Muster (the one kind of
   company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace

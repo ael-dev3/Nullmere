@@ -59,6 +59,18 @@ public struct CompanionLedger: Equatable, Sendable {
         /// Healing those still waiting, for what it costs, where the rules
         /// would pay for it now.
         public var heal: Order? = nil
+        /// The House's letter to the age to come, where this hold keeps it.
+        public var letterKept: String? = nil
+        /// Whether a letter to the age to come may be sealed here: the
+        /// House has sealed none this age, and may.
+        public var maySealLetter: Bool = false
+    }
+
+    /// A letter to the age to come sealed in a hold, in these words, where
+    /// the rules would take it.
+    public static func sealing(_ words: String, in hold: Int, world: GameState, player: Int) -> Order? {
+        world.sealRefusal(words, in: hold, as: player) == nil
+            ? Order(title: "Seal the letter, for \(GameState.letterCost)", command: .sealLetter(words: words, hold: hold)) : nil
     }
 
     /// A line said in the alliance or to the realm.
@@ -968,10 +980,14 @@ public struct CompanionLedger: Equatable, Sendable {
                     + CompanionLedger.watches(training.watchesLeft))
             }
             let (infirmary, heal) = CompanionLedger.infirmary(at: hold, in: world, player: player)
+            let sealed = world.letter(sealedBy: player)
+            // Any words will do to ask whether one may be sealed here at all.
+            let maySeal = sealed == nil && world.sealRefusal("A letter", in: hold.id, as: player) == nil
             return Hold(id: hold.id, name: hold.name, isSeat: hold.isSeat, work: work,
                         musters: CompanionLedger.musters(at: hold, in: world, player: player),
                         works: CompanionLedger.works(at: hold, in: world, player: player),
-                        infirmary: infirmary, heal: heal)
+                        infirmary: infirmary, heal: heal,
+                        letterKept: sealed.flatMap { $0.holdID == hold.id ? $0.keptSaid : nil }, maySealLetter: maySeal)
         }
         let pursuit = houses.indices.contains(player) ? houses[player].research.pursuit : nil
         studying = pursuit.map { "Studying \($0.study.title) \(BuildingKind.numeral($0.grade)), " + CompanionLedger.watches($0.watchesLeft) }

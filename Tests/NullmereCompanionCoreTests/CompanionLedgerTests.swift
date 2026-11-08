@@ -714,6 +714,29 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(again.why, RuleError.prophecyOpen.description)
     }
 
+    /// A letter to the age to come from the phone, as the Mac's hold record
+    /// offers it: every hold of the House offers one while none is sealed;
+    /// words sealed at one, taken by the rules; sealed, that hold keeps it
+    /// and says so, and no hold offers another.
+    func testThePhoneSealsALetterToTheAgeToCome() throws {
+        var (state, me) = try world()
+        var ledger = CompanionLedger(world: state, player: me)
+        let seat = try XCTUnwrap(ledger.holds.first(where: \.isSeat))
+        XCTAssertTrue(seat.maySealLetter)
+        XCTAssertNil(seat.letterKept)
+        XCTAssertNil(CompanionLedger.sealing("   ", in: seat.id, world: state, player: me), "Nothing to seal")
+        let seal = try XCTUnwrap(CompanionLedger.sealing("We were here before the water.", in: seat.id, world: state, player: me))
+        XCTAssertEqual(seal.title, "Seal the letter, for \(GameState.letterCost)")
+        assertTaken([seal], in: state, as: me)
+        _ = try state.perform(seal.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        let sealed = try XCTUnwrap(ledger.holds.first(where: \.isSeat))
+        XCTAssertEqual(sealed.letterKept, "Your letter to the age to come lies under these stones: \u{201C}We were here before the water.\u{201D}")
+        XCTAssertFalse(sealed.maySealLetter)
+        XCTAssertTrue(ledger.holds.allSatisfy { !$0.maySealLetter }, "One an age")
+        XCTAssertNil(CompanionLedger.sealing("Again.", in: seat.id, world: state, player: me))
+    }
+
     /// The titles of the Spire on the phone, as the Mac's Realm panel tells
     /// them: no broken Spire found, none told; held by the House, it names
     /// them, each House among those offered named where the rules take it;
