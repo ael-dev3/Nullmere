@@ -1011,6 +1011,7 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.hideAHouse(ama: ama, bel: bel)
         try await scene.makeTheWordsSafe(ama: ama, bel: bel)
         try await scene.teachTheLakeToLie(ama: ama, bel: bel)
+        try await scene.keepAVigil(ama: ama, bel: bel)
         try await scene.upTheSpine(ama: ama, bel: bel)
         // Last: its watches turned would move the pedlar's and others' staged watches.
         try await scene.raiseAStandardTogether(ama: ama, bel: bel)

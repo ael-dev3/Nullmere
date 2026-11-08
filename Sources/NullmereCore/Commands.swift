@@ -88,6 +88,12 @@ public enum Command: Codable, Equatable, Sendable {
     /// Words sealed in a bottle and set on the water from a hold on the
     /// shore, signed or not.
     case castBottle(words: String, from: Int, signed: Bool)
+    /// A light set on the water from a hold on the shore for the House's
+    /// fallen, with the keeper's words for them.
+    case keepVigil(words: String, hold: Int)
+    /// Another House's vigil honoured: renown to its keeper as the age
+    /// ends, and no strike on its House while its light burns.
+    case honourVigil(Int)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -305,6 +311,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case sangThisWatch
     case noWaterBeside
     case castThisWatch
+    case noneUnmourned
+    case noSuchVigil
+    case ownVigil
+    case honouredAlready
+    /// A strike on a House whose vigil the striker honoured, while it burns.
+    case mourning(until: Int)
     case letterSealed
     case notACompanyOfWar
     case noStandingOrders
@@ -610,7 +622,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notABallad: return "A ballad is two to six short lines of plain words."
         case .sungAlready: return "Your House has sung of that already."
         case .sangThisWatch: return "Your House has sung this watch; sing again at the next."
-        case .noWaterBeside: return "No water lies beside this hold to set a bottle on."
+        case .noWaterBeside: return "No water lies beside this hold to set anything on."
+        case .noneUnmourned: return "Your House has lost no company of war in battle since its last vigil."
+        case .noSuchVigil: return "That vigil's light has gone out."
+        case .ownVigil: return "A House keeps its own vigil; others honour it."
+        case .honouredAlready: return "Your House has honoured that vigil already."
+        case .mourning(let until):
+            return "Your House honoured a vigil of that House's for its fallen: it may not strike them, nor rally on their holds, "
+                + "while its light burns, until watch \(until)."
         case .castThisWatch: return "Your House has set a bottle on the water this watch; another at the next."
         case .letterSealed: return "Your House has sealed its letter to the age to come; one an age."
         case .notACompanyOfWar: return "Only a company of war is mustered by a standing order."
@@ -1073,6 +1092,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case bottleCast(bottle: Int, from: Int, at: Hex)
     /// A bottle washed up and found, with the words in it.
     case bottleFound(bottle: Bottle, by: Int)
+    /// A vigil's light set on the water for a House's fallen.
+    case vigilKept(Vigil)
+    /// A vigil honoured by another House.
+    case vigilHonoured(vigil: Int, house: Int, by: Int)
+    /// A vigil's light gone out, and how many Houses honoured it.
+    case vigilOut(vigil: Int, house: Int, honours: Int)
     /// A letter sealed in a hold for the age to come.
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.

@@ -67,6 +67,10 @@ public struct CompanionLedger: Equatable, Sendable {
         /// Whether a bottle may be set on the water here: a hold on the
         /// shore, none cast from the House this watch.
         public var mayCastBottle: Bool = false
+        /// Whether a vigil for the House's fallen may be kept here: a hold
+        /// on the shore, while the House has companies lost it has kept
+        /// none for.
+        public var mayKeepVigil: Bool = false
     }
 
     /// A bottle set on the water from a hold, with these words, signed or
@@ -74,6 +78,34 @@ public struct CompanionLedger: Equatable, Sendable {
     public static func casting(_ words: String, from hold: Int, signed: Bool, world: GameState, player: Int) -> Order? {
         world.castRefusal(words, from: hold, as: player) == nil
             ? Order(title: "Cast the bottle, for \(GameState.bottleCost)", command: .castBottle(words: words, from: hold, signed: signed)) : nil
+    }
+
+    /// A vigil for the House's fallen kept from a hold, with these words,
+    /// where the rules would take it.
+    public static func keepingVigil(_ words: String, from hold: Int, world: GameState, player: Int) -> Order? {
+        world.vigilRefusal(words, from: hold, as: player) == nil
+            ? Order(title: "Set the light, for \(GameState.vigilCost)", command: .keepVigil(words: words, hold: hold)) : nil
+    }
+
+    /// A vigil's light burning on the lake, as the Mac's water record
+    /// tells it, and the honouring of it where the rules would take it,
+    /// with what that binds the House to.
+    public struct VigilTold: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let title: String
+        public let line: String
+        public var honour: Order? = nil
+        public var honourSaid: String? = nil
+    }
+
+    /// The vigils on the lake as the phone tells them: the latest first.
+    public static func vigils(in world: GameState, player: Int) -> [VigilTold] {
+        world.vigilsOnTheLake.reversed().map { vigil in
+            let mayHonour = world.honourRefusal(vigil.id, as: player) == nil
+            return VigilTold(id: vigil.id, title: world.vigilTitle(vigil, for: player), line: world.vigilLine(vigil, for: player),
+                         honour: mayHonour ? Order(title: "Honour it", command: .honourVigil(vigil.id)) : nil,
+                         honourSaid: mayHonour ? world.honourSaid(vigil) : nil)
+        }
     }
 
     /// A letter to the age to come sealed in a hold, in these words, where
@@ -749,6 +781,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let mayForetell: Bool
     /// The whispers heard on the water, the latest first.
     public let whispers: [Heard]
+    /// The vigils' lights for the fallen burning on the lake, the latest first.
+    public let vigils: [VigilTold]
     /// The titles of the Spire.
     public let titles: Titles
     /// The holy sites the House has found.
@@ -1077,7 +1111,8 @@ public struct CompanionLedger: Equatable, Sendable {
                         works: CompanionLedger.works(at: hold, in: world, player: player),
                         infirmary: infirmary, heal: heal,
                         letterKept: sealed.flatMap { $0.holdID == hold.id ? $0.keptSaid : nil }, maySealLetter: maySeal,
-                        mayCastBottle: world.castRefusal("A bottle", from: hold.id, as: player) == nil)
+                        mayCastBottle: world.castRefusal("A bottle", from: hold.id, as: player) == nil,
+                        mayKeepVigil: world.vigilRefusal("A vigil", from: hold.id, as: player) == nil)
         }
         let pursuit = houses.indices.contains(player) ? houses[player].research.pursuit : nil
         studying = pursuit.map { "Studying \($0.study.title) \(BuildingKind.numeral($0.grade)), " + CompanionLedger.watches($0.watchesLeft) }
@@ -1222,6 +1257,7 @@ public struct CompanionLedger: Equatable, Sendable {
                         },
                         mayName: world.titleGiver == player,
                         shown: world.holySites.contains { $0.kind == .brokenSpire } || !world.titlesBorne.isEmpty)
+        vigils = CompanionLedger.vigils(in: world, player: player)
         whispers = world.whispersHeard.suffix(CompanionLedger.whispersShown).reversed().map { whisper in
             Heard(id: whisper.id, said: world.whisperSaid(whisper), standing: world.whisperStandingSaid(whisper, to: player),
                   unmasked: whisper.unmasked)

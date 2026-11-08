@@ -1566,6 +1566,8 @@ public final class GameSession {
         case .say: return .parley
         case .sing: return .lore
         case .castBottle: return .order
+        case .keepVigil: return .lore
+        case .honourVigil: return .honour
         case .question: return .lore
         case .ransom: return .coin
         case .release: return .stand
@@ -1723,6 +1725,7 @@ public final class GameSession {
         case .said(let word) where word.from != player: return .parley
         case .sung(let ballad) where ballad.house != player: return .lore
         case .bottleFound(_, let by) where by == player: return .lore
+        case .vigilHonoured(_, let house, _) where house == player: return .honour
         case .letterFound: return .lore
         case .commanderTaken(_, _, let by) where by == player: return .triumph
         case .commanderTaken(_, let house, _) where house == player: return .dread

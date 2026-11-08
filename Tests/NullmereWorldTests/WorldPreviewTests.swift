@@ -100,6 +100,21 @@ final class WorldPreviewTests: XCTestCase {
         return frame
     }
 
+    /// Vigils' lights for the fallen carried one behind another round the
+    /// lake on its current, from still water some way out from its heart:
+    /// eight, each a hex on from the last, as the rules carry them.
+    static func procession(in state: GameState, from heart: Hex) -> [VigilSight] {
+        guard var at = state.map.hexes.filter({ $0.distance(to: heart) == 6 && state.map[$0]?.terrain == .still }).min() else { return [] }
+        var sights: [VigilSight] = []
+        for index in 0..<8 {
+            let next = state.downstream(of: at)
+            sights.append(VigilSight(at: at, next: next, id: 40 + index, burned: Float(index) / 8))
+            guard let next else { break }
+            at = next
+        }
+        return sights
+    }
+
     /// A frame's models as the preview reads them: each kind's instances,
     /// as the GPU takes them, and the poses.
     static func export(_ scene: SceneFrame) -> [String: Any] {
@@ -160,6 +175,17 @@ final class WorldPreviewTests: XCTestCase {
         var fishersView = Camera(scale: 60, tilt: 0.85)
         fishersView.focus(on: Hex(0, 0))
         let scene = WorldPreviewTests.stage(state)
+        // And low over the water nearer the shore, a procession of vigils'
+        // lights for the fallen carried round on the current, the nearest
+        // mirrored in it, halfway through the watch.
+        let procession = WorldPreviewTests.procession(in: state, from: lake)
+        XCTAssertEqual(procession.count, 8, "Eight lights on the water, one behind another")
+        var vigilView = Camera(scale: 130, tilt: 1.2, heading: 0.4)
+        vigilView.focus(on: try XCTUnwrap(procession.dropFirst(4).first).at)
+        var vigils = scene
+        let lit = WorldStage.vigils(procession, progress: 0.5, scale: vigilView.scale, time: 20)
+        vigils.motes += lit.motes
+        vigils.lights += lit.lights
         // The whole realm from afar, its holds glowing round the lake.
         var afar = scene
         afar.motes += WorldStage(map: state.map, relief: Relief(map: state.map))
@@ -167,7 +193,7 @@ final class WorldPreviewTests: XCTestCase {
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
             ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
-            ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene),
+            ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene), ("vigils", vigilView, whole, vigils),
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
@@ -192,7 +218,7 @@ final class WorldPreviewTests: XCTestCase {
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 9)
+        XCTAssertEqual(frames.count, 10)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

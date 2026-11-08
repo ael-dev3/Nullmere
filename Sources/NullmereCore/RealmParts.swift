@@ -546,8 +546,8 @@ extension GameState {
     /// come and those of the age before, their standing orders, their
     /// alliances, their reports and bars on words, the drowned holds,
     /// bottles, barges, rallies, fields of battle, shrines, lairs,
-    /// standards, halls and storehouses they know of, their satchel and
-    /// their makings.
+    /// standards, halls and storehouses they know of, the vigils burning
+    /// for the fallen, their satchel and their makings.
     struct Keeps: Codable, Equatable {
         var dreams: [Dream]?
         var whispers: [Whisper]?
@@ -572,6 +572,7 @@ extension GameState {
         var bars: [WordsBar]?
         var drowned: [DrownedHold]?
         var bottles: [Bottle]?
+        var vigils: [Vigil]?
         var barges: [Ferrying]?
         var rallies: [Rally]?
         var fields: [Field]?
@@ -607,6 +608,7 @@ extension GameState {
             bars = world.bars
             drowned = world.drowned
             bottles = world.bottles
+            vigils = world.vigils
             barges = world.barges
             rallies = world.rallies
             fields = world.fields
@@ -644,6 +646,7 @@ extension GameState {
             world.bars = bars
             world.drowned = drowned
             world.bottles = bottles
+            world.vigils = vigils
             world.barges = barges
             world.rallies = rallies
             world.fields = fields

@@ -241,7 +241,7 @@ NullmereWorld tests write out (Playwright's Chromium draws it headless):
 
 ```sh
 NULLMERE_WORLD_PREVIEW=build/world3d swift test --filter WorldPreviewTests
-node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # or lake, whole, turned, moon, close, company, folk, fishers
+node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # or lake, whole, turned, moon, close, company, folk, fishers, vigils
 ```
 
 The models are previewed the same way: `NULLMERE_MODEL_PREVIEW=build/models

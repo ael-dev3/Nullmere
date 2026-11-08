@@ -109,10 +109,11 @@ extension GameState {
     }
 
     /// Whether a House's company may march with a host on its target: on
-    /// a lair, any of its side's; on a hold, those at war with its House.
+    /// a lair, any of its side's; on a hold, those at war with its House
+    /// and bound by no vigil of its House's they honoured.
     func mayStrike(_ house: Int, _ target: RallyTarget) -> Bool {
         switch target {
-        case .hold(let hold): return isAtWar(house, hold.owner) && !isVeiled(hold.owner)
+        case .hold(let hold): return isAtWar(house, hold.owner) && !isVeiled(hold.owner) && mourningRefusal(of: house, striking: hold.owner) == nil
         case .lair: return true
         }
     }
@@ -130,6 +131,7 @@ extension GameState {
         } else {
             guard let target = hold(targetID), isExplored(target.position, by: house) else { throw .unknownHold }
             guard isAtWar(house, target.owner) else { throw .notAtWar(target.owner) }
+            if let refusal = mourningRefusal(of: house, striking: target.owner) { throw refusal }
             if let refusal = veiledRefusal(of: target.owner) { throw refusal }
         }
         guard muster.level(.musterHall) >= 1 else { throw .needsMusterHall(1) }
@@ -151,6 +153,7 @@ extension GameState {
         guard !rally.marching else { return .rallySetOut }
         guard unit.kind.isMilitary else { return .cannotFight }
         guard let target = target(of: rally) else { return .unknownHold }
+        if case .hold(let hold) = target, let refusal = mourningRefusal(of: house, striking: hold.owner) { return refusal }
         guard mayStrike(house, target) else { return .notAtWar(target.owner) }
         guard unit.errand != .rally(rallyID) else { return .alreadyRallying }
         guard rally.companies.filter({ self.unit($0)?.errand == .rally(rallyID) }).count < capacity(of: rally) else { return .rallyFull }

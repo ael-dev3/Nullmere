@@ -82,6 +82,10 @@ extension GameState {
             return try sing(ballad, of: entry, as: house)
         case let .castBottle(words, holdID, signed):
             return try castBottle(words, from: holdID, signed: signed, as: house)
+        case let .keepVigil(words, holdID):
+            return try keepVigil(words, from: holdID, as: house)
+        case .honourVigil(let id):
+            return try honourVigil(id, as: house)
         case let .sealLetter(words, holdID):
             return try sealLetter(words, in: holdID, as: house)
         case .stand(let order):
@@ -433,6 +437,8 @@ extension GameState {
         }
         guard let foe = foe(at: target, for: house) else { throw .nothingToAttack }
         guard isAtWar(house, foe.owner) else { throw .notAtWar(foe.owner) }
+        // Nor a House whose vigil for its fallen this one honoured, while it burns.
+        if let refusal = mourningRefusal(of: house, striking: foe.owner) { throw refusal }
         guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
         // A hold under its House's veil, and whoever keeps it, may not be struck.
         if let held = foe.hold.flatMap({ hold($0) }), let refusal = veiledRefusal(of: held.owner) { throw refusal }
@@ -593,6 +599,7 @@ extension GameState {
         guard units[index].health <= 0 else { return false }
         let unit = units.remove(at: index)
         events.append(.unitLost(unit: unit.id, kind: unit.kind, owner: unit.owner, at: unit.position))
+        mourn(unit)
         events += takePrisoner(of: unit, by: striker) ?? woundCommander(of: unit)
         events += carryToInfirmary(unit)
         return true

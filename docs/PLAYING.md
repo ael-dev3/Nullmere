@@ -1466,6 +1466,18 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   who set it and the one who found it read its words, and an unsigned
   bottle's finder is not told whose it was. A bottle forty watches afloat
   sinks.
+- **Vigils for the fallen.** Each company of war a keeper's House loses in
+  battle is counted until its keeper keeps a vigil for them: from a hold on
+  the shore, under By the water, a light set on the Still with their words
+  for the dead (five timber and a moonsalt). Every House sees it and reads
+  it, and its light drifts round the lake on the current for twelve
+  watches before it gutters out. Choose its water on the map to read it;
+  another keeper's may be honoured there, once (and from the phone's realm
+  page). An honour adds two renown to the vigil's keeper as the age ends,
+  five honours at the most, and the honouring House may not strike the
+  mourning House's companies or holds, nor call a rally on them, until the
+  light goes out: the realm refuses the order. A battle already joined goes
+  on.
 - **The Eclipse.** In an age with an age drowned beneath it, the moon is
   eaten at the full of the sixtieth watch, and of every ninetieth after,
   and the drowned age walks: from its greatest holds, six at most, rise

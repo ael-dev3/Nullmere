@@ -1521,3 +1521,53 @@ extension RallyScene {
         await restore(kept, of: bel)
     }
 }
+
+extension RallyScene {
+    /// A vigil for the fallen kept from Ama's client: the fallen she has
+    /// to mourn are hers alone to know; the light on the water, with her
+    /// words, both clients see. Bel honours it from his, both see it
+    /// honoured, and Bel's own view holds him to the truce while it burns.
+    func keepAVigil(ama: Int, bel: Int) async throws {
+        let words = "For the spears at the ford"
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            var world = realm.world
+            // A hold of Ama's by the water: one she has, or one raised on a shore for her.
+            var hold = world.holds(of: ama).first { world.castingWater(beside: $0) != nil }
+            if hold == nil, let shore = world.map.hexes.first(where: { hex in
+                world.map[hex]?.terrain.isSettleable == true && world.hold(at: hex) == nil && world.unit(at: hex) == nil
+                    && world.map.neighbors(of: hex).contains { [.still, .shallows].contains(world.map[$0]?.terrain) }
+            }) {
+                let raised = Hold(id: world.takeID(), name: "Mournwater", owner: ama, position: shore, isSeat: false, foundedWatch: world.watch)
+                world.holds.append(raised)
+                hold = raised
+            }
+            guard let hold else { return }
+            world.houses[ama].unmourned = 2
+            world.houses[ama].stock.credit(GameState.vigilCost)
+            realm.world = world
+            staged.unit = hold.id
+        }
+        let holdID = try XCTUnwrap(staged.unit, "A hold of Ama's by the water")
+        try await until("Ama's fallen counted, hers alone to know") {
+            earA.world?.unmourned(by: ama) == 2 && earA.world?.houses[ama].stock.covers(GameState.vigilCost) == true
+                && earB.world?.houses.indices.contains(ama) == true && earB.world?.houses[ama].unmourned == nil
+        }
+        await MainActor.run { a.send(.keepVigil(words: words, hold: holdID)) }
+        try await until("both see the light on the water, with her words") {
+            earA.world?.vigilsOnTheLake.contains { $0.house == ama && $0.words == words && $0.fallen == 2 } == true
+                && earB.world?.vigilsOnTheLake.contains { $0.house == ama && $0.words == words } == true
+        }
+        let id = try await MainActor.run { try XCTUnwrap(earB.world?.vigilsOnTheLake.first { $0.house == ama && $0.words == words }?.id) }
+        await MainActor.run { b.send(.honourVigil(id)) }
+        try await until("both see it honoured") {
+            earA.world?.vigil(id)?.honouredBy == [bel] && earB.world?.vigil(id)?.honouredBy == [bel]
+        }
+        let (bound, honoured) = await MainActor.run {
+            (earB.world?.vigilHonoured(by: bel, of: ama)?.id, (earA.world?.houses[ama].honoured, earB.world?.houses[ama].honoured))
+        }
+        XCTAssertEqual(bound, id, "Bel's own view holds him to the truce while it burns")
+        XCTAssertEqual(honoured.0, 1)
+        XCTAssertEqual(honoured.1, 1, "The honour, every House's to see")
+    }
+}

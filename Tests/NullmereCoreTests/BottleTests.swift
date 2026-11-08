@@ -86,7 +86,7 @@ final class BottleTests: XCTestCase {
         state.watch += 1
         XCTAssertEqual(refusal(.castBottle(words: "Again", from: hold, signed: false), in: state, as: me),
                        .shortOf(Stock.zero.shortfall(for: GameState.bottleCost)))
-        XCTAssertEqual(RuleError.noWaterBeside.description, "No water lies beside this hold to set a bottle on.")
+        XCTAssertEqual(RuleError.noWaterBeside.description, "No water lies beside this hold to set anything on.")
         XCTAssertEqual(RuleError.castThisWatch.description, "Your House has set a bottle on the water this watch; another at the next.")
     }
 

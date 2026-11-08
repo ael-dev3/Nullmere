@@ -92,6 +92,18 @@ extension GameState {
         return (-dy, dx)
     }
 
+    /// The water a hex on from a hex with the lake's current, the way most
+    /// along it; none where no still water or shallows lie beside.
+    public func downstream(of hex: Hex) -> Hex? {
+        let layout = HexLayout(size: 1)
+        let flow = current(at: hex), here = layout.center(of: hex)
+        return map.neighbors(of: hex).filter { map[$0].map { $0.terrain == .still || $0.terrain == .shallows } ?? false }
+            .max { a, b in
+                let (pa, pb) = (layout.center(of: a), layout.center(of: b))
+                return ((pa.x - here.x) * flow.x + (pa.y - here.y) * flow.y, a) < ((pb.x - here.x) * flow.x + (pb.y - here.y) * flow.y, b)
+            }
+    }
+
     /// The bottles as the watch turns: each afloat drifts a hex on the
     /// current, washes up beside a shore, or sinks when too long afloat;
     /// each washed up and not yet found is found by the first company or
@@ -99,7 +111,6 @@ extension GameState {
     mutating func driftBottles() -> [GameEvent] {
         guard var all = bottles, !all.isEmpty else { return [] }
         var events: [GameEvent] = []
-        let layout = HexLayout(size: 1)
         for index in all.indices where all[index].foundBy == nil {
             var bottle = all[index]
             if !bottle.ashore {
@@ -109,15 +120,8 @@ extension GameState {
                 if let shore = shores.min(), random.chance(GameState.washesUp) {
                     bottle.position = shore
                     bottle.ashore = true
-                } else {
-                    // A hex on with the current, the way most along it.
-                    let flow = current(at: bottle.position), here = layout.center(of: bottle.position)
-                    let along = neighbours.filter { map[$0].map { $0.terrain == .still || $0.terrain == .shallows } ?? false }
-                        .max { a, b in
-                            let (pa, pb) = (layout.center(of: a), layout.center(of: b))
-                            return ((pa.x - here.x) * flow.x + (pa.y - here.y) * flow.y, a) < ((pb.x - here.x) * flow.x + (pb.y - here.y) * flow.y, b)
-                        }
-                    if let along { bottle.position = along }
+                } else if let along = downstream(of: bottle.position) {
+                    bottle.position = along
                 }
             }
             all[index] = bottle

@@ -408,6 +408,36 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   out, in its House's colour, seen from every shore. Cunning and ambitious
   stewards at war walk a company across when the far shore lies within
   three tiles of a foe's hold.
+- [x] **Vigils for the fallen.** A keeper whose House has lost companies of
+  war in battle sets a light on the Still from a hold on its shore, with
+  their words for the dead (5 timber and 1 moonsalt, once for every loss
+  since its last). The whole realm sees it and reads it. It drifts on the
+  lake's current round its deep heart, a hex a watch, glided through the
+  watch so it never jumps, and gutters out twelve watches on. Any other
+  keeper may honour it once, before the realm: each honour is two renown to
+  its keeper as the age ends (five count), and binds the honouring House,
+  while the light burns, to strike none of the mourning House's companies
+  or holds and call no rally on them; the rules refuse it (`.mourning`). A
+  truce offered by the one who could strike, out of respect, and seen by
+  all: grief made into diplomacy that no game master keeps. Ruled in the
+  core (VigilTests: kept for the fallen counted in battle, seen by every
+  view, honoured once, the truce held on strikes and rallies and lifted when
+  the light goes out, honours counted at the age's end), offered on the
+  Mac's hold record under By the water and on its water's record with
+  Honour, and on the phone's holds and realm page (CompanionLedgerTests);
+  played between two clients over the fake realm (keepAVigil: the fallen
+  to mourn Ama's alone to know, the light and her words seen by both, Bel's
+  honour seen by both and binding him in his own view), and set to play
+  the same over a real SpacetimeDB server in CI's realm job from its next
+  run. Drawn in 3D: each a small candle flame riding the black water in its own
+  glow, bobbing and wandering as it goes and lowering as its watches run
+  out, and a light the water mirrors, so the lake carries a procession of
+  lights with their reflections (VigilLightsTests; the browser preview of
+  the same shaders draws eight in a line across the lake, the four nearest
+  the view's middle each laying a long warm streak on the water toward the
+  eye: [world-vigils.png](shots/world-vigils.png)). Not yet run on CI's
+  Mac: the Mac views and their test compile and run there first with the
+  next run.
 
 ## The order of the work
 

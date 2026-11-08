@@ -20,6 +20,10 @@ enum HoverInfo {
         if let bottle = state.bottlesOnTheLake.first(where: { $0.position == hex && $0.foundBy == nil }) {
             parts.append(bottle.ashore ? "a bottle washed up" : "a bottle afloat")
         }
+        // A vigil's light for the fallen burning here.
+        if let vigil = state.vigilsOnTheLake.first(where: { $0.position == hex }) {
+            parts.append(state.houses.indices.contains(vigil.house) ? "a vigil of \(state.houses[vigil.house].title)'s" : "a vigil's light")
+        }
         // A hold of an age before: drowned here, or, searched, remembered.
         if let drowned = state.drowned(at: hex) {
             parts.append(tile.feature == .drownedRuin ? "the drowned hold of \(drowned.title)" : "where \(drowned.title) stood")

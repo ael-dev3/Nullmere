@@ -440,7 +440,7 @@ jobs:
           # mist over the unknown beside the known land, and how it drifts;
           # the froth at the strand, and how it washes up and back; and a
           # lantern's light lying on the water.
-          grep -hE "RENDER (motion|mist|wash|lantern)" build-test.log 2>/dev/null || true
+          grep -hE "RENDER (motion|mist|wash|lantern|vigils)" build-test.log 2>/dev/null || true
           # The detail each game screenshot drew the land's growth at, and
           # what this runner's Auto comes to.
           cat build/game-detail.log 2>/dev/null || true

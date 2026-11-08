@@ -216,6 +216,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Bottles on the lake: afloat, washed up, or found and kept; absent
     /// before the first is set on the water.
     var bottles: [Bottle]?
+    /// Vigils' lights burning on the lake for the fallen; absent while none
+    /// does.
+    var vigils: [Vigil]?
     /// Barges out on the water this watch; absent when none is.
     public internal(set) var barges: [Ferrying]?
     /// The edicts put to the realm this age, the latest last; absent

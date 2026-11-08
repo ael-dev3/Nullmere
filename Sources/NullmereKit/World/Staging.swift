@@ -288,6 +288,14 @@ extension GameSession {
         // From afar each hold the keeper knows glows over its keep, still
         // where motion is reduced: it does not move.
         frame.motes += stage.glows(shown, scale: camera.scale)
+        // The vigils' lights for the fallen out on the lake, carried on with
+        // the current through the watch, each mirrored in the water.
+        let vigils = WorldStage.vigils(state.vigilsOnTheLake.map { vigil in
+            VigilSight(at: vigil.position, next: state.downstream(of: vigil.position), id: vigil.id,
+                       burned: Float(state.watch - vigil.lit) / Float(GameState.vigilBurns))
+        }, progress: GameSession.watchProgress(state), scale: camera.scale, time: t)
+        frame.motes += vigils.motes
+        frame.lights += vigils.lights
         // The sound of the fields in sight, and of the towns and the lake's
         // edge near the view, follows the picture of them.
         hearBattles()

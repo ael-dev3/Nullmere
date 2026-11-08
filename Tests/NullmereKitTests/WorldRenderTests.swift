@@ -536,6 +536,66 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertEqual(darker, 0, "darkening nothing")
     }
 
+    /// Vigils' lights for the fallen carried round the lake on its
+    /// current, as the session stages them, drawn low over the water: each
+    /// a warm flame in its glow, the nearest laying their light on the water
+    /// toward the eye, and nothing darker for them.
+    func testVigilsBurnOnTheWater() throws {
+        let renderer = try renderer()
+        let world = WorldRenderTests.world
+        let heart = try XCTUnwrap(world.state.moonWater).hex
+        var at = try XCTUnwrap(world.state.map.hexes.filter { $0.distance(to: heart) == 6 && world.state.map[$0]?.terrain == .still }.min())
+        var sights: [VigilSight] = []
+        for index in 0..<6 {
+            let next = world.state.downstream(of: at)
+            sights.append(VigilSight(at: at, next: next, id: 40 + index, burned: 0))
+            guard let next else { break }
+            at = next
+        }
+        XCTAssertEqual(sights.count, 6)
+        var camera = Camera(scale: 130, tilt: 1.2, heading: 0.4)
+        camera.focus(on: sights[3].at)
+        let lit = WorldStage.vigils(sights, progress: 0.5, scale: camera.scale, time: 20)
+        let burning = try draw(renderer, "vigils", camera: camera, tiles: world.whole, scene: SceneFrame(motes: lit.motes, lights: lit.lights))
+        let dark = try draw(renderer, "no vigils", camera: camera, tiles: world.whole)
+        try keep([burning], as: "world-vigils")
+        // Where each flame stands on the screen, and how far its glow
+        // reaches about it: the light within that is its own, the rest of
+        // what brightens lies on the water.
+        let flames = stride(from: 0, to: lit.motes.count, by: 2).map { index -> (at: CGPoint, reach: Double) in
+            let place = lit.motes[index].place, glow = lit.motes[index + 1].place.w
+            let at = camera.viewPoint(worldX: Double(place.x), worldY: Double(place.z), height: Double(place.y), in: WorldRenderTests.size)
+            let edge = camera.viewPoint(worldX: Double(place.x + glow), worldY: Double(place.z), height: Double(place.y), in: WorldRenderTests.size)
+            return (at, hypot(Double(edge.x - at.x), Double(edge.y - at.y)) + 3)
+        }
+        var atFlames = 0, onWater = 0, towardEye = 0, warm = 0, darker = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let gain = burning.luminance(x, y) - dark.luminance(x, y)
+                if gain < -1 { darker += 1 }
+                guard gain >= 3 else { continue }
+                let i = (y * WorldRenderTests.width + x) * 4
+                if Double(burning.pixels[i + 2]) - Double(dark.pixels[i + 2]) > 1.5 * (Double(burning.pixels[i]) - Double(dark.pixels[i])) { warm += 1 }
+                func away(_ point: CGPoint) -> Double { hypot(Double(point.x) - Double(x), Double(point.y) - Double(y)) }
+                let nearest = flames.min { away($0.at) < away($1.at) }!
+                if away(nearest.at) <= nearest.reach {
+                    atFlames += 1
+                } else {
+                    onWater += 1
+                    // On the water under one of them, toward the eye.
+                    if flames.contains(where: { Double(y) > Double($0.at.y) && abs(Double(x) - Double($0.at.x)) <= 40 }) { towardEye += 1 }
+                }
+            }
+        }
+        print("RENDER vigils: \(flames.count) flames, \(atFlames) points lit about them and \(onWater) on the water, "
+            + "\(towardEye) of those toward the eye; \(warm) warm in all, \(darker) darker")
+        XCTAssertGreaterThan(atFlames, 6 * 4, "Each flame burns in its glow")
+        XCTAssertGreaterThan(onWater, 20, "The nearest lay their light on the water")
+        XCTAssertGreaterThan(Double(towardEye), 0.8 * Double(onWater), "from under them toward the eye")
+        XCTAssertGreaterThan(Double(warm), 0.8 * Double(atFlames + onWater), "in a candle's warm colour")
+        XCTAssertEqual(darker, 0, "darkening nothing")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world

@@ -833,6 +833,58 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertFalse(ledger.holds.contains { $0.mayCastBottle }, "One a watch")
     }
 
+    /// A vigil for the fallen from the phone, as the Mac offers it: none
+    /// while the House has lost no company; one on the shore once it has,
+    /// taken by the rules; kept, it burns on the realm page for every
+    /// keeper, honoured by another where the rules would take it, never by
+    /// its own House, and honoured but once.
+    func testThePhoneKeepsAndHonoursVigilsForTheFallen() throws {
+        var (state, me) = try world()
+        let other = (me + 1) % 4
+        state.houses[other].isPlayer = true
+        let shore = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && state.map.neighbors(of: hex).contains { state.map[$0].map { $0.terrain == .still || $0.terrain == .shallows } ?? false }
+        })
+        let hold = Hold(id: state.takeID(), name: "Mournwater", owner: me, position: shore, isSeat: false, foundedWatch: 1)
+        state.holds.append(hold)
+        XCTAssertFalse(CompanionLedger(world: state, player: me).holds.contains { $0.mayKeepVigil }, "None fallen, none offered")
+        XCTAssertTrue(CompanionLedger(world: state, player: me).vigils.isEmpty)
+        // A company of war of the House's struck down.
+        let at = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain.isPassable == true && state.unit(at: $0) == nil && state.hold(at: $0) == nil })
+        let fallen = Unit(id: state.takeID(), kind: .spear, owner: me, position: at)
+        state.units.append(fallen)
+        var events: [GameEvent] = []
+        XCTAssertTrue(state.applyDamage(1_000, to: fallen.id, events: &events))
+        XCTAssertEqual(CompanionLedger(world: state, player: me).holds.first { $0.id == hold.id }?.mayKeepVigil, true)
+        XCTAssertNil(CompanionLedger.keepingVigil("", from: hold.id, world: state, player: me), "Nothing said")
+        let keep = try XCTUnwrap(CompanionLedger.keepingVigil("For the spears at the ford", from: hold.id, world: state, player: me))
+        XCTAssertEqual(keep.title, "Set the light, for \(GameState.vigilCost)")
+        XCTAssertEqual(keep.command, .keepVigil(words: "For the spears at the ford", hold: hold.id))
+        assertTaken([keep], in: state, as: me)
+        _ = try state.perform(keep.command, as: me)
+        XCTAssertFalse(CompanionLedger(world: state, player: me).holds.contains { $0.mayKeepVigil }, "Its fallen mourned")
+
+        let vigil = try XCTUnwrap(state.vigilsOnTheLake.last)
+        let own = try XCTUnwrap(CompanionLedger(world: state, player: me).vigils.first)
+        XCTAssertEqual(own.title, "Your House's vigil")
+        XCTAssertEqual(own.line, "For 1 company fallen: “For the spears at the ford” Lit in watch \(vigil.lit), honoured by none yet; "
+                           + "it burns until watch \(vigil.until).")
+        XCTAssertNil(own.honour, "A House keeps its own vigil")
+        let theirs = try XCTUnwrap(CompanionLedger(world: state, player: other).vigils.first)
+        XCTAssertEqual(theirs.title, "\(state.houses[me].title)'s vigil")
+        let honour = try XCTUnwrap(theirs.honour)
+        XCTAssertEqual(honour.command, .honourVigil(vigil.id))
+        XCTAssertEqual(theirs.honourSaid, "Honour it, and your House may not strike \(state.houses[me].title), nor rally on its holds, "
+                           + "until watch \(vigil.until); the honour adds to its keeper's renown as the age ends.")
+        assertTaken([honour], in: state, as: other)
+        _ = try state.perform(honour.command, as: other)
+        let honoured = try XCTUnwrap(CompanionLedger(world: state, player: other).vigils.first)
+        XCTAssertNil(honoured.honour, "Honoured but once")
+        XCTAssertTrue(honoured.line.contains("honoured by your House"))
+        XCTAssertTrue(try XCTUnwrap(CompanionLedger(world: state, player: me).vigils.first).line.contains("honoured by \(state.houses[other].title)"))
+    }
+
     /// The titles of the Spire on the phone, as the Mac's Realm panel tells
     /// them: no broken Spire found, none told; held by the House, it names
     /// them, each House among those offered named where the rules take it;

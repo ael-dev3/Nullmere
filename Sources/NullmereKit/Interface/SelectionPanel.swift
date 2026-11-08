@@ -121,6 +121,7 @@ struct OwnHoldDetails: View {
         }
         var can: [String] = []
         if state.castingWater(beside: hold) != nil { can.append("words on the water") }
+        if VigilComposer.offered(at: hold, in: state, for: house) { can.append("a vigil for the fallen") }
         if state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore) { can.append("a ripple-stone") }
         if state.stoneWater(before: hold) != nil {
             can.append(state.stones(of: house).contains { $0.hold == hold.id } ? "its listening stone" : "a listening stone")
@@ -230,15 +231,18 @@ struct OwnHoldDetails: View {
             // What it does on the water, folded to a line until asked for:
             // what its stone heard, while it heard anything.
             let bottles = state.castingWater(beside: hold) != nil
+            let vigil = VigilComposer.offered(at: hold, in: state, for: session.player)
             let ripples = state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore)
             let stone = state.stoneWater(before: hold) != nil
-            let rows = [bottles, ripples, stone, ReflectionRow.shore(near: hold, in: state, for: session.player) != nil].filter { $0 }.count
+            let rows = [bottles, vigil, ripples, stone, ReflectionRow.shore(near: hold, in: state, for: session.player) != nil].filter { $0 }.count
             if rows > 0 {
                 Rule()
                 FoldedList(title: "By the water", count: rows, summary: OwnHoldDetails.waterSummary(of: hold, in: state, for: session.player),
                            open: $waterOpen) {
                     // Words set on the water, folded until asked for.
                     if bottles { BottleComposer(session: session, hold: hold) }
+                    // A vigil for the House's fallen, while it has fallen unmourned.
+                    if vigil { VigilComposer(session: session, hold: hold) }
                     // A ripple-stone against the next Still Hour.
                     if ripples { RippleRow(session: session, hold: hold) }
                     // A false reflection for the lake to mirror at it.
@@ -1210,6 +1214,11 @@ struct TilePanel: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.glowWords)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                // Vigils' lights for the fallen burning on this water, and the honouring of them.
+                ForEach(state.vigilsOnTheLake.filter { $0.position == hex }, id: \.id) { vigil in
+                    Rule(opacity: 0.18)
+                    VigilCard(session: session, vigil: vigil)
                 }
                 HStack {
                     Caps("Moves", size: 8.5).foregroundStyle(Palette.text(0.5))

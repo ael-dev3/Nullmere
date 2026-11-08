@@ -54,6 +54,7 @@ extension GameState {
         events += contestCrown()
         events += dream()
         events += driftBottles()
+        events += tendVigils()
         events += landCrossings()
         events += turnEdicts()
         forgetOldGifts()

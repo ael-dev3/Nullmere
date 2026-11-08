@@ -389,6 +389,11 @@ struct HouseTab: View {
                         if !shores.isEmpty {
                             BottleRows(session: session, holds: shores)
                         }
+                        // A vigil for the House's fallen, while it has fallen unmourned.
+                        let mourning = ledger.holds.filter(\.mayKeepVigil)
+                        if !mourning.isEmpty {
+                            VigilRows(session: session, holds: mourning)
+                        }
                     }
                     // The Archive's studies: the one under way, or those the House may begin.
                     if ledger.studying != nil || !ledger.studies.isEmpty {
@@ -756,6 +761,36 @@ struct RealmPage: View {
                         }
                         if ledger.titles.mayName {
                             TitleNamingRows(session: session, houses: ledger.dealings.map(\.id))
+                        }
+                    }
+                }
+                // Vigils' lights for the fallen on the lake, as the Mac's water
+                // record tells them, each honoured where the rules would take it.
+                if !ledger.vigils.isEmpty {
+                    Section("Vigils on the water") {
+                        ForEach(ledger.vigils) { vigil in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(verbatim: vigil.title)
+                                    .font(Night.body)
+                                    .foregroundStyle(Night.moon)
+                                Text(verbatim: vigil.line)
+                                    .font(Night.small)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let honour = vigil.honour {
+                                    if let said = vigil.honourSaid {
+                                        Text(verbatim: said)
+                                            .font(Night.small)
+                                            .foregroundStyle(Night.ink.opacity(0.65))
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    Button(honour.title) {
+                                        session.give(honour.command, told: "\(honour.title): \(vigil.title)")
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .accessibilityLabel("Honour \(vigil.title)")
+                                }
+                            }
+                            .padding(.vertical, 2)
                         }
                     }
                 }
@@ -2365,6 +2400,48 @@ struct BottleRows: View {
                 .buttonStyle(.bordered)
                 .disabled(cast == nil)
                 .accessibilityLabel(cast.map { "\($0.title) from \(hold.name)" } ?? "Cast the bottle")
+            }
+        }
+        .font(Night.small)
+    }
+}
+
+/// A vigil for the House's fallen kept from one of its holds on the shore,
+/// as the Mac's hold record offers it: what one is and costs, the hold
+/// chosen where there are several, the words, and Set the light where the
+/// rules would take them.
+struct VigilRows: View {
+    let session: CompanionSession
+    let holds: [CompanionLedger.Hold]
+    @State private var draft = ""
+    @State private var chosen: Int?
+
+    var body: some View {
+        let hold = holds.first { $0.id == chosen } ?? holds.first
+        DisclosureGroup("A vigil for the fallen…") {
+            Text(verbatim: GameState.vigilSaid)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            if holds.count > 1 {
+                Picker("From", selection: Binding(get: { hold?.id ?? -1 }, set: { chosen = $0 })) {
+                    ForEach(holds) { hold in
+                        Text(verbatim: hold.name).tag(hold.id)
+                    }
+                }
+            }
+            TextField("Words for your dead", text: $draft, axis: .vertical)
+                .font(Night.body)
+                .lineLimit(1...4)
+            if let hold, let world = session.world, let me = session.keeper?.house {
+                let keep = CompanionLedger.keepingVigil(draft, from: hold.id, world: world, player: me)
+                Button("Set the light") {
+                    if let keep { session.give(keep.command, told: "\(keep.title) from \(hold.name)") }
+                    draft = ""
+                }
+                .buttonStyle(.bordered)
+                .disabled(keep == nil)
+                .accessibilityLabel(keep.map { "\($0.title) from \(hold.name)" } ?? "Set the vigil's light")
             }
         }
         .font(Night.small)

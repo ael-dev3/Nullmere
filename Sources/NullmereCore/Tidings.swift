@@ -731,6 +731,29 @@ extension GameState {
             }
             guard bottle.from == viewer, houses.indices.contains(by) else { return nil }
             return Tidings("A bottle of yours washed up and was found by \(houses[by].title).", .neutral)
+        case .vigilKept(let vigil):
+            let lit = "lit for \(GameState.companies(vigil.fallen)) lost"
+            if vigil.house == viewer {
+                return Tidings("Your vigil's light is on the water, \(lit): “\(vigil.words)” A House that honours it may not strike yours while it burns.",
+                               .neutral)
+            }
+            guard houses.indices.contains(vigil.house) else { return nil }
+            return Tidings("\(houses[vigil.house].title) keeps a vigil on the water for its fallen, \(lit): “\(vigil.words)”", .neutral)
+        case .vigilHonoured(let id, let mourner, let by):
+            guard houses.indices.contains(mourner), houses.indices.contains(by) else { return nil }
+            if mourner == viewer {
+                return Tidings("\(houses[by].title) honours your vigil for the fallen: it may not strike your House while the light burns.", .good)
+            }
+            if by == viewer {
+                let until = vigil(id).map { ", until watch \($0.until)" } ?? ""
+                return Tidings("Your House honours \(houses[mourner].title)'s vigil for its fallen: it may not strike them while the light burns\(until).",
+                               .neutral)
+            }
+            return Tidings("\(houses[by].title) honours \(houses[mourner].title)'s vigil for its fallen.", .neutral)
+        case .vigilOut(_, let mourner, let honours):
+            guard mourner == viewer else { return nil }
+            let by = honours == 0 ? "no House" : honours == 1 ? "1 House" : "\(GameState.counted(honours)) Houses"
+            return Tidings("Your vigil's light has gone out on the water, honoured by \(by).", .neutral)
         case .wordReported(_, let by):
             guard by == viewer else { return nil }
             return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)

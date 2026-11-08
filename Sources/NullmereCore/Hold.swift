@@ -231,6 +231,14 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     /// The crest its keeper chose this age; none while it bears the one
     /// the lake gave it (see `GameState.crest(of:)`).
     public var crest: Crest?
+    /// A keeper's House's companies of war lost in battle since its keeper
+    /// last kept a vigil for them; none while none is (see `Vigil`). Its
+    /// own to know.
+    public var unmourned: Int?
+    /// The times other Houses have honoured its vigils this age, which
+    /// count toward its keeper's renown as the age ends; none before the
+    /// first.
+    public var honoured: Int?
 
     public var title: String { "House \(name)" }
 
@@ -248,7 +256,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     // The explored ground travels as bits, eight tiles to a byte: a keeper's
     // view goes across the network whenever it changes.
     private enum CodingKeys: String, CodingKey {
-        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege, research, heritage, favour, crest
+        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege, research, heritage, favour, crest,
+             unmourned, honoured
     }
 
     public init(from decoder: any Decoder) throws {
@@ -274,6 +283,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         heritage = try container.decodeIfPresent(Heritage.self, forKey: .heritage)
         favour = try container.decodeIfPresent(Int.self, forKey: .favour)
         crest = try container.decodeIfPresent(Crest.self, forKey: .crest)
+        unmourned = try container.decodeIfPresent(Int.self, forKey: .unmourned)
+        honoured = try container.decodeIfPresent(Int.self, forKey: .honoured)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -291,6 +302,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         try container.encodeIfPresent(heritage, forKey: .heritage)
         try container.encodeIfPresent(favour, forKey: .favour)
         try container.encodeIfPresent(crest, forKey: .crest)
+        try container.encodeIfPresent(unmourned, forKey: .unmourned)
+        try container.encodeIfPresent(honoured, forKey: .honoured)
     }
 }
 
@@ -354,12 +367,14 @@ extension Hold {
 
 extension House {
     /// The House as every keeper is told it but its own: its stores, the
-    /// ground it has explored and its studies its own to know.
+    /// ground it has explored, its studies and its fallen unmourned its own
+    /// to know.
     public func toldAlike(unknown: Explored) -> House {
         var told = self
         told.stock = .zero
         told.explored = unknown
         told.research = Research()
+        told.unmourned = nil
         return told
     }
 
@@ -368,6 +383,6 @@ extension House {
     /// copied, the ground it has explored the very nothing known if it is
     /// told none.
     func isToldAlike(unknown: Explored) -> Bool {
-        stock == .zero && research == Research() && explored == unknown
+        stock == .zero && research == Research() && explored == unknown && unmourned == nil
     }
 }

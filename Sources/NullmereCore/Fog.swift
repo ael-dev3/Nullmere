@@ -238,6 +238,8 @@ extension GameState {
                 return shown
             }
         }
+        // Every vigil's light for the fallen, the whole realm sees.
+        view.vigils = vigils
         // The holds of the ages before, where they have seen the ground.
         view.drowned = drowned.map { all in
             all.filter { hold in map.index(of: hold.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
@@ -450,6 +452,11 @@ extension GameState {
                 return from == house || visible(at)
             case .bottleFound(let bottle, let by):
                 return by == house || bottle.from == house
+            case .vigilKept, .vigilHonoured:
+                // A light for the fallen, and who honours it, the whole realm sees.
+                return true
+            case .vigilOut(_, let mourner, _):
+                return mourner == house
             case .letterSealed(_, let by):
                 return by == house
             case .letterFound:

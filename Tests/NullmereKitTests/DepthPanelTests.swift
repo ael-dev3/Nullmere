@@ -42,9 +42,10 @@ final class DepthPanelTests: XCTestCase {
         GameState(settings: GameSettings(seedText: seed, houseCount: 6, radius: 20, keepers: 1))
     }
 
-    private func session(_ state: GameState) -> (GameSession, DepthLink) {
+    private func session(_ state: GameState, as house: Int? = nil) -> (GameSession, DepthLink) {
         let link = DepthLink()
-        let session = GameSession(link: link, house: state.player, world: state.view(for: state.player),
+        let keeper = house ?? state.player
+        let session = GameSession(link: link, house: keeper, world: state.view(for: keeper),
                                   store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
         session.dismissSeatBriefing()
         return (session, link)
@@ -474,6 +475,78 @@ final class DepthPanelTests: XCTestCase {
         draw(SelectionPanel(session: session), width: 330, height: 900)
         draw(WorldMarks(session: session), width: 900, height: 700)
         XCTAssertEqual(GameSession.cues(for: .castBottle(words: "x", from: hold.id, signed: true), events: [], in: session.state, player: me), [.order])
+    }
+
+    /// A vigil for the fallen kept from a shore hold's record, offered only
+    /// while the House has fallen to mourn; its light staged on the lake
+    /// with a light the water mirrors, named under the pointer, read on its
+    /// water's record, and honoured there by another keeper, once.
+    func testAVigilIsKeptFromAShoreHoldAndHonouredOnItsWater() throws {
+        var state = world("a vigil kept")
+        let me = state.player
+        let other = try XCTUnwrap(state.houses.indices.first { $0 > me })
+        state.houses[other].isPlayer = true
+        state.houses[me].stock = Stock(grain: 300, timber: 100, stone: 100, moonsalt: 10)
+        let shore = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && state.map.neighbors(of: hex).contains { [.still, .shallows].contains(state.map[$0]?.terrain) }
+        })
+        let hold = Hold(id: state.takeID(), name: "Mournwater", owner: me, position: shore, isSeat: false, foundedWatch: 1)
+        state.holds.append(hold)
+        state.reveal(around: shore, range: 3, for: me)
+        state.reveal(around: shore, range: 3, for: other)
+        XCTAssertFalse(VigilComposer.offered(at: hold, in: state, for: me), "None fallen, none offered")
+        // A company of war of the House's struck down.
+        let fallen = Unit(id: state.takeID(), kind: .spear, owner: me, position: try free(near: shore, in: state))
+        state.units.append(fallen)
+        var lost: [GameEvent] = []
+        XCTAssertTrue(state.applyDamage(1_000, to: fallen.id, events: &lost))
+        XCTAssertTrue(VigilComposer.offered(at: hold, in: state, for: me))
+        XCTAssertTrue(OwnHoldDetails.waterSummary(of: hold, in: state, for: me).contains("a vigil for the fallen"))
+
+        let (session, link) = session(state)
+        draw(VigilComposer(session: session, hold: hold), width: 330, height: 200)
+        XCTAssertTrue(PressableButtons.press("A vigil for 1 company fallen…"), "Among \(shown)")
+        PressableButtons.forget("Set the light")
+        draw(VigilComposer(session: session, hold: hold, open: true), width: 330, height: 300)
+        XCTAssertFalse(PressableButtons.press("Set the light"), "Nothing said, nothing set")
+        draw(VigilComposer(session: session, hold: hold, open: true, draft: "For the spears at the ford"), width: 330, height: 300)
+        XCTAssertTrue(PressableButtons.press("Set the light"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .keepVigil(words: "For the spears at the ford", hold: hold.id))
+        XCTAssertEqual(GameSession.cues(for: .keepVigil(words: "x", hold: hold.id), events: [], in: session.state, player: me), [.lore])
+        session.selection = .hold(hold.id)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+
+        // Kept, as the realm keeps it: its light on the water, staged, named and read.
+        _ = try state.perform(.keepVigil(words: "For the spears at the ford", hold: hold.id), as: me)
+        let vigil = try XCTUnwrap(state.vigilsOnTheLake.last)
+        let (mine, _) = self.session(state)
+        let staged = mine.sceneFrame(at: 4)
+        // Carried on toward the water the current takes it to, as far as the watch has gone.
+        let sight = VigilSight(at: vigil.position, next: mine.state.downstream(of: vigil.position), id: vigil.id,
+                               burned: Float(mine.state.watch - vigil.lit) / Float(GameState.vigilBurns))
+        let expected = WorldStage.vigils([sight], progress: GameSession.watchProgress(mine.state), scale: mine.camera.scale, time: 4)
+        XCTAssertTrue(expected.motes.allSatisfy(staged.motes.contains), "Its flame and its glow on the water")
+        XCTAssertTrue(staged.lights.contains(expected.lights[0]), "And a light the water mirrors")
+        XCTAssertEqual(HoverInfo.line(for: vigil.position, in: mine.state, explored: true, territory: mine.state.territory())?
+            .contains("a vigil of \(state.houses[me].title)'s"), true)
+        mine.selection = .tile(vigil.position)
+        PressableButtons.forget("Honour it")
+        draw(SelectionPanel(session: mine), width: 330, height: 700)
+        XCTAssertFalse(PressableButtons.press("Honour it"), "A House keeps its own vigil")
+
+        // Another keeper reads it on its water and honours it, once.
+        let (theirs, theirLink) = self.session(state, as: other)
+        theirs.selection = .tile(vigil.position)
+        draw(SelectionPanel(session: theirs), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Honour it"), "Among \(shown)")
+        XCTAssertEqual(theirLink.sent.last, .honourVigil(vigil.id))
+        XCTAssertEqual(GameSession.cues(for: .honourVigil(vigil.id), events: [], in: theirs.state, player: other), [.honour])
+        PressableButtons.forget("Honour it")
+        draw(SelectionPanel(session: theirs), width: 330, height: 700)
+        XCTAssertFalse(PressableButtons.press("Honour it"), "Honoured but once")
+        XCTAssertEqual(GameSession.cues(for: [.vigilHonoured(vigil: vigil.id, house: me, by: other)], in: mine.state, player: me),
+                       [.watch, .honour], "Honour heard by the mourning House")
     }
 
     /// Prisoners in Commanders: one the keeper's House holds, questioned and
