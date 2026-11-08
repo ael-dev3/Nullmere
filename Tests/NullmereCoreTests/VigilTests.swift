@@ -209,6 +209,34 @@ final class VigilTests: XCTestCase {
                        "No answer came from Apple's on-device model in time, so the words for your dead are yours to write.")
     }
 
+    func testTheWordsForTheDeadAreAskedFromTheHousesOwnReports() throws {
+        var (state, me, _, _) = try world()
+        state.houses[me].unmourned = 2
+        let lost = BattleReport(id: 1, watch: 7, title: "Your Spears fell", place: "at Wenholme", outcome: .lost, lines: [])
+        var field = BattleReport(id: 2, watch: 9, title: "Neither side gave way", place: "on the strand by Galstead", outcome: .held, lines: [])
+        field.sides = [BattleReport.Side(title: "Your side", houses: 1, companies: 3, troops: 3_000, lost: 900, fallen: 1),
+                       BattleReport.Side(title: "House Brine's side", houses: 1, companies: 2, troops: 2_000, lost: 400, fallen: 0)]
+        let won = BattleReport(id: 3, watch: 10, title: "Your side held the field", place: "at Tirford", outcome: .won, lines: [])
+        let older = BattleReport(id: 4, watch: 2, title: "Your Riders fell", place: "at Saltmere", outcome: .lost, lines: [])
+        let oldest = BattleReport(id: 5, watch: 1, title: "Your Bows fell", place: "at Reedholm", outcome: .lost, lines: [])
+        // The phone keeps its reports the latest first, the Mac the oldest: told alike.
+        let facts = state.vigilFacts(of: me, reports: [won, field, lost, older, oldest])
+        XCTAssertEqual(facts, state.vigilFacts(of: me, reports: [oldest, older, lost, field, won]))
+        XCTAssertEqual(facts, [
+            "The dead were of \(state.houses[me].title), of the \(state.heritage(of: me).title).",
+            "Companies of war of theirs fallen in battle: 2.",
+            "Some fell at Saltmere in watch 2.",
+            "Some fell at Wenholme in watch 7.",
+            "Some fell on the strand by Galstead in watch 9, against House Brine's side.",
+            "The light is set on the water in watch \(state.watch).",
+        ], "The latest three to cost it companies, in order; none for a battle won without loss")
+        let asked = Voicing.asking(GameState.vigilWordsAsked, facts: facts)
+        XCTAssertTrue(asked.hasPrefix(GameState.vigilWordsAsked + "\n\nWhat is known:\n- The dead were of"))
+        XCTAssertTrue(GameState.vigilWordsAsked.contains("no vow of vengeance"))
+        XCTAssertTrue(Voicing.instructions.contains("Never invent numbers"))
+        XCTAssertFalse(state.vigilFacts(of: 77, reports: []).contains { $0.hasPrefix("The dead were of") }, "No House, no name")
+    }
+
     func testTheLakeCarriesSoManyLightsAndAnUnsoundOneIsFound() throws {
         var (state, me, _, hold) = try world()
         let water = try XCTUnwrap(state.castingWater(beside: XCTUnwrap(state.hold(hold))))

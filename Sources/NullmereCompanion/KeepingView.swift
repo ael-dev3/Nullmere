@@ -2415,6 +2415,42 @@ struct VigilRows: View {
     let holds: [CompanionLedger.Hold]
     @State private var draft = ""
     @State private var chosen: Int?
+    /// Words for the dead from this phone's own model: since when it has
+    /// been writing, while it is, and what came of it.
+    @State private var writing: Task<Void, Never>?
+    @State private var began: Date?
+    @State private var written: VigilWriter.Written?
+    private let writer = VigilWriter()
+
+    /// While the model writes: "Apple's on-device model writes words for
+    /// your dead… 1.4 s", as the Mac says it.
+    static func atWork(began: Date, now: Date) -> String {
+        "Apple's on-device model writes words for your dead… " + String(format: "%.1f s", max(0, now.timeIntervalSince(began)))
+    }
+
+    /// What came of it: in how long, or why none.
+    static func said(_ written: VigilWriter.Written) -> String? {
+        if let seconds = written.seconds, written.words != nil {
+            return "Written by Apple's on-device model in " + String(format: "%.1f s", seconds) + ": keep them or change them."
+        }
+        return written.trouble?.unwritten
+    }
+
+    /// Asks this phone's model for words for the House's dead, from what
+    /// its reports tell of where they fell.
+    private func ask(in world: GameState, for house: Int) {
+        let reports = session.reports
+        began = Date()
+        written = nil
+        writing = Task {
+            let result = await writer.write(for: house, in: world, reports: reports)
+            guard !Task.isCancelled else { return }
+            began = nil
+            writing = nil
+            written = result
+            if let words = result.words { draft = words }
+        }
+    }
 
     var body: some View {
         let hold = holds.first { $0.id == chosen } ?? holds.first
@@ -2433,11 +2469,48 @@ struct VigilRows: View {
             TextField("Words for your dead", text: $draft, axis: .vertical)
                 .font(Night.body)
                 .lineLimit(1...4)
+            if let world = session.world, let me = session.keeper?.house {
+                // Words from this phone's own model: at work, with its
+                // seconds and a Stop; or why it can't write them here.
+                if let began {
+                    HStack {
+                        TimelineView(.periodic(from: .now, by: 0.1)) { context in
+                            Text(verbatim: VigilRows.atWork(began: began, now: context.date))
+                                .font(Night.small.monospacedDigit())
+                                .foregroundStyle(Night.ink.opacity(0.65))
+                        }
+                        Spacer()
+                        Button("Stop") {
+                            writing?.cancel()
+                            writing = nil
+                            self.began = nil
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Stop the model writing words for your dead")
+                    }
+                } else if let why = writer.unavailable {
+                    Text(verbatim: why)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Button("Words from your phone's model") { ask(in: world, for: me) }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Ask Apple's on-device model for words for your dead")
+                    if let written, let said = VigilRows.said(written) {
+                        Text(verbatim: said)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.65))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
             if let hold, let world = session.world, let me = session.keeper?.house {
                 let keep = CompanionLedger.keepingVigil(draft, from: hold.id, world: world, player: me)
                 Button("Set the light") {
                     if let keep { session.give(keep.command, told: "\(keep.title) from \(hold.name)") }
                     draft = ""
+                    written = nil
                 }
                 .buttonStyle(.bordered)
                 .disabled(keep == nil)

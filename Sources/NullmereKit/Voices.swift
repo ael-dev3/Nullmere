@@ -123,11 +123,9 @@ public struct VoiceMoment: Sendable, Equatable {
             task = "Speak as the captured commander, questioned by their captors and telling them, against their will, the one thing "
                 + "about their own House that is told here, keeping every name and number as given. One or two sentences, at most 40 words."
         case .vigil:
-            task = "Speak as the House itself, in the few words it sets on the still black water with a light for its fallen: name where "
-                + "they fell, keeping every name and number as given, grave and plain, with no vow of vengeance. One or two sentences, "
-                + "at most 30 words."
+            task = GameState.vigilWordsAsked
         }
-        return task + "\n\nWhat is known:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
+        return Voicing.asking(task, facts: facts)
     }
 }
 
@@ -136,14 +134,7 @@ public struct VoiceMoment: Sendable, Equatable {
 public struct OnDeviceVoice: Voice {
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "voices")
 
-    static let instructions = """
-    You give voice to characters in Nullmere Online, a game of great Houses around a vast \
-    black lake of dead, perfectly still water under a full moon. The tone is grave, \
-    spare and formal, like an old chronicle: quiet, never cheerful, no modern words, no \
-    exclamation marks. Use only the facts you are given. Never invent numbers, places, \
-    names, promises or events, and never mention games, players, turns or rules. Reply \
-    with the spoken words alone, without quotation marks or a speaker's name.
-    """
+    static let instructions = Voicing.instructions
 
     /// What the House's clerk is told: to write the keeper's words as the
     /// order book's lines, and nothing else.
@@ -300,18 +291,7 @@ enum VoiceFacts {
     /// of its companies of war fell, and where and when its last battles
     /// cost it companies, as its own reports tell them.
     static func vigil(of house: Int, in state: GameState, reports: [BattleReport]) -> VoiceMoment {
-        var facts: [String] = []
-        if state.houses.indices.contains(house) {
-            facts.append("The dead were of \(state.houses[house].title), of the \(state.heritage(of: house).title).")
-        }
-        facts.append("Companies of war of theirs fallen in battle: \(state.unmourned(by: house)).")
-        let costly = reports.filter { $0.outcome == .lost || ($0.sides.first?.fallen ?? 0) > 0 }.suffix(3)
-        for report in costly {
-            let foe = report.sides.count > 1 ? ", against \(report.sides[1].title)" : ""
-            facts.append("Some fell \(report.place) in watch \(report.watch)\(foe).")
-        }
-        facts.append("The light is set on the water in watch \(state.watch).")
-        return VoiceMoment(kind: .vigil, facts: facts)
+        VoiceMoment(kind: .vigil, facts: state.vigilFacts(of: house, reports: reports))
     }
 
     /// A dream, for the Still to tell: what it showed, plainly, and when.

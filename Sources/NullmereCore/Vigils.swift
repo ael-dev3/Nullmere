@@ -138,6 +138,32 @@ extension GameState {
         houses[unit.owner].unmourned = unmourned(by: unit.owner) + 1
     }
 
+    /// What a device's model is asked to write as a House's few words for
+    /// its dead, on the Mac and the phone alike.
+    public static let vigilWordsAsked = "Speak as the House itself, in the few words it sets on the still black water with a light for "
+        + "its fallen: name where they fell, keeping every name and number as given, grave and plain, with no vow of vengeance. "
+        + "One or two sentences, at most 30 words."
+
+    /// What a House's few words for its dead are written from, on the Mac
+    /// and the phone alike: whose they were, how many of its companies of
+    /// war fell unmourned, where and when its latest three battles to cost
+    /// it companies were fought as its reports tell them, and when the
+    /// light is set.
+    public func vigilFacts(of house: Int, reports: [BattleReport]) -> [String] {
+        var facts: [String] = []
+        if houses.indices.contains(house) {
+            facts.append("The dead were of \(houses[house].title), of the \(heritage(of: house).title).")
+        }
+        facts.append("Companies of war of theirs fallen in battle: \(unmourned(by: house)).")
+        let costly = reports.filter { $0.outcome == .lost || ($0.sides.first?.fallen ?? 0) > 0 }.sorted { ($0.watch, $0.id) < ($1.watch, $1.id) }
+        for report in costly.suffix(3) {
+            let foe = report.sides.count > 1 ? ", against \(report.sides[1].title)" : ""
+            facts.append("Some fell \(report.place) in watch \(report.watch)\(foe).")
+        }
+        facts.append("The light is set on the water in watch \(watch).")
+        return facts
+    }
+
     /// Whose vigil it is, as the Mac and the phone head it.
     public func vigilTitle(_ vigil: Vigil, for viewer: Int) -> String {
         if vigil.house == viewer { return "Your House's vigil" }

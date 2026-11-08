@@ -158,6 +158,14 @@ enum CompanionCheck {
                      String(format: "%@ (%.2f s in all)", reading.summary, Date().timeIntervalSince(began))]
         if let trouble = reading.trouble { lines.append(trouble) }
         lines += reading.lines.map { "  \($0.text): \($0.why ?? $0.told)" }
+        // Words for the House's dead, for a vigil, through the same model.
+        let wrote = Date()
+        let written = await VigilWriter().write(for: player, in: world.view(for: player), reports: [])
+        if let words = written.words {
+            lines.append(String(format: "Words for the fallen (%.2f s): %@", Date().timeIntervalSince(wrote), words))
+        } else {
+            lines.append("Words for the fallen: none. " + (written.trouble?.unwritten ?? "The writing was stopped."))
+        }
         return lines.joined(separator: "\n")
     }
 
