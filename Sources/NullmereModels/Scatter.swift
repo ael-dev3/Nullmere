@@ -11,7 +11,7 @@ import NullmereCore
 /// beside it, and comes back when it goes: nothing else moves.
 public enum Scatter {
     /// The radius of a hex's heart, which no neighbour's piece reaches,
-    /// left clear at a hold.
+    /// left clear of every piece at a hold and where a company stands.
     public static let heart: Float = 0.62
     /// The ground a company holds: as far as its figures reach from its
     /// hex's heart, turned any way.
@@ -32,27 +32,32 @@ public enum Scatter {
     }
 
     /// One hex's furnishings with companies standing in `occupied`: laid
-    /// out as on open ground, then whatever rises above `underfoot` within
-    /// the ground a company holds here or beside it left out, so a company
-    /// coming or going moves no piece, only clears those in its way or
-    /// brings them back.
+    /// out as on open ground, then every piece in the heart of a hex a
+    /// company holds left out, and whatever rises above `underfoot` within
+    /// the ground it holds here or beside it, so a company coming or going
+    /// moves no piece, only clears those in its way or brings them back.
     public static func pieces(in hex: Hex, map: WorldMap, relief: Relief, occupied: Set<Hex>, holds: Set<Hex> = []) -> [Piece] {
         cleared(pieces(in: hex, map: map, relief: relief, clearHeart: holds.contains(hex), holds: holds), in: hex, occupied: occupied)
     }
 
-    /// A hex's pieces as laid out on open ground, with whatever rises above
-    /// `underfoot` in the ground a company holds, here or beside it, left
-    /// out.
+    /// A hex's pieces as laid out on open ground, with every piece in the
+    /// heart of a hex a company holds left out, and whatever rises above
+    /// `underfoot` in the ground it holds, here or beside it.
     public static func cleared(_ laid: [Piece], in hex: Hex, occupied: Set<Hex>) -> [Piece] {
         guard !occupied.isEmpty else { return laid }
         let held = ([hex] + hex.neighbors).filter(occupied.contains).map { Relief.centre(of: $0) }
         guard !held.isEmpty else { return laid }
+        let own = occupied.contains(hex) ? Relief.centre(of: hex) : nil
         return laid.filter { piece in
-            guard case .furnishing(let furnishing) = piece.key, height(furnishing) > underfoot else { return true }
+            guard case .furnishing(let furnishing) = piece.key else { return true }
             let column = piece.transform.c0
             let radius = footprint(furnishing) * (column.x * column.x + column.y * column.y + column.z * column.z).squareRoot()
             let at = piece.position
-            return held.allSatisfy { ((at.x - $0.x) * (at.x - $0.x) + (at.z - $0.z) * (at.z - $0.z)).squareRoot() >= Scatter.held + radius }
+            func distance(_ centre: (x: Float, z: Float)) -> Float { ((at.x - centre.x) * (at.x - centre.x) + (at.z - centre.z) * (at.z - centre.z)).squareRoot() }
+            // Its heart clear of all, where the company and its leader stand.
+            if let own, distance(own) < heart + radius { return false }
+            guard height(furnishing) > underfoot else { return true }
+            return held.allSatisfy { distance($0) >= Scatter.held + radius }
         }
     }
 

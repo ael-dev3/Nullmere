@@ -92,8 +92,12 @@ final class StageTests: XCTestCase {
         for batch in all {
             guard case .furnishing(let furnishing) = batch.key else { continue }
             for instance in batch.instances where !standing.contains("\(instance.model.c3)") {
-                XCTAssertGreaterThan(Scatter.height(furnishing), Scatter.underfoot, "only what rises gives way: \(furnishing)")
-                XCTAssertLessThan(reach(instance), ground(furnishing, instance) + 0.001, "only what stood in its way")
+                // What rose in its ranks' way, or stood in the heart of its hex, where it and its leader stand.
+                let c = instance.model.c0
+                let heart = Scatter.heart + Scatter.footprint(furnishing) * (c.x * c.x + c.y * c.y + c.z * c.z).squareRoot()
+                let inHeart = instance.hex == SIMD2(Int32(wooded.q), Int32(wooded.r)) && reach(instance) < heart + 0.001
+                let inWay = Scatter.height(furnishing) > Scatter.underfoot && reach(instance) < ground(furnishing, instance) + 0.001
+                XCTAssertTrue(inHeart || inWay, "only what stood in its way: \(furnishing) at \(reach(instance))")
                 gave += 1
             }
         }

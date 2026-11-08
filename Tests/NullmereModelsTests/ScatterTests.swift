@@ -28,6 +28,10 @@ final class ScatterTests: XCTestCase {
         for piece in here {
             guard case .furnishing(let furnishing) = piece.key else { continue }
             XCTAssertLessThanOrEqual(Scatter.height(furnishing), Scatter.underfoot, "Only what lies underfoot: \(furnishing)")
+            let c = piece.transform.c0
+            XCTAssertGreaterThanOrEqual(reach(piece, from: held),
+                                        Scatter.heart + Scatter.footprint(furnishing) * (c.x * c.x + c.y * c.y + c.z * c.z).squareRoot() - 1e-4,
+                                        "Its heart clear of all, where the company stands")
         }
         // Beside it, the edge it reaches into gives way; the wood beyond stands.
         var gave = 0, stood = 0
