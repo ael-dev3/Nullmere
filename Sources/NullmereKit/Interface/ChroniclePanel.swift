@@ -129,6 +129,7 @@ struct ReportList: View {
                 ForEach(dreams.reversed(), id: \.watch) { dream in
                     VStack(alignment: .leading, spacing: 3) {
                         Caps("Dream · watch \(dream.watch)", size: 8.5, weight: .medium).foregroundStyle(Palette.glowWords)
+                        VoicingLine(session: session, key: .dream(dream.watch), who: "the Still")
                         if let spoken = session.spoken[.dream(dream.watch)] {
                             Text(verbatim: spoken)
                                 .font(.nm(11.5, weight: .light).italic())

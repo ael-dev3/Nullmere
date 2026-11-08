@@ -72,6 +72,12 @@ extension CounselTrouble {
         whyOrdersUnread + ", so your words were read as the order book's lines, as written."
     }
 
+    /// Why the device's model gave one of the realm's characters no words
+    /// of their own, as the keeper is told it beside the realm's plain ones.
+    public var unvoiced: String {
+        whyOrdersUnread + ", so the realm's own words stand alone."
+    }
+
     /// Before the keeper writes, why the device's model can't read their
     /// words, and that they will be read as the order book's lines.
     public var ordersReadAsWritten: String {

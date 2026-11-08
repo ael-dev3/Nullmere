@@ -64,6 +64,10 @@ final class OrdersReadTests: XCTestCase {
             XCTAssertTrue(trouble.unreadOrders.hasSuffix(", so your words were read as the order book's lines, as written."), trouble.unreadOrders)
             XCTAssertTrue(trouble.ordersReadAsWritten.hasSuffix(", so your words are read as the order book's lines, as written."))
             XCTAssertEqual(trouble.unreadOrders.prefix(20), trouble.ordersReadAsWritten.prefix(20))
+            // The same reason where a character of the realm went unvoiced,
+            // the realm's own words standing alone.
+            XCTAssertTrue(trouble.unvoiced.hasSuffix(", so the realm's own words stand alone."), trouble.unvoiced)
+            XCTAssertEqual(trouble.unvoiced.prefix(20), trouble.unreadOrders.prefix(20))
             XCTAssertFalse(trouble.unreadOrders.contains("!"))
         }
         XCTAssertTrue(CounselTrouble.failed("the system's own words").unreadOrders.contains("(the system's own words)"))

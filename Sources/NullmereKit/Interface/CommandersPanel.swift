@@ -563,6 +563,9 @@ struct PrisonersSection: View {
                                 .foregroundStyle(Palette.text(0.6))
                         } else if let last = captive.told?.last {
                             // In the prisoner's voice, where this Mac's model gave it one; the true thing plainly beneath.
+                            if let key = GameSession.Spoken.prisonerKey(of: prisoner) {
+                                VoicingLine(session: session, key: key, who: "the prisoner")
+                            }
                             if let key = GameSession.Spoken.prisonerKey(of: prisoner), let voiced = session.spoken[key] {
                                 Text(verbatim: voiced)
                                     .font(.nm(10.5, weight: .light))

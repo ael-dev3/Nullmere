@@ -20,6 +20,9 @@ public protocol Voice: Sendable {
     /// The same reading, with why the voice wrote no lines where it wrote
     /// none, as the keeper is told it.
     func reading(orders words: String, briefing: String) async -> OrdersHeard
+    /// A moment's words, with why the voice gave none where it gave none,
+    /// as the keeper is told it.
+    func speaking(_ moment: VoiceMoment) async -> WordsHeard
 }
 
 extension Voice {
@@ -28,6 +31,21 @@ extension Voice {
     public func reading(orders words: String, briefing: String) async -> OrdersHeard {
         let lines = await read(orders: words, briefing: briefing)
         return OrdersHeard(lines: lines, trouble: lines == nil ? .silent : nil)
+    }
+    public func speaking(_ moment: VoiceMoment) async -> WordsHeard {
+        let words = await speak(moment)
+        return WordsHeard(words: words, trouble: words == nil ? .silent : nil)
+    }
+}
+
+/// What a voice made of a moment: its words, or why it gave none.
+public struct WordsHeard: Sendable, Equatable {
+    public let words: String?
+    public let trouble: CounselTrouble?
+
+    public init(words: String?, trouble: CounselTrouble?) {
+        self.words = words
+        self.trouble = trouble
     }
 }
 
@@ -162,12 +180,20 @@ public struct OnDeviceVoice: Voice {
     }
 
     public func speak(_ moment: VoiceMoment) async -> String? {
-        guard isReady() else { return nil }
+        await speaking(moment).words
+    }
+
+    /// A moment's words from the model, or why there were none: not ready
+    /// on this Mac, an answer in no shape to speak, or the model's own
+    /// trouble as counsel names it.
+    public func speaking(_ moment: VoiceMoment) async -> WordsHeard {
+        guard isReady() else { return WordsHeard(words: nil, trouble: OnDeviceVoice.trouble() ?? .unavailable(.modelNotReady)) }
         do {
-            return Self.clean(try await respond(OnDeviceVoice.instructions, moment.prompt))
+            let words = Self.clean(try await respond(OnDeviceVoice.instructions, moment.prompt))
+            return WordsHeard(words: words, trouble: words == nil ? .garbled : nil)
         } catch {
             OnDeviceVoice.logger.notice("A voice stayed silent: \(String(describing: error), privacy: .public)")
-            return nil
+            return WordsHeard(words: nil, trouble: CommanderCounselSession.trouble(from: error, availability: { SystemLanguageModel.default.availability }))
         }
     }
 

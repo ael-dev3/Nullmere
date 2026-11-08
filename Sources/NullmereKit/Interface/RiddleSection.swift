@@ -42,6 +42,7 @@ struct RiddleSection: View {
             if open || riddle.answered != nil {
                 // In the Still's voice where this Mac's model gave it one,
                 // keeping its blank, and plainly beneath.
+                VoicingLine(session: session, key: .riddle(riddle.set), who: "the Still")
                 if let spoken = session.spoken[.riddle(riddle.set)], spoken.contains("———") {
                     Text(verbatim: spoken)
                         .font(.nm(11.5, weight: .light).italic())

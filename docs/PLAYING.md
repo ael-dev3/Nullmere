@@ -1676,7 +1676,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   counsel twice running.
 - **Voices.** Envoys speak to you, and a chronicler writes beneath the
   moments that touch your House, in words written on your Mac by Apple's
-  on-device model. They only speak; the rules decide everything.
+  on-device model. They only speak; the rules decide everything. While the
+  model gives an envoy, a prisoner, a dream or the lake's riddle its words,
+  its card says so and counts the seconds ("Apple's on-device model gives
+  the envoy words… 1.4 s"); where the model gives none, the card says why
+  in a line ("Apple's on-device model is busy with another answer, so the
+  realm's own words stand alone."), and the realm's own words stand alone.
 
 ## Sound and music
 

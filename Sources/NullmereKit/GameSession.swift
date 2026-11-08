@@ -521,6 +521,13 @@ public final class GameSession {
     /// Words still to be asked for or spoken: for tests to wait on.
     var voicesPending: Bool { isSpeaking || !voiceQueue.isEmpty }
 
+    /// The moment this Mac's model is giving words to now, and since when,
+    /// for its card to show the model at work.
+    public private(set) var voicing: (key: Spoken, began: Date)?
+    /// Why the model gave a moment no words, where it gave none, as its
+    /// card tells it.
+    public private(set) var unvoiced: [Spoken: String] = [:]
+
     /// A keeper's session in a realm, as they arrive in it.
     public init(link: any RealmLink, house: Int, world: GameState, store: LocalStore = LocalStore(), voice: (any Voice)? = nil,
                 host: LocalRealm? = nil) {
@@ -2482,12 +2489,17 @@ public final class GameSession {
             return
         }
         isSpeaking = true
+        voicing = (key, Date())
         Task { [weak self] in
-            let words = await voice.speak(moment)
+            let heard = await voice.speaking(moment)
             guard let self else { return }
-            if let words {
+            self.voicing = nil
+            if let words = heard.words {
                 withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
+                self.unvoiced[key] = nil
                 self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
+            } else if let trouble = heard.trouble {
+                self.unvoiced[key] = trouble.unvoiced
             }
             self.isSpeaking = false
             self.speakNext()

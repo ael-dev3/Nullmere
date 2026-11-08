@@ -153,6 +153,55 @@ final class VoiceQueueTests: XCTestCase {
     }
 }
 
+extension VoiceQueueTests {
+    /// While this Mac's model gives an envoy words, its card says so and
+    /// for how long; where the model gives none, why, plainly, the envoy's
+    /// terms standing alone; neither once the words have come.
+    func testAnEnvoysCardShowsTheModelAtWorkAndWhyItGaveNone() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "voices at work", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let steward = try XCTUnwrap(state.houses.indices.first { $0 != me && !state.houses[$0].isPlayer })
+        state.envoys.append(Envoy(id: 901, from: steward, to: me, proposal: .pact, arrived: state.watch))
+        let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("heard")), voice: SlowVoice())
+        var deadline = Date().addingTimeInterval(5)
+        while session.voicing == nil, session.spoken[.envoy(901)] == nil, Date() < deadline { try await Task.sleep(nanoseconds: 5_000_000) }
+        let voicing = try XCTUnwrap(session.voicing, "At work on the envoy's words")
+        XCTAssertEqual(voicing.key, .envoy(901))
+        XCTAssertEqual(VoicingLine.atWork("the envoy", began: voicing.began, now: voicing.began.addingTimeInterval(1.44)),
+                       "Apple's on-device model gives the envoy words… 1.4 s")
+        XCTAssertNotNil(ImageRenderer(content: EnvoyCards(session: session).frame(width: 360)).cgImage)
+        deadline = Date().addingTimeInterval(5)
+        while session.spoken[.envoy(901)] == nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(session.spoken[.envoy(901)], "The water is still between our Houses.")
+        XCTAssertNil(session.voicing, "Done with it")
+        XCTAssertNil(session.unvoiced[.envoy(901)])
+
+        // A model that gives none says why, the envoy's terms standing alone.
+        let troubled = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("busy")), voice: BusyVoice())
+        deadline = Date().addingTimeInterval(5)
+        while troubled.unvoiced[.envoy(901)] == nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(troubled.unvoiced[.envoy(901)], CounselTrouble.busy.unvoiced)
+        XCTAssertEqual(CounselTrouble.busy.unvoiced, "Apple's on-device model is busy with another answer, so the realm's own words stand alone.")
+        XCTAssertNil(troubled.spoken[.envoy(901)])
+        XCTAssertNil(troubled.voicing)
+        XCTAssertNotNil(ImageRenderer(content: EnvoyCards(session: troubled).frame(width: 360)).cgImage)
+        // And a voice of no reasons of its own is told silent.
+        let heard = await SlowVoice().speaking(VoiceFacts.envoy(state.envoys[0], in: state))
+        XCTAssertEqual(heard, WordsHeard(words: "The water is still between our Houses.", trouble: nil))
+    }
+}
+
+/// Gives no words, and says the model was busy.
+private struct BusyVoice: Voice {
+    func speak(_ moment: VoiceMoment) async -> String? { nil }
+
+    func speaking(_ moment: VoiceMoment) async -> WordsHeard {
+        WordsHeard(words: nil, trouble: .busy)
+    }
+}
+
 private actor SlowVoice: Voice {
     private(set) var asked: [VoiceMoment] = []
 

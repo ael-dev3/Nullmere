@@ -881,6 +881,7 @@ struct EnvoyCards: View {
                         RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
                         Caps("An envoy of \(house.title)", size: 9, weight: .medium).foregroundStyle(Palette.ink)
                     }
+                    VoicingLine(session: session, key: .envoy(envoy.id), who: "the envoy")
                     if let spoken = session.spoken[.envoy(envoy.id)] {
                         Text(verbatim: "\"\(spoken)\"")
                             .font(.nm(12, weight: .light).italic())
