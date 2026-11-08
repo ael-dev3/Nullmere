@@ -32,7 +32,7 @@ public enum TalentTree: String, CaseIterable, Codable, Sendable, PlainCases {
 
 /// A commander's talent: learned a rank at a time, a point a rank, each
 /// rank giving its edge again to the company it leads. The trees hold
-/// sixty ranks between them, and a commander at its highest level has
+/// fifty-seven ranks between them, and a commander at its highest level has
 /// twenty-nine points: it grows into one tree, or a little of two.
 public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
     // Steel
@@ -164,7 +164,7 @@ public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
         case .rammingDrill: return "+5% to blows on a ward a rank"
         case .sapperCraft: return "+4% to blows on a ward and +1% attack a rank"
         case .bloodedSteel: return "+3% attack a rank"
-        case .battleRage: return "Its skill fires a battle sooner"
+        case .battleRage: return "Its skill fires a battle sooner, though never sooner than every second battle"
         case .moonsteel: return "+8% attack and +5% to blows on a ward"
         case .thickHide: return "+2% defence a rank"
         case .fieldSurgeon: return "Heals 2 more each watch at rest a rank"

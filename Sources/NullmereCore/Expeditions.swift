@@ -40,6 +40,9 @@ public struct ExpeditionResult: Codable, Equatable, Sendable {
     public var line: [Int]?
     /// The stars it was won with, one to three; absent when lost.
     public var stars: Int?
+    /// A stage the House had taken before, won again for its stars: its
+    /// spoils were paid the first time. Absent otherwise.
+    public var again: Bool?
 }
 
 extension GameState {
@@ -113,6 +116,7 @@ extension GameState {
         var result = ExpeditionResult(house: house, commander: line[0], stage: number, weight: weight, against: against, won: stars != nil)
         result.line = line.count > 1 ? line : nil
         result.stars = stars
+        result.again = stars != nil && number <= expeditionStage(of: house) ? true : nil
         var events: [GameEvent] = [.expedition(result)]
         if let stars {
             let firstWin = number > expeditionStage(of: house)
@@ -137,7 +141,8 @@ extension GameState {
         return events
     }
 
-    /// Sculptures for a stage first won with three stars.
+    /// Sculptures for a stage the first time it is won with three stars,
+    /// at its first taking or a later one.
     public static let threeStarSculptures = 4
 
     /// As the watch turns, every House may venture again.

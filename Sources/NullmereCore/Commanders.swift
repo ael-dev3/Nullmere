@@ -214,7 +214,8 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
 
     public static let highestLevel = 30
 
-    /// Experience to reach a level: half again as much from each to the next.
+    /// Experience to reach a level: each level's step fifty more than the
+    /// last (50 to II, 100 more to III, 150 more to IV).
     public static func experience(forLevel level: Int) -> Int {
         25 * (level - 1) * level
     }

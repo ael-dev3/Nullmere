@@ -84,13 +84,26 @@ extension ExpeditionTests {
         XCTAssertEqual(state.expeditionStars(of: me, stage: 1), stars)
         XCTAssertNil(state.view(for: 1).expeditionBest?[me], "Its House's own")
         if stars == 3 { XCTAssertTrue(events.contains(.sculpturesFound(house: me, count: GameState.threeStarSculptures))) }
-        XCTAssertTrue(try XCTUnwrap(state.tidings(of: events[0], for: me)).text.contains("line of 3"))
+        let first = try XCTUnwrap(state.tidings(of: events[0], for: me)).text
+        XCTAssertTrue(first.contains("line of 3"), first)
+        let spoils = ExpeditionStage.stage(1)!.spoils
+        XCTAssertTrue(first.hasSuffix(": \(spoils.listedSaid) to your stores."), first)
+        guard case .expedition(let taken) = events[0] else { return XCTFail() }
+        XCTAssertNil(taken.again, "Taken the first time")
         // A stage won may be sent at again, for more stars, but its stores come once.
         state.turnExpeditions()
         XCTAssertNil(state.refusal(of: .ventureLine(commanders: line, stage: 1), as: me))
         let grain = state.houses[me].stock.grain
-        _ = try state.perform(.ventureLine(commanders: line, stage: 1), as: me)
+        let again = try state.perform(.ventureLine(commanders: line, stage: 1), as: me)
         XCTAssertEqual(state.houses[me].stock.grain, grain, "No stores a second time")
+        // And told so: not stores it never had.
+        guard case .expedition(let retaken) = try XCTUnwrap(again.first) else { return XCTFail() }
+        XCTAssertTrue(retaken.won, "The same line, the same stage, the same watch")
+        XCTAssertEqual(retaken.again, true)
+        let told = try XCTUnwrap(state.tidings(of: again[0], for: me)).text
+        XCTAssertTrue(told.contains(" again, stage 1 of the Spine, "), told)
+        XCTAssertTrue(told.hasSuffix(": its spoils were your House's the first time."), told)
+        XCTAssertFalse(told.contains("to your stores"), told)
         XCTAssertEqual(state.expeditionStage(of: me), 1)
         XCTAssertEqual(state.problems(), [])
     }

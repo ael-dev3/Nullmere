@@ -377,7 +377,10 @@ extension GameState {
             let who = (result.line?.count ?? 1) > 1 ? "\(name)'s line of \(result.line!.count)" : name
             if result.won {
                 let stars = String(repeating: "\u{2605}", count: result.stars ?? 1)
-                return Tidings("\(who) takes \(stage.name), stage \(stage.number) of the Spine, \(stars): \(stage.spoils) to your stores.", .good)
+                if result.again == true {
+                    return Tidings("\(who) takes \(stage.name) again, stage \(stage.number) of the Spine, \(stars): its spoils were your House's the first time.", .good)
+                }
+                return Tidings("\(who) takes \(stage.name), stage \(stage.number) of the Spine, \(stars): \(stage.spoils.listedSaid) to your stores.", .good)
             }
             return Tidings("\(who) is thrown back from \(stage.name) and comes home wounded.", .bad)
         case .pedlarLeft(let house):
