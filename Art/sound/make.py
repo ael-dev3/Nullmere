@@ -72,6 +72,9 @@ SLIT = [(f"VSCO 1 Percussion/varWood/log_drum/slitdrum0_mp_{n}.wav", 0) for n in
 GONG = [("Percussion/gongHit_p.wav", 0)]
 TAMBOURINE = [(f"Percussion/Tamb1-Hit_{v}_Sum.wav", 0) for v in ("v1_rr1", "v1_rr2", "v2_rr1")]
 CABASA = [("VSCO 1 Percussion/varMetal/various/cabasa_roll1.wav", 0)]
+# Steel struck on steel, four blows: for a company's blow struck in close,
+# and the din of a battle's ringing steel.
+STEEL = [(f"Miscellania Raw/Misc 1/metal_hit{n}.wav", 0) for n in (1, 2, 3, 4)]
 DRUMS = [("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_f_1.wav", 0),
          ("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_mf_1.wav", 0),
          ("VSCO 1 Percussion/drums/snare/drum1/snare1_nosnare_mf_1.wav", 0),
@@ -343,6 +346,14 @@ def family(root, files, kind):
             heard = (0, int(0.1 * RATE))
             sounded = 0.0
             loop = None
+        elif kind == "clanged":
+            # Steel's clang, let go once forty-five decibels down, at most
+            # six tenths of a second on.
+            x = onset(x, below=40)
+            x = cut(x, below=45, longest=0.6, fade=0.25)
+            heard = (0, int(0.1 * RATE))
+            sounded = 0.0
+            loop = None
         elif kind == "shaken":
             # A rattle rolled: the first eight tenths of a second of it.
             x = onset(x, below=40)
@@ -444,6 +455,9 @@ def main():
     cabasa = family(root, CABASA, "shaken")
     even(cabasa)
     swift(cabasa, "cabasa", "A cabasa, rolled.", os.path.join(out, "CabasaFile.swift"))
+    steel = family(root, STEEL, "clanged")
+    even(steel)
+    swift(steel, "steel", "Steel struck on steel, four blows.", os.path.join(out, "SteelFile.swift"))
     drums = family(root, DRUMS, "drum")
     great, field = drums[:2], drums[2:]
     even(great, together=True)

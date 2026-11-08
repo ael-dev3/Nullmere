@@ -1685,11 +1685,11 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are nineteen of the
+The score is played on recorded instruments, and so are twenty of the
 thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
 bells, the harp's chords, the drums, the forge's anvil, the knocks of wood,
-the watch's gong, the coins' jingle and the salt's rattle. Every other
-sound is made as it plays.
+the watch's gong, the coins' jingle, the salt's rattle and steel struck on
+steel. Every other sound is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and as
   each watch turns a recorded gong struck softly, read slower to sound low
@@ -1730,8 +1730,9 @@ sound is made as it plays.
   and a half seconds long, its highs dying first. The night's drone and wind
   stay out of doors.
 - **Cues.** Each kind of company sounds its own: Riders' hooves, a loosed
-  bowstring, the clash of a blow struck in close, heard as well when the
-  blow falls on yours. A company lost or hungry, or a seat lost, sounds
+  bowstring, the clash of a blow struck in close (steel on steel as it was
+  recorded, four blows each in its turn, read a little faster or slower),
+  heard as well when the blow falls on yours. A company lost or hungry, or a seat lost, sounds
   dread; a work or company finished, a company risen in rank or a drowned
   ruin searched rises; a gift received, a peace or a pact sounds accord; and
   an order that begins a war sounds as war, refusing a steward's tribute
@@ -1764,7 +1765,8 @@ sound is made as it plays.
   edges is fainter, and the view turned turns the sound with it; what has no
   place (an order, the watch's gong, a choice) sounds in the middle. While a
   field of battle is in sight its din rises under the night: a clamour of
-  voices, the tramp of feet and steel ringing on steel, as loud as the troops
+  voices, the tramp of feet and steel ringing on steel (recorded, a blow
+  every few tenths of a second), as loud as the troops
   fighting there (twelve thousand or more as loud as it gets) and as near as
   the view stands, easing in and out as battles are joined and end, at the
   ambience's volume. As the

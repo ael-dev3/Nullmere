@@ -147,7 +147,12 @@ public final class Synth: @unchecked Sendable {
     private var clamourLow: Float = 0
     private var clamourHigh: Float = 0
     private var tramp: Float = 0
-    private var clashes: [(phase: Float, frequency: Float, amplitude: Float, age: Float)] = Array(repeating: (0, 0, 0, 1), count: 4)
+    /// The din's steel: four voices of steel struck on steel, recorded.
+    private var dinSteel = [Reading](repeating: Reading(note: Recordings.steelNotes[0]), count: 4)
+    /// How many cues have been struck, so a clash's blows take their turns.
+    private var struckCues = 0
+    /// How many blows of steel the din has struck, for tests.
+    private(set) var steelStruck = 0
     private var nextClash: Float = 0
     /// The towns near the view as heard, easing toward what they were last
     /// told, and what they sound.
@@ -329,6 +334,7 @@ public final class Synth: @unchecked Sendable {
         pendingBlown.removeAll()
         pendingStrikes.removeAll()
         for index in struck.indices { struck[index].sounding = false }
+        for index in dinSteel.indices { dinSteel[index].sounding = false }
         cueHorns.clear()
         cueReeds.clear()
         dinHorns.clear()
@@ -377,7 +383,11 @@ public final class Synth: @unchecked Sendable {
                   left: place.left, right: place.right)
         }
         let loud = Synth.strikeLevel(of: cue)
-        let strikes = Synth.strikes(of: cue).map {
+        lock.lock()
+        let variant = struckCues
+        struckCues &+= 1
+        lock.unlock()
+        let strikes = Synth.strikes(of: cue, variant: variant).map {
             Strike(note: $0.note, wait: delay + $0.at, strength: $0.strength * loud, ratio: $0.ratio, left: place.left, right: place.right)
         }
         lock.lock()
@@ -393,10 +403,17 @@ public final class Synth: @unchecked Sendable {
     /// the last the hardest, left to ring; the field drum's two strokes,
     /// the second softer, as a company stands down; two knocks on the slit
     /// drum, the second a third lower, as the rules refuse an order; the
-    /// gong, as the watch turns; coins on a tambourine's jingles; and salt
-    /// on a cabasa, as an hourglass is turned.
-    static func strikes(of cue: SoundCue) -> [(note: Recording, at: Float, strength: Float, ratio: Double)] {
+    /// gong, as the watch turns; coins on a tambourine's jingles; salt on
+    /// a cabasa, as an hourglass is turned; and steel on steel, a blow struck
+    /// in close, each in its turn (`variant`, counted up as cues are struck).
+    static func strikes(of cue: SoundCue, variant: Int = 0) -> [(note: Recording, at: Float, strength: Float, ratio: Double)] {
         switch cue {
+        case .clash:
+            // Steel on steel: one of four blows, each in its turn, read a
+            // little faster or slower, so no two close together ring alike.
+            let steel = Recordings.steelNotes
+            let turn = abs(variant % (steel.count * 3))
+            return [(steel[turn % steel.count], 0, 1, [1, 1.06, 0.94][turn / steel.count])]
         case .anvil:
             let anvil = Recordings.anvilNotes
             return [(anvil[0], 0, 0.8, 1), (anvil[0], 0.2, 0.9, 0.97), (anvil[1], 0.4, 1, 1)]
@@ -513,6 +530,7 @@ public final class Synth: @unchecked Sendable {
         case .accord: return 2.2
         case .watch: return 2
         case .coin: return 2
+        case .clash: return 1.43
         default: return 1.6
         }
     }
@@ -546,15 +564,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: f * 5.40, amplitude: 0.035, decay: 0.8),
                 Partial(frequency: f * 8.93, amplitude: 0.015, decay: 1.3),
             ], noise: 0.01, noiseDecay: 6)
-        case .clash:
-            // Bright, inharmonic and short over a dull thud.
-            note = Note(partials: [
-                Partial(frequency: 80, amplitude: 0.07, decay: 10),
-                Partial(frequency: 523, amplitude: 0.045, decay: 9),
-                Partial(frequency: 1247, amplitude: 0.032, decay: 12),
-                Partial(frequency: 1873, amplitude: 0.024, decay: 16),
-                Partial(frequency: 2690, amplitude: 0.016, decay: 20),
-            ], noise: 0.07, noiseDecay: 35)
         case .loose:
             // The string's low twang and its click, then the shaft's hiss.
             note = Note(partials: [
@@ -588,7 +597,7 @@ public final class Synth: @unchecked Sendable {
         case .muster, .horn:
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
-        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift:
+        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift, .clash:
             // Struck on recorded instruments (`strikes(of:)`).
             return []
         case .envoy, .triumph, .honour, .banner:
@@ -834,19 +843,22 @@ public final class Synth: @unchecked Sendable {
                 let step = max(0, Float(sin(time * 2 * .pi * 2.1)))
                 nextClash -= dt
                 if nextClash <= 0 {
-                    let slot = clashes.indices.max { clashes[$0].age < clashes[$1].age } ?? 0
-                    clashes[slot] = (0, 1_800 + 1_400 * abs(random()), 0.5 + 0.5 * abs(random()), 0)
+                    // Steel struck on steel, recorded: any of four blows,
+                    // read a little faster or slower, struck harder or softer.
+                    let steel = Recordings.steelNotes
+                    var blow = Reading(note: steel[min(Int(abs(random()) * Float(steel.count)), steel.count - 1)])
+                    blow.step = Double(0.88 + 0.24 * abs(random())) * Double(Recordings.rate / sampleRate)
+                    blow.left = 0.5 + 0.5 * abs(random())
+                    blow.sounding = true
+                    dinSteel[Reading.free(dinSteel, rate: sampleRate)] = blow
+                    steelStruck += 1
                     nextClash = (0.05 + 0.25 * abs(random())) / max(din.level, 0.2) / (1 + 3 * host)
                 }
                 var ring: Float = 0
-                for c in clashes.indices where clashes[c].age < 0.4 {
-                    clashes[c].age += dt
-                    clashes[c].phase += tau * clashes[c].frequency * dt
-                    if clashes[c].phase > tau { clashes[c].phase -= tau }
-                    let phase = clashes[c].phase
-                    ring += (sin(phase) + 0.6 * sin(phase * 2.76)) * clashes[c].amplitude * exp(-clashes[c].age * 28)
+                for c in dinSteel.indices where dinSteel[c].sounding {
+                    ring += dinSteel[c].next() * dinSteel[c].left
                 }
-                battle = (clamour * 0.9 + tramp * step * 6 + ring * 0.05) * 0.2 * din.level
+                battle = (clamour * 0.9 + tramp * step * 6 + ring * Self.dinSteelGain) * 0.2 * din.level
                 if host > 0.001 {
                     // The throng's roar, swelling and ebbing as the lines surge.
                     let deep = random()
@@ -928,7 +940,6 @@ public final class Synth: @unchecked Sendable {
         case .order: return ((2_200, 0.8), nil)
         case .dread: return ((220, 0.7), nil)
         case .toll: return ((500, 0.8), nil)
-        case .clash: return ((3_400, 1.4), nil)
         // The string's click, then the shaft's hiss through the air.
         case .loose: return ((2_600, 1), (6_000, 1.6))
         case .ride: return ((380, 0.8), nil)
@@ -939,7 +950,7 @@ public final class Synth: @unchecked Sendable {
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
-             .complete, .herald, .parley, .coin, .sift:
+             .complete, .herald, .parley, .coin, .sift, .clash:
             return (nil, nil)
         }
     }
@@ -953,6 +964,10 @@ public final class Synth: @unchecked Sendable {
     static let hornCueGain: Float = 0.15
     /// How loud a cue's recorded blow is struck full.
     static let strikeGain: Float = 0.1
+    /// How loud the din's recorded steel rings, before the din's own level:
+    /// some nine decibels under the clamour's brightness overall, each clang
+    /// standing out of it as it is struck.
+    static let dinSteelGain: Float = 0.3
     /// How loud a cue's call on the recorded clarinet is: as loud as the
     /// reedy partials an envoy sent and an offer refused were.
     static let reedCueGain: Float = 0.12

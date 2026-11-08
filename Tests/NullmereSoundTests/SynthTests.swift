@@ -213,7 +213,7 @@ final class SynthTests: XCTestCase {
         }
         let strikes: [(SoundCue, Int, Float)] = [(.anvil, 3, -40.1), (.stand, 2, -36.4), (.deny, 2, -42.5), (.lore, 3, -32.7),
                                                  (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7),
-                                                 (.coin, 3, -39.4), (.sift, 3, -44.5)]
+                                                 (.coin, 3, -39.4), (.sift, 3, -44.5), (.clash, 1, -38.6)]
         for (cue, blows, before) in strikes {
             let heard = struck(cue)
             XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")
@@ -222,7 +222,9 @@ final class SynthTests: XCTestCase {
             XCTAssertEqual(decibels(first), before, accuracy: 3, "\(cue) as loud as it was")
             XCTAssertLessThan(heard.left.suffix(4_800).map(abs).max() ?? 1, 0.001, "\(cue) rung out")
         }
-        XCTAssertEqual(struck(.clash).synth.cueStrikes, 0, "A clash is struck as it was")
+        let turns = (0..<12).map { Synth.strikes(of: .clash, variant: $0)[0] }
+        XCTAssertEqual(Set(turns.map { ObjectIdentifier($0.note) }).count, Recordings.steelNotes.count, "Every blow of steel in its turn")
+        XCTAssertEqual(Set(turns.map { "\(ObjectIdentifier($0.note))\($0.ratio)" }).count, 12, "and no two of twelve alike")
         XCTAssertEqual(Synth.strikes(of: .anvil).map(\.at), [0, 0.2, 0.4], "Three blows of the hammer")
         // The salt runs, then its chime: over its first second as loud as
         // the patter and the chime of partials were.
@@ -302,6 +304,25 @@ final class SynthTests: XCTestCase {
     /// The din of a field of battle in sight: well above the night, from
     /// where it is, fainter for fewer and farther off; gone again once no
     /// battle is in sight, and never clipping.
+    /// A battle's din rings with steel struck on steel, recorded: a blow
+    /// every few tenths of a second, its brightness about the clamour's.
+    func testABattleRingsWithRecordedSteel() {
+        let rate: Float = 48_000
+        func high(_ x: [Float]) -> [Float] {
+            var out: [Float] = [], y: Float = 0, last: Float = 0
+            let a: Float = exp(-2 * .pi * 1_500 / rate)
+            for v in x { y = a * (y + v - last); last = v; out.append(y) }
+            return out
+        }
+        let synth = settled()
+        synth.setDin(level: 1, pan: 0)
+        let heard = rendered(synth, seconds: 6).left
+        let bright = decibels(rms(high(heard)[Int(2 * rate)...]))
+        print("SOUND din's steel: \(synth.steelStruck) blows in six seconds; above 1.5 kHz \(bright) dB, of partials -37.4 dB")
+        XCTAssertGreaterThan(synth.steelStruck, 15, "Steel struck again and again")
+        XCTAssertEqual(bright, -37.4, accuracy: 2, "as bright as the din of partials was")
+    }
+
     func testABattleIsHeardFromWhereItIsAboveTheNightAndNeverClips() {
         let rate = 48_000
         let held = (2 * rate)..<(4 * rate), after = (6 * rate)..<(8 * rate)
