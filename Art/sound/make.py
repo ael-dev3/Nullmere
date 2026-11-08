@@ -66,6 +66,12 @@ CLARINET = [(f"Woodwinds/Clarinet/susLong/DCClar_susLong_{name}_v2_rr1_sum.wav",
 # and a slit drum of wood, struck mezzo-piano twice alike.
 ANVIL = [(f"Percussion/Anvil_Hit1_{v}_Sum.wav", 0) for v in ("v2", "v3")]
 SLIT = [(f"VSCO 1 Percussion/varWood/log_drum/slitdrum0_mp_{n}.wav", 0) for n in (1, 2)]
+# A gong struck softly, for the watch's bell over the water; a tambourine's
+# jingles struck three times, two softly and one harder, for coins counted
+# out; and a cabasa rolled, for salt running through an hourglass.
+GONG = [("Percussion/gongHit_p.wav", 0)]
+TAMBOURINE = [(f"Percussion/Tamb1-Hit_{v}_Sum.wav", 0) for v in ("v1_rr1", "v1_rr2", "v2_rr1")]
+CABASA = [("VSCO 1 Percussion/varMetal/various/cabasa_roll1.wav", 0)]
 DRUMS = [("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_f_1.wav", 0),
          ("VSCO 1 Percussion/drums/other/ethnic/giant/mallet/EthnicLargeMallet_hit_mf_1.wav", 0),
          ("VSCO 1 Percussion/drums/snare/drum1/snare1_nosnare_mf_1.wav", 0),
@@ -321,6 +327,29 @@ def family(root, files, kind):
             heard = (0, int(0.25 * RATE))
             sounded = 0.0
             loop = None
+        elif kind == "tolled":
+            # A gong's long ring, seven seconds of it, fading over the last
+            # two and a half.
+            x = onset(x, below=40)
+            x = cut(x, below=55, longest=7, fade=2.5)
+            heard = (0, RATE)
+            sounded = 0.0
+            loop = None
+        elif kind == "jingled":
+            # Small metal shaken: let go once forty decibels down, at most
+            # six tenths of a second on.
+            x = onset(x, below=40)
+            x = cut(x, below=40, longest=0.6, fade=0.2)
+            heard = (0, int(0.1 * RATE))
+            sounded = 0.0
+            loop = None
+        elif kind == "shaken":
+            # A rattle rolled: the first eight tenths of a second of it.
+            x = onset(x, below=40)
+            x = cut(x, below=60, longest=0.8, fade=0.3)
+            heard = (0, int(0.5 * RATE))
+            sounded = 0.0
+            loop = None
         else:
             x = onset(x, below=40)
             x = cut(x, below=55, longest=1.5, fade=0.3)
@@ -405,6 +434,16 @@ def main():
     slit = family(root, SLIT, "drum")
     even(slit, together=True)
     swift(slit, "slitDrum", "A slit drum of wood, struck mezzo-piano twice.", os.path.join(out, "SlitDrumFile.swift"))
+    gong = family(root, GONG, "tolled")
+    even(gong)
+    swift(gong, "gong", "A gong, struck softly.", os.path.join(out, "GongFile.swift"))
+    tambourine = family(root, TAMBOURINE, "jingled")
+    even(tambourine, together=True)
+    swift(tambourine, "tambourine", "A tambourine's jingles, struck softly twice and once harder.",
+          os.path.join(out, "TambourineFile.swift"))
+    cabasa = family(root, CABASA, "shaken")
+    even(cabasa)
+    swift(cabasa, "cabasa", "A cabasa, rolled.", os.path.join(out, "CabasaFile.swift"))
     drums = family(root, DRUMS, "drum")
     great, field = drums[:2], drums[2:]
     even(great, together=True)

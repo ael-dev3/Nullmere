@@ -1685,14 +1685,15 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are sixteen of the
+The score is played on recorded instruments, and so are nineteen of the
 thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
-bells, the harp's chords, the drums, the forge's anvil and the knocks of
-wood. Every other
+bells, the harp's chords, the drums, the forge's anvil, the knocks of wood,
+the watch's gong, the coins' jingle and the salt's rattle. Every other
 sound is made as it plays.
 
-- **The night.** A cold drone and the night wind over the water, and a low
-  bell as each watch turns.
+- **The night.** A cold drone and the night wind over the water, and as
+  each watch turns a recorded gong struck softly, read slower to sound low
+  G, ringing out over some ten seconds.
 - **The score**, written as it plays, played on real instruments: notes of
   the VS Chamber Orchestra: Community Edition (recorded by Sam Gossner and
   Simon Dalzell), each read from the recorded note nearest it, faster or
@@ -1750,15 +1751,18 @@ sound is made as it plays.
   glass bells on the recorded glockenspiel; the realm's crier strikes the
   great drum three times, then a bell; a work finished is two knocks and a
   chord on the recorded harp, a rise a chord rising on it and an accord a
-  gentle sixth. Each cue's noise is coloured by what makes it: a page turned rustles
+  gentle sixth. Goods and gifts changing hands are three coins counted out
+  on a recorded tambourine's jingles, and an hourglass turned is a recorded
+  cabasa's roll, salt running, then a small glass chime on the
+  glockenspiel. Each cue's noise is coloured by what makes it: a page turned rustles
   high and soft, hooves and skins thud low, grit and dust sit about the
   middle, steel rings bright and salt hisses brighter. What a watch brings
-  sounds one after another after its bell, never all at once, and the low
+  sounds one after another after its gong, never all at once, and the low
   sounds carry overtones a laptop's speakers give.
 - **Where it happened.** A sound is heard from where it happened: a battle
   to the left of the view leans into the left ear, one far beyond the view's
   edges is fainter, and the view turned turns the sound with it; what has no
-  place (an order, the watch's bell, a choice) sounds in the middle. While a
+  place (an order, the watch's gong, a choice) sounds in the middle. While a
   field of battle is in sight its din rises under the night: a clamour of
   voices, the tramp of feet and steel ringing on steel, as loud as the troops
   fighting there (twelve thousand or more as loud as it gets) and as near as

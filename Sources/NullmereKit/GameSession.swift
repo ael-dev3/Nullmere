@@ -1768,7 +1768,7 @@ public final class GameSession {
         }
     }
 
-    /// The sounds a watch's turning makes for the player, the watch's bell
+    /// The sounds a watch's turning makes for the player, the watch's gong
     /// first and each other sound once. With the world as it now stands,
     /// the player's works and companies finished sound too.
     static func cues(for events: [GameEvent], in state: GameState? = nil, player: Int) -> [Ambience.Cue] {
@@ -1776,7 +1776,7 @@ public final class GameSession {
     }
 
     /// The sounds events make, each where in the world the first event to
-    /// make it happened, if it happened anywhere: the watch's bell first,
+    /// make it happened, if it happened anywhere: the watch's gong first,
     /// in the middle, and each other sound once.
     static func placedCues(for events: [GameEvent], in state: GameState? = nil, player: Int) -> [(cue: Ambience.Cue, at: Hex?)] {
         var cues: [(cue: Ambience.Cue, at: Hex?)] = [(.watch, nil)]

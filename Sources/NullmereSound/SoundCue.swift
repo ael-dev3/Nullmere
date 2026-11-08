@@ -19,7 +19,7 @@ public struct SoundPlace: Equatable, Sendable {
         self.gain = min(max(gain, 0), 1)
     }
 
-    /// The middle of the view: orders, the watch's bell, what has no place.
+    /// The middle of the view: orders, the watch's gong, what has no place.
     public static let middle = SoundPlace(pan: 0, gain: 1)
 
     private var angle: Float { (0.75 * pan + 1) * .pi / 4 }
@@ -34,7 +34,7 @@ public enum SoundCue: Sendable {
     case select
     /// A company given its march.
     case order
-    /// The watch turns: a low bell over the water.
+    /// The watch turns: a gong struck softly, low over the water.
     case watch
     /// Something raised: a hold founded, a work or a company ordered,
     /// and each finished.

@@ -12,9 +12,11 @@ final class RecordingsTests: XCTestCase {
                                                  ("basses", Recordings.bassNotes), ("horns", Recordings.hornNotes),
                                                  ("clarinet", Recordings.clarinetNotes),
                                                  ("anvil", Recordings.anvilNotes), ("slit drum", Recordings.slitDrumNotes),
+                                                 ("gong", Recordings.gongNotes), ("tambourine", Recordings.tambourineNotes),
+                                                 ("cabasa", Recordings.cabasaNotes),
                                                  ("drums", Recordings.drumNotes)]
     /// The sets struck with no pitch to sound.
-    private let unpitched: Set = ["drums", "anvil", "slit drum"]
+    private let unpitched: Set = ["drums", "anvil", "slit drum", "gong", "tambourine", "cabasa"]
     /// The sets held round a loop for as long as they sound.
     private let held: Set = ["cellos", "violas", "basses", "horns", "clarinet"]
 

@@ -1,9 +1,11 @@
 import Foundation
 
 /// The score's instruments as they were recorded, and the cues' horn, reed,
-/// anvil and wood: notes of a harp, a glockenspiel, cellos, violas, a double
-/// bass, a French horn and the war's drums, a clarinet, an anvil's blows and
-/// a slit drum's knocks, from the VS Chamber Orchestra: Community Edition (VSCO-2-CE, recorded by Sam
+/// anvil, wood, gong, jingles and rattle: notes of a harp, a glockenspiel,
+/// cellos, violas, a double bass, a French horn and the war's drums, a
+/// clarinet, an anvil's blows, a slit drum's knocks, a gong's soft stroke, a
+/// tambourine's jingles and a cabasa's roll, from the VS Chamber Orchestra:
+/// Community Edition (VSCO-2-CE, recorded by Sam
 /// Gossner and Simon Dalzell, CC0 1.0), made into the package by
 /// Art/sound/make.py (see Recorded/), and read here once, the first time the
 /// score needs them, before it plays.
@@ -44,11 +46,18 @@ enum Recordings {
     static let slitDrumNotes = slitDrum.map(Recording.init)
     /// The great drum forte and mezzo-forte, then the field drum twice.
     static let drumNotes = drums.map(Recording.init)
+    /// A gong struck softly, the watch's bell over the water; a tambourine's
+    /// jingles struck softly twice and once harder, coins counted out; and
+    /// a cabasa rolled, salt running through an hourglass.
+    static let gongNotes = gong.map(Recording.init)
+    static let tambourineNotes = tambourine.map(Recording.init)
+    static let cabasaNotes = cabasa.map(Recording.init)
 
     /// Every note read, so the score never reads one as it plays.
     static func load() {
         _ = (harpNotes.count, glockenspielNotes.count, celloNotes.count, violaNotes.count, bassNotes.count, hornNotes.count,
-             clarinetNotes.count, anvilNotes.count, slitDrumNotes.count, drumNotes.count)
+             clarinetNotes.count, anvilNotes.count, slitDrumNotes.count, drumNotes.count, gongNotes.count, tambourineNotes.count,
+             cabasaNotes.count)
     }
 
     /// The samples a note's blocks hold, from -1 to 1: each block a byte

@@ -391,8 +391,10 @@ public final class Synth: @unchecked Sendable {
     /// each blow's note, when it falls, how hard, and how much faster than
     /// it was recorded it is read. The forge's three blows on the anvil,
     /// the last the hardest, left to ring; the field drum's two strokes,
-    /// the second softer, as a company stands down; and two knocks on the
-    /// slit drum, the second a third lower, as the rules refuse an order.
+    /// the second softer, as a company stands down; two knocks on the slit
+    /// drum, the second a third lower, as the rules refuse an order; the
+    /// gong, as the watch turns; coins on a tambourine's jingles; and salt
+    /// on a cabasa, as an hourglass is turned.
     static func strikes(of cue: SoundCue) -> [(note: Recording, at: Float, strength: Float, ratio: Double)] {
         switch cue {
         case .anvil:
@@ -421,6 +423,19 @@ public final class Synth: @unchecked Sendable {
         case .accord:
             // A gentle sixth on the harp.
             return [pluck(523.3, 0, 0.85), pluck(880, 0.2, 0.75)]
+        case .watch:
+            // The gong struck softly, read slower to sound low G, as the
+            // watch's bell did.
+            return [(Recordings.gongNotes[0], 0, 1, 0.685)]
+        case .coin:
+            // Three coins counted out on the tambourine's jingles, the
+            // second a little higher, the third lower.
+            let jingles = Recordings.tambourineNotes
+            return [(jingles[0], 0, 1, 1), (jingles[1], 0.09, 0.8, 1.07), (jingles[2], 0.17, 0.9, 0.96)]
+        case .sift:
+            // The cabasa's roll, salt running, then a small glass chime as
+            // the last of it falls.
+            return [(Recordings.cabasaNotes[0], 0, 0.85, 1), bell(1568, 0.55, 1), bell(2093, 0.63, 0.58)]
         default: return []
         }
     }
@@ -484,7 +499,9 @@ public final class Synth: @unchecked Sendable {
     }
 
     /// How loud a struck cue's blows are, struck full: each as loud over its
-    /// first moments as the struck partials it took over from.
+    /// first moments as the struck partials it took over from; the watch's
+    /// gong, struck softer and ringing longer than the bell of partials, as
+    /// loud over its first three seconds.
     static func strikeLevel(of cue: SoundCue) -> Float {
         switch cue {
         case .anvil: return 4
@@ -494,6 +511,8 @@ public final class Synth: @unchecked Sendable {
         case .complete: return 1.3
         case .rise: return 2.45
         case .accord: return 2.2
+        case .watch: return 2
+        case .coin: return 2
         default: return 1.6
         }
     }
@@ -507,15 +526,6 @@ public final class Synth: @unchecked Sendable {
             note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
         case .order:
             note = Note(partials: [Partial(frequency: 660, amplitude: 0.09, decay: 14), Partial(frequency: 990, amplitude: 0.04, decay: 18)], noise: 0.02, noiseDecay: 60)
-        case .watch:
-            // An inharmonic bell, low and long.
-            let f: Float = 98
-            note = Note(partials: [
-                Partial(frequency: f, amplitude: 0.175, decay: 0.45),
-                Partial(frequency: f * 2.76, amplitude: 0.0875, decay: 0.8),
-                Partial(frequency: f * 5.40, amplitude: 0.04, decay: 1.4),
-                Partial(frequency: f * 8.93, amplitude: 0.0175, decay: 2.2),
-            ], noise: 0, noiseDecay: 1)
         case .dread:
             // Low, and with overtones a laptop's small speakers can give, so
             // it is heard there too, its depth implied.
@@ -575,21 +585,10 @@ public final class Synth: @unchecked Sendable {
             }
             note = spade(0, 1)
             more = [spade(0.34, 0.85)]
-        case .coin:
-            // Small bright metal, inharmonic, each coin a little higher.
-            func clink(_ delay: Float, _ pitch: Float, _ strength: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 2_350 * pitch, amplitude: 0.06 * strength, decay: 16),
-                    Partial(frequency: 3_890 * pitch, amplitude: 0.04 * strength, decay: 22),
-                    Partial(frequency: 5_630 * pitch, amplitude: 0.022 * strength, decay: 30),
-                ], noise: 0.025 * strength, noiseDecay: 140, delay: delay)
-            }
-            note = clink(0, 1, 1)
-            more = [clink(0.09, 1.07, 0.8), clink(0.17, 0.96, 0.9)]
         case .muster, .horn:
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
-        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord:
+        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift:
             // Struck on recorded instruments (`strikes(of:)`).
             return []
         case .envoy, .triumph, .honour, .banner:
@@ -625,22 +624,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 1174.7, amplitude: 0.026, decay: 2.8, delay: 0.32),
                 Partial(frequency: 1174.7 * 2.76, amplitude: 0.007, decay: 4.2, delay: 0.32),
             ], noise: 0.004, noiseDecay: 8)
-        case .sift:
-            // A fine patter of salt grains through the glass's waist, swelling
-            // and thinning, then a small glass chime as the last of it falls.
-            func grains(_ delay: Float, _ strength: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 4_700, amplitude: 0.012 * strength, decay: 60),
-                    Partial(frequency: 6_300, amplitude: 0.008 * strength, decay: 70),
-                ], noise: 0.03 * strength, noiseDecay: 55, delay: delay)
-            }
-            note = grains(0, 0.7)
-            more = [grains(0.05, 0.9), grains(0.11, 1), grains(0.16, 0.85), grains(0.22, 0.7), grains(0.27, 0.5),
-                    Note(partials: [
-                        Partial(frequency: 1_568, amplitude: 0.05, decay: 1.6),
-                        Partial(frequency: 1_568 * 2.76, amplitude: 0.016, decay: 2.6),
-                        Partial(frequency: 2_093, amplitude: 0.02, decay: 2, delay: 0.08),
-                    ], noise: 0, noiseDecay: 1, delay: 0.36)]
         }
         note.delay += delay
         note.end = note.delay + note.length
@@ -950,15 +933,13 @@ public final class Synth: @unchecked Sendable {
         case .loose: return ((2_600, 1), (6_000, 1.6))
         case .ride: return ((380, 0.8), nil)
         case .dig: return ((1_400, 0.7), nil)
-        case .coin: return ((6_800, 1.2), nil)
         // The timber's crack, then the dust settling.
         case .batter: return ((650, 0.8), (300, 0.6))
         case .tend: return ((1_000, 0.6), nil)
-        case .sift: return ((6_400, 1.3), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
-             .complete, .herald, .parley:
+             .complete, .herald, .parley, .coin, .sift:
             return (nil, nil)
         }
     }

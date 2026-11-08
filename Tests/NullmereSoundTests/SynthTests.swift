@@ -212,7 +212,8 @@ final class SynthTests: XCTestCase {
             return (synth, rendered(synth, seconds: 6).left)
         }
         let strikes: [(SoundCue, Int, Float)] = [(.anvil, 3, -40.1), (.stand, 2, -36.4), (.deny, 2, -42.5), (.lore, 3, -32.7),
-                                                 (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7)]
+                                                 (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7),
+                                                 (.coin, 3, -39.4), (.sift, 3, -44.5)]
         for (cue, blows, before) in strikes {
             let heard = struck(cue)
             XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")
@@ -223,6 +224,35 @@ final class SynthTests: XCTestCase {
         }
         XCTAssertEqual(struck(.clash).synth.cueStrikes, 0, "A clash is struck as it was")
         XCTAssertEqual(Synth.strikes(of: .anvil).map(\.at), [0, 0.2, 0.4], "Three blows of the hammer")
+        // The salt runs, then its chime: over its first second as loud as
+        // the patter and the chime of partials were.
+        let sifted = struck(.sift).left
+        let second = rms(sifted[0..<Int(SynthTests.rate)])
+        print("SOUND sift's first second as recorded \(decibels(second)) dB, as partials -39.7 dB")
+        XCTAssertEqual(decibels(second), -39.7, accuracy: 3, "The hourglass's chime as loud as it was")
+    }
+
+    /// The watch turns on a recorded gong struck softly, read slower to
+    /// sound the low G the watch's bell of partials did: as loud over its
+    /// first three seconds, struck a little softer and ringing a little
+    /// longer, its ring let go well before the next watch could turn.
+    func testTheWatchTurnsOnARecordedGong() {
+        let synth = settled()
+        synth.setVolumes(effects: 1, ambience: 0, music: 0)
+        _ = rendered(synth, seconds: 0.2)
+        synth.trigger(.watch)
+        let left = rendered(synth, seconds: 12).left
+        XCTAssertEqual(synth.cueStrikes, 1, "One stroke of the gong")
+        let first = rms(left[0..<Int(SynthTests.rate)])
+        let after = rms(left[Int(SynthTests.rate)..<Int(3 * SynthTests.rate)])
+        let three = rms(left[0..<Int(3 * SynthTests.rate)])
+        print("SOUND watch on the gong \(decibels(three)) dB over its first three seconds, \(decibels(first)) over the first, "
+            + "\(decibels(after)) over the two after; the bell of partials -27.0, -24.2 and -29.6 dB")
+        XCTAssertEqual(decibels(three), -27.0, accuracy: 1.5, "As loud over three seconds as the bell it took over from")
+        XCTAssertEqual(decibels(first), -24.2, accuracy: 3, "struck a little softer")
+        XCTAssertEqual(decibels(after), -29.6, accuracy: 3, "and ringing a little longer")
+        XCTAssertLessThan(left.suffix(4_800).map(abs).max() ?? 1, 0.001, "Rung out within twelve seconds")
+        XCTAssertEqual(Synth.strikes(of: .watch).first?.ratio ?? 0, 98 / 143, accuracy: 0.002, "Read to sound low G")
     }
 
     /// A cue in the middle is heard alike in both ears; at an edge, in the
