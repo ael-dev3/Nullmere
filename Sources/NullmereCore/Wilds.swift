@@ -235,7 +235,7 @@ extension GameState {
             if let keepsake = wild.keepsake {
                 record(.hunt, [attacker.owner], "\(houses[attacker.owner].title) lays the drowned of \(keepsake) to rest, and takes up its keepsake.")
             } else if wild.level >= GameState.notedWilds {
-                record(.hunt, [attacker.owner], "\(houses[attacker.owner].title) strikes down a company of \(wild.kind.title) of the \(ordinal(wild.level)) level in the far country.")
+                record(.hunt, [attacker.owner], "\(houses[attacker.owner].title) strikes down a company of \(wild.named) in the far country.")
             }
         }
         let attackerFell = taken > 0 && applyDamage(taken, to: unitID, events: &events)
@@ -274,5 +274,26 @@ extension GameState {
             attackerHealth: attacker.health,
             couldCapture: false
         )
+    }
+}
+
+extension WildKind {
+    /// A company of these wilds at a level, as a line says it in its midst,
+    /// the Mac's and the phone's alike, as a lair is said: "Barrowkin of
+    /// the third level", "the Drowned of the first level".
+    public func named(level: Int) -> String { "\(title) of the \(ordinal(level)) level" }
+}
+
+extension Wild {
+    /// As a line says it in its midst: "Barrowkin of the third level".
+    public var named: String { kind.named(level: level) }
+
+    /// As the map labels it, on the Mac and the phone alike, and as an
+    /// order names it: "Barrowkin, level III", "the Drowned, level II,
+    /// bearing a keepsake of Dunmere"; at a line's head, begun with a
+    /// capital (`lineBegun`).
+    public var called: String {
+        let called = "\(kind.title), level \(BuildingKind.numeral(level))"
+        return keepsake.map { called + ", bearing a keepsake of \($0)" } ?? called
     }
 }

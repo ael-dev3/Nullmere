@@ -93,12 +93,10 @@ enum HoverInfo {
             + "\(leaders[1])'s \(GameState.counted(field.inField(1).troops))"
     }
 
-    /// A company of the wilds as the map names it: "Barrowkin, level III".
-    static func named(_ wild: Wild) -> String {
-        let title = wild.kind.title
-        let named = title.prefix(1).uppercased() + title.dropFirst() + ", level \(Narration.roman(wild.level))"
-        return wild.keepsake.map { named + ", bearing a keepsake of \($0)" } ?? named
-    }
+    /// A company of the wilds as the map names it at a line's head:
+    /// "Barrowkin, level III", "The Drowned, level II" (`Wild.called`, as
+    /// the phone's chart names it too).
+    static func named(_ wild: Wild) -> String { wild.called.lineBegun }
 
     /// A holy site as the map names it: who holds it, and what it gives.
     static func named(_ shrine: Shrine, in state: GameState) -> String {

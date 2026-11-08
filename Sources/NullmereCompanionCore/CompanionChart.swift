@@ -191,7 +191,7 @@ public struct CompanionChart: Equatable, Sendable {
         }
         for wild in world.wildsStanding where reached(wild.position) {
             marks.append(Mark(id: "wild \(wild.id)", hex: wild.position, thing: .wild, side: .wilds,
-                              name: "\(CompanionChart.capitalized(wild.kind.title)) of the \(ordinal(wild.level)) level"))
+                              name: wild.called.lineBegun))
         }
         for unit in world.units where reached(unit.position) {
             marks.append(Mark(id: "company \(unit.id)", hex: unit.position, thing: .company, side: side(unit.owner),

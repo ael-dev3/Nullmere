@@ -53,6 +53,16 @@ public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
         title.hasPrefix("The ") ? "the " + title.dropFirst(4) : "the " + title.lowercased()
     }
 
+    /// Where a thing is on the ground, as a line says it: in among the
+    /// trees and the waters ("in the blackwood", "in the dead shallows"),
+    /// on all the rest ("on the strand", "on the Moonford").
+    public var place: String {
+        switch self {
+        case .blackwood, .shallows, .stream: return "in " + ground
+        case .still, .strand, .saltFlat, .greyfield, .barrow, .spine, .ford, .shoal: return "on " + ground
+        }
+    }
+
     // These ask by case, not `==`, which for an enum of strings can come
     // to comparing the strings: the search for ways asks them of every
     // tile it looks at.

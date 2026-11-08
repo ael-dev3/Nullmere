@@ -27,7 +27,7 @@ final class ScoutTests: XCTestCase {
         state.houses[ally].isPlayer = true
         _ = try state.perform(.inviteToAlliance(house: ally), as: foe)
         _ = try state.perform(.answerInvitation(alliance: try XCTUnwrap(state.alliance(of: foe)).id, accept: true), as: ally)
-        state.put(.spear, of: ally, at: gates[1])
+        state.put(.spear, of: ally, at: gates[1], health: 60)
         // Under way: walls rising, riders mustering; one lying in its beds.
         state.holds[index].project = Hold.Project(kind: .walls, targetLevel: 2, watchesLeft: 3)
         state.holds[index].training = Hold.Training(kind: .rider, watchesLeft: 2, tier: 2)
@@ -48,7 +48,7 @@ final class ScoutTests: XCTestCase {
         XCTAssertEqual(report.garrison, [
             ScoutReport.Company(kind: .spear, tier: 3, health: 80, rank: 2, owner: foe, commander: commander.name),
             ScoutReport.Company(kind: .bow, tier: 1, health: 100, rank: 0, owner: foe, commander: nil),
-            ScoutReport.Company(kind: .spear, tier: 1, health: 100, rank: 0, owner: ally, commander: nil),
+            ScoutReport.Company(kind: .spear, tier: 1, health: 60, rank: 0, owner: ally, commander: nil),
         ])
         XCTAssertEqual(report.ward, 40)
         XCTAssertEqual(report.maximumWard, state.hold(seat.id)?.maximumWard)
@@ -75,12 +75,13 @@ final class ScoutTests: XCTestCase {
         XCTAssertEqual(told.title, "Your Lanterns scouted \(seat.name), \(state.houses[foe].title)'s seat")
         XCTAssertEqual(told.place, "at \(seat.name)")
         XCTAssertEqual(told.lines, [
-            "At its gates: Spears III, 80 strong, Hardened, led by \(commander.name); Bows I; Spears I of \(state.houses[ally].title)",
+            // Whose a company is, said with what it is: never "Hardened of House Venn".
+            "At its gates: Spears III, 80 strong, Hardened, led by \(commander.name); Bows I; Spears I of \(state.houses[ally].title), 60 strong",
             "Its ward 40 of \(report.maximumWard)",
             "Raising Walls II, 3 watches left",
             "Mustering Riders II, 2 watches left",
             "Its taking would carry off 50 grain, 30 timber, 20 stone, 5 moonsalt",
-            "1 lies in its Infirmary",
+            "1 company lies in its Infirmary",
         ])
         XCTAssertNil(state.report(of: report, id: 7, for: foe), "Its House reads no report of it")
 

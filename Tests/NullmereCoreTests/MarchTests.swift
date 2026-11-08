@@ -139,6 +139,16 @@ final class MarchTests: XCTestCase {
         XCTAssertEqual(Terrain.shallows.ground, "the dead shallows")
         XCTAssertEqual(Terrain.ford.ground, "the Moonford")
         XCTAssertEqual(Terrain.still.ground, "the Still")
+        // Where a thing is on it: in among trees and waters, on the rest;
+        // so a battle "in the blackwood by Wenholme", never "on the blackwood".
+        XCTAssertEqual(Terrain.blackwood.place, "in the blackwood")
+        XCTAssertEqual(Terrain.shallows.place, "in the dead shallows")
+        XCTAssertEqual(Terrain.strand.place, "on the strand")
+        XCTAssertEqual(Terrain.ford.place, "on the Moonford")
+        XCTAssertEqual(Terrain.still.place, "on the Still")
+        for terrain in Terrain.allCases {
+            XCTAssertTrue(terrain.place == "in " + terrain.ground || terrain.place == "on " + terrain.ground, "\(terrain)")
+        }
     }
 
     func testAnotherHousesMarchIsSeenOnlyAsFarAsItGoesInSight() throws {

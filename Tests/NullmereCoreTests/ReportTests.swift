@@ -87,7 +87,7 @@ final class ReportTests: XCTestCase {
                  spoils: wildFell ? Stock(grain: 40, moonsalt: 2) : Stock())
         }
         let felled = try XCTUnwrap(state.report(of: hunt(by: me, wildFell: true), id: 1, for: me))
-        XCTAssertEqual(felled.title, "Your Bows struck the Drowned of level IV")
+        XCTAssertEqual(felled.title, "Your Bows struck the Drowned of the fourth level", "As a lair is named")
         XCTAssertEqual(felled.outcome, .won)
         XCTAssertEqual(felled.lines.last, "The Drowned fell, and gave up \(Stock(grain: 40, moonsalt: 2))")
         XCTAssertEqual(try XCTUnwrap(state.report(of: hunt(by: me), id: 2, for: me)).outcome, .held)

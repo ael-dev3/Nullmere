@@ -299,7 +299,7 @@ extension LairTests {
         stage.state.lairLadder = nil
         XCTAssertEqual(stage.state.refusal(of: .callRally(from: stage.seat, against: stage.lair, watches: 2), as: me), .lairAboveRung(1),
                        "A level-two lair is shut to a House that has broken none")
-        XCTAssertEqual(RuleError.lairAboveRung(1).description, "Your hosts must break a lair of each level first: they may march on one of level 1 at most.")
+        XCTAssertEqual(RuleError.lairAboveRung(1).description, "Your hosts must break a lair of each level first: they may march on one of level I at most.")
         stage.state.lairLadder = [me: 1]
         XCTAssertNil(stage.state.refusal(of: .callRally(from: stage.seat, against: stage.lair, watches: 2), as: me), "Its rung reached, it opens")
         // A host breaking a lair above a House's rung lifts it there, with sculptures.

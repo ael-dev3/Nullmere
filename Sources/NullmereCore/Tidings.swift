@@ -326,7 +326,7 @@ extension GameState {
             return Tidings("Bought of the pedlar: \(ware.goods.title).", .good)
         case .lairRungClimbed(let house, let level):
             guard house == viewer else { return nil }
-            return Tidings("Your House climbs the ladder of the lairs to level \(level): your hosts may march on lairs of level \(level + 1) now, and \(GameState.sculpturesPerRung * level) sculptures come to your seat.", .good)
+            return Tidings("Your House climbs the ladder of the lairs to level \(BuildingKind.numeral(level)): your hosts may march on lairs of level \(BuildingKind.numeral(level + 1)) now, and \(GameState.sculpturesPerRung * level) sculptures come to your seat.", .good)
         case .reflectionCast(let house, let at):
             guard house == viewer else { return nil }
             let next = GameState.nextStillHour(from: watch + 1) - watch
@@ -481,7 +481,7 @@ extension GameState {
             if house == viewer { return Tidings("\(commander.name) calls \(skill.title).", .good) }
             return Tidings("\(commander.name) of \(houses[house].title) calls \(skill.title).", .bad)
         case .hunted(let hunt):
-            let prey = "\(hunt.wildKind.title) of level \(hunt.level)"
+            let prey = hunt.wildKind.named(level: hunt.level)
             guard hunt.attackerOwner == viewer else {
                 let felled = hunt.wildFell ? ", and they fall" : ""
                 return Tidings("\(houses[hunt.attackerOwner].title)'s \(hunt.attackerKind.title) strike \(prey)\(felled).", .neutral)

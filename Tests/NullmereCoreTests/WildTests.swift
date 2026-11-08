@@ -250,22 +250,43 @@ final class WildTests: XCTestCase {
         }
     }
 
+    /// A company of the wilds said alike everywhere: in a line's midst as a
+    /// lair is said, and labelled as the map labels it, on the Mac and the
+    /// phone; never "the the Drowned".
+    func testAWildIsNamedAlikeEverywhere() {
+        let drowned = Wild(id: 1, kind: .drowned, level: 2, position: Hex(0, 0), raised: 0)
+        XCTAssertEqual(drowned.named, "the Drowned of the second level")
+        XCTAssertEqual(drowned.called, "the Drowned, level II")
+        XCTAssertEqual(drowned.called.lineBegun, "The Drowned, level II")
+        let kin = Wild(id: 2, kind: .barrowkin, level: 10, position: Hex(0, 0), raised: 0, keepsake: "Dunmere")
+        XCTAssertEqual(kin.named, "Barrowkin of the tenth level")
+        XCTAssertEqual(kin.called, "Barrowkin, level X, bearing a keepsake of Dunmere")
+        for kind in WildKind.allCases {
+            for level in 1...Wild.highestLevel {
+                let wild = Wild(id: 3, kind: kind, level: level, position: Hex(0, 0), raised: 0)
+                XCTAssertEqual(wild.named, kind.named(level: level))
+                XCTAssertFalse(wild.named.contains("the the") || wild.named.contains(" level \(level)"), wild.named)
+                XCTAssertFalse(("Strike " + wild.called).contains("Strike The"), wild.called)
+            }
+        }
+    }
+
     func testTheWildsAreToldInTheGamesWords() throws {
         let (state, me, _, _, there) = try hunt(seed: "told wilds")
         let blow = Hunt(attacker: 1, attackerOwner: me, attackerKind: .spear, wild: 9, wildKind: .drowned, level: 3, at: there,
                         damageDealt: 30, damageTaken: 12, attackerFell: false, wildFell: true, spoils: Stock(grain: 30))
         XCTAssertEqual(state.tidings(of: .hunted(blow), for: me),
-                       Tidings("Your Spears strike the Drowned of level 3 for 30; they fall, and leave 30 grain.", .good))
+                       Tidings("Your Spears strike the Drowned of the third level for 30; they fall, and leave 30 grain.", .good))
         let lost = Hunt(attacker: 1, attackerOwner: me, attackerKind: .rider, wild: 9, wildKind: .reavers, level: 9, at: there,
                         damageDealt: 8, damageTaken: 100, attackerFell: true, wildFell: false, spoils: .zero)
         XCTAssertEqual(state.tidings(of: .hunted(lost), for: me),
-                       Tidings("Your Riders strike Blackwood Reavers of level 9 for 8; your company is lost.", .bad))
+                       Tidings("Your Riders strike Blackwood Reavers of the ninth level for 8; your company is lost.", .bad))
         let theirs = Hunt(attacker: 1, attackerOwner: 1, attackerKind: .bow, wild: 9, wildKind: .saltwights, level: 2, at: there,
                           damageDealt: 8, damageTaken: 0, attackerFell: false, wildFell: true, spoils: Stock(moonsalt: 12))
         XCTAssertEqual(state.tidings(of: .hunted(theirs), for: me),
-                       Tidings("\(state.houses[1].title)'s Bows strike Saltwights of level 2, and they fall.", .neutral))
+                       Tidings("\(state.houses[1].title)'s Bows strike Saltwights of the second level, and they fall.", .neutral))
         let bare = Hunt(attacker: 1, attackerOwner: me, attackerKind: .bow, wild: 9, wildKind: .saltwights, level: 2, at: there,
                         damageDealt: 8, damageTaken: 0, attackerFell: false, wildFell: true, spoils: .zero)
-        XCTAssertEqual(state.tidings(of: .hunted(bare), for: me)?.text, "Your Bows strike Saltwights of level 2 for 8; they fall.")
+        XCTAssertEqual(state.tidings(of: .hunted(bare), for: me)?.text, "Your Bows strike Saltwights of the second level for 8; they fall.")
     }
 }

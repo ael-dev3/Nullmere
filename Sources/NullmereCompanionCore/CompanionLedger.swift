@@ -1526,7 +1526,7 @@ public struct CompanionLedger: Equatable, Sendable {
         func title(_ house: Int) -> String { houses.indices.contains(house) ? houses[house].title : "the wilds" }
         var strikes: [Order] = []
         for wild in world.wildsStanding where near(wild.position) {
-            strikes.append(Order(title: "Strike the \(wild.kind.title)", command: .attack(unit: unit.id, target: wild.position)))
+            strikes.append(Order(title: "Strike \(wild.called)", command: .attack(unit: unit.id, target: wild.position)))
         }
         for other in world.units where other.owner != player && houses.indices.contains(other.owner)
             && world.isAtWar(player, other.owner) && near(other.position) {

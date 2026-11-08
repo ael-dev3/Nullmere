@@ -705,7 +705,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
         case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
         case .starsFull: return "That commander has all its stars."
-        case .lairAboveRung(let most): return "Your hosts must break a lair of each level first: they may march on one of level \(most) at most."
+        case .lairAboveRung(let most): return "Your hosts must break a lair of each level first: they may march on one of level \(BuildingKind.numeral(most)) at most."
         case .reflectionThere: return "Your false reflection already waits on that shore."
         case .tooManyReflections(let most): return "The lake takes \(most) false reflections of a House to a Still Hour, and no more."
         case .lineTooLong(let most): return "A line up the Spine is one to \(most) commanders, each once."

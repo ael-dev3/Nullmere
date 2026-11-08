@@ -51,7 +51,7 @@ extension GameState {
     /// its ground by the nearest hold within a few tiles.
     public func placeName(of hex: Hex) -> String {
         if let hold = hold(at: hex) { return "at \(hold.name)" }
-        let ground = map[hex].map { "on \($0.terrain.ground)" } ?? "in the field"
+        let ground = map[hex].map { $0.terrain.place } ?? "in the field"
         let near = holds.filter { $0.position.distance(to: hex) <= 4 }
             .min { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }
         return near.map { "\(ground) by \($0.name)" } ?? ground
@@ -137,14 +137,14 @@ extension GameState {
     /// report tells it; nil if it was another House's.
     public func report(of hunt: Hunt, id: Int, for viewer: Int) -> BattleReport? {
         guard hunt.attackerOwner == viewer else { return nil }
-        let wild = hunt.wildKind.title.prefix(1).uppercased() + hunt.wildKind.title.dropFirst()
+        let wild = hunt.wildKind.title.lineBegun
         var lines = ["Your \(hunt.attackerKind.title) dealt \(hunt.damageDealt)", "Your \(hunt.attackerKind.title) took \(hunt.damageTaken) back"]
         if hunt.wildFell {
             lines.append("\(wild) fell" + (hunt.spoils.isZero ? "" : ", and gave up \(hunt.spoils)"))
         }
         if hunt.attackerFell { lines.append("Your \(hunt.attackerKind.title) fell") }
         let outcome: BattleReport.Outcome = hunt.attackerFell ? .lost : (hunt.wildFell ? .won : .held)
-        return BattleReport(id: id, watch: watch, title: "Your \(hunt.attackerKind.title) struck \(hunt.wildKind.title) of level \(BuildingKind.numeral(hunt.level))",
+        return BattleReport(id: id, watch: watch, title: "Your \(hunt.attackerKind.title) struck \(hunt.wildKind.named(level: hunt.level))",
                             place: placeName(of: hunt.at), outcome: outcome, lines: lines)
     }
 
@@ -159,11 +159,13 @@ extension GameState {
         let isSeat = hold(scouting.hold).map { $0.isSeat && $0.owner == scouting.owner } ?? false
         func watches(_ count: Int) -> String { count == 1 ? "1 watch left" : "\(count) watches left" }
         func company(_ seen: ScoutReport.Company) -> String {
+            // Whose it is with what it is, before how it stands: "Spears I of
+            // House Venn, 80 strong", never "Hardened of House Venn".
             var words = seen.kind.title + (seen.kind.hasTiers ? " \(BuildingKind.numeral(seen.tier))" : "")
+            if seen.owner != scouting.owner, houses.indices.contains(seen.owner) { words += " of \(houses[seen.owner].title)" }
             if seen.health < 100 { words += ", \(seen.health) strong" }
             if seen.rank > 0 { words += ", \(Unit.rankTitles[seen.rank])" }
             if let commander = seen.commander { words += ", led by \(commander)" }
-            if seen.owner != scouting.owner, houses.indices.contains(seen.owner) { words += " of \(houses[seen.owner].title)" }
             return words
         }
         var lines = [scouting.garrison.isEmpty ? "No company at its gates"
@@ -177,7 +179,7 @@ extension GameState {
             lines.append("Mustering \(training.kind.title)\(tier), \(watches(training.watchesLeft))")
         }
         if !scouting.spoils.isZero { lines.append("Its taking would carry off \(scouting.spoils)") }
-        if scouting.wounded > 0 { lines.append("\(scouting.wounded) \(scouting.wounded == 1 ? "lies" : "lie") in its Infirmary") }
+        if scouting.wounded > 0 { lines.append((scouting.wounded == 1 ? "1 company lies" : "\(scouting.wounded) companies lie") + " in its Infirmary") }
         let whose = isSeat ? "\(theirs)'s seat" : "a hold of \(theirs)"
         return BattleReport(id: id, watch: scouting.watch, title: "Your Lanterns scouted \(name), \(whose)",
                             place: hold(scouting.hold).map { placeName(of: $0.position) } ?? "", outcome: .scouted, lines: lines)

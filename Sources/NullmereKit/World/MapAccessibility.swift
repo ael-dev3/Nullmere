@@ -99,7 +99,7 @@ enum MapAccessibility {
         }
         func place(_ hex: Hex) -> String {
             if let hold = state.hold(at: hex) { return "at \(hold.name)" }
-            if let terrain = state.map[hex]?.terrain { return "on \(terrain.title.lowercased())" }
+            if let terrain = state.map[hex]?.terrain { return terrain.place }
             return ""
         }
 
@@ -108,7 +108,7 @@ enum MapAccessibility {
             // Foes it can strike now, with the odds the forecast gives.
             for hex in state.strikeTargets(of: unit).sorted(by: { unit.position.distance(to: $0) < unit.position.distance(to: $1) }) {
                 let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" }
-                    ?? state.wild(at: hex).map { HoverInfo.named($0) } ?? "the enemy"
+                    ?? state.wild(at: hex).map(\.called) ?? "the enemy"
                 let odds = state.forecast(unit: unit.id, at: hex).map { ": " + MapAccessibility.odds($0) } ?? ""
                 offered.append(Order(name: "Strike \(what), \(way(from: unit.position, to: hex))\(odds)", hex: hex))
             }

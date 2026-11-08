@@ -1748,7 +1748,10 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(spear.position, beside)
         let ledger = CompanionLedger(world: state, player: me)
         let company = try XCTUnwrap(ledger.companies.first { $0.id == spear.id })
-        let strike = try XCTUnwrap(company.strikes.first { $0.title == "Strike the \(wild.kind.title)" }, "\(company.strikes.map(\.title))")
+        // Named as the Mac's map names it: "Strike Barrowkin, level II", "Strike the Drowned, level I".
+        let strike = try XCTUnwrap(company.strikes.first { $0.title == "Strike \(wild.kind.title), level \(BuildingKind.numeral(wild.level))" },
+                                   "\(company.strikes.map(\.title))")
+        XCTAssertFalse(company.strikes.contains { $0.title.contains("the the") })
         XCTAssertEqual(strike.command, .attack(unit: spear.id, target: wild.position))
         assertTaken(company.strikes, in: state, as: me)
         // Gathering: at most the nearest few sites, each one the rules would send it to.
