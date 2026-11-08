@@ -23,8 +23,10 @@ struct LandTab: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 330)
                         List {
-                            Section {
-                                WordLine(session: session)
+                            if session.outOfReach != nil {
+                                Section {
+                                    ReachLine(session: session)
+                                }
                             }
                             if let hex = chosen, chart.contains(hex) {
                                 PlaceSections(session: session, place: chart.place(at: hex, in: world, player: house))

@@ -43,7 +43,10 @@ struct KeepingView: View {
         .task(id: session.word) {
             news = session.word
             guard let word = session.word, !word.awaited else { return }
-            try? await Task.sleep(for: WordBanner.held)
+            // Spoken as it comes, for a keeper who can't see the foot of the
+            // tab, since it is said nowhere else.
+            AccessibilityNotification.Announcement(word.refused ? "Refused: \(word.text)" : word.text).post()
+            try? await Task.sleep(for: word.refused ? WordBanner.heldRefused : WordBanner.held)
             if session.word == word { news = nil }
         }
         .onAppear {
@@ -65,6 +68,8 @@ struct WordBanner: View {
 
     /// How long a word the realm has given stays at the foot of the tabs.
     static let held: Duration = .seconds(6)
+    /// How long a refusal stays: longer, since it says why nothing was done.
+    static let heldRefused: Duration = .seconds(12)
 
     var body: some View {
         Group {
@@ -91,7 +96,9 @@ struct WordBanner: View {
     }
 }
 
-/// The realm's word on the last order, while it is news.
+/// The realm's word on the last order, while it is news, where the foot of
+/// the tabs doesn't reach (counsel, a sheet over them); and the realm out of
+/// reach.
 struct WordLine: View {
     let session: CompanionSession
 
@@ -108,6 +115,17 @@ struct WordLine: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(word.refused ? "Refused: \(word.text)" : word.text)
         }
+        ReachLine(session: session)
+    }
+}
+
+/// The realm out of reach, at the head of a tab while it is: what the
+/// orders given now will do. The realm's word on each order is held at the
+/// foot of the tab as it comes (`WordBanner`), and isn't said twice.
+struct ReachLine: View {
+    let session: CompanionSession
+
+    var body: some View {
         if let reach = session.outOfReach {
             Text(verbatim: reach)
                 .font(Night.small)
@@ -170,7 +188,7 @@ struct HouseTab: View {
                                 .font(Night.body)
                         }
                         .tint(Night.moon)
-                        WordLine(session: session)
+                        ReachLine(session: session)
                     }
                     // The walls: foes gathered near the House's holds, and the veil
                     // of the Still, how it stands, drawn from here before a blow.
@@ -468,9 +486,9 @@ struct MarketPage: View {
     var body: some View {
         List {
             if let ledger = session.ledger {
-                if session.word != nil || session.outOfReach != nil {
+                if session.outOfReach != nil {
                     Section {
-                        WordLine(session: session)
+                        ReachLine(session: session)
                     }
                 }
                 if let pedlar = ledger.pedlar {
@@ -527,9 +545,9 @@ struct VenturesPage: View {
     var body: some View {
         List {
             if let ledger = session.ledger {
-                if session.word != nil || session.outOfReach != nil {
+                if session.outOfReach != nil {
                     Section {
-                        WordLine(session: session)
+                        ReachLine(session: session)
                     }
                 }
                 Section("The Ring") {
@@ -579,9 +597,9 @@ struct RealmPage: View {
     var body: some View {
         List {
             if let ledger = session.ledger {
-                if session.word != nil || session.outOfReach != nil {
+                if session.outOfReach != nil {
                     Section {
-                        WordLine(session: session)
+                        ReachLine(session: session)
                     }
                 }
                 // The realm's law, as the Mac's Houses tell it: the edict
@@ -716,7 +734,7 @@ struct ArmyTab: View {
             List {
                 if let ledger = session.ledger {
                     Section {
-                        WordLine(session: session)
+                        ReachLine(session: session)
                         Button("Orders in your own words") { wording = true }
                             .font(Night.body)
                             .accessibilityHint("Read by Apple's on-device model on this phone into the order book's lines; nothing is given until you give it")
@@ -1035,7 +1053,7 @@ struct AllianceTab: View {
                             words = ""
                         }
                         .disabled(words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        WordLine(session: session)
+                        ReachLine(session: session)
                     }
                     // The Houses nearest, how each stands with the keeper's,
                     // and envoys or war sent from the phone.

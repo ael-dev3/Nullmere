@@ -236,7 +236,9 @@ when its network comes back. The realm's word on each order given from the
 phone, each its own however many wait together, and what came of it where
 it is told at once (a chest's contents, a venture's end), stays a few
 seconds at the foot of whichever tab the keeper is on, wherever they have
-scrolled to give it; an order still unanswered when the phone is set aside
+scrolled to give it, a refusal twice as long, and is said there alone, not
+again at the head of every tab; while the realm is out of reach, the head
+of each tab says so. An order still unanswered when the phone is set aside
 is said to have been. The House, Army and Alliance tabs carry a count of
 what waits on the keeper there: envoys to answer, foes gathered near the
 House's holds, wounded it may heal, the Lyceum sitting and the
