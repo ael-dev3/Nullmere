@@ -52,6 +52,8 @@ enum Recordings {
     /// jingles struck softly twice and once harder, coins counted out; and
     /// a cabasa rolled, salt running through an hourglass.
     static let gongNotes = gong.map(Recording.init)
+    /// The gong struck forte and let ring, a House's toll.
+    static let tollNotes = toll.map(Recording.init)
     static let tambourineNotes = tambourine.map(Recording.init)
     static let cabasaNotes = cabasa.map(Recording.init)
     /// Steel struck on steel, four blows: a company's blow struck in close,
@@ -71,7 +73,7 @@ enum Recordings {
     static func load() {
         let every: [[Recording]] = [harpNotes, glockenspielNotes, celloNotes, violaNotes, bassNotes, hornNotes, clarinetNotes,
                                     anvilNotes, slitDrumNotes, drumNotes, gongNotes, tambourineNotes, cabasaNotes, steelNotes,
-                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes, twangNotes]
+                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes, twangNotes, tollNotes]
         _ = every.count
     }
 

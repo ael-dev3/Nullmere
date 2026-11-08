@@ -243,6 +243,25 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(decibels(second), -39.7, accuracy: 3, "The hourglass's chime as loud as it was")
     }
 
+    /// A House destroyed tolls on a recorded gong struck forte, read at half
+    /// speed, very low and very long: as heavy over its first three seconds
+    /// as the toll of partials, still ringing well past ten, gone by thirty.
+    func testAHouseTollsOnARecordedGong() {
+        let synth = settled()
+        synth.setVolumes(effects: 1, ambience: 0, music: 0)
+        _ = rendered(synth, seconds: 0.2)
+        synth.trigger(.toll)
+        let left = rendered(synth, seconds: 30).left
+        XCTAssertEqual(synth.cueStrikes, 1, "One stroke of the gong")
+        let three = rms(left[0..<Int(3 * SynthTests.rate)])
+        let late = rms(left[Int(10 * SynthTests.rate)..<Int(12 * SynthTests.rate)])
+        print("SOUND toll on the gong \(decibels(three)) dB over its first three seconds, the toll of partials -25.7 dB; "
+            + "\(decibels(late)) dB ten seconds on")
+        XCTAssertEqual(decibels(three), -25.7, accuracy: 1.5, "As heavy as the toll it took over from")
+        XCTAssertGreaterThan(decibels(late), -60, "still ringing ten seconds on")
+        XCTAssertLessThan(left.suffix(4_800).map(abs).max() ?? 1, 0.001, "and gone by thirty")
+    }
+
     /// The watch turns on a recorded gong struck softly, read slower to
     /// sound the low G the watch's bell of partials did: as loud over its
     /// first three seconds, struck a little softer and ringing a little

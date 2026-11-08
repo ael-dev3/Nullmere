@@ -1685,11 +1685,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are twenty-five of the
+The score is played on recorded instruments, and so are twenty-six of the
 thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
 bells, the harp's chords, the drums, the forge's anvil, the knocks of wood,
-the watch's gong, the coins' jingle, the salt's rattle, steel struck on
-steel, hooves, spades, a ram on a gate, dread and a bowstring. Every other
+the watch's gong, a House's toll, the coins' jingle, the salt's rattle,
+steel struck on steel, hooves, spades, a ram on a gate, dread and a
+bowstring. Every other
 sound, and an arrow's hiss after its string, is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and as
@@ -1739,7 +1740,9 @@ sound, and an arrow's hiss after its string, is made as it plays.
   spades scraping into stony earth, and a hold's walls battered, the great
   drum's thud with timber cracking. A company lost or hungry, or a seat
   lost, sounds dread, a recorded bass drum rubbed under a bowed cymbal,
-  swelling and dying away; a work or company finished, a company risen in rank or a drowned
+  swelling and dying away, and a House destroyed tolls on a recorded gong
+  struck hard and read at half speed, ringing for some twenty-five seconds;
+  a work or company finished, a company risen in rank or a drowned
   ruin searched rises; a gift received, a peace or a pact sounds accord; and
   an order that begins a war sounds as war, refusing a steward's tribute
   too. A war horn (a rally called, a commander's skill loosed, an edict put,

@@ -362,14 +362,15 @@ public final class Synth: @unchecked Sendable {
     /// How many notes are sounding, for tests.
     var sounding: Int {
         lock.lock(); defer { lock.unlock() }
-        return notes.count
+        return notes.count + struck.filter(\.sounding).count
     }
 
     /// How long a cue sounds before the last of it has died below hearing,
     /// in seconds: for tests.
     func lasting(_ cue: SoundCue) -> Float {
         let made = notes(of: cue, after: 0, at: .middle)
-        return made.map(\.end).max() ?? 0
+        let struck = Synth.strikes(of: cue).map { $0.at + Float(Double($0.note.count) / $0.ratio) / Recordings.rate }
+        return max(made.map(\.end).max() ?? 0, struck.max() ?? 0)
     }
 
     public func trigger(_ cue: SoundCue, after delay: Float = 0, at place: SoundPlace = .middle) {
@@ -464,6 +465,10 @@ public final class Synth: @unchecked Sendable {
         case .accord:
             // A gentle sixth on the harp.
             return [pluck(523.3, 0, 0.85), pluck(880, 0.2, 0.75)]
+        case .toll:
+            // A House destroyed: the gong struck forte, read at half speed,
+            // very low and very long.
+            return [(Recordings.tollNotes[0], 0, 1, 0.5)]
         case .watch:
             // The gong struck softly, read slower to sound low G, as the
             // watch's bell did.
@@ -555,6 +560,7 @@ public final class Synth: @unchecked Sendable {
         case .watch: return 2
         case .coin: return 2
         case .clash: return 1.43
+        case .toll: return 4.3
         case .loose: return 0.86
         case .ride: return 1.7
         case .dig: return 2.5
@@ -573,15 +579,6 @@ public final class Synth: @unchecked Sendable {
             note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
         case .order:
             note = Note(partials: [Partial(frequency: 660, amplitude: 0.09, decay: 14), Partial(frequency: 990, amplitude: 0.04, decay: 18)], noise: 0.02, noiseDecay: 60)
-        case .toll:
-            // An inharmonic bell, very low and very long.
-            let f: Float = 55
-            note = Note(partials: [
-                Partial(frequency: f, amplitude: 0.17, decay: 0.25),
-                Partial(frequency: f * 2.76, amplitude: 0.08, decay: 0.45),
-                Partial(frequency: f * 5.40, amplitude: 0.035, decay: 0.8),
-                Partial(frequency: f * 8.93, amplitude: 0.015, decay: 1.3),
-            ], noise: 0.01, noiseDecay: 6)
         case .loose:
             // The bowstring is plucked as it was recorded (`strikes(of:)`);
             // after it, the shaft's hiss through the air.
@@ -590,7 +587,7 @@ public final class Synth: @unchecked Sendable {
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
         case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift, .clash, .ride, .dig, .batter,
-             .dread:
+             .dread, .toll:
             // Struck on recorded instruments (`strikes(of:)`).
             return []
         case .envoy, .triumph, .honour, .banner:
@@ -922,14 +919,13 @@ public final class Synth: @unchecked Sendable {
         switch cue {
         case .select: return ((3_200, 0.9), nil)
         case .order: return ((2_200, 0.8), nil)
-        case .toll: return ((500, 0.8), nil)
         // The shaft's hiss through the air, after the string recorded.
         case .loose: return ((6_000, 1.6), nil)
         case .tend: return ((1_000, 0.6), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
-             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread:
+             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread, .toll:
             return (nil, nil)
         }
     }

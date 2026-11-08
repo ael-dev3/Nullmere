@@ -70,6 +70,8 @@ SLIT = [(f"VSCO 1 Percussion/varWood/log_drum/slitdrum0_mp_{n}.wav", 0) for n in
 # jingles struck three times, two softly and one harder, for coins counted
 # out; and a cabasa rolled, for salt running through an hourglass.
 GONG = [("Percussion/gongHit_p.wav", 0)]
+# The gong struck forte, let ring long, for a House's toll.
+TOLL = [("Percussion/gongHit_f.wav", 0)]
 TAMBOURINE = [(f"Percussion/Tamb1-Hit_{v}_Sum.wav", 0) for v in ("v1_rr1", "v1_rr2", "v2_rr1")]
 CABASA = [("VSCO 1 Percussion/varMetal/various/cabasa_roll1.wav", 0)]
 # Steel struck on steel, four blows: for a company's blow struck in close,
@@ -348,6 +350,14 @@ def family(root, files, kind):
             heard = (0, RATE)
             sounded = 0.0
             loop = None
+        elif kind == "knelled":
+            # A gong's whole ring, thirteen seconds of it, fading over the
+            # last four.
+            x = onset(x, below=40)
+            x = cut(x, below=60, longest=13, fade=4)
+            heard = (0, RATE)
+            sounded = 0.0
+            loop = None
         elif kind == "jingled":
             # Small metal shaken: let go once forty decibels down, at most
             # six tenths of a second on.
@@ -489,6 +499,9 @@ def main():
     gong = family(root, GONG, "tolled")
     even(gong)
     swift(gong, "gong", "A gong, struck softly.", os.path.join(out, "GongFile.swift"))
+    toll = family(root, TOLL, "knelled")
+    even(toll)
+    swift(toll, "toll", "A gong, struck forte and let ring.", os.path.join(out, "TollFile.swift"))
     tambourine = family(root, TAMBOURINE, "jingled")
     even(tambourine, together=True)
     swift(tambourine, "tambourine", "A tambourine's jingles, struck softly twice and once harder.",
