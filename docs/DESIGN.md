@@ -54,7 +54,9 @@ the keeper's realm last lay on, made as it plays.
 - **The land** is a mesh with relief, drawn by Metal from
   [`WorldShaders.swift`](../Sources/NullmereWorld/WorldShaders.swift): the Spine's
   ridges, the barrows' mounds, the strand and the flats, and the still
-  lake laid over it as a mirror of the stars and the moon. What the keeper
+  lake laid over it as a mirror of the stars and the moon; at its strand
+  small waves wash up pale with the moon and draw back, where the shore is
+  heard, fainter the calmer the Still lies. What the keeper
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
 - **The moon's shadows.** Close in, everything that stands on the land

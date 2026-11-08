@@ -164,8 +164,23 @@ void main() {
   ivec2 h = nm_hexRound(nm_axial(vWorld.xz));
   vec2 knowledge = nm_knowledge(h, world.x);
   vec3 colour = mix(nm_remembered(starlit + moonlit * (1.0 - knowledge.x)), starlit, knowledge.y) + moonlit * knowledge.x;
+  // The strand's small waves, as the world's water fragment has them.
+  float froth = 0.0;
+  if (depth < 0.6) {
+    vec4 tile = nm_tileAt(h, world.x);
+    float kind = tile.x - 16.0 * floor(tile.x / 16.0);
+    if (kind < 7.5) {
+      float east = texture(heights, (grid + vec2(1.0, 0.0)) / heightsGrid.zw).r;
+      float south = texture(heights, (grid + vec2(0.0, 1.0)) / heightsGrid.zw).r;
+      float fall = length(vec2(east - ground, south - ground)) / haze.w;
+      froth = nm_wash(vWorld.xz, nm_offshore(depth, fall), time, clamp(still.x, 0.0, 1.0));
+    }
+  }
+  vec3 foam = max(kMoonColour * 0.05 * mix(0.72, 1.0, knowledge.y), colour);
+  float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
+  colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
   colour = nm_haze(colour, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(nm_expose(colour, haze.z)), clear);
+  outColour = vec4(nm_encode(nm_expose(colour, haze.z)), cover);
 }`;
 
 const modelVertex = header + `

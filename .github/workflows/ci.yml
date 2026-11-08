@@ -436,9 +436,10 @@ jobs:
           # near the foot for when a staging figure is over its allowance.
           grep -h "PERF staging" build-test.log 2>/dev/null | tail -3 || true
           # How much the battle and the town move from frame to frame, and
-          # the bare land under them: the moving pictures' measure; and the
-          # mist over the unknown beside the known land, and how it drifts.
-          grep -hE "RENDER (motion|mist)" build-test.log 2>/dev/null || true
+          # the bare land under them: the moving pictures' measure; the
+          # mist over the unknown beside the known land, and how it drifts;
+          # and the froth at the strand, and how it washes up and back.
+          grep -hE "RENDER (motion|mist|wash)" build-test.log 2>/dev/null || true
           # The detail each game screenshot drew the land's growth at, and
           # what this runner's Auto comes to.
           cat build/game-detail.log 2>/dev/null || true

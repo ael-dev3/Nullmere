@@ -427,6 +427,35 @@ public enum WorldShaders {
         return kMist * 0.35 + kMoonColour * (0.0004 + 0.0072 * thick);
     }
 
+    // How far out from the strand water lies, in the world's units: its
+    // depth over how steeply the bed falls there (`fall`, depth for each
+    // unit out), so the waves run up the last of every shore alike, steep
+    // or shelving, and leave the open water over a shoal alone.
+    float nm_offshore(float depth, float fall) {
+        return depth / max(fall, 0.05);
+    }
+
+    // The strand's small waves over its last half unit of water (`offshore`,
+    // from nm_offshore): each washing up in a moment and drawing back
+    // slowly, a line of froth at its edge and a thinner foam behind it,
+    // every stretch of shore in its own time so none keeps a beat, fainter
+    // the calmer the Still lies (`calm`, 0 to 1), as the shore is heard.
+    // 0 none, to 1 a wave's full froth.
+    float nm_wash(float2 p, float offshore, float time, float calm) {
+        if (offshore >= 0.55) {
+            return 0.0;
+        }
+        float cycle = fract(time * 0.09 + 1.5 * nm_noise(p * 0.35));
+        float reach = cycle < 0.2 ? cycle / 0.2 : 1.0 - (cycle - 0.2) / 0.8;
+        float front = 0.45 * (1.0 - reach);
+        float line = 1.0 - smoothstep(0.0, 0.08, abs(offshore - front));
+        float foam = offshore > front ? 0.35 * (1.0 - smoothstep(front, front + 0.18, offshore)) : 0.0;
+        // Broken into flecks and gaps, as froth lies.
+        float grain = smoothstep(0.2, 0.8, nm_noise(p * 11.0 + float2(time * 0.3, 0.0)));
+        float rise = 1.0 - smoothstep(0.35, 0.55, offshore);
+        return min(1.0, (line + foam) * (0.2 + 0.8 * grain)) * rise * (1.0 - 0.85 * calm);
+    }
+
     // The flicker of a flame.
     float nm_flicker(float t) {
         return 0.55 * sin(nm_spin(t, 7.3)) + 0.3 * sin(nm_spin(t, 13.1) + 1.7) + 0.15 * sin(nm_spin(t, 23.7) + 0.3);
@@ -712,8 +741,32 @@ public enum WorldShaders {
         // memory, only a little dimmer out of sight; and the moon's image
         // lies whole on all of it, seen or not.
         float3 colour = starlit * mix(0.72, 1.0, knowledge.y) + moonlit;
+        // At the strand the small waves wash up pale with the moon and draw
+        // back, the froth hiding the shingle under it; the lake's own water
+        // only, never the skin over a ford or a stream's shoals. How far out
+        // the water lies is read from how the bed falls a cell east and a
+        // cell south, only where it is shallow enough to be near a shore.
+        float froth = 0.0;
+    #ifndef NM_NO_WASH
+        if (depth < 0.6) {
+            float4 tile = nm_tileAt(nm_hexRound(nm_axial(in.world.xz)), frame.world.x, tiles);
+            float kind = tile.x - 16.0 * floor(tile.x / 16.0);
+            if (kind < 7.5) {
+                float east = heights.sample(smooth, (grid + float2(1.0, 0.0)) / frame.heights.zw).r;
+                float south = heights.sample(smooth, (grid + float2(0.0, 1.0)) / frame.heights.zw).r;
+                float fall = length(float2(east - ground, south - ground)) / frame.haze.w;
+                froth = nm_wash(in.world.xz, nm_offshore(depth, fall), time, calm);
+            }
+        }
+    #endif
+        // Laid over what shows through the shallows as froth lies on it:
+        // pale, and never darker than the water it lies on, so the moon's
+        // image runs on through it.
+        float3 foam = max(kMoonColour * 0.05 * mix(0.72, 1.0, knowledge.y), colour);
+        float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
+        colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
         colour = nm_haze(colour, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-        return float4(nm_encode(nm_expose(colour, frame.haze.z)), clear);
+        return float4(nm_encode(nm_expose(colour, frame.haze.z)), cover);
     }
 
     // MARK: The sky

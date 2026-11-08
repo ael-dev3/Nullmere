@@ -1792,8 +1792,9 @@ play, as are the night's drone and wind and the din of battle's voices.
   back over the shingle, never on a beat, now and then a drop falling back,
   from where the strand lies across the view and the louder the more of it
   there is; never out on the open Still, far from any strand, and the
-  quieter the calmer the Still lies, a whisper at its calmest. All three are
-  still under the stillest motion.
+  quieter the calmer the Still lies, a whisper at its calmest. The same
+  waves are seen, washing pale with the moon up the strand and drawing
+  back. All three are still under the stillest motion.
 - **The interface**, quietly: a leaf turned as a panel opens and laid down
   as it closes, and two muted knocks on wood when the rules refuse an
   order; on a Mac whose trackpad gives them, a light tap as an order is

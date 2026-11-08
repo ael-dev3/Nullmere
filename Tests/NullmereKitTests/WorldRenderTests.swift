@@ -441,6 +441,56 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(stars, 6, "and the stars")
     }
 
+    /// Where the lake meets the land the small waves wash up pale with the
+    /// moon and draw back, so the water's edge shows in the dark: the
+    /// shore nearest the keeper's seat drawn with its froth and without
+    /// it (the same shaders, NM_NO_WASH), and again three seconds on.
+    func testTheStrandWashesPaleWithTheMoon() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let world = WorldRenderTests.world
+        let washed = try renderer()
+        let options = MTLCompileOptions()
+        options.preprocessorMacros = ["NM_NO_WASH": NSNumber(value: 1)]
+        let bare = try WorldRenderer(device: device, library: device.makeLibrary(source: WorldShaders.source, options: options),
+                                     pixelFormat: .bgra8Unorm)
+        try bare.setLand(world.terrain, for: world.state.map)
+        let map = world.state.map
+        let isLand = { (hex: Hex) -> Bool in !(map[hex]?.terrain.isWater ?? true) }
+        let seat = try XCTUnwrap(world.state.seat(of: world.state.player)).position
+        let shore = try XCTUnwrap(map.hexes.filter { map[$0]?.terrain == .still && $0.neighbors.contains(where: isLand) }
+            .min { $0.distance(to: seat) < $1.distance(to: seat) }, "The lake has a shore")
+        var camera = Camera(scale: 40)
+        camera.focus(on: shore)
+        let drawn = try draw(washed, "strand", camera: camera, tiles: world.whole)
+        let unwashed = try draw(bare, "strand unwashed", camera: camera, tiles: world.whole)
+        let later = try draw(washed, "strand later", camera: camera, tiles: world.whole, time: 23)
+        try keep([drawn, later], as: "world-strand")
+        var paler: [Double] = [], byTheEdge = 0, moved = 0, darker = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let gain = drawn.luminance(x, y) - unwashed.luminance(x, y)
+                if gain < -2 { darker += 1 }
+                guard gain >= 2 else { continue }
+                paler.append(gain)
+                // Within two hexes of both land and water, never out on the
+                // open Still nor up on dry ground.
+                if let found = ground(at: x, y, in: drawn) {
+                    let near = [found.hex] + found.hex.neighbors + found.hex.neighbors.flatMap(\.neighbors)
+                    if near.contains(where: isLand), near.contains(where: { map[$0]?.terrain.isWater ?? false }) { byTheEdge += 1 }
+                }
+                if abs(later.luminance(x, y) - drawn.luminance(x, y)) >= 2 { moved += 1 }
+            }
+        }
+        let mean = paler.isEmpty ? 0 : paler.reduce(0, +) / Double(paler.count)
+        print("RENDER wash: \(paler.count) points paler at the strand by a mean of \(String(format: "%.1f", mean)) levels, "
+            + "\(byTheEdge) of them by the water's edge, \(moved) changed three seconds on; \(darker) darker")
+        XCTAssertGreaterThan(paler.count, 150, "the strand shows pale where the water meets the land")
+        XCTAssertGreaterThan(Double(byTheEdge), 0.9 * Double(paler.count), "and only there")
+        XCTAssertGreaterThan(mean, 4, "pale enough to be seen at night")
+        XCTAssertEqual(darker, 0, "the froth never darkens what it lies on")
+        XCTAssertGreaterThan(Double(moved), 0.3 * Double(paler.count), "the waves wash up and draw back")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
