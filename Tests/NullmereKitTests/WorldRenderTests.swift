@@ -451,7 +451,7 @@ final class WorldRenderTests: XCTestCase {
         try keep([opening], as: "world-opening")
         let explored = world.openingKnown
         // As the keeper first sees it: their own land lit, the rest unknown.
-        var mist: [Double] = [], land: [Double] = []
+        var mistPoints: [(x: Int, y: Int)] = [], land: [Double] = []
         for y in stride(from: 0, to: WorldRenderTests.height, by: 4) {
             for x in stride(from: 0, to: WorldRenderTests.width, by: 4) {
                 let point = CGPoint(x: x, y: y)
@@ -459,19 +459,26 @@ final class WorldRenderTests: XCTestCase {
                 guard let index = world.state.map.index(of: flat) else { continue }
                 let around = flat.neighbors.compactMap { world.state.map.index(of: $0) }
                 if !explored[index], around.allSatisfy({ !explored[$0] }) {
-                    mist.append(opening.luminance(x, y))
+                    mistPoints.append((x, y))
                 } else if explored[index], around.allSatisfy({ explored[$0] }), !(world.state.map[flat]?.terrain.isWater ?? true) {
                     land.append(opening.luminance(x, y))
                 }
             }
         }
+        let mist = mistPoints.map { opening.luminance($0.x, $0.y) }
         XCTAssertGreaterThan(mist.count, 200)
         XCTAssertGreaterThan(land.count, 50)
         let mistMean = mist.reduce(0, +) / Double(mist.count), landMean = land.reduce(0, +) / Double(land.count)
-        XCTAssertLessThan(mistMean, 40, "the mist is night-dark")
-        XCTAssertGreaterThan(landMean, mistMean, "the known land is lit above the mist")
         let spread = (mist.map { ($0 - mistMean) * ($0 - mistMean) }.reduce(0, +) / Double(mist.count)).squareRoot()
-        XCTAssertGreaterThan(spread, 0.3, "the mist lies in banks, never one flat grey")
+        // And the mist drifts: the same view half a minute on.
+        let later = try draw(renderer, "later", camera: camera, tiles: world.opening, selected: seat, time: 50)
+        let drifted = mistPoints.filter { abs(later.luminance($0.x, $0.y) - opening.luminance($0.x, $0.y)) >= 1 }.count
+        print("RENDER mist: mean \(String(format: "%.1f", mistMean)) beside the known land's \(String(format: "%.1f", landMean)), "
+            + "spread \(String(format: "%.2f", spread)); \(drifted) of \(mist.count) points changed half a minute on")
+        XCTAssertLessThan(mistMean, 40, "the mist is night-dark")
+        XCTAssertGreaterThan(landMean, mistMean + 6, "the known land is lit well above the mist")
+        XCTAssertGreaterThan(spread, 1, "the mist lies in banks, never one flat grey")
+        XCTAssertGreaterThan(Double(drifted) / Double(mist.count), 0.2, "the mist drifts")
 
         // The hex chosen is ringed.
         let plain = try draw(renderer, "unchosen", camera: camera, tiles: world.opening)

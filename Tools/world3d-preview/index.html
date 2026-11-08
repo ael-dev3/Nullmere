@@ -126,7 +126,11 @@ void main() {
   vec2 knows = nm_knowledgeAround(p, radius);
   lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
   if (knows.x < 0.999) {
-    lit = mix(nm_remembered(lit) * 0.18 + kMist * 0.3, lit, smoothstep(0.55, 1.0, knows.x));
+    // The unknown under the Still's mist, the pointer's and the chosen
+    // hex's ring showing faintly through it.
+    vec3 marked = vec3(0.20, 0.22, 0.26) * ring * hovered * 0.6 + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
+    vec3 mist = nm_mist(p, time, knows.x) + (nm_remembered(marked) - kMist * 0.25) * 0.18;
+    lit = mix(mist, lit, smoothstep(0.55, 1.0, knows.x));
   }
   float beyond = float(nm_hexDistance(h)) - radius;
   lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);

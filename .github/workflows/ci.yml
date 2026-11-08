@@ -436,8 +436,9 @@ jobs:
           # near the foot for when a staging figure is over its allowance.
           grep -h "PERF staging" build-test.log 2>/dev/null | tail -3 || true
           # How much the battle and the town move from frame to frame, and
-          # the bare land under them: the moving pictures' measure.
-          grep -h "RENDER motion" build-test.log 2>/dev/null || true
+          # the bare land under them: the moving pictures' measure; and the
+          # mist over the unknown beside the known land, and how it drifts.
+          grep -hE "RENDER (motion|mist)" build-test.log 2>/dev/null || true
           # Failures last, at the log's very foot, where its tail finds them.
           grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
           # A figure over its allowance among them, with the runner's pace it

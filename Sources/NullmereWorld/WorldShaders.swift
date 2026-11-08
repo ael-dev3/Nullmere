@@ -411,6 +411,22 @@ public enum WorldShaders {
         return mix(c, kHaze, clamp(amount, 0.0, 0.85));
     }
 
+    // The Still's mist over all the keeper has never seen, at a point `p`
+    // of it: the same over land and water, so it gives nothing of either
+    // away. Broad banks of it drift one way and finer wisps another, the
+    // moon catching their tops and the hollows between left dark; and along
+    // the edge of what is known (`known`, 0 to 1, as nm_knowledgeAround
+    // has it) it gathers thicker, as mist lies along a shore. Its palest
+    // tops are no brighter than the moonlit ground the keeper knows, so
+    // what is known always stands out of it.
+    float3 nm_mist(float2 p, float time, float known) {
+        float banks = nm_fbm(p * 0.21 + nm_drift(time, 0.03));
+        float wisps = nm_noise(p * 0.8 + float2(41.0, 17.0) - nm_drift(time, 0.05));
+        float shore = smoothstep(0.05, 0.5, known);
+        float thick = smoothstep(0.42, 0.66, banks + 0.18 * wisps + 0.22 * shore - 0.08);
+        return kMist * 0.35 + kMoonColour * (0.0004 + 0.0072 * thick);
+    }
+
     // The flicker of a flame.
     float nm_flicker(float t) {
         return 0.55 * sin(nm_spin(t, 7.3)) + 0.3 * sin(nm_spin(t, 13.1) + 1.7) + 0.15 * sin(nm_spin(t, 23.7) + 0.3);
@@ -517,104 +533,117 @@ public enum WorldShaders {
                                      texture2d<float, access::read> housePalette [[texture(3)]]) {
         float time = frame.eye.w;
         float radius = frame.world.x;
-        float3 n = normalize(in.normal);
         float2 p = in.world.xz;
         int2 h = nm_hexRound(nm_axial(p));
-        float4 tile = nm_tileAt(h, radius, tiles);
-        float owner = nm_owner(tile);
-    #ifndef NM_NO_GRAIN
-        float3 albedo = nm_grain(p, in.colour);
-    #else
-        float3 albedo = in.colour;
-    #endif
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
-
-        // Whose land: a faint wash of the House's colour, and a line where
-        // it meets another's.
-        float3 lit = float3(0.0);
-        if (owner > 0.5 && in.known > 0.5) {
-            // Each House's colour a texel past its sigil, 64 to a row (see
-            // HousePalette).
-            uint slot = uint(owner);
-            float3 house = housePalette.read(uint2(slot % 64u, slot / 64u)).rgb;
-            // The wash is the faintest breath of the House's colour, broken
-            // by the ground's own grain, so the land reads as land.
-            float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
-            albedo = mix(albedo, house * 0.5, breath);
-            // The neighbour is the hex just outside the nearest edge: a
-            // point pushed out past it, so a line falls only where the
-            // land truly meets another's, never between hexes of one.
-            float2 centre = nm_hexCentre(h);
-            int2 across = nm_hexRound(nm_axial(centre + (p - centre) * 1.45));
-            if (across.x != h.x || across.y != h.y) {
-                float otherOwner = nm_owner(nm_tileAt(across, radius, tiles));
-                if (abs(otherOwner - owner) > 0.5) {
-                    float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
-                    lit += house * line * 0.22;
-                }
-            }
-        }
-    #ifndef NM_NO_LIGHT
-        // Ground the keeper half knows is laid flat toward the mist and
-        // turned to face the sky: the moon lit it full on, brighter than any
-        // true slope, and along the edge of what is known it lay in pale
-        // banks over the shore (run 543: gone without the light, kept
-        // without the grain). The moon and the sky light only what is known.
-        float shown = smoothstep(0.35, 1.0, in.known);
-        // The moon low over the far shore lit the slopes facing it into
-        // pale banks against the rest (run 546: kept without the fog, lost
-        // without the light); on the land it falls softer than on models.
-        // Softer alone kept them (run 546 after 543): the slope itself
-        // turned the land toward the moon and the fill. The land is lit by
-        // its normal bent most of the way upright, so a hillside's whole
-        // face can never stand pale against the flats beside it; the fine
-        // grain of the ground still shades within it.
-        float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
-        // What stands on the land keeps the moon off the ground behind it.
-        float moonlit = nm_moonlit(in.world, n, frame.shadow, frame.still NM_SHADOW_PASS);
-        lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55 * moonlit) * shown;
-        for (int i = 0; i < 4; i++) {
-            lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
-        }
-    #else
-        lit += albedo * 0.02;
-    #endif
-
-        // A hold's hearths light the country round it.
-        for (int i = 0; i < 7; i++) {
-            int2 toward = int2(0, 0);
-            if (i == 1) { toward = int2(1, 0); }
-            if (i == 2) { toward = int2(-1, 0); }
-            if (i == 3) { toward = int2(0, 1); }
-            if (i == 4) { toward = int2(0, -1); }
-            if (i == 5) { toward = int2(1, -1); }
-            if (i == 6) { toward = int2(-1, 1); }
-            float4 near = nm_tileAt(h + toward, radius, tiles);
-            if (near.y >= 128.0) {
-                float far = length(p - nm_hexCentre(h + toward));
-                lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
-            }
-        }
-
-        // The hex under the pointer, and the one chosen.
-        float hovered = (abs(float(h.x) - frame.highlight.x) < 0.5 && abs(float(h.y) - frame.highlight.y) < 0.5) ? 1.0 : 0.0;
-        float chosen = (abs(float(h.x) - frame.highlight.z) < 0.5 && abs(float(h.y) - frame.highlight.w) < 0.5) ? 1.0 : 0.0;
-        float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
-        lit += float3(0.20, 0.22, 0.26) * ring * hovered * 0.6;
-        lit += kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
-
         // What the keeper knows of the ground, blended between hexes here
         // and not from the mesh's corners, so the edge of sight is a soft
         // falling-off and never a terrace of lit and grey hexes.
     #ifndef NM_NO_FOG
         float2 knows = nm_knowledgeAround(p, radius, tiles);
-        lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
+    #else
+        float2 knows = float2(1.0, 1.0);
+    #endif
+        // How much of the ground shows through the mist: none over the
+        // unknown, which is never drawn under it, and the known ground's own
+        // colour fading into it over its outer half.
+        float clear = smoothstep(0.55, 1.0, knows.x);
+
+        // The hex under the pointer, and the one chosen.
+        float hovered = (abs(float(h.x) - frame.highlight.x) < 0.5 && abs(float(h.y) - frame.highlight.y) < 0.5) ? 1.0 : 0.0;
+        float chosen = (abs(float(h.x) - frame.highlight.z) < 0.5 && abs(float(h.y) - frame.highlight.w) < 0.5) ? 1.0 : 0.0;
+        float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
+        float3 marked = float3(0.20, 0.22, 0.26) * ring * hovered * 0.6
+            + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
+
+        float3 lit = float3(0.0);
+        if (clear > 0.0) {
+            float3 n = normalize(in.normal);
+            float4 tile = nm_tileAt(h, radius, tiles);
+            float owner = nm_owner(tile);
+        #ifndef NM_NO_GRAIN
+            float3 albedo = nm_grain(p, in.colour);
+        #else
+            float3 albedo = in.colour;
+        #endif
+
+            // Whose land: a faint wash of the House's colour, and a line
+            // where it meets another's.
+            if (owner > 0.5 && in.known > 0.5) {
+                // Each House's colour a texel past its sigil, 64 to a row
+                // (see HousePalette).
+                uint slot = uint(owner);
+                float3 house = housePalette.read(uint2(slot % 64u, slot / 64u)).rgb;
+                // The wash is the faintest breath of the House's colour,
+                // broken by the ground's own grain, so the land reads as land.
+                float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
+                albedo = mix(albedo, house * 0.5, breath);
+                // The neighbour is the hex just outside the nearest edge: a
+                // point pushed out past it, so a line falls only where the
+                // land truly meets another's, never between hexes of one.
+                float2 centre = nm_hexCentre(h);
+                int2 across = nm_hexRound(nm_axial(centre + (p - centre) * 1.45));
+                if (across.x != h.x || across.y != h.y) {
+                    float otherOwner = nm_owner(nm_tileAt(across, radius, tiles));
+                    if (abs(otherOwner - owner) > 0.5) {
+                        float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
+                        lit += house * line * 0.22;
+                    }
+                }
+            }
+        #ifndef NM_NO_LIGHT
+            // Ground the keeper half knows is laid flat toward the mist and
+            // turned to face the sky: the moon lit it full on, brighter than
+            // any true slope, and along the edge of what is known it lay in
+            // pale banks over the shore (run 543: gone without the light,
+            // kept without the grain). The moon and the sky light only what
+            // is known.
+            float shown = smoothstep(0.35, 1.0, in.known);
+            // The moon low over the far shore lit the slopes facing it into
+            // pale banks against the rest (run 546: kept without the fog,
+            // lost without the light); on the land it falls softer than on
+            // models. Softer alone kept them (run 546 after 543): the slope
+            // itself turned the land toward the moon and the fill. The land
+            // is lit by its normal bent most of the way upright, so a
+            // hillside's whole face can never stand pale against the flats
+            // beside it; the fine grain of the ground still shades within it.
+            float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
+            // What stands on the land keeps the moon off the ground behind it.
+            float moonlit = nm_moonlit(in.world, n, frame.shadow, frame.still NM_SHADOW_PASS);
+            lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55 * moonlit) * shown;
+            for (int i = 0; i < 4; i++) {
+                lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
+            }
+        #else
+            lit += albedo * 0.02;
+        #endif
+
+            // A hold's hearths light the country round it.
+            for (int i = 0; i < 7; i++) {
+                int2 toward = int2(0, 0);
+                if (i == 1) { toward = int2(1, 0); }
+                if (i == 2) { toward = int2(-1, 0); }
+                if (i == 3) { toward = int2(0, 1); }
+                if (i == 4) { toward = int2(0, -1); }
+                if (i == 5) { toward = int2(1, -1); }
+                if (i == 6) { toward = int2(-1, 1); }
+                float4 near = nm_tileAt(h + toward, radius, tiles);
+                if (near.y >= 128.0) {
+                    float far = length(p - nm_hexCentre(h + toward));
+                    lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
+                }
+            }
+            lit += marked;
+            // Remembered, not watched: as it was last seen.
+            lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
+        }
+    #ifndef NM_NO_FOG
         if (knows.x < 0.999) {
-            // The unknown is drawn as plain ground under the mist; it must
-            // never show through, lit, where the known meets it: the known
-            // ground's own colour fades into the mist over its outer half.
-            lit = mix(nm_remembered(lit) * 0.18 + kMist * 0.3, lit, smoothstep(0.55, 1.0, knows.x));
+            // The unknown lies under the Still's mist, the pointer's and the
+            // chosen hex's ring showing faintly through it.
+            float3 mist = nm_mist(p, time, knows.x) + (nm_remembered(marked) - kMist * 0.25) * 0.18;
+            lit = mix(mist, lit, clear);
         }
     #endif
         // Past the map's edge the Spine goes on into the dark.
