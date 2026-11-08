@@ -2,6 +2,10 @@
 
 Short notes that land on main under ael's GitHub identity so the contribution graph reflects real work days. Claude's session commits still carry the game forward; this file is the daily stamp when needed.
 
+## 2026-11-09 (Europe/Belgrade)
+
+The 8th on main was mostly the black lake at night: lanterns carried through the town's lanes, lanterns and fires lying on the water, holds glowing warm from afar, the strand's waves on the scene's clock, a lake shore sound, and a Dark/Moonlit/Bright night brightness choice fixing the too-dark default view (`60f590b` tip, run 815 green). The Mac now shows the phone's presence and can cancel an on-device model reading. Real on-device Apple model answers and an iPhone run remain unverified. Next push: on-device Foundation Models inference for NPC/commander talk, companion iOS sync and reconnection end to end, then Rise of Kingdoms and Warpkeep parity gaps. Session stays Opus 5.5 Max. Standing bar unchanged: Rise of Kingdoms or better, live multiplayer, original 3D, minimal UI.
+
 ## 2026-11-08 (Europe/Belgrade)
 
 Late on the 7th into the 8th, the companion phone app kept gaining real realm management on main: the Ring arena, lantern scouting, realm edicts, prisoners, oaths, the Forge and gear, alliance works and stores, and raising standards from the phone's chart (`9e0f576` tip). CI's live smoke now runs the phone against the same realm as the Mac. Apple on-device model evidence still marked unverified on CI's ineligible runner. Session stays Opus 5.5 Max for polish. Standing bar unchanged: Rise of Kingdoms or better, live multiplayer, original 3D, minimal UI.
