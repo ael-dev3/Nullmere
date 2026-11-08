@@ -251,14 +251,19 @@ enum CompanionCheck {
         }
         let began = Date()
         session.take(invite)
+        // When the realm was first heard, apart from when it took the phone
+        // in as the keeper: the one the reach of the server, the other the
+        // link the steward answers.
+        let heard = await until(60, { session.status != nil || session.phase == .keeping }) ? Date().timeIntervalSince(began) : nil
         guard await until(60, { session.phase == .keeping }), let ledger = session.ledger else {
             broken.append("never came in as the keeper: \(session.problem ?? "no word")")
             write()
             return
         }
         let holds = ledger.holds.count == 1 ? "1 hold" : "\(ledger.holds.count) holds"
-        lines.append(String(format: "In as %@ of %@ in %.2f s: watch %ld, %@, %@", session.keeper?.name ?? "?", ledger.house,
-                            Date().timeIntervalSince(began), ledger.watch, GameState.companies(ledger.companies.count), holds))
+        lines.append(String(format: "In as %@ of %@ in %.2f s, the realm first heard in %@: watch %ld, %@, %@", session.keeper?.name ?? "?",
+                            ledger.house, Date().timeIntervalSince(began), heard.map { String(format: "%.2f s", $0) } ?? "no time",
+                            ledger.watch, GameState.companies(ledger.companies.count), holds))
         #if targetEnvironment(simulator)
         let file = CompanionKeychain(realm: invite.realm).fallback
         lines.append(FileManager.default.fileExists(atPath: file.path)
