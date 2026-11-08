@@ -264,7 +264,9 @@ struct HouseTab: View {
                             // folded beneath it.
                             if let keeper = session.keeper {
                                 DisclosureGroup {
-                                    ForEach([keeper.favourGivesSaid, keeper.streakSaid], id: \.self) { line in
+                                    // And the renown and titles won over the ages, as the Mac tells them.
+                                    ForEach([keeper.favourGivesSaid, keeper.streakSaid] + [keeper.renownSaid].compactMap { $0 }
+                                            + (keeper.titles ?? []), id: \.self) { line in
                                         Text(verbatim: line)
                                             .font(Night.small)
                                             .foregroundStyle(Night.ink.opacity(0.75))

@@ -83,7 +83,7 @@ struct RealmPanel: View {
                     if let keeper = session.keeper, (keeper.renown ?? 0) > 0 || !(keeper.titles ?? []).isEmpty {
                         Rule(opacity: 0.18)
                         Caps("Your renown", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
-                        Text(verbatim: "\(keeper.renown ?? 0) renown won over the ages")
+                        Text(verbatim: keeper.renownSaid ?? "No renown won yet")
                             .font(.nm(11))
                             .foregroundStyle(Palette.text(0.8))
                         ForEach(keeper.titles ?? [], id: \.self) { title in

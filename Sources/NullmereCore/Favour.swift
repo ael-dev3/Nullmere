@@ -79,6 +79,13 @@ extension Keeper {
         "It gives your House \(Favour.effect(level: Favour.level(of: favour ?? 0)))."
     }
 
+    /// The renown they have won over the ages, as the Mac's Realm panel and
+    /// the phone tell it; nil before any.
+    public var renownSaid: String? {
+        guard let renown, renown > 0 else { return nil }
+        return "\(renown) renown won over the ages"
+    }
+
     /// The watches they have kept unbroken: what the next brings, and when
     /// the next favour chest comes.
     public var streakSaid: String {
