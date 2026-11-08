@@ -65,7 +65,7 @@ extension Labours {
 
     /// What a labour done is worth, and when the moon's chests open.
     public static var worth: String {
-        "Each done is \(vigourPerLabour) vigour as the watch turns; the moon's chests open at \(chests.map(String.init).joined(separator: ", "))."
+        "Each done is \(vigourPerLabour) vigour as the watch turns; the moon's chests open at \(listed(chests.map(String.init)))."
     }
 }
 

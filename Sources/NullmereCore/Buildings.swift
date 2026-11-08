@@ -142,7 +142,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
             return "Forges \(finest) gear of the three sets" + (thrift > 0 ? ", for \(thrift)% fewer makings" : "")
         case .wayhouse:
             let kinds = UnitKind.allCases.filter { BuildingKind.roadLevel(for: $0) == level }.map(\.title)
-            return kinds.joined(separator: " and ") + " of the House a step further every watch"
+            return listed(kinds) + " of the House a step further every watch"
         case .lodge:
             return "Every work of the House \(GameState.lodgePace * level)% sooner"
         }

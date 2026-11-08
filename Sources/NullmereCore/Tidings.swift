@@ -429,7 +429,7 @@ extension GameState {
         case .ringLineStood(let house, let line):
             guard house == viewer else { return nil }
             let names = line.compactMap { commander($0)?.name }
-            return Tidings("You stand \(names.isEmpty ? "your line" : names.joined(separator: ", ")) in the Ring.", .neutral)
+            return Tidings("You stand \(names.isEmpty ? "your line" : listed(names)) in the Ring.", .neutral)
         case .bout(let bout):
             let other = bout.challenger == viewer ? bout.defender : bout.challenger
             guard bout.challenger == viewer || bout.defender == viewer, houses.indices.contains(other) else { return nil }
@@ -442,7 +442,7 @@ extension GameState {
                 return Tidings("Your House stands \(ordinal(place + 1)) in the Ring at the full moon: \(GameState.ringHonours[place]) moonsalt to your stores.", .good)
             }
             let names = honoured.filter(houses.indices.contains).map { houses[$0].title }
-            return Tidings("The Ring honours \(names.joined(separator: ", ")) at the full moon.", .neutral)
+            return Tidings("The Ring honours \(listed(names)) at the full moon.", .neutral)
         case .crestTaken(let house, let crest):
             guard house == viewer else { return Tidings("\(houses[house].title) takes for its crest \(crest.blazon).", .neutral) }
             return Tidings("Your House takes for its crest \(crest.blazon), and bears it until the age ends.", .good)

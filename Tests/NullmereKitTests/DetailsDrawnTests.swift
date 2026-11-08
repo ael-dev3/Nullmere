@@ -66,6 +66,8 @@ final class DetailsDrawnTests: XCTestCase {
         let stores = Stock(grain: 50, timber: 10)
         XCTAssertEqual(CostLine.shortfall(of: cost, from: stores), "short of 20 timber")
         XCTAssertNil(CostLine.shortfall(of: cost, from: Stock(grain: 20, timber: 30)), "Enough of each")
+        XCTAssertEqual(CostLine.shortfall(of: Stock(grain: 2_000, timber: 30, stone: 9), from: Stock()), "short of 2,000 grain, 30 timber and 9 stone",
+                       "In the realm's own words for a refusal")
         Contrast.shared.differentiates = false
         let coloured = try render(CostLine(cost: cost, available: stores))
         Contrast.shared.differentiates = true

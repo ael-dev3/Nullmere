@@ -45,7 +45,9 @@ final class RingTests: XCTestCase {
         let stood = try state.perform(.standInTheRing(mine), as: me)
         XCTAssertEqual(stood, [.ringLineStood(house: me, line: mine)])
         XCTAssertEqual(state.ringLine(of: me), mine)
-        XCTAssertTrue(state.tidings(of: stood[0], for: me)?.text.hasPrefix("You stand ") == true)
+        let names = mine.compactMap { state.commander($0)?.name }
+        let said = names.count < 3 ? names.joined(separator: " and ") : names.dropLast().joined(separator: ", ") + " and " + names.last!
+        XCTAssertEqual(state.tidings(of: stood[0], for: me)?.text, "You stand \(said) in the Ring.", "Named as a list, \"A, B and C\"")
         XCTAssertNil(state.tidings(of: stood[0], for: rival))
         XCTAssertFalse(state.events(stood, heardBy: rival).contains(stood[0]))
         XCTAssertEqual(state.challengeRefusal(of: rival, as: me), .notApplicable, "The rival stands no line yet")
@@ -174,7 +176,9 @@ final class RingTests: XCTestCase {
         XCTAssertEqual([fourth, me, rival, third].map(state.ringStanding), [1050, 1030, 990, 950], "Halfway home")
         XCTAssertEqual(state.tidings(of: events[0], for: me)?.text, "Your House stands second in the Ring at the full moon: 20 moonsalt to your stores.")
         XCTAssertEqual(state.tidings(of: events[0], for: third)?.tone, .neutral)
-        XCTAssertTrue(state.tidings(of: events[0], for: third)?.text.hasPrefix("The Ring honours ") == true)
+        let honoured = [fourth, me, rival].map { state.houses[$0].title }
+        XCTAssertEqual(state.tidings(of: events[0], for: third)?.text,
+                       "The Ring honours \(honoured[0]), \(honoured[1]) and \(honoured[2]) at the full moon.", "Named as a list")
         XCTAssertTrue(state.events(events, heardBy: third).contains(events[0]))
 
         // A fallen House is honoured no more.

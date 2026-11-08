@@ -484,11 +484,11 @@ struct CostLine: View {
     let cost: Stock
     let available: Stock
 
-    /// What the stores lack to pay it: "short of 20 timber", or nil.
+    /// What the stores lack to pay it: "short of 20 timber", or nil; in
+    /// the words of the realm's own refusal (`Stock.listedSaid`).
     static func shortfall(of cost: Stock, from available: Stock) -> String? {
-        let short = Resource.allCases.filter { available[$0] < cost[$0] }
-            .map { "\(cost[$0] - available[$0]) \($0.title.lowercased())" }
-        return short.isEmpty ? nil : "short of " + short.joined(separator: " and ")
+        let short = available.shortfall(for: cost)
+        return short == Stock() ? nil : "short of " + short.listedSaid
     }
 
     var body: some View {

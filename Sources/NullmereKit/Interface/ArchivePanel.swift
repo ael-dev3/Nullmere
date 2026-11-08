@@ -71,7 +71,7 @@ struct ArchivePanel: View {
     static func why(_ standing: StudyLine.Standing) -> String? {
         switch standing {
         case .open: return nil
-        case .short(let lack): return "You are short of \(lack.description)."
+        case .short(let lack): return "You are short of \(lack.listedSaid)."
         case .waiting: return "Another study is under way; one at a time."
         case .locked(let why): return why.description
         case .underWay: return "Under way."
