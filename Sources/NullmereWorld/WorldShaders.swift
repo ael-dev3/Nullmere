@@ -205,6 +205,16 @@ public enum WorldShaders {
         return pow(clamp(c, float3(0.0), float3(1.0)), float3(1.0 / 2.2));
     }
 
+    // The night's light as the keeper chooses it (Night): every colour
+    // lifted `e` times where it is darkest and less the brighter it is,
+    // full light kept full, so the dark ground comes up into sight while
+    // a lit window or a fire never burns white. It is the colour itself
+    // where `e` is 1, the night as the lake was made.
+    float3 nm_expose(float3 c, float e) {
+        float3 l = max(c, float3(0.0));
+        return l * e / (float3(1.0) + l * (e - 1.0));
+    }
+
     // The fractional axial coordinates of a map point.
     float2 nm_axial(float2 p) {
         return float2(kRoot3 / 3.0 * p.x - p.y / 3.0, 2.0 / 3.0 * p.y);
@@ -613,7 +623,7 @@ public enum WorldShaders {
     #ifndef NM_NO_HAZE
         lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
     #endif
-        return float4(nm_encode(lit * frame.haze.z), 1.0);
+        return float4(nm_encode(nm_expose(lit, frame.haze.z)), 1.0);
     }
 
     // MARK: The still water
@@ -674,7 +684,7 @@ public enum WorldShaders {
         // lies whole on all of it, seen or not.
         float3 colour = starlit * mix(0.72, 1.0, knowledge.y) + moonlit;
         colour = nm_haze(colour, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-        return float4(nm_encode(colour * frame.haze.z), clear);
+        return float4(nm_encode(nm_expose(colour, frame.haze.z)), clear);
     }
 
     // MARK: The sky
@@ -738,7 +748,7 @@ public enum WorldShaders {
         float up = max(d.y, 0.0);
         float3 horizon = kMist * 1.6 + kMoonColour * 0.004;
         colour = mix(horizon, colour, smoothstep(0.0, 0.035, up));
-        return float4(nm_encode(colour * frame.haze.z), 1.0);
+        return float4(nm_encode(nm_expose(colour, frame.haze.z)), 1.0);
     }
 
     // MARK: Models
@@ -918,7 +928,7 @@ public enum WorldShaders {
         }
         lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
         // Fading, it covers as many of the pixel's samples as it is opaque.
-        return float4(nm_encode(lit * frame.haze.z), in.params.y < 0.999 ? saturate(in.params.y) : 1.0);
+        return float4(nm_encode(nm_expose(lit, frame.haze.z)), in.params.y < 0.999 ? saturate(in.params.y) : 1.0);
     }
 
     // MARK: Motes
@@ -965,7 +975,10 @@ public enum WorldShaders {
         }
         float soft = 1.0 - smoothstep(0.1, 1.0, r);
         float far = 1.0 - clamp(1.0 - exp(-max(distance(in.world, frame.eye.xyz) - frame.haze.x, 0.0) * frame.haze.y), 0.0, 0.85);
-        float3 light = in.colour.rgb * soft * far * frame.haze.z;
+        // A mote's light is its own, a spark's or a fire's: as bright in a
+        // lighter night (Night) as in the night as made, never lifted with
+        // the moon's.
+        float3 light = in.colour.rgb * soft * far;
         return float4(nm_encode(light), in.colour.a * soft);
     }
     """#

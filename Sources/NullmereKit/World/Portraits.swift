@@ -17,6 +17,10 @@ final class Portraits {
 
     /// Pixels a side.
     static let side = 112
+    /// How far a portrait's darkest colours are lifted, as a lighter night
+    /// lifts the world's (Night), so a figure under the moon reads in its
+    /// small frame while its lit windows and fires keep their light.
+    static let lift: Float = 2.2
 
     /// The stage is built: portraits asked for now are drawn. Watched, so
     /// a panel drawn before is drawn again with them.
@@ -115,7 +119,7 @@ final class Portraits {
         let (eye, look) = Portraits.framing(low: low, high: high, ground: height)
         let size = CGSize(width: Portraits.side, height: Portraits.side)
         var frame = FrameUniforms.make(camera: Camera(), size: size, pixelsPerPoint: 1, time: 2, motion: 0, radius: land.map.radius,
-                                       terrain: land.terrain, hovered: nil, selected: nil, exposure: 1.5)
+                                       terrain: land.terrain, hovered: nil, selected: nil, exposure: Portraits.lift)
         let distance = (eye - look).length
         frame.viewProjection = Mat4.perspective(fovY: Float(Camera.fieldOfView), aspect: 1, near: distance * 0.05, far: distance * 6)
             * Mat4.lookAt(eye: eye, target: look)

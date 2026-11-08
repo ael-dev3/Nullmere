@@ -34,7 +34,7 @@ public struct GameSettingsView: View {
                 ChoiceLine(title: "The night", options: Night.allCases.map(\.title), chosen: Night(stored: night).rawValue) {
                     night = Night(stored: $0).rawValue
                 }
-                Note("Motion is how much the lake and the map move; System follows Reduce Motion. Detail is how much of the land's growth the map draws; Auto reads this Mac, and should its graphics falter, the map steps down a detail before it gives way to its painting. Text set to Larger makes all the type a fifth larger. The night is how much moonlight the world is drawn with: Dark as the lake was made, Moonlit or Bright for an easier eye.")
+                Note("Motion is how much the lake and the map move; System follows Reduce Motion. Detail is how much of the land's growth the map draws; Auto reads this Mac, and should its graphics falter, the map steps down a detail before it gives way to its painting. Text set to Larger makes all the type a fifth larger. The night is how much moonlight the world is drawn with: Dark as the lake was made, Moonlit or Bright for an easier eye, the dark ground lifted most and lit windows and fires keeping their light.")
                 HStack {
                     Spacer()
                     QuietButton(title: "Reset the display", size: 9, name: "Reset every display setting") { app.display?.resetDisplay() }

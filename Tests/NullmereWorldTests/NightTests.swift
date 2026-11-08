@@ -12,7 +12,7 @@ final class NightTests: XCTestCase {
         XCTAssertEqual(Night.allCases.map(\.title), ["Dark", "Moonlit", "Bright"])
         XCTAssertEqual(Night.dark.exposure, 1, "The night as the lake was made")
         XCTAssertEqual(Night.allCases.map(\.exposure), Night.allCases.map(\.exposure).sorted(), "Each lighter than the last")
-        XCTAssertLessThanOrEqual(Night.bright.exposure, 2, "Still a night")
+        XCTAssertLessThanOrEqual(Night.bright.exposure, 3, "Still a night: its darkest lifted threefold at most, full light kept full")
         XCTAssertEqual(Night(stored: 0), .dark)
         XCTAssertEqual(Night(stored: 1), .moonlit)
         XCTAssertEqual(Night(stored: 2), .bright)

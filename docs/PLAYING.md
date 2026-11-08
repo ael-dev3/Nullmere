@@ -1765,7 +1765,9 @@ it plays.
   choice. The realm's Settings (⌘,) also hold its sound (on or off, the
   effects, the night, the music and its score's volume), counsel, the
   night's brightness (Dark, as the lake was made; Moonlit or Bright, the
-  whole world drawn with more of the moon's light for an easier eye), and how
+  whole world drawn with more of the moon's light for an easier eye, its
+  darkest ground lifted most, twice or three times, while lit windows and
+  fires keep their light and sparks theirs), and how
   the voices stand on this Mac by Apple's own word on its model: who speaks
   through it, or, where it can't be asked, who falls silent and why; ⇧⌘M
   turns all sound off or on, and ⇧⌘U the music alone, once the realm shows.

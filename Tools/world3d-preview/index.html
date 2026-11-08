@@ -131,7 +131,7 @@ void main() {
   float beyond = float(nm_hexDistance(h)) - radius;
   lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
   lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(lit * haze.z), 1.0);
+  outColour = vec4(nm_encode(nm_expose(lit, haze.z)), 1.0);
 }`;
 const waterVertex = header + `
 out vec3 vWorld;
@@ -161,7 +161,7 @@ void main() {
   vec2 knowledge = nm_knowledge(h, world.x);
   vec3 colour = mix(nm_remembered(starlit + moonlit * (1.0 - knowledge.x)), starlit, knowledge.y) + moonlit * knowledge.x;
   colour = nm_haze(colour, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(colour * haze.z), clear);
+  outColour = vec4(nm_encode(nm_expose(colour, haze.z)), clear);
 }`;
 
 const modelVertex = header + `
@@ -245,7 +245,7 @@ void main() {
   lit += kGlow * vParams.w * facing * facing * 0.45;
   if (vWatched < 0.75) { lit = nm_remembered(lit); }
   lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(lit * haze.z), 1.0);
+  outColour = vec4(nm_encode(nm_expose(lit, haze.z)), 1.0);
 }`;
 
 // A model's vertex as the moon sees it, as the world's shadow vertex has it.
@@ -308,7 +308,7 @@ void main() {
   if (r > 1.0) { discard; }
   float soft = 1.0 - smoothstep(0.1, 1.0, r);
   float far = 1.0 - clamp(1.0 - exp(-max(distance(vWorld, eye.xyz) - haze.x, 0.0) * haze.y), 0.0, 0.85);
-  vec3 light = vColour.rgb * soft * far * haze.z;
+  vec3 light = vColour.rgb * soft * far;
   outColour = vec4(nm_encode(light), vColour.a * soft);
 }`;
 

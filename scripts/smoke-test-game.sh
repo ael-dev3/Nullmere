@@ -73,14 +73,15 @@ $(grep -h "renders with Metal" build/game-stdout.log 2>/dev/null || true)"
 set_aside_realm "$EXECUTABLE" "$IDENTITY"
 run build/game-world.png 0 unit,houses
 WORLD_LOG="$LOG"
+# The first view again, at the same watch, with the night drawn Bright, as a
+# keeper may choose it in the realm's Settings, to judge beside the night as
+# it was made.
+NULLMERE_NIGHT=bright run build/game-world-bright.png 0 unit,houses
+WORLD_LOG="$WORLD_LOG
+$LOG"
 # The same realm as a keeper sees it most of the time: nothing chosen, no
 # panel open, how much of the world the interface leaves in view.
 run build/game-plain.png 8 ""
-WORLD_LOG="$WORLD_LOG
-$LOG"
-# The first view again with the night drawn Bright, as a keeper may choose
-# it in the realm's Settings, to judge beside the night as it was made.
-NULLMERE_NIGHT=bright run build/game-world-bright.png 0 unit,houses
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The Still close and low, nothing chosen: the black water, the moon's
