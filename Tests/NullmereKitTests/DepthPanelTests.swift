@@ -1431,7 +1431,7 @@ final class DepthPanelTests: XCTestCase {
         draw(ReflectionRow(session: session, hold: seat))
         XCTAssertTrue(PressableButtons.press("Cast a reflection"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .castReflection(hold: seat.id, at: at, kind: .spear))
-        XCTAssertTrue(ReflectionRow.line(session.state, house: me).hasPrefix("1 false reflection wait"))
+        XCTAssertTrue(ReflectionRow.line(session.state, house: me).hasPrefix("1 false reflection waits for the Still Hour, "))
     }
 
     /// A company of war on the Still's shore is offered the mirror; inland, not.

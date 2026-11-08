@@ -329,9 +329,7 @@ extension GameState {
             return Tidings("Your House climbs the ladder of the lairs to level \(BuildingKind.numeral(level)): your hosts may march on lairs of level \(BuildingKind.numeral(level + 1)) now, and \(GameState.sculpturesPerRung * level) sculptures come to your seat.", .good)
         case .reflectionCast(let house, let at):
             guard house == viewer else { return nil }
-            let next = GameState.nextStillHour(from: watch + 1) - watch
-            let when = next <= 1 ? "as the watch turns" : "in \(next) watches"
-            return Tidings("A false reflection is cast on the shore \(placeName(of: at)): \(when) the lake will mirror a company of yours there that is not.", .good)
+            return Tidings("A false reflection is cast on the shore \(placeName(of: at)): \(GameState.stillHourSaid(after: watch)) the lake will mirror a company of yours there that is not.", .good)
         case .monumentStoneSet(let stone):
             let gift = stone.gift
             return Tidings("The lake's Houses together set a stone of the Monument: \(stone.title.components(separatedBy: ":").first ?? stone.title). Every House is given \(gift.stock); those who did their part share \(stone.share) moonsalt.", .good)
@@ -356,7 +354,7 @@ extension GameState {
             }
             return Tidings("The Lyceum rises: \(houses[first.house].title) answered best, \(first.right) of \(Lyceum.questions).", .neutral)
         case .calmBroken(let breakers, let calm):
-            let names = breakers.map { houses[$0].title }.joined(separator: " and ")
+            let names = listed(breakers.map { houses[$0].title })
             if breakers.contains(viewer) { return Tidings("Your companies at the water break the Still's calm of \(calm) watches; every House knows it was you.", .bad) }
             return Tidings("\(names) break\(breakers.count == 1 ? "s" : "") the Still's calm of \(calm) watches: the moonsalt of the shore falls back.", .bad)
         case .mirrorWalked(_, let house, let from, let to):

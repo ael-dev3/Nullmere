@@ -1488,9 +1488,9 @@ struct RippleRow: View {
     let hold: Hold
 
     static func line(_ state: GameState, house: Int) -> String {
-        let next = GameState.nextStillHour(from: state.watch + 1) - state.watch
-        if state.hasRippled(house) { return "Your stone stirs the water: the next Still Hour, in \(next) watches, mirrors none of yours." }
-        return "The lake lies still in \(next) watches and shows all on its shore. A stone, \(GameState.rippleCost), hides yours."
+        let when = GameState.stillHourSaid(after: state.watch)
+        if state.hasRippled(house) { return "Your stone stirs the water: the next Still Hour, \(when), mirrors none of yours." }
+        return "The lake lies still \(when) and shows all on its shore. A stone, \(GameState.rippleCost), hides yours."
     }
 
     var body: some View {
@@ -1564,8 +1564,8 @@ struct ReflectionRow: View {
 
     static func line(_ state: GameState, house: Int) -> String {
         let cast = state.falseReflections(of: house).count
-        let next = GameState.nextStillHour(from: state.watch + 1) - state.watch
-        if cast > 0 { return "\(cast) false reflection\(cast == 1 ? "" : "s") wait for the Still Hour, in \(next) watches." }
+        let wait = cast == 1 ? "1 false reflection waits" : "\(cast) false reflections wait"
+        if cast > 0 { return "\(wait) for the Still Hour, \(GameState.stillHourSaid(after: state.watch))." }
         return "For \(GameState.falseReflectionCost), the lake will mirror a company of yours on this shore at the Still Hour, though none is there."
     }
 

@@ -44,6 +44,13 @@ extension GameState {
         return next
     }
 
+    /// When the next Still Hour comes, said from a watch: "as the watch
+    /// turns" when it comes with the next, else "in 5 watches".
+    public static func stillHourSaid(after watch: Int) -> String {
+        let next = nextStillHour(from: watch + 1) - watch
+        return next <= 1 ? "as the watch turns" : "in \(next) watches"
+    }
+
     /// Whether a hex is the lake's shore: land beside its water.
     public func isShore(_ hex: Hex) -> Bool {
         guard let tile = map[hex], !tile.terrain.isWater else { return false }

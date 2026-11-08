@@ -54,8 +54,7 @@ extension GameState {
         let was = stillCalm
         calm = nil
         guard was >= Calm.told else { return [] }
-        let names = breakers.map { houses[$0].title }.joined(separator: ", ")
-        record(.war, breakers, "The Still's calm of \(was) watches is broken by \(names).")
+        record(.war, breakers, "The Still's calm of \(was) watches is broken by \(listed(breakers.map { houses[$0].title })).")
         return [.calmBroken(houses: breakers, calm: was)]
     }
 }

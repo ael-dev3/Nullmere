@@ -63,6 +63,11 @@ final class CalmTests: XCTestCase {
         XCTAssertNotNil(state.tidings(of: events[0], for: state.player), "every House is told")
         XCTAssertNotNil(state.tidings(of: events[0], for: foe))
         XCTAssertFalse(state.events(events, heardBy: state.player).isEmpty)
+        // Several Houses that break it are named as a list.
+        let others = (1..<state.houses.count).map { (state.player + $0) % state.houses.count }
+        let three = try XCTUnwrap(state.tidings(of: .calmBroken(houses: others, calm: 7), for: state.player))
+        let titles = others.map { state.houses[$0].title }
+        XCTAssertEqual(three.text, "\(titles[0]), \(titles[1]) and \(titles[2]) break the Still's calm of 7 watches: the moonsalt of the shore falls back.")
         // A Lantern at the water troubles nothing.
         state.units.removeAll { $0.owner == foe && $0.position == edge }
         state.units.append(NullmereCore.Unit(id: state.takeID(), kind: .lantern, owner: foe, position: edge))

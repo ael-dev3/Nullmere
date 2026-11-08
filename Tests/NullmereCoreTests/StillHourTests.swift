@@ -32,6 +32,19 @@ final class StillHourTests: XCTestCase {
         XCTAssertTrue(GameState.isStillHour(at: GameState.nextStillHour(from: 0)))
     }
 
+    /// When the next Still Hour comes, said in words: never "in 1 watches".
+    func testWhenTheLakeLiesStillIsSaidInWords() {
+        let hour = GameState.nextStillHour(from: 10)
+        XCTAssertEqual(GameState.stillHourSaid(after: hour - 1), "as the watch turns")
+        XCTAssertEqual(GameState.stillHourSaid(after: hour - 2), "in 2 watches")
+        // At the hour itself, the next is the one after.
+        let after = GameState.nextStillHour(from: hour + 1)
+        XCTAssertEqual(GameState.stillHourSaid(after: hour), after - hour <= 1 ? "as the watch turns" : "in \(after - hour) watches")
+        for watch in 0..<(2 * GameState.lunarMonth) {
+            XCTAssertFalse(GameState.stillHourSaid(after: watch).contains("in 1 watch"), "At watch \(watch)")
+        }
+    }
+
     func testEveryHouseSeesTheShoreInTheStillWater() throws {
         var (state, me, other, _, _) = try world()
         // The watch's turn lays the lake still at its hour.
