@@ -1091,7 +1091,7 @@ public struct CompanionLedger: Equatable, Sendable {
                 uses = hurt ? [Order(title: "Share it out", command: .useItem(.mendingDraught, hold: nil))] : []
             }
             let effect = stack.kind.effect
-            return Item(kind: stack.kind, count: stack.kind.counted(stack.count), effect: effect.prefix(1).uppercased() + effect.dropFirst(),
+            return Item(kind: stack.kind, count: stack.kind.counted(stack.count).lineBegun, effect: effect.prefix(1).uppercased() + effect.dropFirst(),
                         uses: uses)
         }
         let allied = world.alliance(of: player)
@@ -1401,9 +1401,9 @@ public struct CompanionLedger: Equatable, Sendable {
         let said = "The Pedlar of the Still lies off \(world.hold(pedlar.hold)?.name ?? "your hold"); "
             + "he poles away in \(left) watch\(left == 1 ? "" : "es")."
         let wares = pedlar.wares.map { ware -> Ware in
-            guard !ware.sold else { return Ware(id: ware.id, title: "\(ware.goods.title): sold", buy: nil, why: nil) }
+            guard !ware.sold else { return Ware(id: ware.id, title: "\(ware.goods.title.lineBegun): sold", buy: nil, why: nil) }
             let refusal = world.buyRefusal(ware.id, as: player)
-            return Ware(id: ware.id, title: "\(ware.goods.title), for \(ware.price)",
+            return Ware(id: ware.id, title: "\(ware.goods.title.lineBegun), for \(ware.price)",
                         buy: refusal == nil ? Order(title: "Buy \(ware.goods.title)", command: .buyFromPedlar(ware: ware.id)) : nil,
                         why: refusal?.description)
         }

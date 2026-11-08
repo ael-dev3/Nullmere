@@ -1534,7 +1534,7 @@ struct PedlarCard: View {
                 let refusal = state.buyRefusal(ware.id, as: session.player)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(verbatim: ware.goods.title).font(.nm(10.5)).foregroundStyle(Palette.text(ware.sold ? 0.45 : 0.85))
+                        Text(verbatim: ware.goods.title.lineBegun).font(.nm(10.5)).foregroundStyle(Palette.text(ware.sold ? 0.45 : 0.85))
                         Text(verbatim: ware.sold ? "Sold" : "For \(ware.price)").font(.nm(9.5)).foregroundStyle(Palette.text(0.55))
                     }
                     .accessibilityElement(children: .combine)

@@ -86,6 +86,8 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(pedlar.said, "The Pedlar of the Still lies off \(seat.name); he poles away in \(Pedlar.stays) watches.")
         XCTAssertEqual(pedlar.wares.count, 3)
         XCTAssertTrue(pedlar.wares.allSatisfy { $0.buy != nil && $0.why == nil }, "The House's stores cover all three")
+        // Each a row of its own, begun with a capital ("A Ward Stone, for ..."), never "a Ward Stone".
+        XCTAssertTrue(pedlar.wares.allSatisfy { $0.title.first.map { !$0.isLowercase } ?? false }, "\(pedlar.wares.map(\.title))")
         assertTaken(pedlar.wares.compactMap(\.buy), in: state, as: me)
         let bought = try XCTUnwrap(pedlar.wares.first?.buy)
         _ = try state.perform(bought.command, as: me)
@@ -1541,6 +1543,7 @@ final class CompanionLedgerTests: XCTestCase {
         var ledger = CompanionLedger(world: state, player: me)
         XCTAssertEqual(ledger.satchel.map(\.kind), [.hourglass, .grainCache, .wardStone, .mendingDraught])
         XCTAssertEqual(ledger.satchel.first?.count, "2 Salt Hourglasses")
+        XCTAssertTrue(ledger.satchel.allSatisfy { $0.count.first.map { !$0.isLowercase } ?? false }, "One begins \"A ...\": \(ledger.satchel.map(\.count))")
         XCTAssertEqual(ledger.satchel.first?.effect, "A hold's work and muster a watch nearer, or the House's study")
         XCTAssertEqual(ledger.satchel.filter { !$0.uses.isEmpty }.map(\.kind), [.grainCache],
                        "Nothing under way, no ward broken, none hurt: only the cache opens")

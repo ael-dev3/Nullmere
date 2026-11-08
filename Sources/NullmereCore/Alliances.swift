@@ -27,7 +27,7 @@ public struct Alliance: Codable, Equatable, Identifiable, Sendable {
     public var titled: String { Alliance.titled(name) }
 
     /// An alliance's name as a line begins with it.
-    public static func titled(_ name: String) -> String { name.prefix(1).uppercased() + name.dropFirst() }
+    public static func titled(_ name: String) -> String { name.lineBegun }
 
     public init(id: Int, name: String, leader: Int, founded: Int) {
         self.id = id
@@ -280,4 +280,11 @@ extension GameState {
         }
         return [.helpGiven(by: house, to: ally, count: count)]
     }
+}
+
+extension String {
+    /// The words as a line begins with them, its first letter a capital:
+    /// "a Ward Stone" as a row's own label is "A Ward Stone", where within a
+    /// line it stays as it is ("Bought of the pedlar: a Ward Stone.").
+    public var lineBegun: String { prefix(1).uppercased() + dropFirst() }
 }
