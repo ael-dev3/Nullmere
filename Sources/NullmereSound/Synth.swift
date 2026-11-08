@@ -81,11 +81,13 @@ public final class Synth: @unchecked Sendable {
     private var pendingStrikes: [Strike] = []
     /// The cues' recorded blows ringing: the anvil's, the field drum's and
     /// the slit drum's.
-    private var struck = [Reading](repeating: Reading(note: Recordings.anvilNotes[0]), count: 8)
+    private var struck = [Reading](repeating: Reading(note: Recordings.anvilNotes[0]), count: 12)
     /// How many blows the cues have struck on recorded instruments, for tests.
     private(set) var cueStrikes = 0
-    /// The horn the cues' calls are blown on: the war horn and the muster's.
-    private var cueHorns = Horns(sampleRate: 48_000)
+    /// The horn the cues' calls are blown on: the war horn, the muster's,
+    /// the envoy's, a hold taken and a deed honoured, enough voices for two
+    /// fanfares at once.
+    private var cueHorns = Horns(sampleRate: 48_000, voices: 8)
     /// How many notes the cues have blown on the horn, for tests.
     var cueHornsBlown: Int { cueHorns.blown }
 
@@ -297,7 +299,7 @@ public final class Synth: @unchecked Sendable {
         if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
         if shores.sampleRate != sampleRate { shores = Shore(sampleRate: sampleRate) }
         if dinHorns.sampleRate != sampleRate { dinHorns = Horns(sampleRate: sampleRate) }
-        if cueHorns.sampleRate != sampleRate { cueHorns = Horns(sampleRate: sampleRate) }
+        if cueHorns.sampleRate != sampleRate { cueHorns = Horns(sampleRate: sampleRate, voices: 8) }
         score.prepare(sampleRate: sampleRate)
     }
 
@@ -357,8 +359,10 @@ public final class Synth: @unchecked Sendable {
 
     public func trigger(_ cue: SoundCue, after delay: Float = 0, at place: SoundPlace = .middle) {
         let made = notes(of: cue, after: delay, at: place)
+        let calling = Synth.callLevel(of: cue)
         let blown = Synth.call(of: cue).map {
-            Blown(frequency: $0.frequency, wait: delay + $0.at, hold: $0.hold, strength: $0.strength, left: place.left, right: place.right)
+            Blown(frequency: $0.frequency, wait: delay + $0.at, hold: $0.hold, strength: $0.strength,
+                  left: place.left * calling, right: place.right * calling)
         }
         let loud = Synth.strikeLevel(of: cue)
         let strikes = Synth.strikes(of: cue).map {
@@ -388,19 +392,66 @@ public final class Synth: @unchecked Sendable {
         case .deny:
             let slit = Recordings.slitDrumNotes
             return [(slit[0], 0, 1, 1), (slit[1], 0.11, 0.85, 0.84)]
+        case .lore:
+            // Three glass bells, each a fifth or so above the last.
+            return [bell(659.3, 0, 0.9), bell(987.8, 0.13, 0.9), bell(1318.5, 0.26, 1)]
+        case .herald:
+            // The great drum three times, then a bell over the realm.
+            let drums = Recordings.drumNotes
+            return [(drums[1], 0, 0.8, 1), (drums[1], 0.14, 0.8, 1.03), (drums[0], 0.28, 1, 1), bell(784, 0.46, 1)]
+        case .complete:
+            // Two knocks of the mallet, then a major chord on the harp.
+            let slit = Recordings.slitDrumNotes
+            return [(slit[0], 0, 0.9, 1.12), (slit[1], 0.15, 0.9, 1.12)] + [392, 493.9, 587.3, 784].map { pluck($0, 0.32, 0.8) }
+        case .rise:
+            // A chord rising on the harp: G, its fifth, its octave.
+            return [pluck(392, 0, 0.9), pluck(587.3, 0.04, 0.85), pluck(784, 0.08, 0.8)]
+        case .accord:
+            // A gentle sixth on the harp.
+            return [pluck(523.3, 0, 0.85), pluck(880, 0.2, 0.75)]
         default: return []
         }
+    }
+
+    /// A string of the recorded harp, or a bar of the recorded
+    /// glockenspiel, read to sound a frequency: the note recorded nearest
+    /// it, when it is struck, how hard, and how much faster it is read.
+    private static func pluck(_ frequency: Float, _ at: Float, _ strength: Float) -> (note: Recording, at: Float, strength: Float, ratio: Double) {
+        let nearest = Recordings.nearest(Recordings.harpNotes, to: frequency)
+        return (Recordings.harpNotes[nearest.index], at, strength, nearest.ratio)
+    }
+
+    private static func bell(_ frequency: Float, _ at: Float, _ strength: Float) -> (note: Recording, at: Float, strength: Float, ratio: Double) {
+        let nearest = Recordings.nearest(Recordings.glockenspielNotes, to: frequency)
+        return (Recordings.glockenspielNotes[nearest.index], at, strength, nearest.ratio)
     }
 
     /// The call a cue blows on the recorded horn, if it is a horn's: each
     /// note's frequency, when it is blown, how long it is held and how hard.
     /// The war horn (a rally called, setting out, a commander's skill) on A
-    /// and then the D a fourth above; the muster's call up a fifth, G to D.
+    /// and then the D a fourth above; the muster's call up a fifth, G to D;
+    /// an envoy at the gate, a fifth across the water, soft; a hold taken,
+    /// a triad rising to its octave, D major; a deed honoured, a quick
+    /// fanfare up C major to the octave.
     static func call(of cue: SoundCue) -> [(frequency: Float, at: Float, hold: Float, strength: Float)] {
         switch cue {
         case .horn: return [(110, 0, 0.45, 0.9), (146.8, 0.42, 0.75, 1)]
         case .muster: return [(196, 0, 0.3, 1), (293.7, 0.32, 0.9, 1)]
+        case .envoy: return [(110, 0, 0.5, 0.75), (164.8, 0.55, 0.6, 0.8)]
+        case .triumph: return [(146.8, 0, 0.25, 0.9), (185, 0.14, 0.25, 0.9), (220, 0.28, 0.25, 0.95), (293.7, 0.42, 0.9, 1)]
+        case .honour: return [(130.8, 0, 0.12, 0.9), (164.8, 0.09, 0.12, 0.9), (196, 0.18, 0.12, 0.95), (261.6, 0.27, 0.8, 1)]
         default: return []
+        }
+    }
+
+    /// How loud a cue's call is beside the war horn's: each as loud as the
+    /// partials it took over from.
+    static func callLevel(of cue: SoundCue) -> Float {
+        switch cue {
+        case .envoy: return 1.6
+        case .triumph: return 1.25
+        case .honour: return 1.05
+        default: return 1
         }
     }
 
@@ -410,6 +461,11 @@ public final class Synth: @unchecked Sendable {
         switch cue {
         case .anvil: return 4
         case .stand: return 1.8
+        case .lore: return 2.1
+        case .herald: return 3.1
+        case .complete: return 1.3
+        case .rise: return 2.45
+        case .accord: return 2.2
         default: return 1.6
         }
     }
@@ -432,8 +488,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: f * 5.40, amplitude: 0.04, decay: 1.4),
                 Partial(frequency: f * 8.93, amplitude: 0.0175, decay: 2.2),
             ], noise: 0, noiseDecay: 1)
-        case .rise:
-            note = Note(partials: [Partial(frequency: 392, amplitude: 0.09, decay: 2.2), Partial(frequency: 587.3, amplitude: 0.066, decay: 2.6), Partial(frequency: 784, amplitude: 0.036, decay: 3)], noise: 0, noiseDecay: 1)
         case .dread:
             // Low, and with overtones a laptop's small speakers can give, so
             // it is heard there too, its depth implied.
@@ -445,26 +499,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 277.2, amplitude: 0.032, decay: 1.4),
                 Partial(frequency: 370, amplitude: 0.014, decay: 1.8),
             ], noise: 0.026, noiseDecay: 3)
-        case .envoy:
-            // A fifth, the lower note first: a horn across the water.
-            note = Note(partials: [
-                Partial(frequency: 220, amplitude: 0.07, decay: 1.6),
-                Partial(frequency: 440, amplitude: 0.02, decay: 2.4),
-                Partial(frequency: 329.6, amplitude: 0.06, decay: 1.2, delay: 0.55),
-            ], noise: 0, noiseDecay: 1)
-        case .triumph:
-            note = Note(partials: [
-                Partial(frequency: 293.7, amplitude: 0.07, decay: 1.4),
-                Partial(frequency: 370, amplitude: 0.06, decay: 1.6, delay: 0.14),
-                Partial(frequency: 440, amplitude: 0.06, decay: 1.8, delay: 0.28),
-                Partial(frequency: 587.3, amplitude: 0.03, decay: 2.2, delay: 0.42),
-            ], noise: 0, noiseDecay: 1)
-        case .accord:
-            note = Note(partials: [
-                Partial(frequency: 523.3, amplitude: 0.06, decay: 1.5),
-                Partial(frequency: 880, amplitude: 0.04, decay: 1.8, delay: 0.2),
-                Partial(frequency: 1046.5, amplitude: 0.012, decay: 2.5),
-            ], noise: 0, noiseDecay: 1)
         case .toll:
             // An inharmonic bell, very low and very long.
             let f: Float = 55
@@ -533,26 +567,14 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 392, amplitude: 0.065, decay: 1.8, delay: 0.3),
                 Partial(frequency: 1176, amplitude: 0.02, decay: 2.6, delay: 0.3),
             ], noise: 0.008, noiseDecay: 9)
-        case .complete:
-            // Two knocks of the mallet, then a major chord rung bright.
-            func knock(_ delay: Float) -> Note {
-                Note(partials: [
-                    Partial(frequency: 180, amplitude: 0.07, decay: 30),
-                    Partial(frequency: 720, amplitude: 0.03, decay: 38),
-                ], noise: 0.05, noiseDecay: 60, delay: delay)
-            }
-            note = knock(0)
-            more = [knock(0.15), Note(partials: [
-                Partial(frequency: 392, amplitude: 0.05, decay: 1.6),
-                Partial(frequency: 493.9, amplitude: 0.04, decay: 1.8),
-                Partial(frequency: 587.3, amplitude: 0.04, decay: 2),
-                Partial(frequency: 784, amplitude: 0.015, decay: 2.6),
-            ], noise: 0, noiseDecay: 1, delay: 0.32)]
         case .muster, .horn:
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
-        case .anvil, .stand, .deny:
+        case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord:
             // Struck on recorded instruments (`strikes(of:)`).
+            return []
+        case .envoy, .triumph, .honour:
+            // Blown on the recorded horn (`call(of:)`).
             return []
         case .leaf:
             // A page turned: paper's brush, and the faintest high note.
@@ -577,14 +599,6 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 1_130, amplitude: 0.025, decay: 34),
             ], noise: 0.09, noiseDecay: 22)
             more = [Note(partials: [], noise: 0.025, noiseDecay: 4, delay: 0.06)]
-        case .lore:
-            // Three glass bells, each a fifth or so above the last, ringing on.
-            func bell(_ f: Float, _ delay: Float) -> [Partial] {
-                [Partial(frequency: f, amplitude: 0.05, decay: 1.4, delay: delay),
-                 Partial(frequency: f * 2.76, amplitude: 0.02, decay: 2.4, delay: delay),
-                 Partial(frequency: f * 5.4, amplitude: 0.008, decay: 3.4, delay: delay)]
-            }
-            note = Note(partials: bell(659.3, 0) + bell(987.8, 0.13) + bell(1318.5, 0.26), noise: 0, noiseDecay: 1)
         case .banner:
             // Two chords, the second the first's fourth: a banner raised.
             func chord(_ root: Float, _ delay: Float) -> [Partial] {
@@ -593,17 +607,6 @@ public final class Synth: @unchecked Sendable {
                  Partial(frequency: root * 1.5, amplitude: 0.04, decay: 1.9, delay: delay)]
             }
             note = Note(partials: chord(293.7, 0) + chord(392, 0.36), noise: 0, noiseDecay: 1)
-        case .herald:
-            // Three drum strokes, then a bell over the realm.
-            func drum(_ delay: Float) -> Note {
-                Note(partials: [Partial(frequency: 98, amplitude: 0.09, decay: 12), Partial(frequency: 156, amplitude: 0.04, decay: 15)],
-                     noise: 0.05, noiseDecay: 40, delay: delay)
-            }
-            note = drum(0)
-            more = [drum(0.14), drum(0.28), Note(partials: [
-                Partial(frequency: 784, amplitude: 0.05, decay: 1.2),
-                Partial(frequency: 784 * 2.76, amplitude: 0.018, decay: 2),
-            ], noise: 0, noiseDecay: 1, delay: 0.46)]
         case .tend:
             // A warm hum a fifth deep, and over it a small bell struck
             // twice, the second softer: the healers at their work.
@@ -632,15 +635,6 @@ public final class Synth: @unchecked Sendable {
                         Partial(frequency: 1_568 * 2.76, amplitude: 0.016, decay: 2.6),
                         Partial(frequency: 2_093, amplitude: 0.02, decay: 2, delay: 0.08),
                     ], noise: 0, noiseDecay: 1, delay: 0.36)]
-        case .honour:
-            // A quick fanfare up a major arpeggio to the octave.
-            note = Note(partials: [
-                Partial(frequency: 523.3, amplitude: 0.055, decay: 2.2),
-                Partial(frequency: 659.3, amplitude: 0.05, decay: 2.2, delay: 0.09),
-                Partial(frequency: 784, amplitude: 0.05, decay: 2.2, delay: 0.18),
-                Partial(frequency: 1046.5, amplitude: 0.045, decay: 1.8, delay: 0.27),
-                Partial(frequency: 2093, amplitude: 0.01, decay: 2.6, delay: 0.27),
-            ], noise: 0, noiseDecay: 1)
         }
         note.delay += delay
         note.end = note.delay + note.length
@@ -951,15 +945,14 @@ public final class Synth: @unchecked Sendable {
         case .dig: return ((1_400, 0.7), nil)
         case .coin: return ((6_800, 1.2), nil)
         case .parley: return ((1_100, 0.6), nil)
-        case .complete: return ((1_100, 0.9), nil)
         // The timber's crack, then the dust settling.
         case .batter: return ((650, 0.8), (300, 0.6))
-        case .herald: return ((450, 0.8), nil)
         case .tend: return ((1_000, 0.6), nil)
         case .sift: return ((6_400, 1.3), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
-        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny:
+        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
+             .complete, .herald:
             return (nil, nil)
         }
     }

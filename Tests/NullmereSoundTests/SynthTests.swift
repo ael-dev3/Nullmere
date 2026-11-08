@@ -159,10 +159,10 @@ final class SynthTests: XCTestCase {
         XCTAssertNotNil(Synth.bands(of: .loose).rest, "The arrow's hiss its own")
     }
 
-    /// The war horn's and the muster's cues are blown on the recorded horn,
-    /// two notes each, as loud over a second and a half as the horns of
-    /// overtones they took over from (-36.2 and -38.4 dB, measured on those
-    /// before), and from where they happen; no other cue is.
+    /// The war horn's, the muster's, the envoy's, a hold taken's and a deed
+    /// honoured's cues are blown on the recorded horn, each as loud over a
+    /// second and a half as the partials it took over from (measured on
+    /// those before), and from where they happen; no other cue is.
     func testTheHornCuesAreBlownOnTheRecordedHorn() {
         func blown(_ cue: SoundCue, at place: SoundPlace = .middle) -> (synth: Synth, left: [Float], right: [Float]) {
             let synth = settled()
@@ -172,9 +172,11 @@ final class SynthTests: XCTestCase {
             let heard = rendered(synth, seconds: 1.5)
             return (synth, heard.left, heard.right)
         }
-        for (cue, before) in [(SoundCue.horn, Float(-36.2)), (.muster, -38.4)] {
+        let calls: [(SoundCue, Int, Float)] = [(.horn, 2, -36.2), (.muster, 2, -38.4), (.envoy, 2, -35.5), (.triumph, 4, -34.4),
+                                               (.honour, 4, -36.8)]
+        for (cue, notes, before) in calls {
             let heard = blown(cue)
-            XCTAssertEqual(heard.synth.cueHornsBlown, 2, "\(cue): two notes on the horn")
+            XCTAssertEqual(heard.synth.cueHornsBlown, notes, "\(cue): \(notes) notes on the horn")
             print("SOUND \(cue) on the recorded horn \(decibels(rms(heard.left[...]))) dB, its horn of overtones \(before) dB")
             XCTAssertEqual(decibels(rms(heard.left[...])), before, accuracy: 2, "\(cue) as loud as it was")
         }
@@ -186,19 +188,23 @@ final class SynthTests: XCTestCase {
     }
 
     /// The forge's, a halt's and a refusal's cues are struck on recorded
-    /// instruments: the anvil's three blows, the field drum's two strokes,
-    /// the slit drum's two knocks, each as loud over its first moments as
-    /// the struck partials it took over from (-40.1, -36.4 and -42.5 dB
-    /// over its first 0.4 s, measured on those before); no other cue is.
+    /// instruments (the anvil's three blows, the field drum's two strokes,
+    /// the slit drum's two knocks), and so are a study finished's glass
+    /// bells on the glockenspiel, the herald's great drum and bell, a work
+    /// completed's knocks and harp chord, a rise's and an accord's harp:
+    /// each as loud over its first 0.4 s as the partials it took over from
+    /// (measured on those before); no other cue is.
     func testTheStruckCuesAreStruckOnRecordedInstruments() {
         func struck(_ cue: SoundCue) -> (synth: Synth, left: [Float]) {
             let synth = settled()
             synth.setVolumes(effects: 1, ambience: 0, music: 0)
             _ = rendered(synth, seconds: 0.2)
             synth.trigger(cue)
-            return (synth, rendered(synth, seconds: 1.5).left)
+            return (synth, rendered(synth, seconds: 6).left)
         }
-        for (cue, blows, before) in [(SoundCue.anvil, 3, Float(-40.1)), (.stand, 2, -36.4), (.deny, 2, -42.5)] {
+        let strikes: [(SoundCue, Int, Float)] = [(.anvil, 3, -40.1), (.stand, 2, -36.4), (.deny, 2, -42.5), (.lore, 3, -32.7),
+                                                 (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7)]
+        for (cue, blows, before) in strikes {
             let heard = struck(cue)
             XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")
             let first = rms(heard.left[0..<Int(0.4 * SynthTests.rate)])

@@ -1685,9 +1685,10 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are the horns' calls,
-the forge's anvil and a few knocks and strokes; every other sound is made
-as it plays.
+The score is played on recorded instruments, and so are thirteen of the
+thirty-one cues: the horns' calls and fanfares, the bells, the harp's
+chords, the drums, the forge's anvil and the knocks of wood. Every other
+sound is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and a low
   bell as each watch turns.
@@ -1739,7 +1740,13 @@ as it plays.
   blows on a recorded anvil, the last the hardest; a company standing down
   sounds two strokes of the recorded field drum, the second softer; and an
   order the rules refuse, two knocks on a recorded slit drum of wood, the
-  second a third lower. Each cue's noise is coloured by what makes it: a page turned rustles
+  second a third lower. An envoy at the gate is a soft horn call across the
+  water, a fifth; a hold taken, a horn triad rising to its octave; a deed
+  honoured, a quick fanfare up to the octave. A study finished rings three
+  glass bells on the recorded glockenspiel; the realm's crier strikes the
+  great drum three times, then a bell; a work finished is two knocks and a
+  chord on the recorded harp, a rise a chord rising on it and an accord a
+  gentle sixth. Each cue's noise is coloured by what makes it: a page turned rustles
   high and soft, hooves and skins thud low, grit and dust sit about the
   middle, steel rings bright and salt hisses brighter. What a watch brings
   sounds one after another after its bell, never all at once, and the low

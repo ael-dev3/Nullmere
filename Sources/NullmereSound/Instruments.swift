@@ -327,9 +327,10 @@ final class Horns {
     /// How many notes have been blown, for tests.
     private(set) var blown = 0
 
-    init(sampleRate: Float) {
+    /// The horns at a rate, with as many voices as may sound at once.
+    init(sampleRate: Float, voices count: Int = Horns.voices) {
         self.sampleRate = sampleRate
-        voices = Array(repeating: Voice(reading: Reading(note: Recordings.hornNotes[0]), held: 0), count: Horns.voices)
+        voices = Array(repeating: Voice(reading: Reading(note: Recordings.hornNotes[0]), held: 0), count: max(count, 1))
     }
 
     /// How many sound now.
