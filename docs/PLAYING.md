@@ -96,7 +96,7 @@ follow them:
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels, and the map at most at that |
 | Detail | Auto, High, Medium, Low | How much of the land's growth (heather, ferns, pebbles, birches) the map draws: all of it, half, or none. Auto reads the memory this Mac's graphics may work in. Should the graphics falter (three frames the GPU couldn't finish), the map steps down a detail, and says so, before it gives way to its painting |
 | Frame rate | 30, 60, 120 | Upper bound for the lake's and the map's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
-| Text | Standard, Larger | Larger sets all the type a fifth larger, the launcher's and the game's, none of it under eleven points. ⇧⌘+ in the Watch menu sets it too |
+| Text | Standard, Larger | Larger sets all the type a fifth larger, the launcher's and the game's, none of it under twelve and a half points. ⇧⌘+ in the Watch menu sets it too |
 | Music | Off, On | The score: over the launcher, the title theme of the lake the keeper's realm last lay on; within the realm, its own. One choice with the realm's Music |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
@@ -110,10 +110,11 @@ full screen at launch as chosen.
   It names you and the House you'll hold, and nothing else is asked. The
   realm knows you by an identity your Mac keeps in its keychain, and by
   your name. Before you first enter, the door lays the realm's compact
-  on the water: what you agree to and what the realm keeps of you, in six
-  plain parts (who you are here, what the realm keeps, what stays on your
-  Mac, keeping the realm's peace, how it may change, and leaving, with
-  the steward's promise to forget whoever asks). Accept and enter, or go
+  on the water: what you agree to and what the realm keeps of you, in eight
+  plain parts (who you are here, what the realm keeps, what it keeps for
+  you, what stays on your Mac, your phone, keeping the realm's peace, how
+  it may change, and leaving, with the steward's promise to forget
+  whoever asks). Accept and enter, or go
   back; it is asked again only when its words change. A realm tells the
   tongue it speaks and the oldest it still hears; a Mac too old for it
   is told so at the door, which won't open, and Get the new build opens
@@ -901,13 +902,18 @@ a vote on the realm's law to cast.
   everything else plays as ever.
 - **Talents.** A commander gains a talent point at each level past the
   first, twenty-nine at the thirtieth, to spend a rank at a time in three
-  trees of five talents: Steel (Keen Edge, Hunter's Mark, Ramming Drill,
-  Blooded Steel, Battle Rage), Ward (Thick Hide, Field Surgeon, Gatewarden,
-  Iron Ranks, Unbroken) and Road (Keen Eyes, Gleaner's Hand, Deep
-  Saddlebags, Long Stride, Pathfinder). Each talent is opened by the one
-  before it in its tree and has one to three ranks, each giving its edge
-  again to the company the commander leads; Battle Rage fires its skill a
-  battle sooner. There are more ranks than points, so every commander is
+  trees of eight talents: Steel (Keen Edge, Hunter's Mark, Quarry Call,
+  Ramming Drill, Sapper Craft, Blooded Steel, Battle Rage, Moonsteel),
+  Ward (Thick Hide, Field Surgeon, Poultice, Gatewarden, Bastion, Iron
+  Ranks, Unbroken, Still Water) and Road (Keen Eyes, Gleaner's Hand,
+  Furrow Sense, Deep Saddlebags, Pack Train, Long Stride, Pathfinder, Lake
+  Walker). Each tree grows from its root into two branches; the deep
+  talent past them opens from either branch once 6 points are spent in
+  the tree, the next at 10, and its crown at 16. Each talent has one to
+  three ranks, each giving its edge again to the company the commander
+  leads; Battle Rage fires its skill a battle sooner, though never sooner
+  than every second battle, so for an Outrider or a Gleaner it only opens
+  Moonsteel. There are more ranks than points, so every commander is
   grown one way. A commander's talents are forgotten all at once for 20
   moonsalt, every point given back. Stewards spend their commanders'
   points as they come, along the trees their archetype grows first.
@@ -1219,7 +1225,7 @@ a vote on the realm's law to cast.
   tearing it down carries off what was laid up in it, as much as it can
   keep. Its leader also raises yards on its land, one of each store, for
   80 grain, 150 timber and 150 stone: a Tilled Acre, a Timber Yard, a
-  Quarry and Salt Works, richer than the land's own sites (1500 of a
+  Quarry and Salt Works, as rich as the land's richest sites (1500 of a
   common store, 300 moonsalt), that the alliance's companies alone work, a
   quarter faster than anywhere, the coffers taking a tenth more besides;
   an alliance gone, its yards go with it. Stewards raise yards from the
@@ -1374,7 +1380,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   House's shore holds, for 25 timber, in one watch instead of the long march
   about the shore. The barge is out on the water through the watch, seen by
   any House that sees either shore, and lands at the watch's turn; if the
-  landing hold has fallen or is struck meanwhile, the barge turns back.
+  landing hold has fallen meanwhile, or a company stands on it, the barge
+  turns back.
 
 - **Dreams of the Still.** At the dark of each moon, the fifteenth watch
   of every thirty, the lake shows each keeper's House one true thing it
