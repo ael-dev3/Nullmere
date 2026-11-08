@@ -687,8 +687,11 @@ final class MapAccessibilityTests: XCTestCase {
     func testVoiceOverReadsTheMapAsItsHoldsAndCompanies() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "voiceover", houseCount: 3, radius: 16, keepers: 1)),
-                                  store: LocalStore(directory: dir))
+        var state = GameState(settings: GameSettings(seedText: "voiceover", houseCount: 3, radius: 16, keepers: 1))
+        // One company with a single move left, said in the singular.
+        let single = try XCTUnwrap(state.units(of: state.player).first)
+        state.units[state.unitIndex(single.id)!].movesLeft = 1
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
         let items = MapAccessibility.items(for: session)
         let seat = try XCTUnwrap(session.state.seat(of: session.player))
         XCTAssertEqual(items.first?.selection, .hold(seat.id), "The player's seat comes first")
@@ -698,7 +701,9 @@ final class MapAccessibilityTests: XCTestCase {
             let item = try XCTUnwrap(items.first { $0.selection == .unit(unit.id) }, "Every company of the player's is there")
             XCTAssertTrue(item.label.contains("health \(unit.health)"))
             XCTAssertTrue(item.label.contains("awaiting orders"))
+            XCTAssertTrue(item.label.contains(unit.movesLeft == 1 ? ", 1 move left," : ", \(unit.movesLeft) moves left,"), item.label)
         }
+        XCTAssertTrue(items.contains { $0.selection == .unit(single.id) && $0.label.contains(", 1 move left, awaiting orders") })
         // Nothing the player can't see is read out.
         for unit in session.state.units where unit.owner != session.player && !session.isVisible(unit.position) {
             XCTAssertNil(items.first { $0.selection == .unit(unit.id) })
