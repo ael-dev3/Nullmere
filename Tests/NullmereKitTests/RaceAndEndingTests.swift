@@ -75,18 +75,9 @@ final class RaceTests: XCTestCase {
 
 @MainActor
 final class EndingTests: XCTestCase {
-    /// Writes a rendered view where CI prints its screenshots.
+    /// Writes the view where CI prints its screenshots, as a window draws it.
     private func keep(_ view: some View, as name: String, size: CGSize) throws {
-        let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height).background(Color.black))
-        renderer.scale = 2
-        let image = try XCTUnwrap(renderer.cgImage)
-        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
-        // CI asks for the renders, to print them with its screenshots.
-        guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
-        let build = URL(fileURLWithPath: path)
-        try FileManager.default.createDirectory(at: build, withIntermediateDirectories: true)
-        let png = try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
-        try png.write(to: build.appendingPathComponent(name))
+        try CardShot.keep(view.frame(width: size.width, height: size.height), as: name, size: size)
     }
 
     func testAFinishedGameTellsItsStory() throws {

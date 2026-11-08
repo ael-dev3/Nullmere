@@ -175,16 +175,8 @@ final class AwayReportTests: XCTestCase {
         XCTAssertEqual(AwayReport(since: fewer, now: state, player: state.player)?.holdsLine, "You lost a hold.")
     }
 
-    /// Writes the card where CI prints its screenshots.
+    /// Writes the card where CI prints its screenshots, as a window draws it.
     private func keep(_ view: some View, as name: String) throws {
-        let renderer = ImageRenderer(content: view.padding(30).background(Color.black))
-        renderer.scale = 2
-        let image = try XCTUnwrap(renderer.cgImage)
-        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
-        guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
-        let build = URL(fileURLWithPath: path)
-        try FileManager.default.createDirectory(at: build, withIntermediateDirectories: true)
-        let png = try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
-        try png.write(to: build.appendingPathComponent(name))
+        try CardShot.keep(view.padding(30), as: name)
     }
 }
