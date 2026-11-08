@@ -296,7 +296,10 @@ extension GameState {
                 let way = path(for: unit, to: destination)
                     ?? (isExplored(destination, by: unit.owner) ? nil : approach(for: unit, toward: destination))
                 guard let planned = way, !planned.isEmpty else {
-                    if reserve == nil { units[index].destination = nil }
+                    if reserve == nil {
+                        units[index].destination = nil
+                        events.append(.marchHalted(unit: unitID, owner: unit.owner, kind: unit.kind, at: units[index].position, toward: destination))
+                    }
                     break
                 }
                 route = planned
@@ -307,6 +310,7 @@ extension GameState {
             guard map[next]?.terrain.isPassable == true else {
                 units[index].destination = nil
                 route = []
+                events.append(.marchHalted(unit: unitID, owner: unit.owner, kind: unit.kind, at: units[index].position, toward: destination))
                 break
             }
             // Another company holds the destination, or the wilds or their lair: wait beside it.

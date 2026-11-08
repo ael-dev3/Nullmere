@@ -983,6 +983,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case fordOpened(closes: Int)
     /// A company is called home from the land's work.
     case recalled(unit: Int, owner: Int)
+    /// A march ends short of where it was bound, its way shut: where the
+    /// company halted, and where it was going.
+    case marchHalted(unit: Int, owner: Int, kind: UnitKind, at: Hex, toward: Hex)
     /// The moon wanes and the water comes back over the Moonford, carrying
     /// so many companies ashore.
     case fordClosed(carried: Int)

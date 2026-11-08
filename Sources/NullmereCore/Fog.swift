@@ -432,7 +432,7 @@ extension GameState {
                 return dream.house == house
             case .carriedAshore(_, let owner, _, let to):
                 return owner == house || visible(to)
-            case .recalled(_, let owner):
+            case .recalled(_, let owner), .marchHalted(_, let owner, _, _, _):
                 return owner == house
             case .fieldJoined(_, let at, let first, let second):
                 return first == house || second == house || visible(at)

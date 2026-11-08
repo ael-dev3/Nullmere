@@ -19,6 +19,48 @@ final class MarchTests: XCTestCase {
         _ = state.advanceRallies()
     }
 
+    /// A march on known ground whose way is shut as the watch turns halts
+    /// short of where it was bound (into ground still unknown it goes as
+    /// near as it can), and its House alone is told where it halted and
+    /// where it was going: no company stops in silence.
+    func testAMarchWhoseWayIsShutHaltsAndItsHouseIsTold() throws {
+        var state = Scene.world("way shut", houses: 3, radius: 16)
+        let me = state.player
+        let other = (me + 1) % state.houses.count
+        let unit = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let target = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false
+                && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+                && (6...9).contains(hex.distance(to: unit.position)) && state.path(for: unit, to: hex) != nil
+                && state.isExplored(hex, by: me)
+        })
+        _ = try state.perform(.move(unit: unit.id, to: target), as: me)
+        let partway = try XCTUnwrap(state.unit(unit.id))
+        XCTAssertEqual(partway.destination, target, "Still bound for it")
+        // The ground about where it is bound heaves up into the Spine, and
+        // the next step of its way with it.
+        for hex in target.neighbors where state.map[hex] != nil && hex != partway.position {
+            state.map.set(hex, Tile(terrain: .spine))
+        }
+        if let next = partway.way?.first, next != target { state.map.set(next, Tile(terrain: .spine)) }
+        for index in state.units.indices { state.units[index].movesLeft = state.movement(of: state.units[index]) }
+        state.watch += 1
+        let events = state.march(unit.id)
+        let halted = try XCTUnwrap(state.unit(unit.id))
+        XCTAssertNil(halted.destination, "The march is over")
+        XCTAssertTrue(events.contains(.marchHalted(unit: unit.id, owner: me, kind: unit.kind, at: halted.position, toward: target)), "\(events)")
+        let told = try XCTUnwrap(state.tidings(of: .marchHalted(unit: unit.id, owner: me, kind: unit.kind, at: halted.position, toward: target), for: me))
+        XCTAssertEqual(told.text, "Your \(unit.kind.title) halt \(state.placeName(of: halted.position)): the way on, \(GameState.waySaid(to: target, from: halted.position)), is shut.")
+        XCTAssertEqual(told.tone, .bad)
+        // Its own House alone hears of it.
+        XCTAssertNil(state.tidings(of: events.first { if case .marchHalted = $0 { return true } else { return false } }!, for: other))
+        XCTAssertFalse(state.events(events, heardBy: other).contains { if case .marchHalted = $0 { return true } else { return false } })
+        // Bound for a hold, the hold is named.
+        let seat = try XCTUnwrap(state.seat(of: other))
+        XCTAssertEqual(state.tidings(of: .marchHalted(unit: unit.id, owner: me, kind: .spear, at: halted.position, toward: seat.position), for: me)?.text,
+                       "Your Spears halt \(state.placeName(of: halted.position)): the way on to \(seat.name) is shut.")
+    }
+
     func testAMarchTakesTheWatchesItsGroundAsks() {
         var state = Scene.world("walking")
         let hexes = Array(state.map.hexes.prefix(6))

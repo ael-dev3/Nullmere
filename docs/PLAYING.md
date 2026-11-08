@@ -532,7 +532,10 @@ a vote on the realm's law to cast.
   no way to it, as for any march. As the watch turns,
   whatever the paces left (the watch turning early, a way shut for a
   while) is walked first, so a march goes as far in a watch as ever; the
-  last pace is the turn's own.
+  last pace is the turn's own. A march on known ground whose way is still
+  shut as the watch turns ends where it stands, and its keeper is told
+  where it halted and where it was bound ("Your Spears halt by Wenholme:
+  the way on to Galstead is shut").
   A battle goes on through the watch, as a field of battle (below).
 - **Elsewhere.** While you are in another app, the Dock counts the
   watches that turned, and bounces once when something needs you.

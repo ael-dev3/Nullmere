@@ -596,6 +596,10 @@ extension GameState {
         case .recalled(let id, let owner):
             guard owner == viewer, let unit = unit(id) else { return nil }
             return Tidings(unit.errand == .homeward ? "Your \(unit.kind.title) turn for home with what they carry." : "Your \(unit.kind.title) leave the land's work.", .neutral)
+        case .marchHalted(_, let owner, let kind, let at, let toward):
+            guard owner == viewer else { return nil }
+            let on = hold(at: toward).map { "the way on to \($0.name)" } ?? "the way on, \(GameState.waySaid(to: toward, from: at)),"
+            return Tidings("Your \(kind.title) halt \(placeName(of: at)): \(on) is shut.", .bad)
         case .fordClosed(let carried):
             return Tidings("The moon wanes and the water comes back over the ford"
                            + (carried == 0 ? "." : "; the lake carries \(carried) compan\(carried == 1 ? "y" : "ies") ashore."), .neutral)

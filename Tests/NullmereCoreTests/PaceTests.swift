@@ -107,7 +107,9 @@ final class PaceTests: XCTestCase {
         state.units[index].destination = water
         XCTAssertEqual(state.march(spear, keeping: 0), [])
         XCTAssertEqual(state.unit(spear)?.destination, water, "A pace waits")
-        XCTAssertEqual(state.march(spear), [])
+        let halted = try XCTUnwrap(state.unit(spear))
+        XCTAssertEqual(state.march(spear), [.marchHalted(unit: spear, owner: me, kind: halted.kind, at: halted.position, toward: water)],
+                       "The turn gives it up, and tells its House so")
         XCTAssertNil(state.unit(spear)?.destination, "The turn gives it up")
     }
 
