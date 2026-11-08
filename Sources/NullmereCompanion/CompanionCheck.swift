@@ -465,7 +465,16 @@ enum CompanionCheck {
            }) {
             let trading = CompanionLedger.trading(Trade.opening(from: world.houses[house].stock), with: dealing.id, in: world, player: house)
             if let offer = trading.offer {
-                await give(offer.command, told: offer.title, as: "Traded")
+                // The realm's word written either way: the House's stores as
+                // the phone last heard them may be a gift behind, and a trade
+                // the realm refuses for it is no fault of the phone's.
+                let asked = Date()
+                session.give(offer.command, told: offer.title)
+                if await until(30, { session.word?.awaited == false }), let word = session.word {
+                    lines.append(String(format: "Traded: %@ (%.2f s)", word.text, Date().timeIntervalSince(asked)))
+                } else {
+                    broken.append("no word from the realm on \(offer.title.lowercased())")
+                }
             } else {
                 lines.append("No trade offered \(dealing.name): \(trading.said)")
             }
