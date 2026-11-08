@@ -31,13 +31,15 @@ speak through Apple's on-device model, on each keeper's own Mac. Nullmere
 Companion, its iPhone app, keeps the keeper's House from their phone beside
 their Mac, linked by a code the Mac shows: a chart of its land and its
 borders, its works, musters and companies sent from the chart, its
-commanders and the Spine, the caretaker's standing orders for while the
-keeper is away, the Lantern Inn and the pedlar, letters to other keepers,
-the watch's labours and the realm's happenings, its alliance's studies,
-help and rallies, its dealings with the Houses nearest, and counsel with
-its commanders and orders in the keeper's own words, read by the phone's
-own on-device model. Out of reach, it says so
-and keeps the House; back, it takes up where it was.
+commanders with their gear and stars, the Ring, the Spine and the Forge,
+the caretaker's standing orders for while the keeper is away, the Lantern
+Inn and the pedlar, letters to other keepers and to the age to come, the
+watch's labours and the realm's happenings, its alliance's studies, help,
+rallies and stores, its dealings with the Houses nearest (envoys, gifts,
+trades and war), the realm's law, oaths, auguries, whispers and titles,
+the Sundering and the Frontier, and counsel with its commanders and orders
+in the keeper's own words, read by the phone's own on-device model. Out of
+reach, it says so and keeps the House; back, it takes up where it was.
 Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer
@@ -77,8 +79,10 @@ open "build/Nullmere Online.app"
 
 The public realm on SpacetimeDB's maincloud is not raised yet, so for now a
 realm of your own is the way in. `scripts/build-companion.sh` builds Nullmere
-Companion for the iOS Simulator; signed by a developer team in Xcode, it
-runs on an iPhone with iOS 26. [DEVELOPING.md](docs/DEVELOPING.md) covers
+Companion for the iOS Simulator, and with `--device` for an iPhone itself,
+unsigned; signed by a developer team in Xcode it is meant to run on an
+iPhone with iOS 26, which has not yet been tried on one.
+[DEVELOPING.md](docs/DEVELOPING.md) covers
 Xcode, the tests, releases, the companion and the previews;
 [REALM.md](docs/REALM.md) raising a realm on a SpacetimeDB server.
 
