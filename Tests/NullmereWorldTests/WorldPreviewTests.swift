@@ -74,7 +74,10 @@ final class WorldPreviewTests: XCTestCase {
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: [], birdsOver: Vec3(lake.x, 0, lake.z), hearths: hearths, time: 20, into: &frame)
         frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(state.holds.map(\.position)))
-        frame.batches = holds + townsfolk + companies + flights
+        // The fishers out on the lake, their lanterns on the water, as the
+        // game stages them.
+        let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: 20, into: &frame)
+        frame.batches = holds + townsfolk + companies + flights + fishers.batches
         // A blow landing beside the seat, the seat's hall burning, and
         // fireflies over the reeds near it.
         var happenings = Happenings()
@@ -93,7 +96,7 @@ final class WorldPreviewTests: XCTestCase {
         }
         let (motes, lights) = happenings.effects(at: 20)
         frame.motes += motes
-        frame.lights += lights
+        frame.lights += lights + fishers.lights
         return frame
     }
 
@@ -153,11 +156,14 @@ final class WorldPreviewTests: XCTestCase {
         // And among the seat's townsfolk, going about its works.
         var folkView = Camera(scale: 190, tilt: 0.8, heading: 0.3)
         folkView.focus(on: seat)
+        // And out over the lake's middle, where the fishers row with their lanterns.
+        var fishersView = Camera(scale: 60, tilt: 0.85)
+        fishersView.focus(on: Hex(0, 0))
         let scene = WorldPreviewTests.stage(state)
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
             ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, nil), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
-            ("folk", folkView, whole, scene),
+            ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene),
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
@@ -182,7 +188,7 @@ final class WorldPreviewTests: XCTestCase {
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 8)
+        XCTAssertEqual(frames.count, 9)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

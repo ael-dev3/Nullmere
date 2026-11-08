@@ -438,8 +438,9 @@ jobs:
           # How much the battle and the town move from frame to frame, and
           # the bare land under them: the moving pictures' measure; the
           # mist over the unknown beside the known land, and how it drifts;
-          # and the froth at the strand, and how it washes up and back.
-          grep -hE "RENDER (motion|mist|wash)" build-test.log 2>/dev/null || true
+          # the froth at the strand, and how it washes up and back; and a
+          # lantern's light lying on the water.
+          grep -hE "RENDER (motion|mist|wash|lantern)" build-test.log 2>/dev/null || true
           # The detail each game screenshot drew the land's growth at, and
           # what this runner's Auto comes to.
           cat build/game-detail.log 2>/dev/null || true

@@ -491,6 +491,47 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(Double(moved), 0.3 * Double(paler.count), "the waves wash up and draw back")
     }
 
+    /// A light by the water lies on it as the moon does: a lantern held a
+    /// little above the open water, drawn with it and without it, brightens
+    /// the water by it with its own warm light, from under it toward the
+    /// eye, and darkens nothing.
+    func testALanternLiesOnTheWater() throws {
+        let renderer = try renderer()
+        let world = WorldRenderTests.world
+        let lake = try XCTUnwrap(world.state.moonWater).hex
+        var camera = Camera(scale: 60)
+        camera.focus(on: lake)
+        // As high over the water as a fisher's at a boat's bow, and as bright.
+        let centre = Relief.centre(of: lake)
+        let lantern = PointLight(at: Vec3(centre.x, Relief.waterline + 0.3, centre.z), reach: 1.5, colour: Vec3(1.9, 1.15, 0.45))
+        let lit = try draw(renderer, "lantern", camera: camera, tiles: world.whole, scene: SceneFrame(lights: [lantern]))
+        let unlit = try draw(renderer, "no lantern", camera: camera, tiles: world.whole)
+        try keep([lit], as: "world-lantern")
+        let under = camera.viewPoint(of: lake, height: Double(Relief.waterline), in: WorldRenderTests.size)
+        var brighter: [Double] = [], towardEye = 0, warm = 0, darker = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let gain = lit.luminance(x, y) - unlit.luminance(x, y)
+                if gain < -1 { darker += 1 }
+                guard gain >= 3 else { continue }
+                brighter.append(gain)
+                if Double(y) > under.y { towardEye += 1 }
+                // Its red against its blue, the pixels being BGRA.
+                let i = (y * WorldRenderTests.width + x) * 4
+                let red = Double(lit.pixels[i + 2]) - Double(unlit.pixels[i + 2])
+                let blue = Double(lit.pixels[i]) - Double(unlit.pixels[i])
+                if red > 1.5 * blue { warm += 1 }
+            }
+        }
+        let mean = brighter.isEmpty ? 0 : brighter.reduce(0, +) / Double(brighter.count)
+        print("RENDER lantern: \(brighter.count) points of the water brighter by a mean of \(String(format: "%.1f", mean)) levels, "
+            + "\(warm) of them warm, \(towardEye) toward the eye; \(darker) darker")
+        XCTAssertGreaterThan(brighter.count, 20, "The lantern's light lies on the water")
+        XCTAssertGreaterThan(Double(warm), 0.8 * Double(brighter.count), "in its own warm colour")
+        XCTAssertGreaterThan(Double(towardEye), 0.6 * Double(brighter.count), "from under it toward the eye")
+        XCTAssertEqual(darker, 0, "darkening nothing")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world

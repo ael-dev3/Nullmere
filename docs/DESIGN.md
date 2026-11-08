@@ -56,7 +56,10 @@ the keeper's realm last lay on, made as it plays.
   ridges, the barrows' mounds, the strand and the flats, and the still
   lake laid over it as a mirror of the stars and the moon; at its strand
   small waves wash up pale with the moon and draw back, where the shore is
-  heard, fainter the calmer the Still lies. What the keeper
+  heard, fainter the calmer the Still lies; and the lights by it, a
+  fisher's lantern or a fire on the shore, lie on it as the moon does, each
+  a short trembling streak of its own colour toward the eye, whole as in a
+  mirror at the Still's calm. What the keeper
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
 - **The moon's shadows.** Close in, everything that stands on the land

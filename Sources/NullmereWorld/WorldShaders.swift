@@ -456,6 +456,31 @@ public enum WorldShaders {
         return min(1.0, (line + foam) * (0.2 + 0.8 * grain)) * rise * (1.0 - 0.85 * calm);
     }
 
+    // A light by the water lying on it (`place`, where it is and how far it
+    // reaches; `colour`, its light), seen from the eye at `eye` on the
+    // water at `p`, the look's way over the ground `along`: where the faint
+    // swell turns the light's image to the eye, a short trembling streak of
+    // its own colour from under it toward the eye, narrowing to a mirror's
+    // point as the Still lies calm (`calm`, 0 to 1), fainter the farther
+    // the light is past its reach.
+    float3 nm_lightOnWater(float3 p, float3 eye, float2 along, float4 place, float4 colour, float calm) {
+        if (place.w <= 0.0) {
+            return float3(0.0);
+        }
+        float2 toward = place.xz - p.xz;
+        float far = max(length(toward), 0.0001);
+        // Nothing to be seen of it far past its reach, or well off its line
+        // from the eye: most of the water, left at once.
+        float aside = (1.0 - max(dot(toward / far, along), 0.0)) / mix(0.012, 0.002, calm);
+        if (far > 6.0 * place.w || aside > 9.0) {
+            return float3(0.0);
+        }
+        float down = NM_ATAN2(eye.y - p.y, max(length(eye.xz - p.xz), 0.0001));
+        float up = NM_ATAN2(place.y - p.y, far);
+        float tilt = (up - down) / mix(0.24, 0.06, calm);
+        return colour.rgb * exp(-aside - tilt * tilt) / (1.0 + far * far / (place.w * place.w));
+    }
+
     // The flicker of a flame.
     float nm_flicker(float t) {
         return 0.55 * sin(nm_spin(t, 7.3)) + 0.3 * sin(nm_spin(t, 13.1) + 1.7) + 0.15 * sin(nm_spin(t, 23.7) + 0.3);
@@ -732,6 +757,13 @@ public enum WorldShaders {
         float swell = nm_fbm(in.world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
         float glint = mix(smoothstep(0.66, 0.86, swell), 0.75, calm);
         moonlit += kMoonColour * road * glint * 0.09 * fresnel;
+        // And the lights by the water lie on it as the moon does: a
+        // fisher's lantern, a fire on the shore, each broken by the same
+        // swell, whole at the calm.
+        for (int i = 0; i < 4; i++) {
+            moonlit += nm_lightOnWater(in.world, frame.eye.xyz, along, frame.lights[i], frame.lights[i + 4], calm)
+                * mix(0.3 + glint, 1.0, calm) * 0.14 * fresnel;
+        }
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);
 

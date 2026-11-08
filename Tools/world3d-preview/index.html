@@ -160,6 +160,13 @@ void main() {
   float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
   vec3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, moon.xyz)) * fresnel;
   vec3 moonlit = nm_moonlight(mirrored, moon.xyz) * fresnel;
+  // The lights by the water on it, as the world's water fragment lays
+  // them, at the swell's middling glint.
+  float calm = clamp(still.x, 0.0, 1.0);
+  for (int i = 0; i < 4; i++) {
+    moonlit += nm_lightOnWater(vWorld, eye.xyz, normalize(look.xz), lights[i], lights[i + 4], calm)
+      * mix(1.05, 1.0, calm) * 0.14 * fresnel;
+  }
   float clear = smoothstep(0.0, 0.14, depth);
   ivec2 h = nm_hexRound(nm_axial(vWorld.xz));
   vec2 knowledge = nm_knowledge(h, world.x);
