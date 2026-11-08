@@ -108,6 +108,23 @@ public enum VoiceCheck {
                 SpokenOrders.briefing(for: state, player: state.player))
     }
 
+    /// How far into a reading the check stops it, and how soon after it
+    /// must be back: a reading stopped runs on no longer than that.
+    static let stopAfter = 0.3
+    static let stopAllowance = 2.0
+
+    /// How long a reading of `asked` takes to come back once stopped
+    /// `after` seconds in, its task cancelled as the orders card's Stop
+    /// cancels it.
+    static func stopped(_ voice: any Voice, _ asked: (words: String, briefing: String), after: Double) async -> Double {
+        let reading = Task { await voice.reading(orders: asked.words, briefing: asked.briefing) }
+        try? await Task.sleep(for: .seconds(after))
+        let stopping = Date()
+        reading.cancel()
+        _ = await reading.value
+        return Date().timeIntervalSince(stopping)
+    }
+
     /// What the clerk's reading broke: nothing, if it read the words into
     /// at least one order of the book's forms.
     static func problems(ofOrders answer: String?, in state: GameState) -> [String] {
@@ -133,10 +150,20 @@ public enum VoiceCheck {
         }
         if let asked = orders(in: state) {
             let started = Date()
-            let answer = await voice.read(orders: asked.words, briefing: asked.briefing)
+            let heard = await voice.reading(orders: asked.words, briefing: asked.briefing)
             let seconds = Date().timeIntervalSince(started)
-            lines.append("orders read (\(String(format: "%.1f", seconds)) s): \(answer?.replacingOccurrences(of: "\n", with: " / ") ?? "(silent)")")
-            failures += problems(ofOrders: answer, in: state).map { "orders read: \($0)" }
+            // Read, on one line; or why not, as the keeper is told it.
+            let said = heard.lines.map { $0.replacingOccurrences(of: "\n", with: " / ") }
+                ?? "(silent" + (heard.trouble.map { ": " + $0.unreadOrders } ?? "") + ")"
+            lines.append("orders read (\(String(format: "%.1f", seconds)) s): \(said)")
+            failures += problems(ofOrders: heard.lines, in: state).map { "orders read: \($0)" }
+            // Stopped a moment in, as the keeper stops it: the model's
+            // asking cancelled, and the reading back at once.
+            let back = await stopped(voice, asked, after: stopAfter)
+            lines.append("orders stopped \(String(format: "%.1f", stopAfter)) s in: back in \(String(format: "%.2f", back)) s")
+            if back > stopAllowance {
+                failures.append("orders stopped: ran on \(String(format: "%.1f", back)) s after it was stopped")
+            }
         }
         lines += ["", failures.isEmpty ? passed : "Out of bounds:"] + failures
         return Report(text: lines.joined(separator: "\n"), failures: failures, moments: moments.count)

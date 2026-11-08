@@ -47,8 +47,10 @@ final class VoiceCheckTests: XCTestCase {
         for proposal in Proposal.allCases {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }
-        // The clerk asked to read the keeper's words, its answer on one line.
+        // The clerk asked to read the keeper's words, its answer on one line;
+        // and stopped a moment in, back at once.
         XCTAssertEqual(told.filter { $0.hasPrefix("orders read (") && $0.hasSuffix("s): 1. FORTIFY C1 / And nothing more.") }.count, 1, report.text)
+        XCTAssertEqual(told.filter { $0.hasPrefix("orders stopped 0.3 s in: back in ") && $0.hasSuffix(" s") }.count, 1, report.text)
         let age = VoiceCheck.age()
         let (words, briefing) = try XCTUnwrap(VoiceCheck.orders(in: age))
         XCTAssertTrue(words.hasPrefix("Have C"), words)
@@ -82,9 +84,36 @@ final class VoiceCheckTests: XCTestCase {
         let report = await VoiceCheck.run(Silent(), source: "silence")
         XCTAssertEqual(report.failures.count, report.moments + 1, "Every moment silent, and the clerk")
         XCTAssertEqual(report.failures.last, "orders read: silent")
+        XCTAssertTrue(report.text.contains("s): (silent: " + CounselTrouble.silent.unreadOrders + ")"), "Why, as the keeper is told it: \(report.text)")
         XCTAssertTrue(report.failures.allSatisfy { $0.hasSuffix(": silent") }, "\(report.failures)")
         XCTAssertTrue(report.text.contains("\nOut of bounds:\n"), report.text)
         XCTAssertFalse(report.text.hasSuffix(VoiceCheck.passed))
+    }
+
+    /// A reading stopped a moment in comes back at once from a clerk that
+    /// heeds being stopped; one that reads on regardless is named.
+    func testAReadingStoppedComesBackAtOnceOrIsNamed() async throws {
+        struct Heeding: Voice {
+            func speak(_ moment: VoiceMoment) async -> String? { nil }
+            func read(orders words: String, briefing: String) async -> String? {
+                try? await Task.sleep(for: .seconds(30))
+                return nil
+            }
+        }
+        struct Heedless: Voice {
+            func speak(_ moment: VoiceMoment) async -> String? { nil }
+            func read(orders words: String, briefing: String) async -> String? {
+                await withCheckedContinuation { done in
+                    DispatchQueue.global().asyncAfter(deadline: .now() + VoiceCheck.stopAllowance + 0.5) { done.resume() }
+                }
+                return "FORTIFY C1"
+            }
+        }
+        let asked = try XCTUnwrap(VoiceCheck.orders(in: VoiceCheck.age()))
+        let heeded = await VoiceCheck.stopped(Heeding(), asked, after: 0.05)
+        XCTAssertLessThan(heeded, 1, "Back at once")
+        let report = await VoiceCheck.run(Heedless(), source: "a clerk that won't stop")
+        XCTAssertEqual(report.failures.filter { $0.hasPrefix("orders stopped: ran on ") }.count, 1, "\(report.failures)")
     }
 
     /// The model's state as the report's head tells it: ready exactly when
