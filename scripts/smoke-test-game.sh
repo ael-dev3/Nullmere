@@ -5,7 +5,10 @@
 # with Metal. Saves screenshots of the keeper's first watch with a company
 # selected and the Houses panel open, and the same with the night drawn
 # Bright, as a keeper may choose it; of the same realm eight watches on
-# as a keeper sees it most of the time, nothing chosen and no panel open;
+# as a keeper sees it most of the time, nothing chosen and no panel open,
+# the land's growth drawn in full, as a Mac with ten gigabytes or more for
+# its graphics draws it (each launch says the detail it drew at in
+# build/game-detail.log, and what this Mac's Auto comes to);
 # and forty watches on, a steward having played the keeper's House, with
 # the larger type; and the Still from low over its deepest water; and
 # counsel taken of the House's first free commander, a question put to
@@ -16,7 +19,7 @@
 #   swift build && scripts/smoke-test-game.sh
 #
 # Only debug builds honour NULLMERE_MODEL_STATE, NULLMERE_LAUNCHER_KEYS,
-# NULLMERE_REALM, NULLMERE_KEEPER and NULLMERE_NIGHT.
+# NULLMERE_REALM, NULLMERE_KEEPER, NULLMERE_NIGHT and NULLMERE_DETAIL.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -30,6 +33,7 @@ SUBSYSTEM="online.nullmere.game"
 SEED="${SEED:-black moon}"
 IDENTITY="$PWD/build/smoke-identity"
 mkdir -p build
+: > build/game-detail.log
 
 if pgrep -x "$EXECUTABLE" >/dev/null; then
     echo "error: $EXECUTABLE is already running; quit it first" >&2
@@ -60,6 +64,7 @@ run() {
     screencapture -x "$shot" || echo "warning: could not take a screenshot" >&2
     kill -TERM "$pid" || true
     wait "$pid" 2>/dev/null || true
+    grep -h "draws the land's growth" build/game-stdout.log 2>/dev/null | head -1 | sed "s|^|$(basename "$shot"): |" >> build/game-detail.log || true
     LOG="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
     # A debug build says it on its own output too, the moment it happens;
     # the unified log can lag behind.
@@ -80,8 +85,10 @@ NULLMERE_NIGHT=bright run build/game-world-bright.png 0 unit,houses
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The same realm as a keeper sees it most of the time: nothing chosen, no
-# panel open, how much of the world the interface leaves in view.
-run build/game-plain.png 8 ""
+# panel open, how much of the world the interface leaves in view; the
+# land's growth in full, as a Mac with memory enough for its graphics draws
+# it, where a virtual Mac's Auto may draw less.
+NULLMERE_DETAIL=high run build/game-plain.png 8 ""
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The Still close and low, nothing chosen: the black water, the moon's

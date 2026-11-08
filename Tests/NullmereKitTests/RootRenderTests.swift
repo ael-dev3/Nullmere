@@ -239,6 +239,18 @@ final class RootRenderTests: XCTestCase {
         XCTAssertEqual(PlayView.night(stored: Night.moonlit.rawValue, environment: ["NULLMERE_NIGHT": "noon"]), .moonlit, "Only a night it names")
     }
 
+    /// How much of the land's growth is drawn: the Detail chosen, Auto read
+    /// for the Mac's graphics memory; for the smoke test, as NULLMERE_DETAIL
+    /// names it, without keeping it.
+    func testTheDetailIsDrawnAsChosenOrAsTheSmokeTestNamesIt() {
+        XCTAssertEqual(PlayView.detail(chosen: .auto, gpuMemoryGB: 4, environment: [:]), .low)
+        XCTAssertEqual(PlayView.detail(chosen: .auto, gpuMemoryGB: 12, environment: [:]), .high)
+        XCTAssertEqual(PlayView.detail(chosen: .medium, gpuMemoryGB: 12, environment: [:]), .medium)
+        XCTAssertEqual(PlayView.detail(chosen: .auto, gpuMemoryGB: 4, environment: ["NULLMERE_DETAIL": "High"]), .high)
+        XCTAssertEqual(PlayView.detail(chosen: .high, gpuMemoryGB: 4, environment: ["NULLMERE_DETAIL": "auto"]), .low, "Auto as this Mac reads")
+        XCTAssertEqual(PlayView.detail(chosen: .medium, gpuMemoryGB: 4, environment: ["NULLMERE_DETAIL": "ultra"]), .medium, "Only a detail it names")
+    }
+
     func testEveryKindOfNewsCanBeTold() {
         // A long age among stewards brings every kind of event the rules
         // make; each is told from every House's side, or kept from it.

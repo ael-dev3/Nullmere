@@ -97,6 +97,21 @@ struct PlayView: View {
         return Night(stored: stored)
     }
 
+    /// How much of the land's growth the world draws: the display setting's
+    /// Detail, Auto read for this Mac; for the smoke test, as NULLMERE_DETAIL
+    /// names it, without keeping it, so a virtual Mac with little memory for
+    /// its graphics is photographed drawing the world as a Mac with more does.
+    static func detail(chosen: WorldDetail, gpuMemoryGB: Double,
+                       environment: [String: String] = ProcessInfo.processInfo.environment) -> WorldDetail {
+        #if DEBUG
+        if let named = environment["NULLMERE_DETAIL"],
+           let detail = WorldDetail.allCases.first(where: { $0.title.lowercased() == named.lowercased() }) {
+            return detail.resolved(gpuMemoryGB: gpuMemoryGB)
+        }
+        #endif
+        return chosen.resolved(gpuMemoryGB: gpuMemoryGB)
+    }
+
     let app: GameApp
     let session: GameSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -333,9 +348,13 @@ struct PlayView: View {
         .environment(\.worldQuality, app.displaySettings.quality)
         .environment(\.worldNight, PlayView.night(stored: storedNight))
         .onChange(of: motion, initial: true) { _, motion in session.motion = motion }
-        // The display setting's Detail, Auto read for this Mac.
+        // The display setting's Detail, Auto read for this Mac, said for the
+        // smoke test.
         .onChange(of: app.displaySettings.detail, initial: true) { _, chosen in
-            session.detail = chosen.resolved(gpuMemoryGB: WorldMetalView.gpuMemoryGB)
+            let memory = WorldMetalView.gpuMemoryGB
+            session.detail = PlayView.detail(chosen: chosen, gpuMemoryGB: memory)
+            Reporting.say("The world draws the land's growth at \(session.detail.title), \(chosen.title) chosen, "
+                + "its graphics working in \(String(format: "%.1f", memory)) GB.")
         }
         .onChange(of: session.panel) { _, panel in
             if panel != nil { panelFocused = true }
