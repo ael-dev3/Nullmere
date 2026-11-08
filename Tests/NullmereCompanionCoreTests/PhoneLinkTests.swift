@@ -44,6 +44,12 @@ final class PhoneLinkTests: XCTestCase {
         clock.now += 45
         XCTAssertEqual(phone.link(at: clock.now),
                        .outOfTouch("Out of touch for 48 s, and trying again (3 tries so far): orders given now go when the realm answers."))
+        // The plain "can't be reached" gives way to the line that says it and
+        // more; a reason of its own is told beside it.
+        XCTAssertEqual(RealmTrouble.unreachable, "The realm can't be reached.")
+        XCTAssertNil(phone.reachSaid(at: clock.now), "Said once, not twice")
+        phone.hear(.unreachable("This phone isn't connected to the internet."))
+        XCTAssertEqual(phone.reachSaid(at: clock.now), "This phone isn't connected to the internet.")
         // What the link says of itself is no word from the realm.
         phone.hear(.orderRefused(.refused("Too old to send."), GameState(settings: GameSettings(seedText: "link"))))
         XCTAssertNotNil(phone.lostAt, "Still out of touch")
@@ -76,6 +82,11 @@ final class PhoneLinkTests: XCTestCase {
         XCTAssertEqual(LinkSaid.span(599), "9:59")
         XCTAssertEqual(LinkSaid.span(840), "14 min")
         XCTAssertEqual(LinkSaid.inStep(heardAgo: 3), "In step with the realm, heard from 3 s ago.")
+        // Under a second, never "0 s": as a keeper would say it.
+        XCTAssertEqual(LinkSaid.inStep(heardAgo: 0.4), "In step with the realm, heard from just now.")
+        XCTAssertEqual(LinkSaid.outOfTouch(for: 0.2, tries: 1),
+                       "Out of touch for a moment, and trying again (1 try so far): orders given now go when the realm answers.")
+        XCTAssertEqual(LinkSaid.backInStep(after: 0.9), "Back in step with the realm after a moment out of touch.")
         XCTAssertEqual(LinkSaid.outOfTouch(for: 12, tries: 1),
                        "Out of touch for 12 s, and trying again (1 try so far): orders given now go when the realm answers.")
         XCTAssertEqual(LinkSaid.backInStep(after: 125), "Back in step with the realm after 2:05 out of touch.")

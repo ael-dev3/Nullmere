@@ -130,7 +130,7 @@ struct ReachLine: View {
         if session.linkTold {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 VStack(alignment: .leading, spacing: 4) {
-                    if let reach = session.outOfReach {
+                    if let reach = session.reachSaid(at: context.date) {
                         Text(verbatim: reach)
                             .font(Night.small)
                             .foregroundStyle(Night.bad)

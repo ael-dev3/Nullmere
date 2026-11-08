@@ -10,19 +10,25 @@ public enum LinkSaid {
         return "\(whole / 60) min"
     }
 
+    /// A span as it stands in a sentence: "a moment" under a second, never
+    /// "0 s".
+    static func lasting(_ seconds: TimeInterval) -> String {
+        seconds < 1 ? "a moment" : span(seconds)
+    }
+
     /// In reach, and when the realm was last heard from.
     public static func inStep(heardAgo seconds: TimeInterval) -> String {
-        "In step with the realm, heard from \(span(seconds)) ago."
+        seconds < 1 ? "In step with the realm, heard from just now." : "In step with the realm, heard from \(span(seconds)) ago."
     }
 
     /// Out of reach for so long, the phone trying again on its own.
     public static func outOfTouch(for seconds: TimeInterval, tries: Int) -> String {
         let tried = tries == 1 ? "1 try" : "\(tries) tries"
-        return "Out of touch for \(span(seconds)), and trying again (\(tried) so far): orders given now go when the realm answers."
+        return "Out of touch for \(lasting(seconds)), and trying again (\(tried) so far): orders given now go when the realm answers."
     }
 
     /// In reach again, and how long it was out of touch.
     public static func backInStep(after seconds: TimeInterval) -> String {
-        "Back in step with the realm after \(span(seconds)) out of touch."
+        "Back in step with the realm after \(lasting(seconds)) out of touch."
     }
 }

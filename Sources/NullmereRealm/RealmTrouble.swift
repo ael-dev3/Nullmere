@@ -12,6 +12,9 @@ public enum RealmTrouble {
         "The request is too long.",
     ]
 
+    /// The realm out of reach, and no more known of why.
+    public static let unreachable = "The realm can't be reached."
+
     /// The device a keeper meets the trouble on, as the words name it: their
     /// Mac, or the phone that speaks for them.
     public enum Device: String, Sendable {
@@ -33,7 +36,7 @@ public enum RealmTrouble {
                  .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot, .clientCertificateRejected:
                 return "The realm couldn't be reached safely."
             default:
-                return "The realm can't be reached."
+                return unreachable
             }
         }
         if error is DecodingError {
@@ -45,7 +48,7 @@ public enum RealmTrouble {
             return device == .mac ? "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."
                 : "This \(device.rawValue)'s keychain wouldn't keep your key. Unlock the \(device.rawValue), then try again."
         }
-        return "The realm can't be reached."
+        return unreachable
     }
 
     /// The realm turning a device's key away for now.

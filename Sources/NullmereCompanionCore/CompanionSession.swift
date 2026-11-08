@@ -374,6 +374,16 @@ public final class CompanionSession {
     /// The phone's link to the realm as its keeper reads it at a moment:
     /// out of touch and trying again, back in step for a while after, or in
     /// step and when the realm was last heard from.
+    /// Why the realm can't be reached, where that says more than the
+    /// link's own line: the plain "can't be reached" gives way to "Out of
+    /// touch for …, and trying again", which says it and more; a reason of
+    /// its own (no internet, no answer in time) is told beside it.
+    public func reachSaid(at now: Date) -> String? {
+        guard let reach = outOfReach else { return nil }
+        if reach == RealmTrouble.unreachable, case .outOfTouch? = link(at: now) { return nil }
+        return reach
+    }
+
     public func link(at now: Date) -> Link? {
         if let lost = lostAt {
             return .outOfTouch(LinkSaid.outOfTouch(for: now.timeIntervalSince(lost), tries: triesSinceLost))
