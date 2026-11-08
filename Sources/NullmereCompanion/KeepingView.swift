@@ -1482,6 +1482,14 @@ struct DealingRow: View {
             Text(verbatim: dealing.stance)
                 .font(Night.small)
                 .foregroundStyle(dealing.stance.hasPrefix("At war") ? Night.bad : Night.ink.opacity(0.7))
+            // Its envoys on the road there, waiting on their answer: what
+            // isn't offered again until it comes back.
+            ForEach(dealing.waiting, id: \.self) { waiting in
+                Text(verbatim: waiting)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .accessibilityElement(children: .combine)
         if !dealing.envoys.isEmpty || !dealing.gifts.isEmpty || dealing.war != nil {

@@ -199,3 +199,25 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
     /// Watches an envoy waits for an answer.
     public static let patience = 3
 }
+
+extension GameState {
+    /// A House's envoys on the road to another, each waiting on its answer.
+    public func envoysWaiting(from house: Int, to other: Int) -> [Envoy] {
+        envoys.filter { $0.from == house && $0.to == other }
+    }
+
+    /// One of a House's own envoys on the road, as the Mac's Houses and the
+    /// phone tell it: "Your envoy with a pact waits on their answer.", "Your
+    /// envoy with a trade of 60 grain for 50 timber waits on their answer."
+    public func envoyWaitingSaid(_ envoy: Envoy) -> String {
+        let carried: String
+        switch envoy.proposal {
+        case .peace: carried = "peace"
+        case .pact: carried = "a pact"
+        case .fealty: carried = "fealty"
+        case .tribute: carried = "a demand of tribute"
+        case .trade: carried = envoy.trade.map { "a trade of \($0)" } ?? "a trade"
+        }
+        return "Your envoy with \(carried) waits on their answer."
+    }
+}

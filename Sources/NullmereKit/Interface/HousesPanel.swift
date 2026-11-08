@@ -623,8 +623,13 @@ struct HouseRow: View {
 
     /// An envoy of the keeper's with this offer is on the road to the House:
     /// one of each kind at a time.
-    private func awaits(_ proposal: Proposal) -> Bool {
-        session.state.envoys.contains { $0.from == session.player && $0.to == house.id && $0.proposal == proposal }
+    private func awaits(_ proposal: Proposal) -> Bool { waiting(proposal) != nil }
+
+    /// The keeper's envoy with this offer on the road to the House, as the
+    /// rules tell it, the phone's words too.
+    private func waiting(_ proposal: Proposal) -> String? {
+        session.state.envoysWaiting(from: session.player, to: house.id).first { $0.proposal == proposal }
+            .map(session.state.envoyWaitingSaid)
     }
 
     @ViewBuilder
@@ -634,7 +639,7 @@ struct HouseRow: View {
             QuietButton(title: "Offer peace", size: 8.5) { offer(.peace) }
         case .peace:
             QuietButton(title: "Offer a pact", size: 8.5, enabled: !awaits(.pact)) { offer(.pact) }
-                .help(awaits(.pact) ? "Your envoy with a pact waits on their answer." : "Shared sight across the water, and no blade between you.")
+                .help(waiting(.pact) ?? "Shared sight across the water, and no blade between you.")
             giftMenu
             tradeButton
             if session.canDemandTribute(from: house.id) {
@@ -699,7 +704,7 @@ struct HouseRow: View {
 
     private var tradeButton: some View {
         QuietButton(title: "Offer a trade", size: 8.5, enabled: !awaits(.trade)) { draft.isComposingTrade = true }
-            .help(awaits(.trade) ? "Your envoy with a trade waits on their answer." : "So much of one store for so much of another.")
+            .help(waiting(.trade) ?? "So much of one store for so much of another.")
             .popover(isPresented: Bindable(draft).isComposingTrade, arrowEdge: .leading) {
                 TradeOffer(session: session, house: house, draft: draft)
             }

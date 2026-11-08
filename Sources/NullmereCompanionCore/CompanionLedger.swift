@@ -328,6 +328,9 @@ public struct CompanionLedger: Equatable, Sendable {
         public let war: Order?
         /// Whether it may be offered a trade: no trade crosses a war.
         public let mayTrade: Bool
+        /// The House's own envoys on the road to it, each waiting on its
+        /// answer, as the Mac's Houses tell them.
+        public let waiting: [String]
     }
 
     /// An offer of trade being made to another House, as the Mac's trade
@@ -1283,7 +1286,8 @@ public struct CompanionLedger: Equatable, Sendable {
             }
             let war = Order(title: "Declare war on \(name)", command: .declareWar(on: house))
             return Dealing(id: house, name: name, stance: stance, envoys: envoys, gifts: gifts,
-                           war: atWar || world.refusal(of: war.command, as: player) != nil ? nil : war, mayTrade: !atWar)
+                           war: atWar || world.refusal(of: war.command, as: player) != nil ? nil : war, mayTrade: !atWar,
+                           waiting: world.envoysWaiting(from: player, to: house).map(world.envoyWaitingSaid))
         }
     }
 

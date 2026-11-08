@@ -898,9 +898,12 @@ final class CompanionLedgerTests: XCTestCase {
         state.houses[near.id].isPlayer = true
         let keeper = CompanionLedger.trading(fair, with: near.id, in: state, player: me)
         XCTAssertTrue(keeper.said.hasSuffix("Their keeper answers by envoy."), keeper.said)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).dealings.first { $0.id == near.id }?.waiting, [], "None on the road yet")
         _ = try state.perform(try XCTUnwrap(keeper.offer).command, as: me)
         XCTAssertEqual(CompanionLedger.trading(fair, with: near.id, in: state, player: me),
                        CompanionLedger.Trading(said: RuleError.envoyWaiting.description, offer: nil))
+        XCTAssertEqual(CompanionLedger(world: state, player: me).dealings.first { $0.id == near.id }?.waiting,
+                       ["Your envoy with a trade of 60 grain for 50 timber waits on their answer."], "Said on its row while it waits")
 
         // No trade crosses a war.
         let foe = try XCTUnwrap(CompanionLedger(world: state, player: me).dealings.dropFirst().first).id
