@@ -53,6 +53,23 @@ public final class Synth: @unchecked Sendable {
     private var pending: [Note] = []
     private var notes: [Note] = []
 
+    /// A note a cue blows on the recorded horn, waiting to be blown on the
+    /// audio thread: its frequency, when it sounds after the cue begins,
+    /// how long it is held, how hard, and how loud in each ear.
+    private struct Blown {
+        var frequency: Float
+        var wait: Float
+        var hold: Float
+        var strength: Float
+        var left: Float
+        var right: Float
+    }
+    private var pendingBlown: [Blown] = []
+    /// The horn the cues' calls are blown on: the war horn and the muster's.
+    private var cueHorns = Horns(sampleRate: 48_000)
+    /// How many notes the cues have blown on the horn, for tests.
+    var cueHornsBlown: Int { cueHorns.blown }
+
     private var sampleRate: Float = 48_000
     /// Seconds since sound began, in double precision: a Float's would stop
     /// moving after eight and a half minutes, and the night with it.
@@ -135,6 +152,7 @@ public final class Synth: @unchecked Sendable {
         // Room enough up front that the audio thread never has to find more.
         notes.reserveCapacity(64)
         pending.reserveCapacity(24)
+        pendingBlown.reserveCapacity(24)
     }
 
     public func setVolumes(effects: Float, ambience: Float, music: Float) {
@@ -259,6 +277,7 @@ public final class Synth: @unchecked Sendable {
         if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
         if shores.sampleRate != sampleRate { shores = Shore(sampleRate: sampleRate) }
         if dinHorns.sampleRate != sampleRate { dinHorns = Horns(sampleRate: sampleRate) }
+        if cueHorns.sampleRate != sampleRate { cueHorns = Horns(sampleRate: sampleRate) }
         score.prepare(sampleRate: sampleRate)
     }
 
@@ -277,6 +296,9 @@ public final class Synth: @unchecked Sendable {
         target = 0
         pending.removeAll()
         notes.removeAll()
+        pendingBlown.removeAll()
+        cueHorns.clear()
+        dinHorns.clear()
         hall.clear()
         hallQuiet = 99
         lock.unlock()
@@ -313,9 +335,25 @@ public final class Synth: @unchecked Sendable {
 
     public func trigger(_ cue: SoundCue, after delay: Float = 0, at place: SoundPlace = .middle) {
         let made = notes(of: cue, after: delay, at: place)
+        let blown = Synth.call(of: cue).map {
+            Blown(frequency: $0.frequency, wait: delay + $0.at, hold: $0.hold, strength: $0.strength, left: place.left, right: place.right)
+        }
         lock.lock()
         if pending.count < 12 { pending.append(contentsOf: made) }
+        if pendingBlown.count + blown.count <= 24 { pendingBlown.append(contentsOf: blown) }
         lock.unlock()
+    }
+
+    /// The call a cue blows on the recorded horn, if it is a horn's: each
+    /// note's frequency, when it is blown, how long it is held and how hard.
+    /// The war horn (a rally called, setting out, a commander's skill) on A
+    /// and then the D a fourth above; the muster's call up a fifth, G to D.
+    static func call(of cue: SoundCue) -> [(frequency: Float, at: Float, hold: Float, strength: Float)] {
+        switch cue {
+        case .horn: return [(110, 0, 0.45, 0.9), (146.8, 0.42, 0.75, 1)]
+        case .muster: return [(196, 0, 0.3, 1), (293.7, 0.32, 0.9, 1)]
+        default: return []
+        }
     }
 
     /// The notes a cue sounds, each in its place and its band.
@@ -463,15 +501,9 @@ public final class Synth: @unchecked Sendable {
                 Partial(frequency: 587.3, amplitude: 0.04, decay: 2),
                 Partial(frequency: 784, amplitude: 0.015, decay: 2.6),
             ], noise: 0, noiseDecay: 1, delay: 0.32)]
-        case .muster:
-            // A horn's call up a fifth, its overtones rich and falling away.
-            func horn(_ frequency: Float, _ delay: Float, _ length: Float) -> [Partial] {
-                [1, 2, 3, 4].map { (harmonic: Float) in
-                    Partial(frequency: frequency * harmonic, amplitude: 0.06 / (harmonic * harmonic * 0.6 + 0.4),
-                            decay: length * (0.8 + harmonic * 0.4), delay: delay)
-                }
-            }
-            note = Note(partials: horn(196, 0, 2.4) + horn(293.7, 0.32, 1.6), noise: 0.006, noiseDecay: 6)
+        case .muster, .horn:
+            // Blown on the recorded horn (`call(of:)`): no note of its own.
+            return []
         case .leaf:
             // A page turned: paper's brush, and the faintest high note.
             note = Note(partials: [Partial(frequency: 2_637, amplitude: 0.03, decay: 24)], noise: 0.055, noiseDecay: 36)
@@ -509,16 +541,6 @@ public final class Synth: @unchecked Sendable {
                  Partial(frequency: f * 5.4, amplitude: 0.008, decay: 3.4, delay: delay)]
             }
             note = Note(partials: bell(659.3, 0) + bell(987.8, 0.13) + bell(1318.5, 0.26), noise: 0, noiseDecay: 1)
-        case .horn:
-            // A war horn's two notes, the second a fourth above, rich and rough.
-            func blast(_ f: Float, _ delay: Float, _ length: Float) -> [Partial] {
-                (1...6).map { (h: Int) in
-                    let n = Float(h)
-                    return Partial(frequency: f * n * (1 + 0.003 * n), amplitude: 0.075 / (n * 0.9 + 0.3),
-                                   decay: (1.6 + 0.5 * n) / length, delay: delay)
-                }
-            }
-            note = Note(partials: blast(110, 0, 1.3) + blast(146.8, 0.42, 1.1), noise: 0.012, noiseDecay: 5)
         case .banner:
             // Two chords, the second the first's fourth: a banner raised.
             func chord(_ root: Float, _ delay: Float) -> [Partial] {
@@ -615,6 +637,10 @@ public final class Synth: @unchecked Sendable {
         lock.lock()
         notes.append(contentsOf: pending)
         pending.removeAll(keepingCapacity: true)
+        for note in pendingBlown {
+            cueHorns.blow(note.frequency, strength: note.strength, hold: note.hold, heard: (note.left, note.right), wait: note.wait)
+        }
+        pendingBlown.removeAll(keepingCapacity: true)
         let goal = target
         let rate = fadeRate
         if let music = pendingMusic {
@@ -753,6 +779,10 @@ public final class Synth: @unchecked Sendable {
                 cueLeft += cue * notes[n].left
                 cueRight += cue * notes[n].right
             }
+            // The cues' calls on the recorded horn, from where they sound.
+            let called = cueHorns.sample(dt: dt)
+            cueLeft += called.left * Self.hornCueGain
+            cueRight += called.right * Self.hornCueGain
 
             // The din of battle: as loud as the fighting, from where it is.
             din.level += (dinTarget.level - din.level) * min(dt * 2, 1)
@@ -871,10 +901,8 @@ public final class Synth: @unchecked Sendable {
         case .parley: return ((1_100, 0.6), nil)
         case .stand: return ((420, 0.8), nil)
         case .complete: return ((1_100, 0.9), nil)
-        case .muster: return ((800, 0.6), nil)
         // The timber's crack, then the dust settling.
         case .batter: return ((650, 0.8), (300, 0.6))
-        case .horn: return ((600, 0.7), nil)
         case .herald: return ((450, 0.8), nil)
         case .tend: return ((1_000, 0.6), nil)
         case .sift: return ((6_400, 1.3), nil)
@@ -882,7 +910,7 @@ public final class Synth: @unchecked Sendable {
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .deny: return ((850, 0.9), nil)
-        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour: return (nil, nil)
+        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn: return (nil, nil)
         }
     }
 
@@ -890,6 +918,9 @@ public final class Synth: @unchecked Sendable {
     static let townGain: Float = 0.15
     /// How loud the shore is, at its nearest: about as loud as the night.
     static let shoreGain: Float = 0.2
+    /// How loud a cue's call on the recorded horn is: as loud as the horns
+    /// of overtones the war horn's and the muster's cues were.
+    static let hornCueGain: Float = 0.15
     /// How loud a war horn across a great host's battle is, and how long
     /// it is held: as loud as the horn of overtones it took over from.
     static let warHornGain: Float = 0.19

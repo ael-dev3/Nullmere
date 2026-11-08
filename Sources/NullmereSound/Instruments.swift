@@ -336,9 +336,10 @@ final class Horns {
     var sounding: Int { voices.filter(\.reading.sounding).count }
 
     /// Blows a note: how hard (0...1), held how many seconds before it is
-    /// let go, where it is heard across the ears (-1 left to 1 right), and
-    /// after how long.
-    func blow(_ frequency: Float, strength: Float, hold: Float, pan: Float = 0, wait: Float = 0) {
+    /// let go, where it is heard across the ears (-1 left to 1 right), or
+    /// how loud in each (`heard`, a cue's place), and after how long.
+    func blow(_ frequency: Float, strength: Float, hold: Float, pan: Float = 0, heard: (left: Float, right: Float)? = nil,
+              wait: Float = 0) {
         let nearest = Recordings.nearest(Recordings.hornNotes, to: frequency)
         // A silent voice, or the one nearest done.
         var slot = 0, least = Float.infinity
@@ -355,9 +356,9 @@ final class Horns {
         }
         var reading = Reading(note: Recordings.hornNotes[nearest.index])
         reading.step = nearest.ratio * Double(Recordings.rate / sampleRate)
-        let loud = min(max(strength, 0), 1) * Horns.level, heard = ears(pan)
-        reading.left = heard.left * loud
-        reading.right = heard.right * loud
+        let loud = min(max(strength, 0), 1) * Horns.level, ear = heard ?? ears(pan)
+        reading.left = ear.left * loud
+        reading.right = ear.right * loud
         reading.wait = max(wait, 0)
         reading.sounding = true
         voices[slot] = Voice(reading: reading, held: max(hold, 0))
@@ -390,6 +391,11 @@ final class Horns {
             right += value * voices[index].reading.right
         }
         return (left, right)
+    }
+
+    /// Silent again, every note let go at once.
+    func clear() {
+        for index in voices.indices { voices[index].reading.sounding = false }
     }
 }
 

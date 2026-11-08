@@ -159,6 +159,32 @@ final class SynthTests: XCTestCase {
         XCTAssertNotNil(Synth.bands(of: .loose).rest, "The arrow's hiss its own")
     }
 
+    /// The war horn's and the muster's cues are blown on the recorded horn,
+    /// two notes each, as loud over a second and a half as the horns of
+    /// overtones they took over from (-36.2 and -38.4 dB, measured on those
+    /// before), and from where they happen; no other cue is.
+    func testTheHornCuesAreBlownOnTheRecordedHorn() {
+        func blown(_ cue: SoundCue, at place: SoundPlace = .middle) -> (synth: Synth, left: [Float], right: [Float]) {
+            let synth = settled()
+            synth.setVolumes(effects: 1, ambience: 0, music: 0)
+            _ = rendered(synth, seconds: 0.2)
+            synth.trigger(cue, at: place)
+            let heard = rendered(synth, seconds: 1.5)
+            return (synth, heard.left, heard.right)
+        }
+        for (cue, before) in [(SoundCue.horn, Float(-36.2)), (.muster, -38.4)] {
+            let heard = blown(cue)
+            XCTAssertEqual(heard.synth.cueHornsBlown, 2, "\(cue): two notes on the horn")
+            print("SOUND \(cue) on the recorded horn \(decibels(rms(heard.left[...]))) dB, its horn of overtones \(before) dB")
+            XCTAssertEqual(decibels(rms(heard.left[...])), before, accuracy: 2, "\(cue) as loud as it was")
+        }
+        let right = blown(.horn, at: SoundPlace(pan: 1, gain: 1))
+        XCTAssertGreaterThan(rms(right.right[...]), rms(right.left[...]) * 3, "At the right edge, the right ear")
+        XCTAssertEqual(blown(.clash).synth.cueHornsBlown, 0, "A clash is no horn's")
+        XCTAssertEqual(Synth.call(of: .horn).map(\.frequency), [110, 146.8], "A, then the D a fourth above")
+        XCTAssertEqual(Synth.call(of: .muster).map(\.frequency), [196, 293.7], "G, then the D a fifth above")
+    }
+
     /// A cue in the middle is heard alike in both ears; at an edge, in the
     /// nearer one, never gone from the other; far off, quieter.
     func testACueIsHeardFromWhereItHappened() {

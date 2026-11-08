@@ -1685,8 +1685,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments; every other sound is made as
-it plays.
+The score is played on recorded instruments, and so are the horns' calls;
+every other sound is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and a low
   bell as each watch turns.
@@ -1731,7 +1731,11 @@ it plays.
   dread; a work or company finished, a company risen in rank or a drowned
   ruin searched rises; a gift received, a peace or a pact sounds accord; and
   an order that begins a war sounds as war, refusing a steward's tribute
-  too. Each cue's noise is coloured by what makes it: a page turned rustles
+  too. A war horn (a rally called, a commander's skill loosed, an edict put,
+  the Frontier crossed) calls on A and then the D a fourth above, and
+  companies mustered and ready are called up a fifth, G to D, both on the
+  recorded horn the score's calls are blown on. Each cue's noise is
+  coloured by what makes it: a page turned rustles
   high and soft, hooves and skins thud low, grit and dust sit about the
   middle, steel rings bright and salt hisses brighter. What a watch brings
   sounds one after another after its bell, never all at once, and the low
