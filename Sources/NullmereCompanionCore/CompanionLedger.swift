@@ -1610,16 +1610,18 @@ public struct CompanionLedger: Equatable, Sendable {
         }
     }
 
-    /// What a company is about, in a few words; a march as the Mac's panel
-    /// tells it, which way and how far, for the phone has no map beside the
-    /// list (`GameState.marchSaid`).
+    /// What a company is about, in a few words; out at the land's work as
+    /// the Mac's gatherers tell it (`GameState.gatheringSaid`), and a march
+    /// as the Mac's panel tells it, which way and how far, for the phone has
+    /// no map beside the list (`GameState.marchSaid`).
     static func doing(_ unit: Unit, in world: GameState, for player: Int) -> String {
+        // Out at the land's work as the Mac's gatherers tell it: which site,
+        // when full or home, and what it carries.
+        if let gathering = world.gatheringSaid(of: unit) { return gathering.prefix(1).uppercased() + gathering.dropFirst() }
         switch unit.errand {
-        case .gather?: return "Gathering"
-        case .homeward?: return "Bringing its load home"
         case .rally?: return "With a rally"
         case .reinforce(let hold)?: return "Keeping the gates of \(world.hold(hold)?.name ?? "an ally's hold")"
-        case nil: break
+        case .gather?, .homeward?, nil: break
         }
         if let march = world.marchSaid(of: unit, for: player) { return march }
         if unit.fortified { return "Dug in" }

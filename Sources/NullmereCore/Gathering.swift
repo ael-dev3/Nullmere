@@ -248,6 +248,31 @@ extension GameState {
         return unit.gatherFor.map { min(max($0, 1), fill) } ?? fill
     }
 
+    /// What a company out at the land's work is about, as its keeper is
+    /// told it on the Mac and the phone alike: at its site and when it will
+    /// be full or home, bound for it, or home with its load, and when it
+    /// will be there ("at the Deadfall II, full in 3 watches"); nil for a
+    /// company on no such errand.
+    public func gatheringSaid(of unit: Unit) -> String? {
+        let there = arrivalSaid(of: unit).map { ", there \($0)" } ?? ""
+        switch unit.errand {
+        case .gather(let siteID)?:
+            let site = self.site(siteID).map { "the \(Site.title(of: $0.store)) \(BuildingKind.numeral($0.level))" } ?? "a site of the land"
+            if let left = watchesToFill(unit) {
+                let ends = unit.gatherFor.map { $0 <= left } == true ? "home" : "full"
+                return "at \(site), \(ends) " + (left <= 1 ? "as the watch turns" : "in \(left) watches")
+            }
+            return "bound for \(site)\(there)"
+        case .homeward?:
+            let carried = unit.load.flatMap { load in
+                Resource.allCases.first { load[$0] > 0 }.map { "\(load[$0]) \($0.title.lowercased())" }
+            }
+            return "home with \(carried ?? "their load")\(there)"
+        default:
+            return nil
+        }
+    }
+
     /// Whether a company is out at the land's work: gathering at a site, or
     /// on its way home with a load.
     public func isOutGathering(_ unit: Unit) -> Bool {

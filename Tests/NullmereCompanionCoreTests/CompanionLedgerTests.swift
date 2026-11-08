@@ -1779,6 +1779,16 @@ final class CompanionLedgerTests: XCTestCase {
             XCTAssertEqual(moving.doing, marching.marchSaid(of: walking, for: me))
             XCTAssertTrue(moving.orders.contains { $0.title == "Halt" })
         }
+        // Out at the land's work, as the Mac's gatherers say it: which site,
+        // and when it will be there or full, where the phone said "Gathering".
+        if let gather = company.gathers.first {
+            var gathering = state
+            _ = try gathering.perform(gather.command, as: me)
+            let out = try XCTUnwrap(CompanionLedger(world: gathering, player: me).companies.first { $0.id == spear.id })
+            let said = try XCTUnwrap(gathering.gatheringSaid(of: try XCTUnwrap(gathering.unit(spear.id))))
+            XCTAssertEqual(out.doing, said.prefix(1).uppercased() + said.dropFirst())
+            XCTAssertTrue(out.doing.hasPrefix("Bound for the ") || out.doing.hasPrefix("At the "), out.doing)
+        }
         // To open ground by what it is, never "to on" nor "to in" it (run 658's phone said "Marching to on the barrows").
         var ground = state
         let at = try XCTUnwrap(ground.unitIndex(spear.id))

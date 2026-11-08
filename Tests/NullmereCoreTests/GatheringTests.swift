@@ -280,6 +280,29 @@ final class GatheringTests: XCTestCase {
         XCTAssertNil(state.watchesToFill(try XCTUnwrap(state.unit(spear))), "Away from its site")
     }
 
+    /// What a gatherer is about, as the Mac's gatherers and the phone's
+    /// companies both say it: at its site and when it will be full, or home
+    /// when sent for less, bound for it, or home with its load.
+    func testAGathererIsSaidAsTheMacAndThePhoneSayIt() throws {
+        var (state, me, spear, site, _) = try field("said as it works")
+        XCTAssertNil(state.gatheringSaid(of: try XCTUnwrap(state.unit(spear))), "Not sent")
+        _ = try state.perform(.gather(unit: spear, site: site), as: me)
+        let worked = try XCTUnwrap(state.site(site))
+        let named = "the \(Site.title(of: worked.store)) \(BuildingKind.numeral(worked.level))"
+        XCTAssertEqual(state.gatheringSaid(of: try XCTUnwrap(state.unit(spear))), "at \(named), full in 5 watches")
+        let index = try XCTUnwrap(state.unitIndex(spear))
+        state.units[index].gatherFor = 1
+        XCTAssertEqual(state.gatheringSaid(of: state.units[index]), "at \(named), home as the watch turns")
+        state.units[index].gatherFor = nil
+        state.units[index].position = try XCTUnwrap(state.openGround())
+        XCTAssertEqual(state.gatheringSaid(of: state.units[index]), "bound for \(named)")
+        state.units[index].errand = .homeward
+        state.units[index].load = Stock(grain: 150)
+        XCTAssertEqual(state.gatheringSaid(of: state.units[index]), "home with 150 grain")
+        state.units[index].errand = nil
+        XCTAssertNil(state.gatheringSaid(of: state.units[index]), "Carrying it, but on no errand")
+    }
+
     /// A company sent for so many watches works its site for them, then
     /// turns for home with what it has, full or not; sent until full, as
     /// ever; and the watches it was sent for are told when it will be done.

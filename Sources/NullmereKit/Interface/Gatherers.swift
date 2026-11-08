@@ -15,27 +15,16 @@ struct GathererList: View {
         state.units(of: house).filter(state.isOutGathering).sorted { $0.id < $1.id }.map { ($0.id, line(for: $0, in: state)) }
     }
 
-    /// What a gatherer is about, in short: at its site and when it will be
-    /// full, bound for it, or home with its load, and when it will be there.
+    /// What a gatherer is about, in short, as the phone says it too
+    /// (`GameState.gatheringSaid`): at its site and when it will be full,
+    /// bound for it, or home with its load, and when it will be there.
     static func line(for unit: Unit, in state: GameState) -> String {
         let name = state.title(of: unit) + (unit.kind.hasTiers ? " " + Narration.roman(unit.tier) : "")
-        let there = state.arrivalSaid(of: unit).map { ", there \($0)" } ?? ""
+        if let doing = state.gatheringSaid(of: unit) { return "\(name) \(doing)" }
         let carried = unit.load.flatMap { load in
             Resource.allCases.first { load[$0] > 0 }.map { "\(load[$0]) \($0.title.lowercased())" }
         }
-        switch unit.errand {
-        case .gather(let siteID)?:
-            let site = state.site(siteID).map { "the \(Site.title(of: $0.store)) \(Narration.roman($0.level))" } ?? "a site of the land"
-            if let left = state.watchesToFill(unit) {
-                let ends = unit.gatherFor.map { $0 <= left } == true ? "home" : "full"
-                return "\(name) at \(site), \(ends) " + (left <= 1 ? "as the watch turns" : "in \(left) watches")
-            }
-            return "\(name) bound for \(site)\(there)"
-        case .homeward?:
-            return "\(name) home with \(carried ?? "their load")\(there)"
-        default:
-            return "\(name) carrying \(carried ?? "nothing")"
-        }
+        return "\(name) carrying \(carried ?? "nothing")"
     }
 
     var body: some View {
