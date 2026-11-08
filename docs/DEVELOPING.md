@@ -67,6 +67,12 @@ only, so tested on Linux too).
   the model). CI builds the companion and runs both apps together on
   every push, in a Mac job of its own beside the one that tests and
   bundles the Mac app, and keeps the companion's screens with the Mac's.
+  It also builds the companion for an iPhone itself
+  (`scripts/build-companion.sh --device`: arm64, the iOS SDK) into
+  build/companion-device/, bundled but unsigned. For a keeper's own
+  iPhone it is signed with an Apple developer team in Xcode: open
+  Package.swift, choose the NullmereCompanion scheme and the device, and
+  set the team.
 
 ## Releasing
 

@@ -188,6 +188,8 @@ cat > "$WORK/phonebin/xcrun" <<STANDIN
 case "\$*" in
     "--sdk iphonesimulator --show-sdk-path") echo "$WORK/iPhoneSimulator.sdk" ;;
     "--sdk iphonesimulator --show-sdk-version") echo 26.0 ;;
+    "--sdk iphoneos --show-sdk-path") echo "$WORK/iPhoneOS.sdk" ;;
+    "--sdk iphoneos --show-sdk-version") echo 26.0 ;;
     *) exit 1 ;;
 esac
 STANDIN
@@ -225,6 +227,12 @@ check "and says why" "$(grep -c "^error: VERSION must be three numbers" "$WORK/p
 phone_run env SWIFT_BIN_PATH_FAILS=1 "$PHONE/scripts/build-companion.sh"
 check "build-companion.sh stops when a step after the build fails" "$(cat "$WORK/phone.status")" "3"
 check "and says where" "$(grep -q "^error: build-companion.sh stopped at line [0-9]*: " "$WORK/phone.out" && echo said)" "said"
+phone_run "$PHONE/scripts/build-companion.sh" --device
+DEVICE_PLIST="$PHONE/build/companion-device/Nullmere Companion.app/Info.plist"
+check "build-companion.sh --device bundles the companion for an iPhone" "$(cat "$WORK/phone.status")" "0"
+check "for the iOS SDK, not the simulator's" "$(grep -c "<string>iPhoneOS</string>" "$DEVICE_PLIST" 2>/dev/null)" "1"
+check "unsigned, and says so" "$( [ -e "$WORK/signed" ] && echo signed || grep -c "unsigned: an Apple developer team" "$WORK/phone.out")" "1"
+check "beside the simulator's build, not over it" "$( [ -e "$PHONE/build/companion/Nullmere Companion.app" ] && echo over || echo beside)" "beside"
 
 # push-ci-shots.sh: two jobs of one run keep their screenshots in its
 # folder, another run's at the same moment, against a bare repository

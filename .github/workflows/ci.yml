@@ -510,6 +510,23 @@ jobs:
           NULLMERE_REALM: http://127.0.0.1:3000/nullmere
         run: scripts/smoke-test-companion.sh 2>&1 | tee build/smoke-companion.log
 
+      # The same app for an iPhone itself (arm64, the iOS SDK), bundled but
+      # unsigned: an Apple developer team's signature lets it run on a
+      # device, and CI has none. After the phone's steps, so they are never
+      # held up by it, and whatever they came to. Its errors are annotated
+      # as the simulator's are.
+      - name: Build the companion for an iPhone
+        if: ${{ !cancelled() }}
+        timeout-minutes: 20
+        run: |
+          mkdir -p build
+          if ! scripts/build-companion.sh --device 2>&1 | tee build/companion-device-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-device-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
+              echo "::error title=Companion for an iPhone::${line}"
+            done
+            exit 1
+          fi
+
       - name: Keep the screenshots
         if: always()
         uses: actions/upload-artifact@v6
@@ -537,7 +554,7 @@ jobs:
           ends() { awk '{ last = $0 } NR == 1 { print } END { if (NR > 1) print last }' "$1" 2>/dev/null || true; }
           awk 1 build/companion-report.txt 2>/dev/null || true
           awk 1 build/companion-lost-report.txt 2>/dev/null || true
-          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^The phone hears\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log 2>/dev/null || true
+          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^The phone hears\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log build/companion-device-build.log 2>/dev/null || true
           # Counsel taken on the phone, through its own model: whose, and its verdict.
           ends build/counsel-phone-report.txt
           grep -hE "^error|^warning" build/smoke-companion.log 2>/dev/null | head -20 || true
