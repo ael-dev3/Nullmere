@@ -311,43 +311,15 @@ struct RealmPanel: View {
     /// there and what crossing means; there, what they stand for; and how
     /// the last season ended.
     static func frontierLine(_ news: FrontierNews, atFrontier: Bool, levy: Int) -> String {
-        let season = "The Frontier's \(SeatBriefing.ordinal(news.season)) season"
-        let last = news.last.map { result in
-            " Its last: " + (result.prevailed.map { "\($0) prevailed." } ?? "no kingdom prevailed.")
-        } ?? ""
-        if atFrontier {
-            return "\(season), until the \(SeatBriefing.ordinal(news.lasts)) watch: you stand here for your realm's kingdom. "
-                + "Troops of the other realms' kingdoms slain, their companies felled and their holds taken count for yours; so does "
-                + "a gate of the Crown broken, \(FrontierState.gatePoints), and the Heartstone in its heart, \(FrontierState.heartPoints) "
-                + "for every watch your House holds it." + last
-        }
-        guard news.open else { return "\(season) is ending; the next opens as it does." + last }
-        let sent = min(levy, FrontierState.levyMost)
-        return "\(season) is open, until the \(SeatBriefing.ordinal(news.lasts)) watch: cross there to stand for your realm's kingdom "
-            + "against the others', with \(sent == 0 ? "no company" : sent == 1 ? "one company" : "your \(sent) strongest companies") of war "
-            + "from home, which a caretaker keeps while you are away. The kingdom that prevails shares its spoils at home." + last
+        news.said(atFrontier: atFrontier, levy: levy)
     }
 
     /// How the kingdoms stand at the Frontier, best first.
     static func kingdomsLine(_ standings: [KingdomStanding]) -> String {
-        standings.prefix(4).map { "\($0.realm) \($0.points) (\($0.keepers) \($0.keepers == 1 ? "keeper" : "keepers"))" }
-            .joined(separator: " · ")
+        KingdomStanding.said(standings)
     }
 
-    static func sunderingLine(_ state: GameState, player: Int) -> String {
-        guard let sundering = state.sundering else {
-            return "The Sundering comes at the \(SeatBriefing.ordinal(Sundering.next(from: state.watch))) watch: the shores war as kingdoms."
-        }
-        let east = sundering.score(of: .eastern), west = sundering.score(of: .western)
-        guard !sundering.settled else {
-            let next = "the next at the \(SeatBriefing.ordinal(Sundering.next(from: state.watch + 1))) watch"
-            guard let winner = sundering.leading else { return "The last Sundering ended with neither shore ahead; \(next)." }
-            return "The last Sundering: \(winner.title) prevailed, \(max(east, west)) to \(min(east, west)); \(next)."
-        }
-        let stands = "the Eastern Shore \(east), the Western \(west), until the \(SeatBriefing.ordinal(sundering.ends)) watch"
-        guard let shore = sundering.shore(of: player) else { return "The Sundering: \(stands)." }
-        return "The Sundering: you stand with \(shore.title), your House \(sundering.points[player]) points; \(stands)."
-    }
+    static func sunderingLine(_ state: GameState, player: Int) -> String { state.sunderingSaid(for: player) }
 
     /// The House's army: its troops, and the companies of war they stand in.
     static func armyLine(_ state: GameState, player: Int) -> String {

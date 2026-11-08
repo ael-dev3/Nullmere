@@ -42,7 +42,7 @@ enum CompanionCheck {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "market"
     }
 
-    /// The page of the realm's law, oaths and auguries opened off the
+    /// The page of the realm beyond the keeper's House opened off the
     /// Alliance tab, to be seen: NULLMERE_COMPANION_TAB=realm.
     static var realmShown: Bool {
         ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "realm"

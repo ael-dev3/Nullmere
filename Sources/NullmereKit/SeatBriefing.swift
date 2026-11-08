@@ -62,10 +62,7 @@ struct SeatBriefing: Equatable {
             + "\(heritage.signatureTitle), \(heritage.signature.title) of the fifth tier; \(another)."
     }
 
-    static func ordinal(_ n: Int) -> String {
-        let words = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"]
-        return n >= 1 && n <= words.count ? words[n - 1] : "\(n)" + ordinalEnding(n)
-    }
+    static func ordinal(_ n: Int) -> String { briefOrdinal(n) }
 
     static func list(_ names: [String]) -> String {
         switch names.count {

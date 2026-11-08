@@ -121,6 +121,41 @@ public struct FrontierNews: Codable, Equatable, Sendable {
     }
 }
 
+extension FrontierNews {
+    /// The Frontier's season as the Mac's Realm panel and the phone tell
+    /// it: at the Frontier, what counts there for the keeper's kingdom; at
+    /// home, open to cross with the House's levy of `levy` companies of
+    /// war, or ending; and how the season before ended.
+    public func said(atFrontier: Bool, levy: Int) -> String {
+        let season = "The Frontier's \(briefOrdinal(self.season)) season"
+        let last = self.last.map { result in
+            " Its last: " + (result.prevailed.map { "\($0) prevailed." } ?? "no kingdom prevailed.")
+        } ?? ""
+        if atFrontier {
+            return "\(season), until the \(briefOrdinal(lasts)) watch: you stand here for your realm's kingdom. "
+                + "Troops of the other realms' kingdoms slain, their companies felled and their holds taken count for yours; so does "
+                + "a gate of the Crown broken, \(FrontierState.gatePoints), and the Heartstone in its heart, \(FrontierState.heartPoints) "
+                + "for every watch your House holds it." + last
+        }
+        guard open else { return "\(season) is ending; the next opens as it does." + last }
+        let sent = min(levy, FrontierState.levyMost)
+        return "\(season) is open, until the \(briefOrdinal(lasts)) watch: cross there to stand for your realm's kingdom "
+            + "against the others', with \(sent == 0 ? "no company" : sent == 1 ? "one company" : "your \(sent) strongest companies") of war "
+            + "from home, which a caretaker keeps while you are away. The kingdom that prevails shares its spoils at home." + last
+    }
+
+    /// How the kingdoms stand at the Frontier, the best four first.
+    public var standingsSaid: String { KingdomStanding.said(standings) }
+}
+
+extension KingdomStanding {
+    /// Kingdoms' standings in a line, the first four: "Nullmere 40 (3 keepers)".
+    public static func said(_ standings: [KingdomStanding]) -> String {
+        standings.prefix(4).map { "\($0.realm) \($0.points) (\($0.keepers) \($0.keepers == 1 ? "keeper" : "keepers"))" }
+            .joined(separator: " · ")
+    }
+}
+
 /// What happens to a keeper's House about the Frontier.
 public enum FrontierTiding: Codable, Equatable, Sendable {
     /// Its keeper crosses to the Frontier for a season, with a levy of so

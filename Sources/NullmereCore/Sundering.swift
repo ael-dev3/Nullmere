@@ -271,3 +271,24 @@ extension GameState {
         return events
     }
 }
+
+extension GameState {
+    /// How the Sundering stands for a House, in a line, as the Mac's Realm
+    /// panel and the phone tell it: when the next comes; under way, the
+    /// shores' points, the House's shore and its own; settled, how it ended
+    /// and when the next comes.
+    public func sunderingSaid(for player: Int) -> String {
+        guard let sundering else {
+            return "The Sundering comes at the \(briefOrdinal(Sundering.next(from: watch))) watch: the shores war as kingdoms."
+        }
+        let east = sundering.score(of: .eastern), west = sundering.score(of: .western)
+        guard !sundering.settled else {
+            let next = "the next at the \(briefOrdinal(Sundering.next(from: watch + 1))) watch"
+            guard let winner = sundering.leading else { return "The last Sundering ended with neither shore ahead; \(next)." }
+            return "The last Sundering: \(winner.title) prevailed, \(max(east, west)) to \(min(east, west)); \(next)."
+        }
+        let stands = "the Eastern Shore \(east), the Western \(west), until the \(briefOrdinal(sundering.ends)) watch"
+        guard let shore = sundering.shore(of: player) else { return "The Sundering: \(stands)." }
+        return "The Sundering: you stand with \(shore.title), your House \(sundering.points[player]) points; \(stands)."
+    }
+}

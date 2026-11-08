@@ -427,10 +427,15 @@ a vote on the realm's law to cast.
   latest three of each open and the earlier folded beneath them, another
   keeper's line reported to the realm's steward from its menu (Report to
   the realm's steward, once, marked reported after); and a
-  line to say to either. On a page of their own, The realm's law, oaths
-  and auguries, whose way from the Alliance tab says only what waits
-  there (a vote to cast on the edict before the realm, prophecies open to
-  the House's stake): the realm's law, as the Mac's Houses tell it: the
+  line to say to either. On a page of their own, The realm beyond your
+  House, whose way from the Alliance tab says only what waits there (the
+  shores at war as kingdoms while the Sundering is fought, a vote to cast
+  on the edict before the realm, prophecies open to the House's stake):
+  the Sundering as the Mac's Realm panel tells it (when it comes; while
+  it is fought, the shores' points, the House's shore and its own; how
+  the last ended); the Frontier the realm borders, its season, how its
+  kingdoms stand and the levy the House would take across, which it does
+  from the Mac; the realm's law, as the Mac's Houses tell it: the
   edict before the realm, who put it and what it would forbid, the vote as
   it stands (the Houses and their might for and against, and when it
   closes) and the House's vote, or Aye and Nay while it may cast one; the

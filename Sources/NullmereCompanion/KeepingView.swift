@@ -592,7 +592,7 @@ struct RealmPage: View {
     let session: CompanionSession
 
     /// The Alliance tab's way to it.
-    static let way = "The realm's law, oaths and auguries"
+    static let way = "The realm beyond your House"
 
     var body: some View {
         List {
@@ -600,6 +600,32 @@ struct RealmPage: View {
                 if session.outOfReach != nil {
                     Section {
                         ReachLine(session: session)
+                    }
+                }
+                // The Sundering, as the Mac's Realm panel tells it: when it
+                // comes, how the shores and the House stand while it is
+                // fought, and how the last ended.
+                Section("The Sundering") {
+                    Text(verbatim: ledger.sundering)
+                        .font(Night.small)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                // The Frontier the realm borders, as the Mac's Realm panel
+                // tells it to a keeper at home: its season, how its
+                // kingdoms stand, and the way across, which is the Mac's.
+                if let frontier = ledger.frontier(session.status?.frontier) {
+                    Section("The Frontier") {
+                        Text(verbatim: frontier.said)
+                            .font(Night.small)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if !frontier.standings.isEmpty {
+                            Text(verbatim: frontier.standings)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.75))
+                        }
+                        Text(verbatim: CompanionLedger.crossedFromTheMac)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.6))
                     }
                 }
                 // The realm's law, as the Mac's Houses tell it: the edict
@@ -713,7 +739,7 @@ struct RealmPage: View {
         }
         .scrollContentBackground(.hidden)
         .background(Night.background)
-        .navigationTitle("Law, oaths and auguries")
+        .navigationTitle("The realm")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -1119,8 +1145,8 @@ struct AllianceTab: View {
             .navigationDestination(isPresented: $realmOpen) { RealmPage(session: session) }
             .onAppear {
                 #if DEBUG
-                // Seen by the smoke test: the page of the realm's law, oaths
-                // and auguries, opened as a keeper would.
+                // Seen by the smoke test: the page of the realm beyond the
+                // keeper's House, opened as a keeper would.
                 if CompanionCheck.realmShown { realmOpen = true }
                 #endif
             }

@@ -902,6 +902,51 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(CompanionLedger.trading(fair, with: foe, in: state, player: me).said, RuleError.noTradeAcrossWar(foe).description)
     }
 
+    /// The Sundering and the Frontier on the phone's realm page, as the
+    /// Mac's Realm panel tells them, in the rules' words: when the Sundering
+    /// comes, how the shores and the House stand while it is fought, and
+    /// how it ended; the Frontier's season with the House's levy and how
+    /// its kingdoms stand, and nothing while the realm borders none.
+    func testThePhoneTellsTheSunderingAndTheFrontier() throws {
+        var (state, me) = try world()
+        XCTAssertEqual(CompanionLedger(world: state, player: me).sundering,
+                       "The Sundering comes at the \(briefOrdinal(Sundering.next(from: state.watch))) watch: the shores war as kingdoms.")
+        state.watch = Sundering.first
+        _ = state.turnSundering()
+        let shore = try XCTUnwrap(state.sundering?.shore(of: me))
+        state.sundering!.points[me] = 12
+        let east = state.sundering!.score(of: .eastern), west = state.sundering!.score(of: .western)
+        let ends = state.sundering!.ends
+        XCTAssertEqual(CompanionLedger(world: state, player: me).sundering,
+                       "The Sundering: you stand with \(shore.title), your House 12 points; the Eastern Shore \(east), "
+                        + "the Western \(west), until the \(briefOrdinal(ends)) watch.")
+        XCTAssertEqual(CompanionLedger(world: state, player: me).realmWaiting.first,
+                       "The shores war as kingdoms until the \(briefOrdinal(ends)) watch", "Said on the way to the realm while fought")
+        state.watch = ends
+        _ = state.turnSundering()
+        let settled = CompanionLedger(world: state, player: me).sundering
+        XCTAssertTrue(settled.hasPrefix("The last Sundering: \(shore.title) prevailed, 12 to 0; the next at the "), settled)
+        XCTAssertFalse(CompanionLedger(world: state, player: me).realmWaiting.contains { $0.hasPrefix("The shores war") }, "Ended, not said")
+
+        let ledger = CompanionLedger(world: state, player: me)
+        XCTAssertNil(ledger.frontier(nil), "No Frontier, nothing of it")
+        XCTAssertEqual(ledger.levy, state.units(of: me).filter(\.kind.isMilitary).count)
+        let open = FrontierNews(address: "https://frontier.example/nullmere", season: 2, watch: 14, lasts: 40, open: true,
+                                standings: [KingdomStanding(realm: "The Nullmere", points: 40, keepers: 3),
+                                            KingdomStanding(realm: "Thornmere", points: 12, keepers: 1)],
+                                last: FrontierResult(season: 1, standings: [], prevailed: "Thornmere", honours: []))
+        let frontier = try XCTUnwrap(ledger.frontier(open))
+        XCTAssertEqual(frontier.said, open.said(atFrontier: false, levy: ledger.levy))
+        XCTAssertTrue(frontier.said.hasPrefix("The Frontier's second season is open, until the 40th watch: cross there"), frontier.said)
+        XCTAssertTrue(frontier.said.hasSuffix(" Its last: Thornmere prevailed."), frontier.said)
+        XCTAssertEqual(frontier.standings, "The Nullmere 40 (3 keepers) · Thornmere 12 (1 keeper)")
+        let ending = FrontierNews(address: "", season: 3, watch: 39, lasts: 40, open: false, standings: [], last: nil)
+        XCTAssertEqual(ending.said(atFrontier: false, levy: 4), "The Frontier's third season is ending; the next opens as it does.")
+        XCTAssertTrue(open.said(atFrontier: true, levy: 4).hasPrefix("The Frontier's second season, until the 40th watch: you stand here"))
+        XCTAssertEqual(briefOrdinal(11), "eleventh")
+        XCTAssertEqual(briefOrdinal(13), "13th")
+    }
+
     /// The Remembering on the phone, as the Mac's Realm panel sets it: no
     /// riddle, nothing; set, how it stands, its line and each name to
     /// answer, taken by the rules and counted on the House tab; answered

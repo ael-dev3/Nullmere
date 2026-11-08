@@ -328,6 +328,16 @@ public func ordinal(_ number: Int) -> String {
     }
 }
 
+/// A number's ordinal as a briefing says it, the Mac's and the phone's
+/// alike: in words to the twelfth, in figures past it.
+public func briefOrdinal(_ number: Int) -> String {
+    switch number {
+    case 11: return "eleventh"
+    case 12: return "twelfth"
+    default: return ordinal(number)
+    }
+}
+
 /// How a number's ordinal ends in figures: the 21st, the 52nd, the 153rd,
 /// but the 11th, 12th and 13th.
 public func ordinalEnding(_ number: Int) -> String {

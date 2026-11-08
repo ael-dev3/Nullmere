@@ -627,11 +627,24 @@ public struct CompanionLedger: Equatable, Sendable {
         !law.isEmpty || !oathsSworn.isEmpty || !oathsToUs.isEmpty || !prophecies.isEmpty || !whispers.isEmpty || titles.shown || !holySites.isEmpty || mayForetell
     }
 
-    /// What waits on the House among the realm's law, oaths and auguries,
-    /// said on the Alliance tab's way to them: a vote to cast on the edict
-    /// before the realm, and prophecies open to its stake.
+    /// The Frontier's season as the Mac's Realm panel tells it to a keeper
+    /// at home (`FrontierNews.said`), with the House's levy, and how its
+    /// kingdoms stand; nil while the realm borders no Frontier.
+    /// Where a keeper crosses to the Frontier from: their Mac, whose world
+    /// goes there with their House.
+    public static let crossedFromTheMac = "Your House crosses from your Mac's Realm panel."
+
+    public func frontier(_ news: FrontierNews?) -> (said: String, standings: String)? {
+        guard let news else { return nil }
+        return (news.said(atFrontier: false, levy: levy), news.standingsSaid)
+    }
+
+    /// What waits on the House in the realm beyond it, said on the Alliance
+    /// tab's way there: the Sundering while it is fought, a vote to cast on
+    /// the edict before the realm, and prophecies open to its stake.
     public var realmWaiting: [String] {
         var said: [String] = []
+        if let ends = sunderingEnds { said.append("The shores war as kingdoms until the \(briefOrdinal(ends)) watch") }
         if !law.votes.isEmpty { said.append("A vote to cast on the edict before the realm") }
         let open = prophecies.filter { $0.back != nil }.count
         if open > 0 { said.append(open == 1 ? "A prophecy open to your stake" : "\(open) prophecies open to your stake") }
@@ -726,6 +739,14 @@ public struct CompanionLedger: Equatable, Sendable {
     public let titles: Titles
     /// The holy sites the House has found.
     public let holySites: [HolySite]
+    /// How the Sundering stands for the House, as the Mac's Realm panel
+    /// tells it (`GameState.sunderingSaid`).
+    public let sundering: String
+    /// The watch the Sundering under way ends; nil while none is fought.
+    public let sunderingEnds: Int?
+    /// The House's companies of war: its levy, were it to cross to the
+    /// Frontier from its Mac.
+    public let levy: Int
     /// The Spine's next stage, and who may venture up it now.
     public let spine: Spine
     /// The House's letters with other keepers, the latest first.
@@ -787,6 +808,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
             && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers && a.titles == b.titles && a.holySites == b.holySites
+            && a.sundering == b.sundering && a.sunderingEnds == b.sunderingEnds && a.levy == b.levy
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -1159,6 +1181,9 @@ public struct CompanionLedger: Equatable, Sendable {
                             standAgainst: open ? Order(title: "Stand against it with \(stake) moonsalt",
                                                        command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
         }
+        sundering = world.sunderingSaid(for: player)
+        sunderingEnds = world.sundering.flatMap { $0.settled ? nil : $0.ends }
+        levy = world.units(of: player).filter(\.kind.isMilitary).count
         holySites = world.holySites.map { shrine in
             HolySite(id: shrine.id, title: shrine.title, held: world.shrineHolderSaid(shrine, to: player), said: world.shrineSaid(shrine),
                      isFriendly: shrine.holder.map { $0 == player || world.areAllied($0, player) } == true)
