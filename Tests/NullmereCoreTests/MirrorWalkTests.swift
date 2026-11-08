@@ -37,9 +37,15 @@ final class MirrorWalkTests: XCTestCase {
         XCTAssertEqual(state.houses[me].stock.moonsalt, salt - MirrorWalk.price.moonsalt)
         XCTAssertEqual(state.events(begun, heardBy: 1), begun, "The water stills for every shore")
         XCTAssertEqual(state.tidings(of: begun[0], for: 1)?.tone, .bad, "A warning to the others")
+        // Where it comes out said as a place, as every report says one.
+        XCTAssertEqual(state.tidings(of: begun[0], for: me)?.text,
+                       "Your company steps into the Still; it comes out \(state.placeName(of: landing)) as the watch turns.")
+        XCTAssertFalse(state.tidings(of: begun[0], for: 1)?.text.contains("(") ?? true, "No bare coordinates")
         XCTAssertEqual(state.refusal(of: .walkTheMirror(unit: unit.id), as: me), .mirrorWalkedThisMoon)
         let turned = state.endWatch()
         XCTAssertTrue(turned.contains(.mirrorWalked(unit: unit.id, house: me, from: unit.position, to: landing)), "\(turned)")
+        let out = try XCTUnwrap(state.tidings(of: .mirrorWalked(unit: unit.id, house: me, from: unit.position, to: landing), for: me))
+        XCTAssertEqual(out.text, "Your company comes out of the Still \(state.placeName(of: landing)).")
         XCTAssertEqual(state.unit(unit.id)?.position, landing)
         XCTAssertNil(state.mirrorWalks)
         let again = state.refusal(of: .walkTheMirror(unit: unit.id), as: me)

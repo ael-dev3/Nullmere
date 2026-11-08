@@ -340,8 +340,8 @@ extension GameState {
             guard house == viewer else { return nil }
             return Tidings("Your vigour opens the moon's \(["first", "second", "third"][min(chest, 3) - 1]) chest: \(Labours.chestStores[min(chest, 3) - 1]).", .good)
         case .mirrorWalkBegun(_, let house, _, let to):
-            if house == viewer { return Tidings("Your company steps into the Still; it comes out at \(to) as the watch turns.", .good) }
-            return Tidings("The water stills at \(to): \(houses[house].title)'s company walks the mirror and comes out there as the watch turns.", .bad)
+            if house == viewer { return Tidings("Your company steps into the Still; it comes out \(placeName(of: to)) as the watch turns.", .good) }
+            return Tidings("The water stills \(placeName(of: to)): \(houses[house].title)'s company walks the mirror and comes out there as the watch turns.", .bad)
         case .lyceumAnswered(let house, let question):
             guard house == viewer else { return nil }
             return Tidings("Your answer to the Lyceum's \(ordinal(question + 1)) question is given; it is judged as the Lyceum rises.", .neutral)
@@ -350,7 +350,8 @@ extension GameState {
             let mine = standings.firstIndex { $0.house == viewer }
             if let mine {
                 let me = standings[mine]
-                return Tidings("The Lyceum rises: you answered \(me.right) of \(Lyceum.questions), \(ordinal(mine + 1)) of \(standings.count), for \(me.moonsalt) moonsalt.", me.right > 0 ? .good : .neutral)
+                let won = me.moonsalt > 0 ? "for \(me.moonsalt) moonsalt" : "and nothing won"
+                return Tidings("The Lyceum rises: you answered \(me.right) of \(Lyceum.questions), \(ordinal(mine + 1)) of \(standings.count), \(won).", me.right > 0 ? .good : .neutral)
             }
             return Tidings("The Lyceum rises: \(houses[first.house].title) answered best, \(first.right) of \(Lyceum.questions).", .neutral)
         case .calmBroken(let breakers, let calm):
@@ -359,7 +360,8 @@ extension GameState {
             return Tidings("\(names) break\(breakers.count == 1 ? "s" : "") the Still's calm of \(calm) watches: the moonsalt of the shore falls back.", .bad)
         case .mirrorWalked(_, let house, let from, let to):
             if from == to { return house == viewer ? Tidings("The far shore filled; your company comes back out where it stepped in.", .bad) : nil }
-            return Tidings(house == viewer ? "Your company comes out of the Still at \(to)." : "\(houses[house].title)'s company comes out of the Still at \(to).", house == viewer ? .good : .bad)
+            let place = placeName(of: to)
+            return Tidings(house == viewer ? "Your company comes out of the Still \(place)." : "\(houses[house].title)'s company comes out of the Still \(place).", house == viewer ? .good : .bad)
         case .innChestOpened(let house, let chest, let draw):
             guard house == viewer else { return nil }
             switch draw {

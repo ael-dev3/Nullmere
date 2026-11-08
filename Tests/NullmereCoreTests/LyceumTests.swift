@@ -100,6 +100,11 @@ final class LyceumTests: XCTestCase {
         XCTAssertEqual(state.houses[other].stock.moonsalt - before.1, 2 * Lyceum.perAnswer + Lyceum.prizes[1])
         XCTAssertNil(state.lyceumBook)
         XCTAssertNotNil(state.tidings(of: events[0], for: other))
+        XCTAssertEqual(state.tidings(of: events[0], for: me)?.text,
+                       "The Lyceum rises: you answered 5 of \(Lyceum.questions), first of 2, for \(standings[0].moonsalt) moonsalt.")
+        // A House that answered none and won nothing is not told it won "0 moonsalt".
+        let none = GameEvent.lyceumJudged(standings: standings + [LyceumStanding(house: 2, right: 0, moonsalt: 0)])
+        XCTAssertEqual(state.tidings(of: none, for: 2)?.text, "The Lyceum rises: you answered 0 of \(Lyceum.questions), third of 3, and nothing won.")
         XCTAssertFalse(state.events(events, heardBy: other).isEmpty, "told to all")
         XCTAssertThrowsError(try state.perform(.answerLyceum(question: 0, choice: 0), as: me)) {
             XCTAssertEqual($0 as? RuleError, .lyceumNotSitting)
