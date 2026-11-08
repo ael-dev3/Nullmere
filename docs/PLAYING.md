@@ -285,12 +285,13 @@ a vote on the realm's law to cast.
   its Infirmary while any lie in its beds (who lies there, and those being
   healed) with Heal for half what mustering them anew costs, and Raise and
   Muster: the works it may raise a level and the companies it may muster
-  at the first tier now, the House able to pay, and, while the House has
-  sealed none this age, A letter to the age to come…, its words sealed
-  under that hold's stones for 20 moonsalt where the rules take them, the
-  hold that keeps it saying so after; and at a hold on the shore, A bottle
-  on the water…, words for a stranger, signed or not, cast for 10 grain,
-  one a watch; While you are away, the
+  at the first tier now, the House able to pay, the hold keeping the
+  House's letter to the age to come saying so; and beneath the holds, once
+  each for the House, A letter to the age to come…, while it has sealed
+  none this age, its words sealed under the stones of the hold chosen for
+  20 moonsalt where the rules take them, and A bottle on the water…, from
+  one of its holds on the shore, words for a stranger, signed or not, cast
+  for 10 grain, one a watch; While you are away, the
   caretaker's standing orders as they stand, with Muster (the one kind of
   company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace

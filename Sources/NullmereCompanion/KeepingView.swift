@@ -317,6 +317,16 @@ struct HouseTab: View {
                         ForEach(ledger.holds) { hold in
                             HoldRows(session: session, hold: hold)
                         }
+                        // A letter to the age to come, and words in a bottle, each
+                        // once for the House: the hold chosen there.
+                        let sealable = ledger.holds.filter(\.maySealLetter)
+                        if !sealable.isEmpty {
+                            LetterRows(session: session, holds: sealable)
+                        }
+                        let shores = ledger.holds.filter(\.mayCastBottle)
+                        if !shores.isEmpty {
+                            BottleRows(session: session, holds: shores)
+                        }
                     }
                     // The Archive's studies: the one under way, or those the House may begin.
                     if ledger.studying != nil || !ledger.studies.isEmpty {
@@ -2087,19 +2097,12 @@ struct HoldRows: View {
                 .font(Night.small)
                 .accessibilityLabel("\(heal.title) at \(hold.name)")
         }
-        // The House's letter to the age to come, kept under these stones, or
-        // one to seal here, as the Mac's hold record offers it.
+        // The House's letter to the age to come, kept under these stones.
         if let kept = hold.letterKept {
             Text(verbatim: kept)
                 .font(Night.small)
                 .foregroundStyle(Night.moon)
                 .fixedSize(horizontal: false, vertical: true)
-        } else if hold.maySealLetter {
-            LetterRows(session: session, hold: hold)
-        }
-        // Words in a bottle set on the water from a hold on the shore.
-        if hold.mayCastBottle {
-            BottleRows(session: session, hold: hold)
         }
         if !hold.works.isEmpty || !hold.musters.isEmpty {
             HStack(spacing: 10) {
@@ -2115,24 +2118,34 @@ struct HoldRows: View {
     }
 }
 
-/// A letter to the age to come sealed at a hold, as the Mac's hold record
-/// offers it: what one is and costs, the words, and Seal where the rules
-/// would take them.
+/// A letter to the age to come sealed under one of the House's holds, as
+/// the Mac's hold record offers it: what one is and costs, the hold chosen
+/// where there are several, the words, and Seal where the rules would take
+/// them.
 struct LetterRows: View {
     let session: CompanionSession
-    let hold: CompanionLedger.Hold
+    let holds: [CompanionLedger.Hold]
     @State private var draft = ""
+    @State private var chosen: Int?
 
     var body: some View {
+        let hold = holds.first { $0.id == chosen } ?? holds.first
         DisclosureGroup("A letter to the age to come…") {
             Text(verbatim: GameState.letterSaid)
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.65))
                 .fixedSize(horizontal: false, vertical: true)
+            if holds.count > 1 {
+                Picker("Under the stones of", selection: Binding(get: { hold?.id ?? -1 }, set: { chosen = $0 })) {
+                    ForEach(holds) { hold in
+                        Text(verbatim: hold.name).tag(hold.id)
+                    }
+                }
+            }
             TextField("Words for the age to come", text: $draft, axis: .vertical)
                 .font(Night.body)
                 .lineLimit(1...4)
-            if let world = session.world, let me = session.keeper?.house {
+            if let hold, let world = session.world, let me = session.keeper?.house {
                 let seal = CompanionLedger.sealing(draft, in: hold.id, world: world, player: me)
                 Button("Seal") {
                     if let seal { session.give(seal.command, told: "\(seal.title) at \(hold.name)") }
@@ -2140,34 +2153,44 @@ struct LetterRows: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(seal == nil)
-                .accessibilityLabel(seal?.title ?? "Seal the letter")
+                .accessibilityLabel(seal.map { "\($0.title) at \(hold.name)" } ?? "Seal the letter")
             }
         }
         .font(Night.small)
     }
 }
 
-/// Words in a bottle set on the water from a hold on the shore, as the
-/// Mac's hold record offers it: what one is and costs, the words, whether
-/// signed, and Cast where the rules would take them.
+/// Words in a bottle set on the water from one of the House's holds on the
+/// shore, as the Mac's hold record offers it: what one is and costs, the
+/// hold chosen where there are several, the words, whether signed, and Cast
+/// where the rules would take them.
 struct BottleRows: View {
     let session: CompanionSession
-    let hold: CompanionLedger.Hold
+    let holds: [CompanionLedger.Hold]
     @State private var draft = ""
     @State private var signed = true
+    @State private var chosen: Int?
 
     var body: some View {
+        let hold = holds.first { $0.id == chosen } ?? holds.first
         DisclosureGroup("A bottle on the water…") {
             Text(verbatim: GameState.bottleSaid)
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.65))
                 .fixedSize(horizontal: false, vertical: true)
+            if holds.count > 1 {
+                Picker("From", selection: Binding(get: { hold?.id ?? -1 }, set: { chosen = $0 })) {
+                    ForEach(holds) { hold in
+                        Text(verbatim: hold.name).tag(hold.id)
+                    }
+                }
+            }
             TextField("Words for a stranger", text: $draft, axis: .vertical)
                 .font(Night.body)
                 .lineLimit(1...4)
             Toggle("Sign it", isOn: $signed)
                 .tint(Night.moon)
-            if let world = session.world, let me = session.keeper?.house {
+            if let hold, let world = session.world, let me = session.keeper?.house {
                 let cast = CompanionLedger.casting(draft, from: hold.id, signed: signed, world: world, player: me)
                 Button("Cast") {
                     if let cast { session.give(cast.command, told: "\(cast.title) from \(hold.name)") }
@@ -2175,7 +2198,7 @@ struct BottleRows: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(cast == nil)
-                .accessibilityLabel(cast?.title ?? "Cast the bottle")
+                .accessibilityLabel(cast.map { "\($0.title) from \(hold.name)" } ?? "Cast the bottle")
             }
         }
         .font(Night.small)
