@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Keeps a CI run's screenshots, and each test's time where the run timed
-# them, on the ci-shots branch, in a folder of the run's own, so they can be
-# fetched with git alone. Two jobs of one run keep theirs in the same folder,
+# Keeps a CI run's screenshots, its moving pictures (GIFs), and each test's
+# time where the run timed them, on the ci-shots branch, in a folder of the
+# run's own, so they can be fetched with git alone. Two jobs of one run keep theirs in the same folder,
 # and another run may keep its own in between: a push that loses that race
 # takes what the branch holds now and puts its own on top. It never forces,
 # so nothing another job kept is pushed away.
@@ -16,7 +16,7 @@ from="$(cd "${1:?usage: scripts/push-ci-shots.sh <folder of screenshots>}" && pw
 # unset one.
 files=()
 count=0
-for file in "$from"/*.png "$from"/test-times.txt; do
+for file in "$from"/*.png "$from"/*.gif "$from"/test-times.txt; do
     if [ -f "$file" ]; then files+=("$file"); count=$((count + 1)); fi
 done
 if [ "$count" -eq 0 ]; then

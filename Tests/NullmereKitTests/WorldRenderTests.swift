@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import Metal
 @testable import NullmereCore
 @testable import NullmereKit
@@ -61,11 +62,11 @@ final class WorldRenderTests: XCTestCase {
     }
 
     func draw(_ renderer: WorldRenderer, _ name: String, camera: Camera, tiles: [UInt8], selected: Hex? = nil,
-              scene: SceneFrame = SceneFrame()) throws -> Drawn {
+              scene: SceneFrame = SceneFrame(), time: Float = 20) throws -> Drawn {
         let world = WorldRenderTests.world
         try renderer.updateTiles(tiles, side: TileTexture.side(for: world.state.map))
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
-        var frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
+        var frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: time, motion: 1,
                                        radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected)
         frame.light(with: PointLight.strongest(scene.lights, near: camera.focus))
         let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
@@ -179,6 +180,63 @@ final class WorldRenderTests: XCTestCase {
     func testAGreatBattleFillsItsFieldWithItsThrongs() throws {
         let renderer = try renderer()
         renderer.meshSource = { Library.model($0).mesh }
+        let made = try greatBattle()
+        var state = made.state
+        let ground = made.ground, me = made.me, foe = made.foe
+        let field = try XCTUnwrap(state.fieldsOfBattle.first)
+        XCTAssertEqual(field.fighters.count, 16)
+        let told = try XCTUnwrap(MoonBand.battleLine(in: state, for: me), "the battle told in the moon band")
+        XCTAssertTrue(told.hasPrefix("Battle ") && told.contains("your side") && told.contains("the foe"), told)
+        state.houses[me].explored = Explored(repeating: true, count: state.map.count)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let session = GameSession(state: state, store: LocalStore(directory: directory))
+        let scene = session.sceneFrame(at: 20)
+        let throngs = session.companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
+        XCTAssertEqual(throngs.count, 16, "every company in the field shows its throng")
+        XCTAssertTrue(throngs.allSatisfy(\.struck), "every rank in the field takes blows as it gives them")
+        XCTAssertEqual(session.happenings(poses: throngs, sights: [], stage: WorldStage(map: state.map, relief: Relief(map: state.map)),
+                                          at: Date(), time: 20).impacts.count, 16 * WorldStage.struckSteps.count,
+                       "and the blows land on each struck rank")
+        XCTAssertGreaterThan(throngs.map(\.throng).reduce(0, +), 16 * 24, "the host in its hundreds of figures")
+        print("RENDER battle: \(scene.instanceCount) instances, \(scene.motes.count) motes, \(scene.lights.count) lights")
+        XCTAssertGreaterThan(scene.motes.count, 40, "clash and dust over the field")
+        var close = Camera(scale: 95, tilt: 0.9, heading: 0.35)
+        close.focus(on: ground)
+        let bare = try draw(renderer, "bare field", camera: close, tiles: session.tileBytes)
+        let fought = try draw(renderer, "battle", camera: close, tiles: session.tileBytes, scene: scene)
+        let changed = WorldRenderTests.changed(fought, bare)
+        print("RENDER battle: \(changed) of \(WorldRenderTests.width * WorldRenderTests.height / 4) sampled pixels changed by the host")
+        XCTAssertGreaterThan(changed, 6_000, "the host fills the field")
+        try keep([fought], as: "world-battle")
+        // And told on the map, in the band under the bar, while it is fought.
+        let app = GameApp(store: LocalStore(directory: directory), readiness: { .ready }, sound: false, address: .hosted(seed: "battle band"),
+                          identity: FileIdentityStore(url: directory.appendingPathComponent("identity")))
+        let play = ImageRenderer(content: PlayView(app: app, session: session).frame(width: 1100, height: 760).background(Color.black))
+        play.scale = 1
+        XCTAssertNotNil(play.cgImage)
+
+        // The foe's side broken, three in four of its troops lost: its
+        // companies turn their backs and run, ranks gone; the keeper's own
+        // stand and fight on.
+        let foeSide = try XCTUnwrap(field.side(of: foe))
+        var broken = state
+        for index in field.fighters.indices where field.fighters[index].side == foeSide {
+            broken.fields?[0].fighters[index].lost = field.fighters[index].troops * 3 / 4
+        }
+        let routed = GameSession(state: broken, store: LocalStore(directory: directory))
+            .companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
+        let fleeing = routed.filter { broken.unit($0.unit)?.owner == foe }
+        XCTAssertEqual(fleeing.count, 8)
+        XCTAssertTrue(fleeing.allSatisfy { $0.clip == .march && $0.spread == WorldStage.routSpread }, "a broken side runs")
+        XCTAssertTrue(routed.filter { broken.unit($0.unit)?.owner == me }.allSatisfy { $0.spread != WorldStage.routSpread },
+                      "the side that holds does not")
+    }
+
+    /// Two armies of eight drilled companies, 400,000 troops, met in one
+    /// field a few hexes from the keeper's seat: the realm, the field's
+    /// heart, and the two Houses.
+    func greatBattle() throws -> (state: GameState, ground: Hex, me: Int, foe: Int) {
         var state = WorldRenderTests.world.state
         let me = state.player, foe = (me + 1) % state.houses.count
         _ = try state.declareWar(by: me, on: foe)
@@ -212,59 +270,116 @@ final class WorldRenderTests: XCTestCase {
             orders.append((foe, raise(.bow, of: foe, at: front + east * 2), front))
         }
         for (house, unit, target) in orders { _ = try state.perform(.attack(unit: unit, target: target), as: house) }
-        let field = try XCTUnwrap(state.fieldsOfBattle.first)
-        XCTAssertEqual(field.fighters.count, 16)
-        let told = try XCTUnwrap(MoonBand.battleLine(in: state, for: me), "the battle told in the moon band")
-        XCTAssertTrue(told.hasPrefix("Battle ") && told.contains("your side") && told.contains("the foe"), told)
-        state.houses[me].explored = Explored(repeating: true, count: state.map.count)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let session = GameSession(state: state, store: LocalStore(directory: directory))
-        let scene = session.sceneFrame(at: 20)
-        let throngs = session.companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
-        XCTAssertEqual(throngs.count, 16, "every company in the field shows its throng")
-        XCTAssertTrue(throngs.allSatisfy(\.struck), "every rank in the field takes blows as it gives them")
-        XCTAssertEqual(session.happenings(poses: throngs, sights: [], stage: WorldStage(map: state.map, relief: Relief(map: state.map)),
-                                          at: Date(), time: 20).impacts.count, 16 * WorldStage.struckSteps.count,
-                       "and the blows land on each struck rank")
-        XCTAssertGreaterThan(throngs.map(\.throng).reduce(0, +), 16 * 24, "the host in its hundreds of figures")
-        print("RENDER battle: \(scene.instanceCount) instances, \(scene.motes.count) motes, \(scene.lights.count) lights")
-        XCTAssertGreaterThan(scene.motes.count, 40, "clash and dust over the field")
-        var close = Camera(scale: 95, tilt: 0.9, heading: 0.35)
-        close.focus(on: ground)
-        let bare = try draw(renderer, "bare field", camera: close, tiles: session.tileBytes)
-        let fought = try draw(renderer, "battle", camera: close, tiles: session.tileBytes, scene: scene)
-        var changed = 0
-        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
-            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) where abs(fought.luminance(x, y) - bare.luminance(x, y)) > 8 {
-                changed += 1
+        return (state, ground, me, foe)
+    }
+
+    /// How many pixels of a grid over the frame, every other one each
+    /// way, differ between two frames by more than a just-seen step of
+    /// brightness.
+    static func changed(_ a: Drawn, _ b: Drawn) -> Int {
+        var count = 0
+        for y in stride(from: 0, to: height, by: 2) {
+            for x in stride(from: 0, to: width, by: 2) where abs(a.luminance(x, y) - b.luminance(x, y)) > 8 {
+                count += 1
             }
         }
-        print("RENDER battle: \(changed) of \(WorldRenderTests.width * WorldRenderTests.height / 4) sampled pixels changed by the host")
-        XCTAssertGreaterThan(changed, 6_000, "the host fills the field")
-        try keep([fought], as: "world-battle")
-        // And told on the map, in the band under the bar, while it is fought.
-        let app = GameApp(store: LocalStore(directory: directory), readiness: { .ready }, sound: false, address: .hosted(seed: "battle band"),
-                          identity: FileIdentityStore(url: directory.appendingPathComponent("identity")))
-        let play = ImageRenderer(content: PlayView(app: app, session: session).frame(width: 1100, height: 760).background(Color.black))
-        play.scale = 1
-        XCTAssertNotNil(play.cgImage)
+        return count
+    }
 
-        // The foe's side broken, three in four of its troops lost: its
-        // companies turn their backs and run, ranks gone; the keeper's own
-        // stand and fight on.
-        let foeSide = try XCTUnwrap(field.side(of: foe))
-        var broken = state
-        for index in field.fighters.indices where field.fighters[index].side == foeSide {
-            broken.fields?[0].fighters[index].lost = field.fighters[index].troops * 3 / 4
+    /// Frames of a moving picture: two seconds of them, a tenth of a
+    /// second apart.
+    static let motionFrames = 20
+    static let motionStep = 0.1
+
+    /// A scene in motion as the game draws it, frame by frame.
+    struct Moving {
+        let frames: [Drawn]
+        /// Of the sampled pixels, how many change from one frame to the
+        /// next, on average: the scene's, and the bare land's under the
+        /// same camera at the same moments.
+        let pixels: Double
+        let bare: Double
+        /// How many of the bones posed in a frame, every figure standing
+        /// alike at a moment sharing one pose, stand otherwise than any
+        /// did a frame before, on average; and how many are posed.
+        let bones: Double
+        let boneCount: Double
+    }
+
+    /// Stages a session's world and draws it at moment after moment, as
+    /// the game does, its clock and its hours going on together; and the
+    /// bare land under the same camera at the same moments, beside it.
+    @MainActor
+    func motion(of session: GameSession, camera: Camera, renderer: WorldRenderer, name: String) throws -> Moving {
+        session.camera = camera
+        let start = Date()
+        var frames: [Drawn] = [], bares: [Drawn] = [], palettes: [[Mat4]] = []
+        for step in 0..<WorldRenderTests.motionFrames {
+            let time = 20 + Double(step) * WorldRenderTests.motionStep
+            let scene = session.sceneFrame(at: time, now: start.addingTimeInterval(time - 20))
+            palettes.append(scene.palette)
+            frames.append(try draw(renderer, "\(name) \(step)", camera: camera, tiles: session.tileBytes, scene: scene, time: Float(time)))
+            bares.append(try draw(renderer, "\(name) bare \(step)", camera: camera, tiles: session.tileBytes, time: Float(time)))
         }
-        let routed = GameSession(state: broken, store: LocalStore(directory: directory))
-            .companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
-        let fleeing = routed.filter { broken.unit($0.unit)?.owner == foe }
-        XCTAssertEqual(fleeing.count, 8)
-        XCTAssertTrue(fleeing.allSatisfy { $0.clip == .march && $0.spread == WorldStage.routSpread }, "a broken side runs")
-        XCTAssertTrue(routed.filter { broken.unit($0.unit)?.owner == me }.allSatisfy { $0.spread != WorldStage.routSpread },
-                      "the side that holds does not")
+        let steps = Double(frames.count - 1)
+        let pixels = Double(zip(frames, frames.dropFirst()).map { WorldRenderTests.changed($0, $1) }.reduce(0, +)) / steps
+        let bare = Double(zip(bares, bares.dropFirst()).map { WorldRenderTests.changed($0, $1) }.reduce(0, +)) / steps
+        // The palette's first transform is the still one, shared by all
+        // that stands; after it, each pose's bones, once for every figure
+        // that stands so at that moment.
+        func transforms(_ palette: [Mat4]) -> [[Float]] {
+            palette.dropFirst().map { [$0.c0, $0.c1, $0.c2, $0.c3].flatMap { [$0.x, $0.y, $0.z, $0.w] } }
+        }
+        var moved = 0
+        for (a, b) in zip(palettes, palettes.dropFirst()) {
+            let before = Set(transforms(a))
+            moved += transforms(b).filter { !before.contains($0) }.count
+        }
+        let posed = Double(palettes.dropFirst().map { $0.count - 1 }.reduce(0, +)) / steps
+        print("RENDER motion \(name): \(Int(pixels)) of \(WorldRenderTests.width * WorldRenderTests.height / 4) sampled pixels change a frame,"
+            + " the bare land's \(Int(bare)); \(Int(Double(moved) / steps)) of \(Int(posed)) posed bones new a frame")
+        return Moving(frames: frames, pixels: pixels, bare: bare, bones: Double(moved) / steps, boneCount: posed)
+    }
+
+    /// The great battle and the seat's town in motion, staged and drawn a
+    /// tenth of a second apart for two seconds, as the game draws them:
+    /// from frame to frame the figures' skeletons move, the ranks striking
+    /// and reeling, the townsfolk walking their lanes and working, and the
+    /// picture moves with them, far more than the bare land under them
+    /// does. CI keeps each as a moving picture, world-battle-motion.gif
+    /// and world-town-motion.gif.
+    @MainActor
+    func testTheBattleAndTheTownMoveFrameByFrame() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let made = try greatBattle()
+        var state = made.state
+        state.houses[made.me].explored = Explored(repeating: true, count: state.map.count)
+        var close = Camera(scale: 95, tilt: 0.9, heading: 0.35)
+        close.focus(on: made.ground)
+        let battle = try motion(of: GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("battle"))),
+                                camera: close, renderer: renderer, name: "battle")
+
+        var town = WorldRenderTests.world.state
+        let index = try XCTUnwrap(town.holds.firstIndex { $0.isSeat && $0.owner == town.player })
+        for (kind, level) in [(BuildingKind.walls, 3), (.forge, 3), (.sawpit, 3), (.quarry, 2), (.granary, 3), (.musterHall, 2), (.archive, 2)] {
+            town.holds[index].levels[kind] = level
+        }
+        var near = Camera(scale: 150, tilt: 0.9, heading: 0.6)
+        near.focus(on: town.holds[index].position)
+        let streets = try motion(of: GameSession(state: town, store: LocalStore(directory: directory.appendingPathComponent("town"))),
+                                 camera: near, renderer: renderer, name: "town")
+
+        for (name, moving) in [("the battle", battle), ("the town", streets)] {
+            XCTAssertGreaterThan(moving.boneCount, 20, "\(name): figures posed by their skeletons")
+            XCTAssertGreaterThan(moving.bones, moving.boneCount / 10, "\(name): the figures' skeletons move from frame to frame")
+            XCTAssertGreaterThan(moving.pixels, moving.bare + 50, "\(name): the picture moves where its figures are, more than its bare land")
+        }
+        try keepMoving(battle.frames, as: "world-battle-motion")
+        try keepMoving(streets.frames, as: "world-town-motion")
     }
 
     /// Where the view's ray through a pixel meets the world, and what is there.
@@ -437,17 +552,39 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(median(ford), median(still) + 10, "Pale shingle across the black water: \(median(ford)) against \(median(still))")
     }
 
+    /// A frame as an image, its pixels as the renderer gives them.
+    static func image(_ drawn: Drawn) throws -> CGImage {
+        let provider = try XCTUnwrap(CGDataProvider(data: Data(drawn.pixels) as CFData))
+        return try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                                     space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                                     bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
+                                     provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+    }
+
+    /// Keeps frames in motion as a moving picture, looping, when
+    /// NULLMERE_KEEP_RENDERS names a folder: the middle two thirds of
+    /// each frame each way, where the scene is, at the pixels drawn.
+    func keepMoving(_ frames: [Drawn], as name: String) throws {
+        guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
+        try FileManager.default.createDirectory(at: URL(fileURLWithPath: path), withIntermediateDirectories: true)
+        let url = URL(fileURLWithPath: path).appendingPathComponent("\(name).gif")
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, "com.compuserve.gif" as CFString, frames.count, nil))
+        CGImageDestinationSetProperties(destination, [kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFLoopCount as String: 0]] as CFDictionary)
+        let middle = CGRect(x: WorldRenderTests.width / 6, y: WorldRenderTests.height / 6,
+                            width: WorldRenderTests.width * 2 / 3, height: WorldRenderTests.height * 2 / 3)
+        for drawn in frames {
+            let image = try XCTUnwrap(try WorldRenderTests.image(drawn).cropping(to: middle))
+            CGImageDestinationAddImage(destination, image,
+                                       [kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFDelayTime as String: WorldRenderTests.motionStep]] as CFDictionary)
+        }
+        XCTAssertTrue(CGImageDestinationFinalize(destination), "\(name) kept as a moving picture")
+    }
+
     /// Keeps the frames as one sheet when NULLMERE_KEEP_RENDERS names a
     /// folder, and prints it small for CI's log.
     func keep(_ frames: [Drawn], as name: String) throws {
         let width = WorldRenderTests.width, height = WorldRenderTests.height
-        let images: [CGImage] = try frames.map { drawn in
-            let provider = try XCTUnwrap(CGDataProvider(data: Data(drawn.pixels) as CFData))
-            return try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
-                                         space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
-                                         bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
-                                         provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
-        }
+        let images: [CGImage] = try frames.map(WorldRenderTests.image)
         let sheet = NSImage(size: NSSize(width: width * images.count, height: height))
         sheet.lockFocus()
         for (index, image) in images.enumerated() {

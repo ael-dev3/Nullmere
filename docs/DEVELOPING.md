@@ -123,8 +123,11 @@ scripts/check-voices.sh    # the voices, spoken by this Mac's on-device model th
 CI runs all of these on a macOS 26 runner for every pull request and every
 push to `main` or a working branch that touches the code, and keeps the
 screenshots of the launcher, the realm's front door, the world and the
-phone, and each test's time, slowest first, beside them on the `ci-shots`
-branch (`<run>/test-times.txt`; `scripts/push-ci-shots.sh`).
+phone, two seconds of the great battle and of the seat's town in motion as
+the world's renderer draws them (`world-battle-motion.gif`,
+`world-town-motion.gif`, from `WorldRenderTests`), and each test's time,
+slowest first, beside them on the `ci-shots` branch
+(`<run>/test-times.txt`; `scripts/push-ci-shots.sh`).
 
 Line coverage is held to a floor for each module, on macOS and, for the
 rules, the realm and the launcher's logic, on Linux too (`scripts/coverage.py`). On macOS,
