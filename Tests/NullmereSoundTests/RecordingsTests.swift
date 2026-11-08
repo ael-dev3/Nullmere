@@ -10,12 +10,13 @@ final class RecordingsTests: XCTestCase {
     private let sets: [(String, [Recording])] = [("harp", Recordings.harpNotes), ("glockenspiel", Recordings.glockenspielNotes),
                                                  ("cellos", Recordings.celloNotes), ("violas", Recordings.violaNotes),
                                                  ("basses", Recordings.bassNotes), ("horns", Recordings.hornNotes),
+                                                 ("clarinet", Recordings.clarinetNotes),
                                                  ("anvil", Recordings.anvilNotes), ("slit drum", Recordings.slitDrumNotes),
                                                  ("drums", Recordings.drumNotes)]
     /// The sets struck with no pitch to sound.
     private let unpitched: Set = ["drums", "anvil", "slit drum"]
     /// The sets held round a loop for as long as they sound.
-    private let held: Set = ["cellos", "violas", "basses", "horns"]
+    private let held: Set = ["cellos", "violas", "basses", "horns", "clarinet"]
 
     /// Blocks read back exactly: foretold from nothing, from the last
     /// sample, and from the line through the last two, each counted in its

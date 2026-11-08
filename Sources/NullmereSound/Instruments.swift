@@ -327,10 +327,16 @@ final class Horns {
     /// How many notes have been blown, for tests.
     private(set) var blown = 0
 
-    /// The horns at a rate, with as many voices as may sound at once.
-    init(sampleRate: Float, voices count: Int = Horns.voices) {
+    /// The notes it blows: the horn's, or another held instrument's, the
+    /// clarinet's.
+    let notes: [Recording]
+
+    /// The horns at a rate, with as many voices as may sound at once; or
+    /// another held instrument's notes blown the same way.
+    init(sampleRate: Float, voices count: Int = Horns.voices, notes: [Recording] = Recordings.hornNotes) {
         self.sampleRate = sampleRate
-        voices = Array(repeating: Voice(reading: Reading(note: Recordings.hornNotes[0]), held: 0), count: max(count, 1))
+        self.notes = notes
+        voices = Array(repeating: Voice(reading: Reading(note: notes[0]), held: 0), count: max(count, 1))
     }
 
     /// How many sound now.
@@ -341,7 +347,7 @@ final class Horns {
     /// how loud in each (`heard`, a cue's place), and after how long.
     func blow(_ frequency: Float, strength: Float, hold: Float, pan: Float = 0, heard: (left: Float, right: Float)? = nil,
               wait: Float = 0) {
-        let nearest = Recordings.nearest(Recordings.hornNotes, to: frequency)
+        let nearest = Recordings.nearest(notes, to: frequency)
         // A silent voice, or the one nearest done.
         var slot = 0, least = Float.infinity
         for (index, voice) in voices.enumerated() {
@@ -355,7 +361,7 @@ final class Horns {
                 slot = index
             }
         }
-        var reading = Reading(note: Recordings.hornNotes[nearest.index])
+        var reading = Reading(note: notes[nearest.index])
         reading.step = nearest.ratio * Double(Recordings.rate / sampleRate)
         let loud = min(max(strength, 0), 1) * Horns.level, ear = heard ?? ears(pan)
         reading.left = ear.left * loud

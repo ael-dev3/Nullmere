@@ -57,6 +57,11 @@ BASSES = [(f"Strings/Solo Contrabass/SusVib/BKCtbss_SusVib_{name}_v1_rr1.wav", n
 # each horn note an octave below the one it sounds.
 HORNS = [(f"Brass/F Horn/sus/MOHorn_sus_{name}_v3_1.wav", note) for name, note in
          [("G1", 43), ("A#1", 46), ("D2", 50), ("F2", 53), ("A2", 57), ("C3", 60)]]
+# A clarinet held at middle strength, four notes about the octave the reed's
+# calls are sung in, named, as the horn's are, an octave below where they
+# sound.
+CLARINET = [(f"Woodwinds/Clarinet/susLong/DCClar_susLong_{name}_v2_rr1_sum.wav", note) for name, note in
+            [("A#2", 58), ("D3", 62), ("F3", 65), ("A#3", 70)]]
 # The forge's anvil, struck at middle strength and hard, a blow of each;
 # and a slit drum of wood, struck mezzo-piano twice alike.
 ANVIL = [(f"Percussion/Anvil_Hit1_{v}_Sum.wav", 0) for v in ("v2", "v3")]
@@ -390,6 +395,10 @@ def main():
     horns = family(root, HORNS, "blown")
     even(horns)
     swift(horns, "horns", "The French horn, held forte: six notes, G2 to C4.", os.path.join(out, "HornsFile.swift"))
+    clarinet = family(root, CLARINET, "blown")
+    even(clarinet)
+    swift(clarinet, "clarinet", "The clarinet, held at middle strength: four notes, A sharp 3 to A sharp 4.",
+          os.path.join(out, "ClarinetFile.swift"))
     anvil = family(root, ANVIL, "rung")
     even(anvil, together=True)
     swift(anvil, "anvil", "The anvil, struck at middle strength and hard.", os.path.join(out, "AnvilFile.swift"))

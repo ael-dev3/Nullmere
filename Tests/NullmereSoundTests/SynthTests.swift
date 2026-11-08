@@ -184,6 +184,15 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThan(rms(right.right[...]), rms(right.left[...]) * 3, "At the right edge, the right ear")
         XCTAssertEqual(blown(.clash).synth.cueHornsBlown, 0, "A clash is no horn's")
         XCTAssertEqual(Synth.call(of: .horn).map(\.frequency), [110, 146.8], "A, then the D a fourth above")
+        // An envoy sent and an offer refused are sung on the recorded
+        // clarinet, as loud as the reedy partials they took over from.
+        for (cue, before) in [(SoundCue.parley, Float(-36.8)), (.refusal, -37.5)] {
+            let heard = blown(cue)
+            XCTAssertEqual(heard.synth.cueReedsSung, 2, "\(cue): two notes on the reed")
+            XCTAssertEqual(heard.synth.cueHornsBlown, 0, "\(cue): none on the horn")
+            print("SOUND \(cue) on the recorded clarinet \(decibels(rms(heard.left[...]))) dB, its partials \(before) dB")
+            XCTAssertEqual(decibels(rms(heard.left[...])), before, accuracy: 2, "\(cue) as loud as it was")
+        }
         XCTAssertEqual(Synth.call(of: .muster).map(\.frequency), [196, 293.7], "G, then the D a fifth above")
     }
 

@@ -1685,9 +1685,10 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are fourteen of the
-thirty-one cues: the horns' calls and fanfares, the bells, the harp's
-chords, the drums, the forge's anvil and the knocks of wood. Every other
+The score is played on recorded instruments, and so are sixteen of the
+thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
+bells, the harp's chords, the drums, the forge's anvil and the knocks of
+wood. Every other
 sound is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and a low
@@ -1743,7 +1744,9 @@ sound is made as it plays.
   second a third lower. An envoy at the gate is a soft horn call across the
   water, a fifth; a hold taken, a horn triad rising to its octave; a deed
   honoured, a quick fanfare up to the octave; an alliance founded, joined
-  or led, two stately horn chords, the second a fourth above. A study finished rings three
+  or led, two stately horn chords, the second a fourth above. An envoy
+  sent is a soft reed call rising a fourth on a recorded clarinet, asking;
+  an offer refused, two of its notes falling a minor third. A study finished rings three
   glass bells on the recorded glockenspiel; the realm's crier strikes the
   great drum three times, then a bell; a work finished is two knocks and a
   chord on the recorded harp, a rise a chord rising on it and an accord a
