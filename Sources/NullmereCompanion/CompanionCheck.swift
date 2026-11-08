@@ -256,8 +256,9 @@ enum CompanionCheck {
             write()
             return
         }
-        lines.append(String(format: "In as %@ of %@ in %.2f s: watch %ld, %ld companies, %ld holds", session.keeper?.name ?? "?", ledger.house,
-                            Date().timeIntervalSince(began), ledger.watch, ledger.companies.count, ledger.holds.count))
+        let holds = ledger.holds.count == 1 ? "1 hold" : "\(ledger.holds.count) holds"
+        lines.append(String(format: "In as %@ of %@ in %.2f s: watch %ld, %@, %@", session.keeper?.name ?? "?", ledger.house,
+                            Date().timeIntervalSince(began), ledger.watch, GameState.companies(ledger.companies.count), holds))
         #if targetEnvironment(simulator)
         let file = CompanionKeychain(realm: invite.realm).fallback
         lines.append(FileManager.default.fileExists(atPath: file.path)
