@@ -46,6 +46,14 @@ public enum Resource: String, CaseIterable, Codable, Sendable, PlainCases {
 
 /// An amount of each resource. Arithmetic never goes below zero; storing
 /// stops at `Stock.cap`.
+/// A stock as a line says it, its stores listed: "40 grain and 5 stone",
+/// its thousands set apart, the empty ones left out.
+extension Stock {
+    public var listedSaid: String {
+        listed(Resource.allCases.filter { self[$0] > 0 }.map { "\(GameState.counted(self[$0])) \($0.title.lowercased())" })
+    }
+}
+
 public struct Stock: Codable, Equatable, Hashable, Sendable, CustomStringConvertible {
     public static let cap = 99_999
 

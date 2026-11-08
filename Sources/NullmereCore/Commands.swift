@@ -234,6 +234,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case cannotFight
     case notAFounder
     case cannotSettle(Terrain)
+    /// Nothing an alliance raises (a standard, its hall, storehouse or
+    /// yards) stands on water or the Spine.
+    case unfitGround(Terrain)
     case tooCloseToHold
     case foreignTerritory
     case busy
@@ -550,7 +553,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noMovesLeft: return "It has no moves left this watch."
         case .alreadyThere: return "It's already there."
         case .outsideTheWorld: return "That lies beyond the Spine."
-        case .impassable(let terrain): return "\(terrain.title) can't be crossed."
+        case .impassable(let terrain): return terrain.ground.lineBegun + (terrain == .stream ? " can't be crossed but at its shoals." : " can't be crossed.")
         case .noPath: return "There's no way there."
         case .notAtWar: return "You're not at war with them."
         case .sunderingWar: return "This war is the Sundering's: it is laid down as the Sundering ends, not before."
@@ -558,14 +561,15 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .outOfReach: return "That's out of reach."
         case .cannotFight: return "These aren't fighters."
         case .notAFounder: return "Only Founders can found a hold."
-        case .cannotSettle(let terrain): return "A hold can't stand on \(terrain.title)."
+        case .cannotSettle(let terrain): return "A hold can't stand \(terrain.place)."
+        case .unfitGround(let terrain): return "Nothing can be raised \(terrain.place)."
         case .tooCloseToHold: return "Too close to another hold; it needs three tiles of room."
         case .foreignTerritory: return "That land belongs to another House."
         case .busy: return "That hold is already busy."
         case .maxLevel: return "It's already at its highest level."
         case .seatOnly: return "Only a House's seat can raise it."
         case .needsMusterHall(let level): return "Needs a Muster Hall \(BuildingKind.numeral(level))."
-        case .shortOf(let missing): return "Short of \(missing)."
+        case .shortOf(let missing): return "Short of \(missing.listedSaid)."
         case .alreadyStance(let stance): return "Already \(stance.standing)."
         case .notApplicable: return "That isn't possible now."
         case .unknownEnvoy: return "That envoy has gone."
@@ -729,7 +733,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .nothingGiven: return "Give some of your stores, and none of them less than nothing."
         case .hallStanding: return "Your alliance has its hall already: it raises one, and another only once that one falls."
         case .hallGround: return "A hall stands only on open land, with nothing on it."
-        case .notAllianceLand: return "It stands on your alliance's own land, within reach of its standards."
+        case .notAllianceLand: return "It stands only on your alliance's own land, within reach of its standards."
         case .allianceGround: return "An alliance's work stands here: a hold is founded on open land."
         case .notForged: return "That gear is not forged: only the wilds leave it."
         case .needsForge(let level): return "Raise a Forge to level \(BuildingKind.numeral(level)) to forge gear so fine."
@@ -737,7 +741,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .shortOfMakings(let making, let count): return "You need \(count) more \(making.title.lowercased())."
         case .storehouseStanding: return "Your alliance has its storehouse already: it raises one, and another only once that one falls."
         case .noStorehouse: return "Your alliance has no storehouse standing whole: its leader raises one on its land."
-        case .storehouseFull: return "Your room in the storehouse holds no more: \(Storehouse.room) at most."
+        case .storehouseFull: return "Your room in the storehouse holds no more: \(Storehouse.room.listedSaid) at most."
         case .notLaidUp: return "You haven't laid up so much in the storehouse."
         case .yardStanding(let store): return "Your alliance has its \(Yard.title(of: store).lowercased()) already."
         case .foreignYard: return "Only the companies of the alliance that raised a yard work it."

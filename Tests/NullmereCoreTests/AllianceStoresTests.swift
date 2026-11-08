@@ -167,7 +167,9 @@ final class AllianceStoresTests: XCTestCase {
         let water = try XCTUnwrap(stage.state.map.hexes.first { hex in
             stage.state.isExplored(hex, by: me) && stage.state.map[hex].map { !$0.terrain.isPassable || $0.terrain.isWater } == true
         })
-        XCTAssertNotNil(refused(water))
+        let ground = try XCTUnwrap(stage.state.map[water]).terrain
+        XCTAssertEqual(refused(water), .unfitGround(ground), "Not that it can't be crossed: \(ground)")
+        XCTAssertEqual(RuleError.unfitGround(ground).description, "Nothing can be raised \(ground.place).")
         let unknown = try XCTUnwrap(stage.state.map.hexes.first { !stage.state.isExplored($0, by: me) })
         XCTAssertEqual(refused(unknown), .unexplored)
         // Too near another House's hold, it is theirs.
@@ -183,7 +185,7 @@ final class AllianceStoresTests: XCTestCase {
         XCTAssertEqual(RuleError.storehouseStanding.description,
                        "Your alliance has its storehouse already: it raises one, and another only once that one falls.")
         XCTAssertEqual(RuleError.openGroundOnly.description, "It stands only on open land, with nothing on it.")
-        XCTAssertEqual(RuleError.notAllianceLand.description, "It stands on your alliance's own land, within reach of its standards.")
+        XCTAssertEqual(RuleError.notAllianceLand.description, "It stands only on your alliance's own land, within reach of its standards.")
     }
 
     func testHousesLayUpTheirStoresOutOfAnyTakersReach() throws {
@@ -219,7 +221,8 @@ final class AllianceStoresTests: XCTestCase {
         XCTAssertEqual(refused(.layUp(.zero)), .nothingGiven)
         XCTAssertEqual(refused(.layUp(Stock(grain: -5, timber: 10))), .nothingGiven)
         XCTAssertEqual(refused(.layUp(Stock(grain: 10)), as: 3), .notInAlliance)
-        XCTAssertEqual(RuleError.storehouseFull.description, "Your room in the storehouse holds no more: \(Storehouse.room) at most.")
+        XCTAssertEqual(RuleError.storehouseFull.description,
+                       "Your room in the storehouse holds no more: 600 grain, 600 timber, 600 stone and 50 moonsalt at most.")
         // Taken back as it was laid up, and as there is room to keep it.
         XCTAssertEqual(refused(.takeBack(Stock(timber: 101))), .notLaidUp)
         XCTAssertEqual(refused(.takeBack(Stock(grain: -1, timber: 1))), .nothingGiven)

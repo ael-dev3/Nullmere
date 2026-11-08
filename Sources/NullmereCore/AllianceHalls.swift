@@ -116,7 +116,7 @@ extension GameState {
         guard hall(of: sworn.id) == nil else { return .hallStanding }
         guard let tile = map[hex] else { return .outsideTheWorld }
         guard isExplored(hex, by: house) else { return .unexplored }
-        guard tile.terrain.isPassable, !tile.terrain.isWater else { return .impassable(tile.terrain) }
+        guard tile.terrain.isPassable, !tile.terrain.isWater else { return .unfitGround(tile.terrain) }
         guard !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil else { return .hallGround }
         guard allianceLand(at: hex) == sworn.id else { return .notAllianceLand }
         guard holds.allSatisfy({ sworn.members.contains($0.owner) || $0.position.distance(to: hex) > AllianceHall.fromOthers }),

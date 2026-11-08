@@ -58,6 +58,23 @@ final class RulesTests: XCTestCase {
         }
     }
 
+    /// A refusal on account of the ground says the ground as every line
+    /// does: the stream crossed at its shoals, a hold "in the dead
+    /// shallows", nothing raised on water that can be crossed all the same;
+    /// and what a House is short of listed as a line lists it.
+    func testGroundAndShortfallRefusalsAreSaidAsALineSaysThem() {
+        XCTAssertEqual(RuleError.impassable(.spine).description, "The Spine can't be crossed.")
+        XCTAssertEqual(RuleError.impassable(.still).description, "The Still can't be crossed.")
+        XCTAssertEqual(RuleError.impassable(.stream).description, "The stream can't be crossed but at its shoals.")
+        XCTAssertEqual(RuleError.cannotSettle(.shallows).description, "A hold can't stand in the dead shallows.")
+        XCTAssertEqual(RuleError.cannotSettle(.ford).description, "A hold can't stand on the Moonford.")
+        XCTAssertEqual(RuleError.cannotSettle(.shoal).description, "A hold can't stand on the shoal.")
+        XCTAssertEqual(RuleError.unfitGround(.shallows).description, "Nothing can be raised in the dead shallows.")
+        XCTAssertEqual(RuleError.shortOf(Stock(moonsalt: 24)).description, "Short of 24 moonsalt.")
+        XCTAssertEqual(RuleError.shortOf(Stock(grain: 1_200, stone: 5)).description, "Short of 1,200 grain and 5 stone.")
+        XCTAssertEqual(RuleError.shortOf(Stock(grain: 1, timber: 2, stone: 3)).description, "Short of 1 grain, 2 timber and 3 stone.")
+    }
+
     func testLongMarchesContinueInLaterWatches() throws {
         var state = newGame()
         let spear = state.units(of: 0).first { $0.kind == .spear }!

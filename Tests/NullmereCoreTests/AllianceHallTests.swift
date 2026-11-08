@@ -153,7 +153,7 @@ final class AllianceHallTests: XCTestCase {
         XCTAssertEqual(refused(another), .hallStanding, "One to an alliance")
         XCTAssertEqual(RuleError.hallStanding.description, "Your alliance has its hall already: it raises one, and another only once that one falls.")
         XCTAssertEqual(RuleError.hallGround.description, "A hall stands only on open land, with nothing on it.")
-        XCTAssertEqual(RuleError.notAllianceLand.description, "It stands on your alliance's own land, within reach of its standards.")
+        XCTAssertEqual(RuleError.notAllianceLand.description, "It stands only on your alliance's own land, within reach of its standards.")
         // A standard is raised near the hall, not near another's.
         XCTAssertEqual(stage.state.refusal(of: .raiseStandard(at: stage.spot), as: me), .standardGround)
         var foreign = stage.state

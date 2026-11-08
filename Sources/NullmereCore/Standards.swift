@@ -154,7 +154,7 @@ extension GameState {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard let tile = map[hex] else { return .outsideTheWorld }
         guard isExplored(hex, by: house) else { return .unexplored }
-        guard tile.terrain.isPassable, !tile.terrain.isWater else { return .impassable(tile.terrain) }
+        guard tile.terrain.isPassable, !tile.terrain.isWater else { return .unfitGround(tile.terrain) }
         guard !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil, standard(at: hex) == nil else { return .standardGround }
         // The alliance's own ground near, and no other's: its holds looked
         // at in place, none copied, for every hex a steward weighs.

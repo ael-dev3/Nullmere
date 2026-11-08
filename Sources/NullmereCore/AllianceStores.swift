@@ -235,7 +235,7 @@ extension GameState {
     private func allianceWorkGround(at hex: Hex, for sworn: Alliance, by house: Int) -> RuleError? {
         guard let tile = map[hex] else { return .outsideTheWorld }
         guard isExplored(hex, by: house) else { return .unexplored }
-        guard tile.terrain.isPassable, !tile.terrain.isWater else { return .impassable(tile.terrain) }
+        guard tile.terrain.isPassable, !tile.terrain.isWater else { return .unfitGround(tile.terrain) }
         guard !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil else { return .openGroundOnly }
         guard allianceLand(at: hex) == sworn.id else { return .notAllianceLand }
         return nil
