@@ -595,6 +595,12 @@ public struct CompanionLedger: Equatable, Sendable {
     public let veilShort: String?
     /// Drawing the veil over the House's holds, where the rules would now.
     public let drawVeil: Order?
+    /// Whether the House tab tells the walls: while foes gather near the
+    /// House's holds, or the veil lies, rests or may be drawn now; not the
+    /// standing offer of a veil the House is short of moonsalt for, which
+    /// comes to the tab once it can be paid for, and which the Mac's seat
+    /// record tells all the while.
+    public var wallsTold: Bool { !gatherings.isEmpty || veilShort == nil }
     public let companies: [Company]
     public let commanders: [Commander]
     /// The commanders of other Houses the House holds prisoner.

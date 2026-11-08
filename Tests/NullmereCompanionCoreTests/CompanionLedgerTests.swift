@@ -236,7 +236,8 @@ final class CompanionLedgerTests: XCTestCase {
     /// The veil of the Still on the phone, in the Mac's words: offered for its
     /// moonsalt and taken by the rules; drawn, told until when and offered no
     /// more; lifted, told when it may be drawn anew; rested, offered again,
-    /// but not without the moonsalt.
+    /// but not without the moonsalt, and then not told on the House tab at
+    /// all while no foe gathers near.
     func testThePhoneDrawsTheVeilOfTheStill() throws {
         var (state, me) = try world()
         var ledger = CompanionLedger(world: state, player: me)
@@ -246,6 +247,7 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(draw.command, .drawVeil)
         XCTAssertFalse(ledger.veiled)
         XCTAssertNil(ledger.veilShort, "Moonsalt enough, nothing short")
+        XCTAssertTrue(ledger.wallsTold, "It may be drawn: told")
         assertTaken([draw], in: state, as: me)
         _ = try state.perform(draw.command, as: me)
         ledger = CompanionLedger(world: state, player: me)
@@ -254,11 +256,13 @@ final class CompanionLedgerTests: XCTestCase {
         let until = state.watch + GameState.veilLasts
         XCTAssertEqual(ledger.veil, "Veiled until watch \(until): none may strike, rally on or scout your holds, unless you strike first.")
         XCTAssertNil(ledger.drawVeil, "Drawn already")
+        XCTAssertTrue(ledger.wallsTold, "Lying: told")
 
         state.watch = until
         ledger = CompanionLedger(world: state, player: me)
         XCTAssertEqual(ledger.veil, "The mist gathers again: the veil may be drawn anew at watch \(until + GameState.veilRest).")
         XCTAssertNil(ledger.drawVeil)
+        XCTAssertTrue(ledger.wallsTold, "Resting: told, and until when")
         state.watch = until + GameState.veilRest
         XCTAssertNotNil(CompanionLedger(world: state, player: me).drawVeil, "Rested")
         state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 6)
@@ -266,6 +270,8 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(ledger.drawVeil, "Too little moonsalt for it")
         XCTAssertEqual(ledger.veilShort, "Short of 24 moonsalt.", "What it is short of, as the Mac's seat record says it")
         XCTAssertFalse(ledger.veiled)
+        XCTAssertTrue(ledger.gatherings.isEmpty)
+        XCTAssertFalse(ledger.wallsTold, "A veil it can't pay for, no foe near: not on the House tab")
     }
 
     /// The Lyceum on the phone, as the Mac's card sets it: nothing while it
@@ -1727,6 +1733,12 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(placed, GameState.gatheringCompanies)
         let gathered = CompanionLedger(world: state, player: me).gatherings
         XCTAssertEqual(gathered, ["\(GameState.gatheringCompanies) companies of \(state.houses[foe].title) gather near \(seat.name)."])
+        // Foes near: the walls told, and the veil with them, though the
+        // House is short of the moonsalt for it.
+        state.houses[me].stock.moonsalt = 0
+        let walls = CompanionLedger(world: state, player: me)
+        XCTAssertNotNil(walls.veilShort)
+        XCTAssertTrue(walls.wallsTold)
         XCTAssertEqual(CompanionLedger(world: state, player: me).houseWaiting, 3, "And the companies gathered near the seat")
         XCTAssertEqual(state.gatherings(against: me) { _ in false }, [], "Nothing gathers that isn't seen")
     }
