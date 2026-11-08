@@ -1363,19 +1363,36 @@ struct VeilLine: View {
     /// it in too.
     static func words(_ state: GameState, house: Int) -> String { state.veilSaid(of: house) }
 
+    /// Why the veil can't be drawn now, where its words don't say so
+    /// already: the moonsalt the House is short of. Resting, its words say
+    /// when it may be drawn again.
+    static func short(_ state: GameState, house: Int) -> String? {
+        guard let refusal = state.veilRefusal(as: house), case .shortOf = refusal else { return nil }
+        return refusal.description
+    }
+
     var body: some View {
         let state = session.state, me = session.player
         let refusal = state.veilRefusal(as: me)
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        // The words across the record, the button beneath them: beside it
+        // they ran four lines down a narrow column.
+        VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: VeilLine.words(state, house: me))
                 .font(.nm(10))
                 .foregroundStyle(state.isVeiled(me) ? Palette.glowWords : Palette.text(0.55))
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 4)
             if !state.isVeiled(me) {
-                QuietButton(title: "Draw the veil", size: 8.5, enabled: refusal == nil, name: "Draw the veil of the Still over your holds",
-                            why: refusal?.description) {
-                    session.perform(.drawVeil)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    if let short = VeilLine.short(state, house: me) {
+                        Text(verbatim: short)
+                            .font(.nm(9))
+                            .foregroundStyle(Palette.text(0.45))
+                    }
+                    Spacer(minLength: 4)
+                    QuietButton(title: "Draw the veil", size: 8.5, enabled: refusal == nil, name: "Draw the veil of the Still over your holds",
+                                why: refusal?.description) {
+                        session.perform(.drawVeil)
+                    }
                 }
             }
         }

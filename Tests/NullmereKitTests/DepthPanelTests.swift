@@ -1176,7 +1176,15 @@ final class DepthPanelTests: XCTestCase {
     func testTheVeilIsDrawnFromTheSeat() throws {
         var state = world("a veil drawn")
         let me = state.player
+        // Short of moonsalt: why, beside the button, which can't be pressed.
+        state.houses[me].stock.moonsalt = 26
+        XCTAssertEqual(VeilLine.short(state, house: me), "Short of 4 moonsalt.")
+        let (short, _) = session(state)
+        short.selection = .hold(try XCTUnwrap(state.seat(of: me)).id)
+        draw(SelectionPanel(session: short), width: 330, height: 1200)
+        XCTAssertFalse(PressableButtons.press("Draw the veil"), "Among \(shown)")
         state.houses[me].stock.moonsalt = 60
+        XCTAssertNil(VeilLine.short(state, house: me))
         let other = try XCTUnwrap(state.livingHouses.map(\.id).first { $0 != me })
         state.houses[other].isPlayer = true
         state.houses[other].stock.moonsalt = 60
@@ -1204,6 +1212,7 @@ final class DepthPanelTests: XCTestCase {
         var lifted = session.state
         _ = lifted.liftVeil(of: me)
         XCTAssertTrue(VeilLine.words(lifted, house: me).hasPrefix("The mist gathers again"))
+        XCTAssertNil(VeilLine.short(lifted, house: me))
         XCTAssertEqual(GameSession.cues(for: .drawVeil, events: [], in: session.state, player: me), [.stand])
         XCTAssertEqual(GameSession.cue(forDepth: .veilLifted(house: me, struck: true), in: session.state, player: me), .horn)
         XCTAssertNil(GameSession.cue(forDepth: .veilLifted(house: other, struck: false), in: session.state, player: me))
