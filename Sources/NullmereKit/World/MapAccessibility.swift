@@ -171,7 +171,7 @@ enum MapAccessibility {
             if unit.owner == player {
                 if unit.fortified { parts.append("fortified") }
                 else if unit.destination != nil { parts.append("marching") }
-                else if unit.movesLeft > 0 { parts.append("\(unit.movesLeft) moves left, awaiting orders") }
+                else if unit.movesLeft > 0 { parts.append(unit.movesLeft == 1 ? "1 move left, awaiting orders" : "\(unit.movesLeft) moves left, awaiting orders") }
                 else { parts.append("no moves left") }
             }
             companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id), hex: unit.position,
