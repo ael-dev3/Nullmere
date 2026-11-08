@@ -47,6 +47,7 @@ final class VoiceCheckTests: XCTestCase {
         for proposal in Proposal.allCases {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }
+        XCTAssertEqual(told.filter { $0.hasPrefix("words for the fallen (") }.count, 1, "Words asked for the House's dead")
         // The clerk asked to read the keeper's words, its answer on one line;
         // and stopped a moment in, back at once.
         XCTAssertEqual(told.filter { $0.hasPrefix("orders read (") && $0.hasSuffix("s): 1. FORTIFY C1 / And nothing more.") }.count, 1, report.text)

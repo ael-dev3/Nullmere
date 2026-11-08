@@ -2314,6 +2314,69 @@ public final class GameSession {
         composing.remove(entry)
     }
 
+    // MARK: Words for the dead
+
+    /// Words this Mac's model wrote for the House's dead, for its vigil,
+    /// and in how many seconds.
+    struct VigilWords: Equatable {
+        let words: String
+        let seconds: Double
+    }
+
+    /// Since when this Mac's model has been writing words for the House's
+    /// dead, while it is, for the vigil's composer to show it at work.
+    public private(set) var vigilWording: Date?
+    /// The words it wrote last, for the composer to take up.
+    private(set) var vigilWords: VigilWords?
+    /// Why it wrote none, where it wrote none, as the composer tells it.
+    public private(set) var vigilUnworded: String?
+    @ObservationIgnored private var wordingVigil: Task<Void, Never>?
+
+    /// Asks this Mac's model for words for the House's dead, from where and
+    /// when its companies fell as its reports tell it; the words wait in
+    /// the vigil's composer for the keeper to keep, change or let be.
+    func wordVigil() {
+        guard let voice, wordingVigil == nil else { return }
+        let moment = VoiceFacts.vigil(of: player, in: state, reports: reports)
+        let began = Date()
+        vigilWording = began
+        vigilUnworded = nil
+        wordingVigil = Task { [weak self] in
+            let heard = await voice.speaking(moment)
+            guard let self, !Task.isCancelled else { return }
+            self.wordingVigil = nil
+            self.vigilWording = nil
+            if let words = heard.words.flatMap(Envoy.carried) {
+                self.vigilWords = VigilWords(words: words, seconds: Date().timeIntervalSince(began))
+            } else {
+                self.vigilUnworded = (heard.trouble ?? .garbled).unwritten
+            }
+        }
+    }
+
+    /// Stops this Mac's model writing words for the dead, with nothing
+    /// written: its asking is cancelled with it.
+    func stopWordingVigil() {
+        wordingVigil?.cancel()
+        wordingVigil = nil
+        vigilWording = nil
+    }
+
+    /// The model's words for the dead let be, kept or not: a vigil kept,
+    /// the next begins with none.
+    func letVigilWordsBe() {
+        stopWordingVigil()
+        vigilWords = nil
+        vigilUnworded = nil
+    }
+
+    /// Why no model writes words for the dead on this Mac, said before the
+    /// keeper asks: Apple's own word on its model; nil where one writes.
+    var vigilWordsUnwritten: String? {
+        guard voice == nil else { return nil }
+        return CommanderCounselSession.trouble(for: counselAvailability?() ?? SystemLanguageModel.default.availability)?.unwritten
+    }
+
     // MARK: Orders in the keeper's own words
 
     /// Orders in the keeper's own words, while their card is open: the

@@ -78,6 +78,12 @@ extension CounselTrouble {
         whyOrdersUnread + ", so the realm's own words stand alone."
     }
 
+    /// Why the device's model wrote no words for the House's dead, as the
+    /// vigil's composer tells it: the words are the keeper's own to write.
+    public var unwritten: String {
+        whyOrdersUnread + ", so the words for your dead are yours to write."
+    }
+
     /// Before the keeper writes, why the device's model can't read their
     /// words, and that they will be read as the order book's lines.
     public var ordersReadAsWritten: String {

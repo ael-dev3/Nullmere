@@ -45,6 +45,7 @@ struct VigilComposer: View {
                     .padding(.vertical, 3)
                     .overlay(alignment: .bottom) { Rule(opacity: 0.5) }
                     .accessibilityLabel("Words for your dead")
+                VigilWordingLine(session: session)
                 HStack {
                     Spacer()
                     QuietButton(title: "Set the light", size: 8.5, enabled: refusal == nil, name: "Set the vigil's light on the water",
@@ -52,11 +53,70 @@ struct VigilComposer: View {
                         if session.perform(.keepVigil(words: draft, hold: hold.id)) {
                             draft = ""
                             open = false
+                            session.letVigilWordsBe()
                         }
                     }
                 }
             }
         }
+        // The model's words, once written, are the keeper's to keep or change.
+        .onChange(of: session.vigilWords) { _, written in
+            if let written { draft = written.words }
+        }
+    }
+}
+
+/// Words for the House's dead from this Mac's own model, beside the vigil's
+/// words: asked for, the model shown at work with its seconds and a Stop;
+/// written, in how long; not written, or no model on this Mac, why not.
+struct VigilWordingLine: View {
+    let session: GameSession
+
+    /// While the model writes: "Apple's on-device model writes words for
+    /// your dead… 1.4 s".
+    static func atWork(began: Date, now: Date) -> String {
+        "Apple's on-device model writes words for your dead… " + String(format: "%.1f s", max(0, now.timeIntervalSince(began)))
+    }
+
+    /// Once written: "Written by Apple's on-device model in 2.4 s: keep them
+    /// or change them."
+    static func written(in seconds: Double) -> String {
+        "Written by Apple's on-device model in " + String(format: "%.1f s", seconds) + ": keep them or change them."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if session.makesBallads {
+                if let began = session.vigilWording {
+                    HStack(spacing: 6) {
+                        TimelineView(.periodic(from: .now, by: 0.1)) { context in
+                            Text(verbatim: Self.atWork(began: began, now: context.date))
+                                .font(.nm(10, weight: .light).monospacedDigit())
+                                .foregroundStyle(Palette.text(0.5))
+                        }
+                        Spacer()
+                        QuietButton(title: "Stop", size: 8.5, name: "Stop the model writing words for your dead") { session.stopWordingVigil() }
+                    }
+                } else {
+                    QuietButton(title: "Words from your Mac's model", size: 8.5,
+                                name: "Ask Apple's on-device model for words for your dead") { session.wordVigil() }
+                    if let written = session.vigilWords {
+                        note(Self.written(in: written.seconds))
+                    } else if let why = session.vigilUnworded {
+                        note(why)
+                    }
+                }
+            } else if let why = session.vigilWordsUnwritten {
+                note(why)
+            }
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(verbatim: text)
+            .font(.nm(10, weight: .light))
+            .foregroundStyle(Palette.text(0.5))
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

@@ -204,6 +204,9 @@ final class VigilTests: XCTestCase {
         XCTAssertNil(state.tidings(of: .vigilHonoured(vigil: 1, house: me, by: 77), for: me))
         XCTAssertEqual(state.unmourned(by: 77), 0)
         XCTAssertNil(state.vigilHonoured(by: other, of: me), "Nothing burns, nothing binds")
+        // Where the device's model writes no words for the dead, the keeper is told why, and that they are theirs to write.
+        XCTAssertEqual(CounselTrouble.slow.unwritten,
+                       "No answer came from Apple's on-device model in time, so the words for your dead are yours to write.")
     }
 
     func testTheLakeCarriesSoManyLightsAndAnUnsoundOneIsFound() throws {

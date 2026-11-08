@@ -65,6 +65,8 @@ public enum VoiceCheck {
         if let riddle = state.riddle(of: state.player) {
             moments.append(("riddle of the lake", VoiceFacts.riddle(riddle)))
         }
+        // Words for the keeper's House's dead, for a vigil on the water.
+        moments.append(("words for the fallen", VoiceFacts.vigil(of: state.player, in: state, reports: [])))
         // A ballad of the latest deed of arms the age brought.
         if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {
             let singer = entry.houses.first ?? state.player

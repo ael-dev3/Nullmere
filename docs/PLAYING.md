@@ -1469,7 +1469,11 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 - **Vigils for the fallen.** Each company of war a keeper's House loses in
   battle is counted until its keeper keeps a vigil for them: from a hold on
   the shore, under By the water, a light set on the Still with their words
-  for the dead (five timber and a moonsalt). Every House sees it and reads
+  for the dead (five timber and a moonsalt); Words from your Mac's model
+  asks Apple's on-device model to write them from where and when your
+  companies fell, the seconds counted as it writes, Stop ending it, the
+  words then yours to keep or change, and if it can't write them it says
+  why. Every House sees it and reads
   it, and its light drifts round the lake on the current for twelve
   watches before it gutters out. Choose its water on the map to read it;
   another keeper's may be honoured there, once (and from the phone's realm

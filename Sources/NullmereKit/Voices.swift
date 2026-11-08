@@ -79,6 +79,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// A commander held prisoner, telling their captors a true thing of
         /// their own House.
         case prisoner
+        /// A House's few words for its dead, set on the water with the
+        /// light of its vigil.
+        case vigil
     }
 
     public let kind: Kind
@@ -119,6 +122,10 @@ public struct VoiceMoment: Sendable, Equatable {
         case .prisoner:
             task = "Speak as the captured commander, questioned by their captors and telling them, against their will, the one thing "
                 + "about their own House that is told here, keeping every name and number as given. One or two sentences, at most 40 words."
+        case .vigil:
+            task = "Speak as the House itself, in the few words it sets on the still black water with a light for its fallen: name where "
+                + "they fell, keeping every name and number as given, grave and plain, with no vow of vengeance. One or two sentences, "
+                + "at most 30 words."
         }
         return task + "\n\nWhat is known:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
     }
@@ -287,6 +294,24 @@ enum VoiceFacts {
     static func prisoner(_ prisoner: Commander, told word: String, in state: GameState) -> VoiceMoment {
         let house = state.houses.indices.contains(prisoner.owner) ? state.houses[prisoner.owner].title : "a fallen House"
         return VoiceMoment(kind: .prisoner, facts: ["\(prisoner.name), \(prisoner.archetype.named) of \(house), is held prisoner.", word])
+    }
+
+    /// Words for a House's dead, for its vigil: whose they were, how many
+    /// of its companies of war fell, and where and when its last battles
+    /// cost it companies, as its own reports tell them.
+    static func vigil(of house: Int, in state: GameState, reports: [BattleReport]) -> VoiceMoment {
+        var facts: [String] = []
+        if state.houses.indices.contains(house) {
+            facts.append("The dead were of \(state.houses[house].title), of the \(state.heritage(of: house).title).")
+        }
+        facts.append("Companies of war of theirs fallen in battle: \(state.unmourned(by: house)).")
+        let costly = reports.filter { $0.outcome == .lost || ($0.sides.first?.fallen ?? 0) > 0 }.suffix(3)
+        for report in costly {
+            let foe = report.sides.count > 1 ? ", against \(report.sides[1].title)" : ""
+            facts.append("Some fell \(report.place) in watch \(report.watch)\(foe).")
+        }
+        facts.append("The light is set on the water in watch \(state.watch).")
+        return VoiceMoment(kind: .vigil, facts: facts)
     }
 
     /// A dream, for the Still to tell: what it showed, plainly, and when.
