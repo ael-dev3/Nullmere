@@ -663,7 +663,9 @@ a vote on the realm's law to cast.
   timber and thatch with its herb garden, then slate, a chimney for the
   healers' fire and linen drying on a line, a ward of pale stone with a
   round apse and a well, a covered walk with lanterns, and at the fifth a
-  bell-cote and a moonsalt lamp. The healers' work has its own sound.
+  bell-cote and a moonsalt lamp. The healers' work has its own sound: a
+  warm hum a fifth deep on recorded cellos, and over it a small bell struck
+  twice on the recorded glockenspiel.
 - **The satchel.** Each House keeps items to use when it will, twenty of
   a kind at most: a Salt Hourglass brings a hold's work and muster a watch
   nearer, or the House's study (never its last watch: what is done is done
@@ -1685,12 +1687,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are twenty-six of the
-thirty-one cues: the horns' calls and fanfares, a reed's soft calls, the
-bells, the harp's chords, the drums, the forge's anvil, the knocks of wood,
-the watch's gong, a House's toll, the coins' jingle, the salt's rattle,
-steel struck on steel, hooves, spades, a ram on a gate, dread and a
-bowstring. Every other
+The score is played on recorded instruments, and so are twenty-seven of
+the thirty-one cues: the horns' calls and fanfares, a reed's soft calls,
+the bells, the harp's chords, the drums, the forge's anvil, the knocks of
+wood, the watch's gong, a House's toll, the coins' jingle, the salt's
+rattle, steel struck on steel, hooves, spades, a ram on a gate, dread, a
+bowstring and the healers' hum. Every other
 sound, and an arrow's hiss after its string, is made as it plays.
 
 - **The night.** A cold drone and the night wind over the water, and as

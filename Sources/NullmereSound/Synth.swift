@@ -59,6 +59,8 @@ public final class Synth: @unchecked Sendable {
     private struct Blown {
         /// Sung on the reed, not the horn.
         var reed = false
+        /// Bowed on the cellos, not the horn.
+        var cello = false
         var frequency: Float
         var wait: Float
         var hold: Float
@@ -97,6 +99,10 @@ public final class Synth: @unchecked Sendable {
     private var cueReeds = Horns(sampleRate: 48_000, voices: 4, notes: Recordings.clarinetNotes)
     /// How many notes the cues have sung on the reed, for tests.
     var cueReedsSung: Int { cueReeds.blown }
+    /// The cellos the cues' warm hums are bowed on: the healers at work.
+    private var cueCellos = Horns(sampleRate: 48_000, voices: 4, notes: Recordings.celloNotes)
+    /// How many notes the cues have bowed on the cellos, for tests.
+    var cueCellosBowed: Int { cueCellos.blown }
 
     private var sampleRate: Float = 48_000
     /// Seconds since sound began, in double precision: a Float's would stop
@@ -313,6 +319,7 @@ public final class Synth: @unchecked Sendable {
         if dinHorns.sampleRate != sampleRate { dinHorns = Horns(sampleRate: sampleRate) }
         if cueHorns.sampleRate != sampleRate { cueHorns = Horns(sampleRate: sampleRate, voices: 8) }
         if cueReeds.sampleRate != sampleRate { cueReeds = Horns(sampleRate: sampleRate, voices: 4, notes: Recordings.clarinetNotes) }
+        if cueCellos.sampleRate != sampleRate { cueCellos = Horns(sampleRate: sampleRate, voices: 4, notes: Recordings.celloNotes) }
         score.prepare(sampleRate: sampleRate)
     }
 
@@ -337,6 +344,7 @@ public final class Synth: @unchecked Sendable {
         for index in dinSteel.indices { dinSteel[index].sounding = false }
         cueHorns.clear()
         cueReeds.clear()
+        cueCellos.clear()
         dinHorns.clear()
         hall.clear()
         hallQuiet = 99
@@ -381,6 +389,9 @@ public final class Synth: @unchecked Sendable {
                   left: place.left * calling, right: place.right * calling)
         } + Synth.song(of: cue).map {
             Blown(reed: true, frequency: $0.frequency, wait: delay + $0.at, hold: $0.hold, strength: $0.strength,
+                  left: place.left, right: place.right)
+        } + Synth.hum(of: cue).map {
+            Blown(cello: true, frequency: $0.frequency, wait: delay + $0.at, hold: $0.hold, strength: $0.strength,
                   left: place.left, right: place.right)
         }
         let loud = Synth.strikeLevel(of: cue)
@@ -465,6 +476,10 @@ public final class Synth: @unchecked Sendable {
         case .accord:
             // A gentle sixth on the harp.
             return [pluck(523.3, 0, 0.85), pluck(880, 0.2, 0.75)]
+        case .tend:
+            // The healers at work: a small glass bell struck twice over the
+            // cellos' hum, the second a tone higher and softer.
+            return [bell(1046.5, 0.05, 0.9), bell(1174.7, 0.32, 0.6)]
         case .toll:
             // A House destroyed: the gong struck forte, read at half speed,
             // very low and very long.
@@ -533,6 +548,17 @@ public final class Synth: @unchecked Sendable {
         }
     }
 
+    /// The warm hum a cue bows on the recorded cellos, if it hums: the
+    /// healers at work, a fifth deep, F and the C above it, held a second
+    /// and falling away. Each note's frequency, when it is bowed, how long it
+    /// is held and how hard.
+    static func hum(of cue: SoundCue) -> [(frequency: Float, at: Float, hold: Float, strength: Float)] {
+        switch cue {
+        case .tend: return [(174.6, 0, 1.1, 0.9), (261.6, 0.02, 1.1, 0.7)]
+        default: return []
+        }
+    }
+
     /// How loud a cue's call is beside the war horn's: each as loud as the
     /// partials it took over from.
     static func callLevel(of cue: SoundCue) -> Float {
@@ -561,6 +587,7 @@ public final class Synth: @unchecked Sendable {
         case .coin: return 2
         case .clash: return 1.43
         case .toll: return 4.3
+        case .tend: return 1.8
         case .loose: return 0.86
         case .ride: return 1.7
         case .dig: return 2.5
@@ -587,8 +614,9 @@ public final class Synth: @unchecked Sendable {
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
         case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift, .clash, .ride, .dig, .batter,
-             .dread, .toll:
-            // Struck on recorded instruments (`strikes(of:)`).
+             .dread, .toll, .tend:
+            // Struck on recorded instruments (`strikes(of:)`), the healers'
+            // hum bowed on the cellos (`hum(of:)`).
             return []
         case .envoy, .triumph, .honour, .banner:
             // Blown on the recorded horn (`call(of:)`).
@@ -602,18 +630,6 @@ public final class Synth: @unchecked Sendable {
         case .fold:
             // The page laid down: lower, softer, and quicker gone.
             note = Note(partials: [Partial(frequency: 1_760, amplitude: 0.026, decay: 30)], noise: 0.045, noiseDecay: 44)
-        case .tend:
-            // A warm hum a fifth deep, and over it a small bell struck
-            // twice, the second softer: the healers at their work.
-            note = Note(partials: [
-                Partial(frequency: 174.6, amplitude: 0.04, decay: 1.4),
-                Partial(frequency: 261.6, amplitude: 0.028, decay: 1.6),
-                Partial(frequency: 349.2, amplitude: 0.01, decay: 1.9),
-                Partial(frequency: 1046.5, amplitude: 0.04, decay: 2.6, delay: 0.05),
-                Partial(frequency: 1046.5 * 2.76, amplitude: 0.01, decay: 4, delay: 0.05),
-                Partial(frequency: 1174.7, amplitude: 0.026, decay: 2.8, delay: 0.32),
-                Partial(frequency: 1174.7 * 2.76, amplitude: 0.007, decay: 4.2, delay: 0.32),
-            ], noise: 0.004, noiseDecay: 8)
         }
         note.delay += delay
         note.end = note.delay + note.length
@@ -641,8 +657,8 @@ public final class Synth: @unchecked Sendable {
         notes.append(contentsOf: pending)
         pending.removeAll(keepingCapacity: true)
         for note in pendingBlown {
-            (note.reed ? cueReeds : cueHorns).blow(note.frequency, strength: note.strength, hold: note.hold,
-                                                   heard: (note.left, note.right), wait: note.wait)
+            (note.cello ? cueCellos : note.reed ? cueReeds : cueHorns).blow(note.frequency, strength: note.strength, hold: note.hold,
+                                                                             heard: (note.left, note.right), wait: note.wait)
         }
         pendingBlown.removeAll(keepingCapacity: true)
         for strike in pendingStrikes {
@@ -796,9 +812,9 @@ public final class Synth: @unchecked Sendable {
                 cueRight += cue * notes[n].right
             }
             // The cues' calls on the recorded horn, from where they sound.
-            let called = cueHorns.sample(dt: dt), sung = cueReeds.sample(dt: dt)
-            cueLeft += called.left * Self.hornCueGain + sung.left * Self.reedCueGain
-            cueRight += called.right * Self.hornCueGain + sung.right * Self.reedCueGain
+            let called = cueHorns.sample(dt: dt), sung = cueReeds.sample(dt: dt), bowed = cueCellos.sample(dt: dt)
+            cueLeft += called.left * Self.hornCueGain + sung.left * Self.reedCueGain + bowed.left * Self.celloCueGain
+            cueRight += called.right * Self.hornCueGain + sung.right * Self.reedCueGain + bowed.right * Self.celloCueGain
             // And their recorded blows.
             for index in struck.indices where struck[index].sounding {
                 if struck[index].wait > 0 {
@@ -921,11 +937,10 @@ public final class Synth: @unchecked Sendable {
         case .order: return ((2_200, 0.8), nil)
         // The shaft's hiss through the air, after the string recorded.
         case .loose: return ((6_000, 1.6), nil)
-        case .tend: return ((1_000, 0.6), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
-             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread, .toll:
+             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread, .toll, .tend:
             return (nil, nil)
         }
     }
@@ -946,6 +961,9 @@ public final class Synth: @unchecked Sendable {
     /// How loud a cue's call on the recorded clarinet is: as loud as the
     /// reedy partials an envoy sent and an offer refused were.
     static let reedCueGain: Float = 0.12
+    /// How loud a cue's hum on the recorded cellos is: as warm as the hum of
+    /// partials the healers' cue was.
+    static let celloCueGain: Float = 0.09
     /// How loud a war horn across a great host's battle is, and how long
     /// it is held: as loud as the horn of overtones it took over from.
     static let warHornGain: Float = 0.19

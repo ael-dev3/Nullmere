@@ -243,6 +243,26 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(decibels(second), -39.7, accuracy: 3, "The hourglass's chime as loud as it was")
     }
 
+    /// The healers at work: a warm hum a fifth deep bowed on the recorded
+    /// cellos, and over it a small bell struck twice on the recorded
+    /// glockenspiel, as loud over their first second as the hum and bells of
+    /// partials were, and gone well before six.
+    func testTheHealersHumOnRecordedCellosUnderGlassBells() {
+        let synth = settled()
+        synth.setVolumes(effects: 1, ambience: 0, music: 0)
+        _ = rendered(synth, seconds: 0.2)
+        synth.trigger(.tend)
+        let left = rendered(synth, seconds: 6).left
+        XCTAssertEqual(synth.cueCellosBowed, 2, "Two cellos, a fifth apart")
+        XCTAssertEqual(synth.cueStrikes, 2, "and the bell struck twice")
+        let first = rms(left[0..<Int(0.4 * SynthTests.rate)]), second = rms(left[0..<Int(SynthTests.rate)])
+        print("SOUND tend on cellos and bells \(decibels(second)) dB over its first second, \(decibels(first)) over 0.4 s; "
+            + "of partials -37.9 and -35.4 dB")
+        XCTAssertEqual(decibels(second), -37.9, accuracy: 1.5, "As warm as the hum and bells it took over from")
+        XCTAssertEqual(decibels(first), -35.4, accuracy: 3, "struck as soon")
+        XCTAssertLessThan(left.suffix(4_800).map(abs).max() ?? 1, 0.001, "and gone")
+    }
+
     /// A House destroyed tolls on a recorded gong struck forte, read at half
     /// speed, very low and very long: as heavy over its first three seconds
     /// as the toll of partials, still ringing well past ten, gone by thirty.
