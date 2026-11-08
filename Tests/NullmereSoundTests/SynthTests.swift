@@ -214,7 +214,8 @@ final class SynthTests: XCTestCase {
         let strikes: [(SoundCue, Int, Float)] = [(.anvil, 3, -40.1), (.stand, 2, -36.4), (.deny, 2, -42.5), (.lore, 3, -32.7),
                                                  (.herald, 4, -35.0), (.complete, 6, -37.5), (.rise, 3, -31.3), (.accord, 2, -34.7),
                                                  (.coin, 3, -39.4), (.sift, 3, -44.5), (.clash, 1, -38.6), (.ride, 3, -37.1),
-                                                 (.dig, 2, -39.7), (.batter, 2, -33.6), (.loose, 1, -38.7)]
+                                                 (.dig, 2, -39.7), (.batter, 2, -33.6), (.loose, 1, -38.7), (.select, 1, -43.2),
+                                                 (.order, 2, -39.7)]
         for (cue, blows, before) in strikes {
             let heard = struck(cue)
             XCTAssertEqual(heard.synth.cueStrikes, blows, "\(cue): \(blows) recorded blows")

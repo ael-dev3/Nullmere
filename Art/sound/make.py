@@ -81,6 +81,8 @@ STEEL = [(f"Miscellania Raw/Misc 1/metal_hit{n}.wav", 0) for n in (1, 2, 3, 4)]
 # slapstick's crack, for a ram's timber; a brick scraped, for a spade in
 # stony earth; and a bass drum rubbed and a cymbal bowed, for dread.
 WOOD = [(f"VSCO 1 Percussion/varWood/{name}.wav", 0) for name in ("wood_click_f", "wood_click_f2", "wood_click3")]
+# Wood clicked softly, twice alike: a thing chosen on the map, an order given.
+CLICK = [(f"VSCO 1 Percussion/varWood/wood_click_pp_{n}.wav", 0) for n in (1, 2)]
 SLAPSTICK = [("VSCO 1 Percussion/varWood/slapstick2.wav", 0)]
 SCRAPE = [("Miscellania Raw/Misc 1/brick_scrape2.wav", 0)]
 DREAD = [("Percussion/bassdrum_rub1_v1.wav", 0), ("Percussion/susCymb1-bow-2.wav", 0)]
@@ -515,6 +517,9 @@ def main():
     wood = family(root, WOOD, "knocked")
     even(wood)
     swift(wood, "wood", "Wood knocked, three clicks.", os.path.join(out, "WoodFile.swift"))
+    click = family(root, CLICK, "knocked")
+    even(click)
+    swift(click, "click", "Wood clicked softly, twice alike.", os.path.join(out, "ClickFile.swift"))
     slapstick = family(root, SLAPSTICK, "knocked")
     even(slapstick)
     swift(slapstick, "slapstick", "A slapstick's crack.", os.path.join(out, "SlapstickFile.swift"))

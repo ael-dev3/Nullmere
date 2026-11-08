@@ -476,6 +476,14 @@ public final class Synth: @unchecked Sendable {
         case .accord:
             // A gentle sixth on the harp.
             return [pluck(523.3, 0, 0.85), pluck(880, 0.2, 0.75)]
+        case .select:
+            // Something chosen on the map: wood clicked softly.
+            return [(Recordings.clickNotes[0], 0, 1, 0.96)]
+        case .order:
+            // A company given its march: wood clicked low and then a fifth
+            // higher, a tick of assent.
+            let click = Recordings.clickNotes
+            return [(click[1], 0, 1, 0.48), (click[0], 0.06, 0.8, 0.72)]
         case .tend:
             // The healers at work: a small glass bell struck twice over the
             // cellos' hum, the second a tone higher and softer.
@@ -588,6 +596,8 @@ public final class Synth: @unchecked Sendable {
         case .clash: return 1.43
         case .toll: return 4.3
         case .tend: return 1.8
+        case .select: return 1.73
+        case .order: return 1.52
         case .loose: return 0.86
         case .ride: return 1.7
         case .dig: return 2.5
@@ -602,10 +612,6 @@ public final class Synth: @unchecked Sendable {
         var note: Note
         var more: [Note] = []
         switch cue {
-        case .select:
-            note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
-        case .order:
-            note = Note(partials: [Partial(frequency: 660, amplitude: 0.09, decay: 14), Partial(frequency: 990, amplitude: 0.04, decay: 18)], noise: 0.02, noiseDecay: 60)
         case .loose:
             // The bowstring is plucked as it was recorded (`strikes(of:)`);
             // after it, the shaft's hiss through the air.
@@ -614,7 +620,7 @@ public final class Synth: @unchecked Sendable {
             // Blown on the recorded horn (`call(of:)`): no note of its own.
             return []
         case .anvil, .stand, .deny, .lore, .herald, .complete, .rise, .accord, .watch, .coin, .sift, .clash, .ride, .dig, .batter,
-             .dread, .toll, .tend:
+             .dread, .toll, .tend, .select, .order:
             // Struck on recorded instruments (`strikes(of:)`), the healers'
             // hum bowed on the cellos (`hum(of:)`).
             return []
@@ -933,14 +939,12 @@ public final class Synth: @unchecked Sendable {
     /// brighter. A cue with no noise, or none named, is as it was.
     static func bands(of cue: SoundCue) -> (first: (centre: Float, width: Float)?, rest: (centre: Float, width: Float)?) {
         switch cue {
-        case .select: return ((3_200, 0.9), nil)
-        case .order: return ((2_200, 0.8), nil)
         // The shaft's hiss through the air, after the string recorded.
         case .loose: return ((6_000, 1.6), nil)
         case .leaf: return ((4_800, 0.7), nil)
         case .fold: return ((3_000, 0.7), nil)
         case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour, .muster, .horn, .anvil, .stand, .deny,
-             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread, .toll, .tend:
+             .complete, .herald, .parley, .coin, .sift, .clash, .ride, .dig, .batter, .dread, .toll, .tend, .select, .order:
             return (nil, nil)
         }
     }

@@ -1687,13 +1687,15 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
 
 ## Sound and music
 
-The score is played on recorded instruments, and so are twenty-seven of
+The score is played on recorded instruments, and so are twenty-nine of
 the thirty-one cues: the horns' calls and fanfares, a reed's soft calls,
 the bells, the harp's chords, the drums, the forge's anvil, the knocks of
 wood, the watch's gong, a House's toll, the coins' jingle, the salt's
 rattle, steel struck on steel, hooves, spades, a ram on a gate, dread, a
-bowstring and the healers' hum. Every other
-sound, and an arrow's hiss after its string, is made as it plays.
+bowstring, the healers' hum, and the soft wooden clicks of a thing chosen
+on the map and an order given. A page turned and laid down, as a panel
+opens and closes, and an arrow's hiss after its string, are made as they
+play, as are the night's drone and wind and the din of battle's voices.
 
 - **The night.** A cold drone and the night wind over the water, and as
   each watch turns a recorded gong struck softly, read slower to sound low

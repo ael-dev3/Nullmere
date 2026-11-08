@@ -63,6 +63,8 @@ enum Recordings {
     /// slapstick's crack, a ram's timber splitting; a brick scraped, a spade
     /// in stony earth; and a bass drum rubbed and a cymbal bowed, dread.
     static let woodNotes = wood.map(Recording.init)
+    /// Wood clicked softly, twice alike: a thing chosen, an order given.
+    static let clickNotes = click.map(Recording.init)
     static let slapstickNotes = slapstick.map(Recording.init)
     static let scrapeNotes = scrape.map(Recording.init)
     static let dreadNotes = dread.map(Recording.init)
@@ -73,7 +75,7 @@ enum Recordings {
     static func load() {
         let every: [[Recording]] = [harpNotes, glockenspielNotes, celloNotes, violaNotes, bassNotes, hornNotes, clarinetNotes,
                                     anvilNotes, slitDrumNotes, drumNotes, gongNotes, tambourineNotes, cabasaNotes, steelNotes,
-                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes, twangNotes, tollNotes]
+                                    woodNotes, slapstickNotes, scrapeNotes, dreadNotes, twangNotes, tollNotes, clickNotes]
         _ = every.count
     }
 
