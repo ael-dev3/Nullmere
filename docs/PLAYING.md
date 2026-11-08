@@ -704,8 +704,9 @@ a vote on the realm's law to cast.
 
 - **Companies.** Lanterns scout, Spears hold the line and take holds, Bows
   strike from two tiles, Riders are fast, Mangonels break walls, and
-  Founders found new holds. Every company but Lanterns eats a grain each
-  watch. Spears, Bows, Riders and Mangonels muster in tiers I to V, each
+  Founders found new holds. Every company but Lanterns eats grain each
+  watch: one at tiers I and II, two at III and IV, three at V, and an
+  eighth as much again for each first muster's worth drilled into it. Spears, Bows, Riders and Mangonels muster in tiers I to V, each
   needing a Muster Hall as high as
   itself and the study that opens it (Close Order, Iron Ranks, Grey
   Companies, Moonsteel): a higher tier strikes harder, stands firmer and
@@ -863,7 +864,8 @@ a vote on the realm's law to cast.
 ## Commanders
 
 - **Commanders.** Every House begins with a commander, and gains more as its
-  seat's Muster Hall reaches III and V and from Banner Lore, five at most.
+  seat's Muster Hall reaches III and V and with each of Banner Lore's two
+  grades, five at most.
   Each is of an archetype (warden, vanguard, outrider, gleaner, wallbreaker)
   and rises from level I to XXX with what its company lives through; its
   four skills come at levels I, V, X and XX: three always strengthen the
@@ -981,8 +983,9 @@ a vote on the realm's law to cast.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
-  remembered. A steward makes no peace before it has had a watch of its own
-  at war, and one far the stronger none until the war has run past thirty
+  remembered. A steward makes no peace before its war has run three
+  watches, fewer if your gifts have softened it but never less than one,
+  and one far the stronger none until the war has run past thirty
   watches, whatever you gave it. A steward's garrison strikes only
   companies of war at its gates, and its army meets those that come close,
   but no scout draws it off a siege.
