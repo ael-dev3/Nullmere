@@ -36,6 +36,13 @@ public struct Bottle: Codable, Equatable, Identifiable, Sendable {
 extension GameState {
     /// What a bottle and its cork cost.
     public static let bottleCost = Stock(grain: 10)
+
+    /// What a bottle on the water is, said where one may be cast, on the Mac
+    /// and the phone.
+    public static var bottleSaid: String {
+        "Sealed and set on the water, the current carries it where it will; whoever finds it washed up reads it. "
+            + "It costs \(bottleCost), one a watch."
+    }
     /// The watches a bottle stays afloat before it sinks.
     public static let bottleAfloat = 40
     /// The most bottles the lake keeps, the oldest found let go first.

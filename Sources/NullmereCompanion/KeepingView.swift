@@ -2097,6 +2097,10 @@ struct HoldRows: View {
         } else if hold.maySealLetter {
             LetterRows(session: session, hold: hold)
         }
+        // Words in a bottle set on the water from a hold on the shore.
+        if hold.mayCastBottle {
+            BottleRows(session: session, hold: hold)
+        }
         if !hold.works.isEmpty || !hold.musters.isEmpty {
             HStack(spacing: 10) {
                 OrdersMenu(title: "Raise", orders: hold.works, label: "Raise a work at \(hold.name)") { order in
@@ -2137,6 +2141,41 @@ struct LetterRows: View {
                 .buttonStyle(.bordered)
                 .disabled(seal == nil)
                 .accessibilityLabel(seal?.title ?? "Seal the letter")
+            }
+        }
+        .font(Night.small)
+    }
+}
+
+/// Words in a bottle set on the water from a hold on the shore, as the
+/// Mac's hold record offers it: what one is and costs, the words, whether
+/// signed, and Cast where the rules would take them.
+struct BottleRows: View {
+    let session: CompanionSession
+    let hold: CompanionLedger.Hold
+    @State private var draft = ""
+    @State private var signed = true
+
+    var body: some View {
+        DisclosureGroup("A bottle on the water…") {
+            Text(verbatim: GameState.bottleSaid)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("Words for a stranger", text: $draft, axis: .vertical)
+                .font(Night.body)
+                .lineLimit(1...4)
+            Toggle("Sign it", isOn: $signed)
+                .tint(Night.moon)
+            if let world = session.world, let me = session.keeper?.house {
+                let cast = CompanionLedger.casting(draft, from: hold.id, signed: signed, world: world, player: me)
+                Button("Cast") {
+                    if let cast { session.give(cast.command, told: "\(cast.title) from \(hold.name)") }
+                    draft = ""
+                }
+                .buttonStyle(.bordered)
+                .disabled(cast == nil)
+                .accessibilityLabel(cast?.title ?? "Cast the bottle")
             }
         }
         .font(Night.small)

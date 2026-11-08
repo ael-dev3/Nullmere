@@ -288,7 +288,9 @@ a vote on the realm's law to cast.
   at the first tier now, the House able to pay, and, while the House has
   sealed none this age, A letter to the age to come…, its words sealed
   under that hold's stones for 20 moonsalt where the rules take them, the
-  hold that keeps it saying so after; While you are away, the
+  hold that keeps it saying so after; and at a hold on the shore, A bottle
+  on the water…, words for a stranger, signed or not, cast for 10 grain,
+  one a watch; While you are away, the
   caretaker's standing orders as they stand, with Muster (the one kind of
   company of war it musters), Raise first (the work it raises first
   wherever it can) and More (every company kept on the House's land, peace

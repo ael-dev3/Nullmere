@@ -737,6 +737,34 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(CompanionLedger.sealing("Again.", in: seat.id, world: state, player: me))
     }
 
+    /// A bottle on the water from the phone, as the Mac's hold record
+    /// offers it: a hold on the shore offers one, one inland none; words
+    /// cast, signed or not, taken by the rules; cast, none more this watch.
+    func testThePhoneCastsABottleFromAShoreHold() throws {
+        var (state, me) = try world()
+        let inland = try XCTUnwrap(state.seat(of: me))
+        XCTAssertEqual(CompanionLedger(world: state, player: me).holds.first { $0.id == inland.id }?.mayCastBottle,
+                       state.castingWater(beside: inland) != nil, "Offered on the shore alone")
+        // A hold of the House's own on the shore, beside the still water.
+        let shore = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.hold(at: hex) == nil
+                && state.map.neighbors(of: hex).contains { state.map[$0].map { $0.terrain == .still || $0.terrain == .shallows } ?? false }
+        })
+        let hold = Hold(id: state.takeID(), name: "Saltwatch", owner: me, position: shore, isSeat: false, foundedWatch: 1)
+        state.holds.append(hold)
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.holds.first { $0.id == hold.id }?.mayCastBottle, true)
+        XCTAssertNil(CompanionLedger.casting("", from: hold.id, signed: true, world: state, player: me), "Nothing to seal in it")
+        let unsigned = try XCTUnwrap(CompanionLedger.casting("Whoever finds this: the reeds are kind.", from: hold.id, signed: false,
+                                                               world: state, player: me))
+        XCTAssertEqual(unsigned.title, "Cast the bottle, for \(GameState.bottleCost)")
+        XCTAssertEqual(unsigned.command, .castBottle(words: "Whoever finds this: the reeds are kind.", from: hold.id, signed: false))
+        assertTaken([unsigned], in: state, as: me)
+        _ = try state.perform(unsigned.command, as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertFalse(ledger.holds.contains { $0.mayCastBottle }, "One a watch")
+    }
+
     /// The titles of the Spire on the phone, as the Mac's Realm panel tells
     /// them: no broken Spire found, none told; held by the House, it names
     /// them, each House among those offered named where the rules take it;

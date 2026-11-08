@@ -64,6 +64,16 @@ public struct CompanionLedger: Equatable, Sendable {
         /// Whether a letter to the age to come may be sealed here: the
         /// House has sealed none this age, and may.
         public var maySealLetter: Bool = false
+        /// Whether a bottle may be set on the water here: a hold on the
+        /// shore, none cast from the House this watch.
+        public var mayCastBottle: Bool = false
+    }
+
+    /// A bottle set on the water from a hold, with these words, signed or
+    /// not, where the rules would take it.
+    public static func casting(_ words: String, from hold: Int, signed: Bool, world: GameState, player: Int) -> Order? {
+        world.castRefusal(words, from: hold, as: player) == nil
+            ? Order(title: "Cast the bottle, for \(GameState.bottleCost)", command: .castBottle(words: words, from: hold, signed: signed)) : nil
     }
 
     /// A letter to the age to come sealed in a hold, in these words, where
@@ -987,7 +997,8 @@ public struct CompanionLedger: Equatable, Sendable {
                         musters: CompanionLedger.musters(at: hold, in: world, player: player),
                         works: CompanionLedger.works(at: hold, in: world, player: player),
                         infirmary: infirmary, heal: heal,
-                        letterKept: sealed.flatMap { $0.holdID == hold.id ? $0.keptSaid : nil }, maySealLetter: maySeal)
+                        letterKept: sealed.flatMap { $0.holdID == hold.id ? $0.keptSaid : nil }, maySealLetter: maySeal,
+                        mayCastBottle: world.castRefusal("A bottle", from: hold.id, as: player) == nil)
         }
         let pursuit = houses.indices.contains(player) ? houses[player].research.pursuit : nil
         studying = pursuit.map { "Studying \($0.study.title) \(BuildingKind.numeral($0.grade)), " + CompanionLedger.watches($0.watchesLeft) }

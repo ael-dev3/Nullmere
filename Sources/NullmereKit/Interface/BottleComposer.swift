@@ -28,8 +28,7 @@ struct BottleComposer: View {
             QuietButton(title: open ? "A bottle on the water" : "A bottle…", size: 8.5,
                         name: open ? "Fold the bottle away" : "Set words in a bottle on the water") { open.toggle() }
             if open {
-                Text(verbatim: "Sealed and set on the water, the current carries it where it will; whoever finds it washed up reads it. "
-                     + "It costs \(GameState.bottleCost), one a watch.")
+                Text(verbatim: GameState.bottleSaid)
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)
