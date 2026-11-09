@@ -535,7 +535,9 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   off it, 3 a third, never upwind, so that on a forest without end a fire
   takes 14 tiles at the median and 206 at the most of 400, where at 55,
   30, 10 and 4 nearly every one ran on past 3,000), takes a sixth of the
-  strength of any company standing in it, and leaves ash that yields
+  strength of any company standing in it (a company lost to it falling as
+  one falls in battle, mourned and carried to an Infirmary's bed), and
+  leaves ash that yields
   nothing to the hold whose land it is for thirty watches, its trees
   standing dead and its undergrowth gone, before the wood grows back. A
   Still Night keeps it where it is; Rising Mist puts every fire out, and so

@@ -613,24 +613,26 @@ a vote on the realm's law to cast.
   shore and puts every fire out, and so does the cold rain that falls in a
   Lean Watch. A company standing in fire as the watch turns loses a sixth
   of its strength, so the one that set it walks on out of it with the
-  moves it has left. Burnt, the wood lies as ash for thirty watches, its
-  trees standing dead and its undergrowth gone, and yields nothing to the
-  hold whose land it is; then it grows back. Fire takes nothing but the
-  blackwood, never a hold's heart or a site's clearing. Every House sees
-  its smoke and hears who set it, and the House whose land it burns is
-  told so; in the world the wood burns with flames licking up among the
-  trees under embers and rolling smoke, the smoke and embers borne off on
-  the watch's wind (and every burning hold's with them), so you see which
-  way a fire will run, and rising straight on a Still Night; where it
-  catches new wood as the watch turns a tongue of flame leaps up from it
-  and its light flashes over the trees; from afar each tile alight glows
-  warm over the dark, flickering; near, the fire is heard roaring and
-  crackling from where it burns, the more of it about the view the louder
-  (heard from further back than the lake's lapping, and only wood the
-  House has seen); and the night's own wind is heard from the side of the
-  view it blows from, and falls to a whisper on a Still Night. The phone's
-  chart draws it aflame and, after, grey with ash. Stewards set no fires,
-  and step their companies out of one.
+  moves it has left; a company lost to it falls as one falls in battle,
+  mourned by its House and carried to a free bed in an Infirmary. Burnt,
+  the wood lies as ash for thirty watches, its trees standing dead and its
+  undergrowth gone, and yields nothing to the hold whose land it is; then
+  it grows back. Fire takes nothing but the blackwood, never a hold's
+  heart or a site's clearing. Every House sees its smoke and hears who set
+  it, and the House whose land it burns is told so; in the world the wood
+  burns with flames licking up among the trees under embers and rolling
+  smoke, the smoke and embers borne off on the watch's wind (and every
+  burning hold's with them), so you see which way a fire will run, and
+  rising straight on a Still Night; where it catches new wood as the watch
+  turns a tongue of flame leaps up from it and its light flashes over the
+  trees; from afar each tile alight glows warm over the dark, flickering;
+  near, the fire is heard roaring and crackling from where it burns, the
+  more of it about the view the louder (heard from further back than the
+  lake's lapping, and only wood the House has seen); and the night's own
+  wind is heard from the side of the view it blows from, and falls to a
+  whisper on a Still Night. The phone's chart draws it aflame and, after,
+  grey with ash. Stewards set no fires, and step their companies out of
+  one.
 - **Holds** gather what their land yields and store it, up to a limit that
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at

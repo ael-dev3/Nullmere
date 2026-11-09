@@ -248,7 +248,12 @@ extension GameState {
                     let lost = units.remove(at: index)
                     events.append(.burnedInFire(unit: lost.id, owner: lost.owner, at: lost.position, troops: before, lost: true))
                     events.append(.unitLost(unit: lost.id, kind: lost.kind, owner: lost.owner, at: lost.position))
+                    // Fallen as a company of war falls in battle: mourned by
+                    // its keeper's House, its commander wounded, and carried
+                    // to an Infirmary's bed where its House has one free.
+                    mourn(lost)
                     events += woundCommander(of: lost)
+                    events += carryToInfirmary(lost)
                 } else {
                     let after = troops(of: units[index])
                     events.append(.burnedInFire(unit: unit.id, owner: unit.owner, at: unit.position, troops: before - after, lost: false))

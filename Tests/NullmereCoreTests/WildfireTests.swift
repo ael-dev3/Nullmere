@@ -166,6 +166,29 @@ final class WildfireTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// A company lost to the fire falls as one falls in battle: mourned by
+    /// its keeper's House, and carried to a bed in its Infirmary.
+    func testACompanyLostToTheFireFallsAsInBattle() throws {
+        var (state, me, unit, at) = try kindling()
+        _ = try state.perform(.kindle(unit: unit), as: me)
+        let index = try XCTUnwrap(state.unitIndex(unit))
+        state.units[index].health = Wildfire.toll
+        let lostTroops = state.troops(of: state.units[index])
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.holds[try XCTUnwrap(state.holdIndex(seat.id))].levels[.infirmary] = 1
+        XCTAssertGreaterThan(try XCTUnwrap(state.hold(seat.id)).freeBeds, 0)
+        let mourned = state.unmourned(by: me)
+        state.watch += 1
+        let events = state.turnWildfires()
+        XCTAssertNil(state.unit(unit), "lost to the fire")
+        XCTAssertTrue(events.contains(.burnedInFire(unit: unit, owner: me, at: at, troops: lostTroops, lost: true)))
+        XCTAssertTrue(events.contains(.unitLost(unit: unit, kind: .spear, owner: me, at: at)))
+        XCTAssertTrue(events.contains(.carriedToInfirmary(kind: .spear, owner: me, hold: seat.id)), "carried to its seat's Infirmary")
+        XCTAssertEqual(state.unmourned(by: me), mourned + 1, "mourned by its House")
+        XCTAssertEqual(state.hold(seat.id)?.wounded?.count, 1)
+        XCTAssertEqual(state.problems(), [])
+    }
+
     func testAStillNightKeepsTheFireWhereItIsAndRisingMistPutsItOut() throws {
         var (state, me, unit, at) = try kindling()
         _ = try state.perform(.kindle(unit: unit), as: me)
