@@ -190,6 +190,6 @@ extension Portrait {
     /// the ground panel: the hamlet's eldest on their stick, or the barrow's
     /// grassed mound.
     static func key(of find: Find) -> ModelKey {
-        find.kind == .hamlet ? .folk(variant: Folk.elder) : .barrowMound
+        find.kind == .hamlet ? .folk(variant: Folk.elder) : .furnishing(.barrowMound)
     }
 }

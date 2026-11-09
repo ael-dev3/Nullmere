@@ -104,7 +104,7 @@ final class FindWordsTests: XCTestCase {
         XCTAssertEqual(moment.kind, .find(.barrow))
         XCTAssertTrue(moment.prompt.hasPrefix(Voicing.barrowTask), moment.prompt)
         XCTAssertEqual(FindRow.who(barrow), "the barrow's stones")
-        XCTAssertEqual(Portrait.key(of: barrow), .barrowMound, "The barrow's mound beside its name")
+        XCTAssertEqual(Portrait.key(of: barrow), .furnishing(.barrowMound), "The barrow's mound beside its name")
         // Picked up again with the barrow already sought: counted as told.
         let session = opened(sought)
         let key = GameSession.Spoken.find(barrow.id)
