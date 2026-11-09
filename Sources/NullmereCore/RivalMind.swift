@@ -1432,14 +1432,9 @@ struct RivalMind {
 
     /// Whether another House's hold stands within eight tiles of this one.
     private func bordersAnother(_ hold: Hold, in state: GameState) -> Bool {
-        // Each hold looked at where it lies, not copied out to be asked.
-        let at = hold.position
-        for index in state.holds.indices {
-            let position = state.holds[index].position
-            guard abs(position.q - at.q) <= 8, position.distance(to: at) <= 8 else { continue }
-            if state.holds[index].owner != house { return true }
-        }
-        return false
+        // The holds about it asked of the land's squares, not every hold of
+        // the realm looked over.
+        state.holds.places(within: 8, of: hold.position).contains { state.holds[$0].owner != house }
     }
 
     private func chooseTraining(for hold: Hold, owners: [Int?], atWar: Bool, siteKnown: inout Bool?, in state: GameState,
@@ -1571,7 +1566,8 @@ struct RivalMind {
             // At war, a Lantern within reach of a foe's hold scouts it now
             // and then, before going on its way.
             if atWar, (state.watch + unit.id) % RivalMind.scoutEvery == 0, unit.movesLeft > 0,
-               let hold = state.holds.filter({ state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= GameState.scoutReach })
+               let hold = state.holds.places(within: GameState.scoutReach, of: unit.position).map({ state.holds[$0] })
+                   .filter({ state.isAtWar(house, $0.owner) })
                    .min(by: { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }) {
                 return perform(.scout(unit: unit.id, hold: hold.id), in: &state)
             }
@@ -2158,7 +2154,11 @@ struct RivalMind {
             guard x >= 0, x < width, y >= 0, y < height, map.contains(hex) else { return nil }
             return y * width + x
         }
-        for index in state.holds.indices where near(state.holds[index].position, within: 3) {
+        // The holds near enough to rule out a tile it weighs asked of the
+        // land's squares about each of its own, each once.
+        var near3: Set<Int> = []
+        for anchor in anchors { near3.formUnion(state.holds.places(within: reach + 3, of: anchor)) }
+        for index in near3 {
             state.holds[index].position.forEach(within: 3) { hex in
                 if let spot = spot(hex) { ruledOut[spot] = true }
             }

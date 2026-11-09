@@ -19,6 +19,36 @@ final class HoldBoardTests: XCTestCase {
             XCTAssertEqual(holds.places(of: house), holds.indices.filter { holds[$0].owner == house }, "\(note): House \(house)'s", file: file, line: line)
             XCTAssertEqual(holds.count(of: house), holds.filter { $0.owner == house }.count, file: file, line: line)
         }
+        assertNear(holds, note, file: file, line: line)
+    }
+
+    /// The holds near a hex, as the land's squares find them, are those a
+    /// walk down the list finds that near, in the list's order: about each
+    /// hold and hexes on either side of a square's edge, at every reach
+    /// asked.
+    private func assertNear(_ holds: Holdings, _ note: String, file: StaticString = #filePath, line: UInt = #line) {
+        let hexes = Set(holds.map(\.position) + [Hex(7, 7), Hex(8, 8), Hex(-1, -1), Hex(-8, 9), Hex(15, -16), Hex(0, 0)])
+        for hex in hexes {
+            for range in [0, 1, 2, 3, 8, 12] {
+                XCTAssertEqual(holds.places(within: range, of: hex), holds.indices.filter { holds[$0].position.distance(to: hex) <= range },
+                               "\(note): the holds within \(range) of \(hex)", file: file, line: line)
+            }
+        }
+    }
+
+    func testTheHoldsNearAHexAreFoundAmongTheLandsSquares() {
+        var holds: Holdings = [hold(1, 0, 0, owner: 0), hold(2, 7, 0, owner: 1), hold(3, 8, 0, owner: 1), hold(4, -1, -1, owner: 2),
+                               hold(5, -8, 9, owner: 0), hold(6, 15, -16, owner: 2)]
+        assertKept(holds, "laid across squares' edges")
+        holds[1].position = Hex(8, 1)
+        assertKept(holds, "moved over a square's edge")
+        holds[2].position = Hex(9, 1)
+        assertKept(holds, "moved within its square")
+        holds.remove(at: 0)
+        assertKept(holds, "one lost, those after it moved up the list")
+        XCTAssertEqual(holds.places(within: -3, of: Hex(8, 1)), holds.places(within: 0, of: Hex(8, 1)), "No reach below none")
+        XCTAssertEqual(holds.places(within: 2, of: Hex(Int.max - 1, 0)), [], "Nothing beyond the world")
+        XCTAssertEqual(holds.places(within: 2, of: Hex(0, Int.min + 1)), [])
     }
 
     func testWhatIsKeptFollowsEveryChange() {
@@ -114,6 +144,7 @@ final class HoldBoardTests: XCTestCase {
             for pace in 1..<GameState.pacesPerWatch { _ = world.walk(to: pace, keptFor: absent) }
             _ = world.endWatch(keptFor: absent)
             XCTAssertTrue(world.holds.boardHolds(), "Kept true at watch \(watch)")
+            if watch % 15 == 0 { assertNear(world.holds, "watch \(watch)") }
         }
         XCTAssertGreaterThan(world.holds.count, 12, "Holds founded")
         for house in world.houses.indices {

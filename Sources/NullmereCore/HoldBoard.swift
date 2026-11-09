@@ -19,6 +19,29 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
     private var board: [Hex: [Int]]
     /// Where in the list each House's holds lie, in the list's order.
     private var owned: [Int: [Int]]
+    /// Where in the list the holds of each square of the land lie, in the
+    /// list's order, the land cut into squares eight hexes across by its
+    /// coordinates: the holds near a hex are found among a few squares'
+    /// holds, not sought through every hold of the realm.
+    private var squares: [Square: [Int]]
+
+    struct Square: Hashable {
+        let q: Int
+        let r: Int
+
+        init(q: Int, r: Int) {
+            self.q = q
+            self.r = r
+        }
+
+        /// The square a hex lies in.
+        init(_ hex: Hex) {
+            self.init(q: hex.q >> Holdings.squareShift, r: hex.r >> Holdings.squareShift)
+        }
+    }
+
+    /// Squares of eight hexes a side.
+    static let squareShift = 3
     /// What the holds claim of the land follows from: a token drawn anew,
     /// unlike any other drawn in any realm, whenever a hold is founded or
     /// lost, or one's id, place, founding, seat or Beacon changes. Holds
@@ -30,6 +53,7 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
         list = []
         board = [:]
         owned = [:]
+        squares = [:]
     }
 
     public init(arrayLiteral elements: Hold...) {
@@ -40,6 +64,7 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
         list = Array(elements)
         board = [:]
         owned = [:]
+        squares = [:]
         lay()
     }
 
@@ -129,6 +154,7 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
                 list.append(hold)
                 Holdings.lay(list.count - 1, into: &board[hold.position, default: []])
                 Holdings.lay(list.count - 1, into: &owned[hold.owner, default: []])
+                Holdings.lay(list.count - 1, into: &squares[Square(hold.position), default: []])
             }
             return
         }
@@ -186,6 +212,10 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
         if now.position != was.position {
             Holdings.lift(place, from: &board, at: was.position)
             Holdings.lay(place, into: &board[now.position, default: []])
+            if Square(now.position) != Square(was.position) {
+                Holdings.lift(place, from: &squares, at: Square(was.position))
+                Holdings.lay(place, into: &squares[Square(now.position), default: []])
+            }
         }
         if now.owner != was.owner {
             Holdings.lift(place, from: &owned, at: was.owner)
@@ -196,10 +226,31 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
     private mutating func lay() {
         board = [:]
         owned = [:]
+        squares = [:]
         for place in list.indices {
             board[list[place].position, default: []].append(place)
             owned[list[place].owner, default: []].append(place)
+            squares[Square(list[place].position), default: []].append(place)
         }
+    }
+
+    /// Where in the list each hold within `range` of a hex lies, in the
+    /// list's order: the holds of the few squares about it looked at, not
+    /// every hold of the realm. None for a hex so far beyond the world that
+    /// its squares can't be told.
+    public func places(within range: Int, of hex: Hex) -> [Int] {
+        let range = Swift.max(range, 0), far = Int.max / 4
+        guard hex.q > -far, hex.q < far, hex.r > -far, hex.r < far, range < far else { return [] }
+        let shift = Holdings.squareShift
+        var found: [Int] = []
+        for q in ((hex.q - range) >> shift)...((hex.q + range) >> shift) {
+            for r in ((hex.r - range) >> shift)...((hex.r + range) >> shift) {
+                guard let places = squares[Square(q: q, r: r)] else { continue }
+                for place in places where list[place].position.distance(to: hex) <= range { found.append(place) }
+            }
+        }
+        if found.count > 1 { found.sort() }
+        return found
     }
 
     /// A place laid among others in the list's order: changed where it lies.
@@ -216,14 +267,15 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
         if found.count == 1 { places[key] = nil } else { places[key]?.remove(at: found.at) }
     }
 
-    /// Whether what it keeps holds every hold where it lies and whose it is,
-    /// and nothing else: for the tests.
+    /// Whether what it keeps holds every hold where it lies, in its square
+    /// and whose it is, and nothing else: for the tests.
     func boardHolds() -> Bool {
-        var hexes: [Hex: [Int]] = [:], houses: [Int: [Int]] = [:]
+        var hexes: [Hex: [Int]] = [:], houses: [Int: [Int]] = [:], cut: [Square: [Int]] = [:]
         for place in list.indices {
             hexes[list[place].position, default: []].append(place)
             houses[list[place].owner, default: []].append(place)
+            cut[Square(list[place].position), default: []].append(place)
         }
-        return hexes == board && houses == owned
+        return hexes == board && houses == owned && cut == squares
     }
 }

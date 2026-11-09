@@ -745,7 +745,7 @@ extension GameState {
     public func canFound(at hex: Hex, for house: Int) -> RuleError? {
         guard let tile = map[hex] else { return .outsideTheWorld }
         guard tile.terrain.isSettleable else { return .cannotSettle(tile.terrain) }
-        if holds.contains(where: { $0.position.distance(to: hex) < 3 }) { return .tooCloseToHold }
+        if !holds.places(within: 2, of: hex).isEmpty { return .tooCloseToHold }
         if let owner = territoryOwner(of: hex), owner != house { return .foreignTerritory }
         if shrine(at: hex) != nil { return .holySite }
         if standard(at: hex) != nil || hall(at: hex) != nil || storehouse(at: hex) != nil || site(at: hex)?.isYard == true {
