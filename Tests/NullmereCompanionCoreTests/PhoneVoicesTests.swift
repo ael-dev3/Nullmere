@@ -105,6 +105,17 @@ final class PhoneVoicesTests: XCTestCase {
         XCTAssertEqual(plea.turnAway.command, .answerPetition(petition.id, grant: false))
         XCTAssertEqual(plea.voice, "petition-\(petition.id)")
         XCTAssertTrue(ledger.voices.contains { $0.key == plea.voice })
+        // Nothing yet for the folk to remember; once turned away, the next
+        // plea from the hold is told so, in the Mac's words.
+        XCTAssertNil(plea.remembered)
+        var answered = state
+        _ = try answered.perform(.answerPetition(petition.id, grant: false), as: me)
+        answered.watch += Petition.every
+        _ = answered.bringPetitions()
+        let next = try XCTUnwrap(answered.petition(of: me))
+        let remembered = try XCTUnwrap(CompanionLedger(world: answered.view(for: me), player: me).plea?.remembered)
+        XCTAssertEqual(remembered, answered.rememberedPlea(next))
+        XCTAssertTrue(remembered.hasSuffix("and you turned them away."), remembered)
         var poor = state
         poor.houses[me].stock = .zero
         XCTAssertNil(CompanionLedger(world: poor.view(for: me), player: me).plea?.grant, "Off while the House hasn't the price")

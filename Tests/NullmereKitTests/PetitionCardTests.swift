@@ -201,3 +201,29 @@ private final class PleaLink: RealmLink {
     func setReady(_ ready: Bool) {}
     func leave() {}
 }
+
+extension PetitionCardTests {
+    /// What came of the hold's last plea stands on the card, as its folk
+    /// remember it and the realm keeps it in the keeper's own view.
+    func testWhatCameOfTheHoldsLastPleaStandsOnTheCard() throws {
+        var state = GameState(settings: GameSettings(seedText: "a plea at the gate", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        state.watch = Petition.from
+        let seat = try XCTUnwrap(state.holdIndex(try XCTUnwrap(state.holds(of: me).first { $0.isSeat }).id))
+        state.holds[seat].ward = 1
+        state.houses[me].stock = Stock(grain: 500, timber: 500, stone: 500, moonsalt: 50)
+        _ = state.bringPetitions()
+        let first = try XCTUnwrap(state.petition(of: me))
+        _ = try state.perform(.answerPetition(first.id, grant: false), as: me)
+        state.watch += Petition.every
+        _ = state.bringPetitions()
+        let next = try XCTUnwrap(state.petition(of: me))
+        let remembered = try XCTUnwrap(state.rememberedPlea(next))
+        XCTAssertTrue(remembered.hasSuffix("asked to have its ward mended, and you turned them away."), remembered)
+        let session = GameSession(link: PleaLink(), house: me, world: state.view(for: me),
+                                  store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
+        session.dismissSeatBriefing()
+        XCTAssertEqual(session.state.rememberedPlea(next), remembered, "Told in the keeper's own view")
+        draw(PetitionCard(session: session))
+    }
+}

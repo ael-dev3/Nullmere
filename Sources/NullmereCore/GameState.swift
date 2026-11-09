@@ -239,6 +239,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// How the last envoy each House sent another was answered, where a
     /// keeper is one of the two (`EnvoyAnswer`); nil while none has been.
     var answers: [EnvoyAnswer]?
+    /// What each hold's folk remember of their last plea at the gate
+    /// (`PleaAnswer`); nil while none has been answered.
+    var pleas: [PleaAnswer]?
     /// The wind of the watch as the realm found it (`wind`): the way it
     /// blows, as an index into `Hex.directions`, or -1 while none blows;
     /// absent in a world from before the wind. It changes with the watch,

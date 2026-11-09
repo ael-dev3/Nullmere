@@ -1380,6 +1380,12 @@ struct PleaRow: View {
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
+            if let remembered = plea.remembered {
+                Text(verbatim: remembered)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.5))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Text(verbatim: plea.waits)
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.5))

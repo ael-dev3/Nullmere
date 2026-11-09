@@ -367,6 +367,9 @@ public struct CompanionLedger: Equatable, Sendable {
         public let grant: Order?
         public let turnAway: Order
         public let voice: String
+        /// What came of the hold's last plea, as the Mac's card tells it
+        /// (`GameState.rememberedPlea(_:)`); nil before any.
+        public var remembered: String?
     }
 
     /// An item of the House's satchel: how many it keeps, what one does, and
@@ -1014,7 +1017,7 @@ public struct CompanionLedger: Equatable, Sendable {
                         grant: world.petitionRefusal(petition.id, grant: true, as: player) == nil
                             ? Order(title: "Grant, for \(petition.price)", command: .answerPetition(petition.id, grant: true)) : nil,
                         turnAway: Order(title: "Turn away", command: .answerPetition(petition.id, grant: false)),
-                        voice: "petition-\(petition.id)")
+                        voice: "petition-\(petition.id)", remembered: world.rememberedPlea(petition))
         }
         voices = world.voicedMoments(for: player)
         dreams = world.dreams(of: player).reversed().map { Dream(watch: $0.watch, told: world.told($0), voice: "dream-\($0.watch)") }

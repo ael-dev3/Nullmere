@@ -1677,7 +1677,14 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   away your caretaker grants a plea your stores would hold twice over. The
   phone shows the same plea on its House tab, voiced by its own model,
   with the same answers, and marks the hold on its chart with a lantern at
-  the gate.
+  the gate. A hold's folk remember their last plea: who brought it, what
+  it asked and whether you granted it, turned them away or sent no
+  answer, and how many of their pleas you have turned away this age. The
+  next plea's card says it beneath the plea ("Wenholme's folk last came
+  to your gate in watch 9: Edda, a mason, asked to have its ward mended,
+  and you turned them away."), and its petitioner is given it to speak
+  from. Only your House knows it; a hold taken by another House
+  remembers nothing of your answers.
 - **The Eclipse.** In an age with an age drowned beneath it, the moon is
   eaten at the full of the sixtieth watch, and of every ninetieth after,
   and the drowned age walks: from its greatest holds, six at most, rise

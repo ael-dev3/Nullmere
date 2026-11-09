@@ -214,6 +214,7 @@ extension GameState {
         houses[house].stock.debit(petition.price)
         petitions?.removeAll { $0.id == id }
         if petitions?.isEmpty == true { petitions = nil }
+        rememberPlea(petition, granted: true, silently: false)
         var events: [GameEvent] = [.petitionAnswered(petition, granted: true, silently: false)]
         switch petition.plea {
         case .mend:
@@ -244,6 +245,7 @@ extension GameState {
     private mutating func turnAway(_ petition: Petition, silently: Bool) -> [GameEvent] {
         petitions?.removeAll { $0.id == petition.id }
         if petitions?.isEmpty == true { petitions = nil }
+        rememberPlea(petition, granted: false, silently: silently)
         if let index = holdIndex(petition.hold), holds[index].owner == petition.house {
             holds[index].project?.watchesLeft += 1
             holds[index].training?.watchesLeft += 1
@@ -275,6 +277,8 @@ extension GameState {
         var facts = ["The petitioner is \(petitioner(of: petition)), a hold of \(houses.indices.contains(petition.house) ? houses[petition.house].title : "the keeper's House")."]
         facts.append(asked(by: petition))
         facts.append(GameState.turnedAwaySaid)
+        // What came of the hold's last plea, which its folk remember.
+        facts += rememberedPleaFacts(petition)
         return Voicing.Moment(task: Voicing.petitionTask, facts: facts)
     }
 }

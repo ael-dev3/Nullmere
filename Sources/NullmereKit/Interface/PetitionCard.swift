@@ -46,6 +46,13 @@ struct PetitionCard: View {
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.45))
                     .fixedSize(horizontal: false, vertical: true)
+                // What came of the hold's last plea, as its folk remember it.
+                if let remembered = state.rememberedPlea(petition) {
+                    Text(verbatim: remembered)
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.45))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text(verbatim: PetitionCard.waits(petition, at: state.watch))
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.4))

@@ -548,8 +548,9 @@ extension GameState {
     /// bottles, barges, rallies, fields of battle, shrines, lairs,
     /// standards, halls and storehouses they know of, the vigils burning
     /// for the fallen, the fires in the blackwood and their ash, the pleas
-    /// their folk have brought them, how their envoys were answered and
-    /// how they answered others', their satchel and their makings.
+    /// their folk have brought them and what their folk remember of those
+    /// answered, how their envoys were answered and how they answered
+    /// others', their satchel and their makings.
     struct Keeps: Codable, Equatable {
         var dreams: [Dream]?
         var whispers: [Whisper]?
@@ -583,6 +584,7 @@ extension GameState {
         var watchfires: [Watchfire]?
         var petitions: [Petition]?
         var answers: [EnvoyAnswer]?
+        var pleas: [PleaAnswer]?
         var allianceMarks: [AllianceMark]?
         var barges: [Ferrying]?
         var rallies: [Rally]?
@@ -628,6 +630,7 @@ extension GameState {
             watchfires = world.watchfires
             petitions = world.petitions
             answers = world.answers
+            pleas = world.pleas
             allianceMarks = world.allianceMarks
             barges = world.barges
             rallies = world.rallies
@@ -675,6 +678,7 @@ extension GameState {
             world.watchfires = watchfires
             world.petitions = petitions
             world.answers = answers
+            world.pleas = pleas
             world.allianceMarks = allianceMarks
             world.barges = barges
             world.rallies = rallies
