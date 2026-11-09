@@ -75,6 +75,37 @@ final class WatchmanTests: XCTestCase {
     }
 }
 
+extension WatchmanTests {
+    /// The ground panel of the keeper's own watchfire: whose it is, how
+    /// long it burns and what its light shows, and what it last made out
+    /// marching dark, with the watchman's own word on it once this Mac's
+    /// model has given it. CI keeps it as game-watchfire-panel.png.
+    func testTheGroundPanelTellsTheWatchfireAndTheWatchmansWord() async throws {
+        let (state, fire, sighting, _) = try world()
+        let me = state.player
+        let session = GameSession(link: QuietLink(), house: me, world: state.view(for: me),
+                                  store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)), voice: Quick())
+        session.dismissSeatBriefing()
+        let deadline = Date().addingTimeInterval(5)
+        while session.spoken[.watchman(sighting.key)] == nil, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(session.spoken[.watchman(sighting.key)], Quick.words, "The watchman's word, as this Mac's model gave it")
+        let said = WatchfireRow.said(fire, in: session.state)
+        XCTAssertTrue(said.hasPrefix("It burns \(GameState.watches(max(fire.out - session.state.watch, 1))) more"), said)
+        XCTAssertTrue(said.hasSuffix("and make out any company marching dark there."), said)
+        XCTAssertEqual(session.state.watchfire(at: fire.at)?.by, me)
+        XCTAssertEqual(session.state.watchfire(at: fire.at)?.seen?.last, sighting, "its House told what it made out")
+        try CardShot.keep(TilePanel(session: session, hex: fire.at)
+            .padding(16).frame(width: PanelWidth.record).panelBackground().padding(20),
+                          as: "game-watchfire-panel.png")
+    }
+}
+
+/// Gives the watchman's words at once.
+private struct Quick: Voice {
+    static let words = "Spears went by the fire in the dark, keeper, their torches doused."
+    func speak(_ moment: VoiceMoment) async -> String? { Quick.words }
+}
+
 /// Gives words only after a long while, and none once stopped.
 private struct Slow: Voice {
     func speak(_ moment: VoiceMoment) async -> String? {

@@ -3169,3 +3169,39 @@ extension DepthPanelTests {
         XCTAssertNotNil(Narration.line(for: events[0], in: state, viewer: me))
     }
 }
+
+extension DepthPanelTests {
+    /// Open ground of the keeper's own land offers Light a watchfire, which
+    /// sends the order; a company of war carrying its torches in the
+    /// blackwood offers Set the wood alight and Douse torches, each sending
+    /// its order; and a barrow's button says what going down into it brings.
+    func testTheTilePanelLightsAWatchfireAndTheUnitPanelDousesTorches() throws {
+        var state = world("a watchfire from the panel")
+        let me = state.player
+        state.houses[me].stock.timber = 100
+        let owners = state.territory()
+        let at = try XCTUnwrap(state.map.hexes.first { hex in
+            state.territoryOwner(of: hex, in: owners) == me && state.watchfireRefusal(at: hex, as: me) == nil
+        }, "Open ground of the House's own")
+        let (ground, lit) = self.session(state)
+        draw(TilePanel(session: ground, hex: at), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Light a watchfire"), "Among \(shown)")
+        XCTAssertEqual(lit.sent.last, .watchfire(at))
+        let unit = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let wood = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain == .blackwood && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+                && state.site(at: hex) == nil && (state.territoryOwner(of: hex, in: owners).map { $0 == me } ?? true)
+        }, "Blackwood of no other House's")
+        state.units[try XCTUnwrap(state.unitIndex(unit.id))].position = wood
+        state.refreshSight()
+        XCTAssertNil(state.kindleRefusal(unit.id, as: me))
+        let (company, sent) = self.session(state)
+        draw(UnitPanel(session: company, unit: try XCTUnwrap(company.state.unit(unit.id))), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Set the wood alight"), "Among \(shown)")
+        XCTAssertEqual(sent.sent.last, .kindle(unit: unit.id))
+        XCTAssertTrue(PressableButtons.press("Douse torches"), "Among \(shown)")
+        XCTAssertEqual(sent.sent.last, .torches(unit: unit.id, lit: false))
+        let barrow = try XCTUnwrap(state.findsInLand.first { $0.kind == .barrow })
+        XCTAssertTrue(UnitPanel.seekHelp(barrow).hasPrefix("Your Lanterns go down among the old bones"))
+    }
+}

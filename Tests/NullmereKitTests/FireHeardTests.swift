@@ -106,6 +106,7 @@ final class FireHeardTests: XCTestCase {
         session.motion = .still
         session.hearFire()
         XCTAssertEqual(heard.last?.0, 0, "Still under the stillest motion")
+        Ambience(enabled: false).setBlaze(level: 0.5, pan: 0)
     }
 
     /// The night's air heard as the watch's wind blows: from the side of the
@@ -139,5 +140,6 @@ final class FireHeardTests: XCTestCase {
         XCTAssertEqual(told.count, 1)
         session.hearAir()
         XCTAssertEqual(told.count, 1, "Told as it changes, not every frame")
+        Ambience(enabled: false).setAir(strength: GameSession.stillAir, pan: 0)
     }
 }

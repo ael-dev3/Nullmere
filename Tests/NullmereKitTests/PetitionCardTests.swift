@@ -147,6 +147,30 @@ final class PetitionCardTests: XCTestCase {
         XCTAssertNotEqual(other.voicing?.key, asked)
         XCTAssertNil(other.spoken[asked], "Words for a plea no longer at the gate are not kept")
     }
+
+    /// The petitioner's own words, once this Mac's model has given them,
+    /// stand on the card in their own quotation marks above the plea in the
+    /// realm's words, and the answers are still there beneath them.
+    func testThePetitionersOwnWordsStandOnTheCardOnceGiven() async throws {
+        let (session, link, petition) = try session(voice: Ready())
+        let key = GameSession.Spoken.petition(petition.id)
+        let deadline = Date().addingTimeInterval(5)
+        while session.spoken[key] == nil, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(session.spoken[key], Ready.words, "Kept under the petitioner's own key")
+        XCTAssertNil(session.unvoiced[key], "Words given, so no reason the model was silent")
+        Portraits.shared.prepareNow()
+        try CardShot.keep(PetitionCard(session: session).padding(30), as: "game-petition-spoken.png")
+        PressableButtons.forget("Turn away")
+        draw(PetitionCard(session: session))
+        XCTAssertTrue(PressableButtons.press("Turn away"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .answerPetition(petition.id, grant: false))
+    }
+}
+
+/// Gives the petitioner words at once.
+private struct Ready: Voice {
+    static let words = "The ward is down to its last course, keeper. Let our masons mend it."
+    func speak(_ moment: VoiceMoment) async -> String? { Ready.words }
 }
 
 /// Gives the petitioner words only after a long while, and none once stopped.

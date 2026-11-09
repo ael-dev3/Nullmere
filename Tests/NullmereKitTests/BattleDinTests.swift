@@ -51,6 +51,9 @@ final class BattleDinTests: XCTestCase {
         session.motion = .still
         session.hearBattles()
         XCTAssertEqual(heard.last?.0, 0)
+        // The app's sound takes the din and the host's mass as told.
+        Ambience(enabled: false).setDin(level: din.level, pan: din.pan)
+        Ambience(enabled: false).setHost(0.5)
     }
 }
 

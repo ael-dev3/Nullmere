@@ -899,8 +899,9 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, near / 3 + 10, "and nothing else in the view changes with them")
     }
 
-    /// A company of the keeper's marching dark in the blackwood by their
-    /// seat, standing in the clearing its ranks make among the trees; and
+    /// A company of the keeper's marching dark deep in the blackwood
+    /// nearest their seat, standing in the clearing its ranks make among
+    /// the trees; and
     /// the same company lying in wait there, half seen among the trees,
     /// which stand among its ranks while it waits, nothing else in the view
     /// changed. CI keeps both, marching dark then lying in wait, as
@@ -912,13 +913,18 @@ final class WorldRenderTests: XCTestCase {
         var state = WorldRenderTests.world.state
         let me = state.player
         let seat = try XCTUnwrap(state.seat(of: me)).position
-        let explored = state.houses[me].explored
         let company = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear } ?? state.units(of: me).first { $0.kind.isMilitary })
-        // In the blackwood the keeper knows, nearest their seat.
+        // Deep in the blackwood, nearest their seat: wood on every side, no
+        // hold near enough for its fields and lanes to have cleared the
+        // trees, nothing standing on it or beside it. (This world's keeper
+        // knows the whole land.)
+        func wooded(_ hex: Hex) -> Bool {
+            state.isCover(hex) && state.unit(at: hex) == nil && state.site(at: hex) == nil && state.find(at: hex) == nil
+                && state.lair(at: hex) == nil && state.shrine(at: hex) == nil
+        }
         let wood = try XCTUnwrap(state.map.hexes.filter { hex in
-            state.isCover(hex) && state.hold(at: hex) == nil && state.unit(at: hex) == nil
-                && (state.map.index(of: hex).map { explored[$0] } ?? false)
-        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }, "Blackwood the keeper knows")
+            wooded(hex) && hex.neighbors.allSatisfy(wooded) && state.holds.allSatisfy { $0.position.distance(to: hex) > 3 }
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }, "Deep blackwood")
         state.units[try XCTUnwrap(state.unitIndex(company.id))].position = wood
         _ = try state.perform(.torches(unit: company.id, lit: false), as: me)
         XCTAssertEqual(state.problems(), [])
