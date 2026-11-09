@@ -255,10 +255,12 @@ jobs:
       # Opens the debug build past the model gate (only debug builds allow
       # that), presses Play and enters a realm hosted on the runner as a
       # keeper, whose world must render with Metal; then the same realm
-      # forty watches on.
+      # forty watches on, and forty more with counsel asked of a battle; and
+      # the lake drawn without its fog, which run 785 showed has no part in
+      # how dark the first view is.
       - name: Open the game
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: mkdir -p build && DEBUG_PASSES=1 DEBUG_PASS_LIST="land light fog" scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
+        run: mkdir -p build && DEBUG_PASSES=1 DEBUG_PASS_LIST="fog" scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
 
       # A realm raised on the runner, as on maincloud: SpacetimeDB with the
       # realm module published, and the steward beside it. Then the app
