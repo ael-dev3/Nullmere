@@ -29,6 +29,51 @@ final class CompanyBoardTests: XCTestCase {
             XCTAssertEqual(units.places(of: house), units.indices.filter { units[$0].owner == house }, "\(note): House \(house)'s", file: file, line: line)
             XCTAssertEqual(units.ids(of: house), units.filter { $0.owner == house }.map(\.id).sorted(), file: file, line: line)
         }
+        for commander in Set(units.compactMap(\.leader) + units.compactMap(\.second)).union([77]) {
+            XCTAssertEqual(units.first(ledBy: commander), units.firstIndex { $0.leader == commander || $0.second == commander },
+                           "\(note): commander \(commander)'s company", file: file, line: line)
+        }
+    }
+
+    /// Who leads each company is kept on a board too: a commander's company
+    /// is found at once, the first as the list has them, however its
+    /// leaders change, the company falls or the list is written anew.
+    func testACommandersCompanyIsFoundOnTheBoardOfWhoLeadsThem() {
+        var units = Companies([company(1, 0, 0), company(2, 1, 0), company(3, 2, 0)])
+        assertBoard(units, "None led")
+        units[0].leader = 7
+        assertBoard(units, "Led")
+        XCTAssertEqual(units.first(ledBy: 7), 0)
+        units[2].second = 7
+        assertBoard(units, "Riding second with another as well: the first in the list")
+        units[0].leader = nil
+        XCTAssertEqual(units.first(ledBy: 7), 2)
+        assertBoard(units, "Released from the first")
+        units[2].leader = units[2].second
+        units[2].second = nil
+        assertBoard(units, "The second rides on as the leader")
+        units[1].leader = 8
+        units[1].second = 8
+        assertBoard(units, "One commander written as both")
+        units[1].second = nil
+        XCTAssertEqual(units.first(ledBy: 8), 1)
+        assertBoard(units, "Then leader alone")
+        units[1] = company(4, 1, 0)
+        XCTAssertNil(units.first(ledBy: 8), "Written over by a company none leads")
+        assertBoard(units, "Written over")
+        var led = company(5, 3, 0)
+        led.leader = 9
+        units.append(led)
+        assertBoard(units, "Raised already led")
+        units.remove(at: 2)
+        XCTAssertNil(units.first(ledBy: 7), "Fallen with its leader")
+        assertBoard(units, "Fallen")
+        units.insert(company(6, 4, 0), at: 0)
+        XCTAssertEqual(units.first(ledBy: 9), 3)
+        assertBoard(units, "One put among the rest")
+        let read = try? JSONDecoder().decode(Companies.self, from: JSONEncoder().encode(units))
+        XCTAssertEqual(read?.first(ledBy: 9), 3, "Read back from a save")
+        XCTAssertEqual(read?.boardHolds(), true)
     }
 
     /// Where the companies stand is told by a token drawn anew whenever one

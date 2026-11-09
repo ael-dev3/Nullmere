@@ -18,6 +18,11 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     private var board: [Hex: [Int]]
     /// The ids of each House's companies, lowest first.
     private var owned: [Int: [Int]]
+    /// The ids of the companies each commander leads or rides second
+    /// with, lowest first: a commander's company found at once, not sought
+    /// through every company of the realm for each of a wide realm's
+    /// thousands of commanders.
+    private var led: [Int: [Int]]
     /// Where the companies stand, as a token drawn anew (unlike any drawn in
     /// any realm) whenever one moves, is raised or falls: companies holding
     /// the same token stand where they stood.
@@ -47,6 +52,7 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         list = []
         board = [:]
         owned = [:]
+        led = [:]
     }
 
     public init(arrayLiteral elements: Unit...) {
@@ -57,6 +63,7 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         list = Array(elements)
         board = [:]
         owned = [:]
+        led = [:]
         for unit in list { enter(unit) }
     }
 
@@ -98,14 +105,14 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         // hundred bytes and asked after many thousand times a watch.
         _read { yield list[position] }
         set {
-            let was = (id: list[position].id, at: list[position].position, owner: list[position].owner)
+            let was = Companies.trace(of: list[position])
             list[position] = newValue
             moved(position, from: was)
         }
         // Changed where it lies; moved on the board only if it moved, and to
         // another House only if it was given over.
         _modify {
-            let was = (id: list[position].id, at: list[position].position, owner: list[position].owner)
+            let was = Companies.trace(of: list[position])
             yield &list[position]
             moved(position, from: was)
         }
@@ -116,7 +123,7 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         // among the changes; anything else begins them afresh.
         let fell = subrange.count == 1 && elements.isEmpty ? list[subrange.lowerBound].id : nil
         let raised = subrange.isEmpty && subrange.lowerBound == list.count ? elements.map(\.id) : []
-        for index in subrange { leave(list[index].id, at: list[index].position, of: list[index].owner) }
+        for index in subrange { leave(Companies.trace(of: list[index])) }
         list.replaceSubrange(subrange, with: elements)
         for unit in elements { enter(unit) }
         if let fell {
@@ -206,6 +213,14 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         return ids.compactMap(index(ofID:)).min()
     }
 
+    /// Where in the list the first company a commander leads or rides
+    /// second with lies, as a walk down the list would find it first.
+    public func first(ledBy commander: Int) -> Int? {
+        guard let ids = led[commander] else { return nil }
+        if ids.count == 1 { return index(ofID: ids[0]) }
+        return ids.compactMap(index(ofID:)).min()
+    }
+
     /// Where in the list the company of an id lies: found by halving the
     /// list, as companies are raised each with an id above the one before;
     /// one not found so is looked for in each, should any be out of that
@@ -222,17 +237,37 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         return nil
     }
 
+    /// What a company is found by: its id, where it stands, whose it is,
+    /// and the commanders who lead it.
+    private typealias Trace = (id: Int, at: Hex, owner: Int, leader: Int?, second: Int?)
+
+    private static func trace(of unit: Unit) -> Trace {
+        (unit.id, unit.position, unit.owner, unit.leader, unit.second)
+    }
+
+    /// The commanders a company is led by, each once.
+    private static func commanders(of trace: Trace) -> [Int] {
+        switch (trace.leader, trace.second) {
+        case let (leader?, second?): return leader == second ? [leader] : [leader, second]
+        case let (leader?, nil): return [leader]
+        case let (nil, second?): return [second]
+        case (nil, nil): return []
+        }
+    }
+
     private mutating func enter(_ unit: Unit) {
         Companies.lay(unit.id, into: &board[unit.position, default: []])
         Companies.lay(unit.id, into: &owned[unit.owner, default: []])
+        for commander in Companies.commanders(of: Companies.trace(of: unit)) { Companies.lay(unit.id, into: &led[commander, default: []]) }
     }
 
-    private mutating func leave(_ id: Int, at hex: Hex, of owner: Int) {
-        Companies.lift(id, from: &board, at: hex)
-        Companies.lift(id, from: &owned, at: owner)
+    private mutating func leave(_ was: Trace) {
+        Companies.lift(was.id, from: &board, at: was.at)
+        Companies.lift(was.id, from: &owned, at: was.owner)
+        for commander in Companies.commanders(of: was) { Companies.lift(was.id, from: &led, at: commander) }
     }
 
-    private mutating func moved(_ place: Int, from was: (id: Int, at: Hex, owner: Int)) {
+    private mutating func moved(_ place: Int, from was: Trace) {
         let now = list[place]
         if now.id != was.id || now.position != was.at {
             Companies.lift(was.id, from: &board, at: was.at)
@@ -242,6 +277,10 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         if now.id != was.id || now.owner != was.owner {
             Companies.lift(was.id, from: &owned, at: was.owner)
             Companies.lay(now.id, into: &owned[now.owner, default: []])
+        }
+        if now.id != was.id || now.leader != was.leader || now.second != was.second {
+            for commander in Companies.commanders(of: was) { Companies.lift(was.id, from: &led, at: commander) }
+            for commander in Companies.commanders(of: Companies.trace(of: now)) { Companies.lay(now.id, into: &led[commander, default: []]) }
         }
     }
 
@@ -259,16 +298,19 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         if found.count == 1 { ids[key] = nil } else { ids[key]?.remove(at: found.place) }
     }
 
-    /// Whether the board holds every company where it stands, and each
-    /// House's its own, and nothing else: for the tests.
+    /// Whether the board holds every company where it stands, each
+    /// House's its own and each commander's the companies they lead, and
+    /// nothing else: for the tests.
     func boardHolds() -> Bool {
-        var hexes: [Hex: [Int]] = [:], houses: [Int: [Int]] = [:]
+        var hexes: [Hex: [Int]] = [:], houses: [Int: [Int]] = [:], leaders: [Int: [Int]] = [:]
         for unit in list {
             hexes[unit.position, default: []].append(unit.id)
             houses[unit.owner, default: []].append(unit.id)
+            for commander in Companies.commanders(of: Companies.trace(of: unit)) { leaders[commander, default: []].append(unit.id) }
         }
         for key in hexes.keys { hexes[key]?.sort() }
         for key in houses.keys { houses[key]?.sort() }
-        return hexes == board && houses == owned
+        for key in leaders.keys { leaders[key]?.sort() }
+        return hexes == board && houses == owned && leaders == led
     }
 }

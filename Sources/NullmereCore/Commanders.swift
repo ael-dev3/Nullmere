@@ -272,9 +272,11 @@ extension GameState {
         roster.filter { $0.owner == house }
     }
 
-    /// The company a commander leads, if any.
+    /// The company a commander leads, if any: the first, as the list has
+    /// them, that it leads or rides second with, found on the companies'
+    /// board of who leads them.
     public func company(ledBy commander: Int) -> Unit? {
-        units.first { $0.leader == commander || $0.second == commander }
+        units.first(ledBy: commander).map { units[$0] }
     }
 
     /// The most commanders a House keeps.
