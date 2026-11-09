@@ -35,7 +35,7 @@ public enum SpokenOrders {
 
     /// The forms of the order book's lines.
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
-                               "DRILL <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
+                               "DRILL <company>", "KINDLE <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
                                "SWEAR PEACE WITH <house> FOR <watches> WATCHES",
@@ -98,8 +98,14 @@ public enum SpokenOrders {
         var lines = ["The order book's lines, one order to a line:"] + forms
         lines.append("Your companies:")
         for (index, unit) in companies(in: state, player: player).prefix(briefedCompanies).enumerated() {
-            lines.append("C\(index + 1): \(named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops")
+            // A company that may set the blackwood where it stands alight
+            // is told so, the wind with it, so the model knows the fire is
+            // there to order and which way it would run.
+            let alight = state.isBlackwood(unit.position) && state.kindleRefusal(unit.id, as: player) == nil
+            lines.append("C\(index + 1): \(named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops"
+                         + (alight ? ", in blackwood it may set alight (KINDLE)" : ""))
         }
+        lines.append("This watch \(state.windSaid).")
         let holds = state.holds(of: player)
         lines.append("Your holds: " + holds.map(\.name).joined(separator: ", "))
         // Each name once, the nearest the seat first.
@@ -171,12 +177,13 @@ public enum SpokenOrders {
             return verb == "MARCH"
                 ? given(.move(unit: unit.id, to: place.at), "Your \(named(unit, in: state)) march to \(place.name).")
                 : given(.attack(unit: unit.id, target: place.at), "Your \(named(unit, in: state)) strike \(place.name).")
-        case "FORTIFY", "HALT", "DRILL":
+        case "FORTIFY", "HALT", "DRILL", "KINDLE":
             let handle = rest.joined(separator: " ")
             guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
             switch verb {
             case "FORTIFY": return given(.fortify(unit: unit.id), "Your \(named(unit, in: state)) dig in.")
             case "HALT": return given(.halt(unit: unit.id), "Your \(named(unit, in: state)) halt.")
+            case "KINDLE": return given(.kindle(unit: unit.id), "Your \(named(unit, in: state)) set the wood alight.")
             default: return given(.drill(unit: unit.id), "Your \(named(unit, in: state)) drill.")
             }
         case "BUILD", "TRAIN":

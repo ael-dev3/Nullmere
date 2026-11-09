@@ -117,6 +117,52 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertEqual(SpokenOrders.read(many, in: state, player: me).count, SpokenOrders.most)
     }
 
+    /// The fire in the blackwood from the book: a company standing in
+    /// blackwood it may set alight is told so in the briefing, the wind with
+    /// it, and KINDLE sets it alight; once it burns there, the line is told
+    /// why not in the realm's own words.
+    func testTheBlackwoodIsSetAlightFromTheBook() throws {
+        var state = GameState(settings: GameSettings(seedText: "fire in the blackwood", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let sites = Set(state.sitesInLand.map(\.position))
+        let owners = state.territory()
+        let wood = try XCTUnwrap(state.map.hexes.filter { hex in
+            state.isBlackwood(hex) && state.hold(at: hex) == nil && !sites.contains(hex) && state.unit(at: hex) == nil
+                && (state.territoryOwner(of: hex, in: owners) ?? me) == me
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) })
+        let placed = try XCTUnwrap(state.placeUnit(.spear, tier: 1, for: me, near: wood))
+        let index = try XCTUnwrap(state.unitIndex(placed.id))
+        state.units[index].position = wood
+        state.units[index].movesLeft = state.movement(of: state.units[index])
+        let unit = try XCTUnwrap(state.unit(placed.id))
+        XCTAssertNil(state.kindleRefusal(unit.id, as: me))
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == unit.id }) + 1)"
+        // The briefing tells the model the fire is there to order, and the
+        // wind, each company that may set the wood alight and no other.
+        let briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        let told = "\(handle): \(SpokenOrders.named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops, in blackwood it may set alight (KINDLE)"
+        XCTAssertTrue(briefing.contains(told), "\(briefing)")
+        XCTAssertTrue(briefing.contains("This watch \(state.windSaid)."), "\(briefing)")
+        XCTAssertEqual(briefing.filter { $0.hasSuffix("(KINDLE)") }.count,
+                       companies.prefix(SpokenOrders.briefedCompanies).filter { state.isBlackwood($0.position) && state.kindleRefusal($0.id, as: me) == nil }.count)
+        let line = try XCTUnwrap(SpokenOrders.read("KINDLE \(handle)", in: state, player: me).first)
+        XCTAssertEqual(line.command, .kindle(unit: unit.id))
+        XCTAssertNil(line.why)
+        XCTAssertEqual(line.told, "Your \(SpokenOrders.named(unit, in: state)) set the wood alight.")
+        // Burning there, the same line is told why not, and the briefing no
+        // longer offers it.
+        var burning = state
+        _ = try burning.perform(.kindle(unit: unit.id), as: me)
+        let again = try XCTUnwrap(SpokenOrders.read("kindle \(handle)", in: burning, player: me).first)
+        XCTAssertEqual(again.command, .kindle(unit: unit.id))
+        XCTAssertEqual(again.why, RuleError.burntGround.description)
+        let after = SpokenOrders.briefing(for: burning, player: me).split(separator: "\n")
+        XCTAssertFalse(after.contains { $0.hasPrefix("\(handle): ") && $0.hasSuffix("(KINDLE)") })
+        XCTAssertTrue(SpokenOrders.forms.contains("KINDLE <company>"))
+    }
+
     /// The House's dealings with the others: envoys of peace, of a pact or
     /// demanding tribute, war, gifts and offers of trade, each House named
     /// by its title or its name alone.

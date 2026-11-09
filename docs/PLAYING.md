@@ -952,9 +952,11 @@ a vote on the realm's law to cast.
   company of yours by its handle, about the company they lead (only what
   your House sees), or at your House's stores and wars, and each look is
   shown as they take it. They may put an order to you (a company to march,
-  strike, fortify, halt or drill), weighed as the order book weighs a line:
-  only one the realm would take is put forward, and you give it or set it
-  aside; the realm decides what comes of it, as of any order. Answers appear
+  strike, fortify, halt, drill or set the blackwood where it stands
+  alight, told when theirs may and which way the wind would carry it),
+  weighed as the order book weighs a line: only one the realm would take
+  is put forward, and you give it or set it aside; the realm decides what
+  comes of it, as of any order. Answers appear
   as they are spoken and can be stopped; one that doesn't begin within
   twenty-five seconds is given up. A commander remembers the last dozen
   exchanges of the age, kept on your Mac, and is told what you did with
@@ -1624,15 +1626,17 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   what they would have done in plain words, and their Mac's on-device
   model, as the House's clerk, reads it into at most six lines of the
   order book (MARCH C1 TO a place, STRIKE a place WITH C2, FORTIFY,
-  HALT or DRILL a company, BUILD a work AT a hold, TRAIN a kind AT a
-  hold; and with the other Houses, OFFER PEACE or A PACT TO a House,
+  HALT or DRILL a company, KINDLE one to set the blackwood where it
+  stands alight, BUILD a work AT a hold, TRAIN a kind AT a hold; and
+  with the other Houses, OFFER PEACE or A PACT TO a House,
   DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an amount of a store
   TO one, TRADE an amount of a store FOR another WITH one, and the oaths
   below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO one, RENOUNCE THE
   OATH TO one), given a briefing of the House's companies, numbered C1
-  and on, its holds, the places it knows, the works, the kinds of
-  company, the other Houses standing and how it stands with each, its
-  oaths, and the stores.
+  and on (each that may set the blackwood where it stands alight told
+  so, and the watch's wind), its holds, the places it knows, the works,
+  the kinds of company, the other Houses standing and how it stands with
+  each, its oaths, and the stores.
   Each line is read against the keeper's own view into the order the
   realm would take, or said not to be one, and shown with what it would
   do or why it can't be given; those that can are given together only

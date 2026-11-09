@@ -164,8 +164,45 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertEqual(counsel.propose("march", company: "C99", place: place.name).why, "Your House has no company C99.")
         let burn = counsel.propose("burn", company: handle, place: place.name)
         XCTAssertNil(burn.command)
-        XCTAssertEqual(burn.why, "A commander may propose only that a company march, strike, fortify, halt or drill.")
-        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill"])
+        XCTAssertEqual(burn.why, "A commander may propose only that a company march, strike, fortify, halt, drill or kindle (set the wood alight).")
+        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle"])
+        // A company at the seat can set nothing alight: put forward as a
+        // line, and told why in the realm's own words.
+        let kindle = counsel.propose("kindle", company: handle, place: "")
+        XCTAssertEqual(kindle.line, "KINDLE \(handle)")
+        XCTAssertEqual(kindle.command, .kindle(unit: company.id))
+        XCTAssertEqual(kindle.why, counsel.state.kindleRefusal(company.id, as: counsel.player)?.description)
+        XCTAssertFalse(kindle.isGiven)
+    }
+
+    /// A commander whose company stands in blackwood it may set alight is
+    /// told so, and which way the wind blows, and may put the fire to the
+    /// keeper as the realm would take it.
+    func testACommanderInTheBlackwoodMayPutTheFireForward() throws {
+        var (counsel, world) = try counsel()
+        let me = counsel.player
+        let company = try XCTUnwrap(counsel.company)
+        let seat = try XCTUnwrap(world.seat(of: me)).position
+        let sites = Set(world.sitesInLand.map(\.position))
+        let owners = world.territory()
+        let wood = try XCTUnwrap(world.map.hexes.filter { hex in
+            world.isBlackwood(hex) && world.hold(at: hex) == nil && !sites.contains(hex) && world.unit(at: hex) == nil
+                && (world.territoryOwner(of: hex, in: owners) ?? me) == me
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) })
+        world.units[try XCTUnwrap(world.unitIndex(company.id))].position = wood
+        counsel = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        let handle = try XCTUnwrap(counsel.handle(of: try XCTUnwrap(counsel.company)))
+        XCTAssertNil(counsel.state.kindleRefusal(company.id, as: me))
+        XCTAssertTrue(counsel.briefing.contains(", standing in blackwood it may set alight (\(counsel.state.windSaid))."), counsel.briefing)
+        XCTAssertTrue(counsel.report(on: handle).contains("standing in blackwood it may set alight"))
+        let fire = counsel.propose("Kindle", company: handle, place: "")
+        XCTAssertTrue(fire.isGiven, fire.why ?? "")
+        XCTAssertEqual(fire.command, .kindle(unit: company.id))
+        XCTAssertEqual(fire.told, "Your \(SpokenOrders.named(try XCTUnwrap(counsel.company), in: counsel.state)) set the wood alight.")
+        // Set alight, it is told so no longer.
+        try world.perform(.kindle(unit: company.id), as: me)
+        let after = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        XCTAssertFalse(after.briefing.contains("standing in blackwood it may set alight"), after.briefing)
     }
 
     /// The commander remembers the last few exchanges, the oldest let go,
