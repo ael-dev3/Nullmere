@@ -429,6 +429,13 @@ struct ChartView: View {
             context.fill(site, with: .color(tint.opacity(0.85)))
         case .shrine:
             context.stroke(circle(size * 0.4), with: .color(Night.moon.opacity(0.9)), lineWidth: 1.5)
+        case .vigil:
+            // A small flame on the black water in its warm glow, whoever's it is.
+            context.fill(circle(size * 0.34), with: .color(Self.flame.opacity(0.22)))
+            context.fill(circle(size * 0.13), with: .color(Self.flame))
         }
     }
+
+    /// A vigil's flame, as the world draws it.
+    static let flame = Color(red: 1.0, green: 0.74, blue: 0.40)
 }

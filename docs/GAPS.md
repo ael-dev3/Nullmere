@@ -443,7 +443,10 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   SpacetimeDB server, and the Metal renderer drew six vigils on CI's Mac:
   "6 flames, 1139 points lit about them and 1791 on the water, 1783 of
   those toward the eye; 2928 warm in all, 0 darker"
-  (`testVigilsBurnOnTheWater`, `ci-shots/816/world-vigils.png`). The words
+  (`testVigilsBurnOnTheWater`, `ci-shots/816/world-vigils.png`). The
+  phone's chart of the land marks each light near the seat where it
+  burns, a small flame in its glow, named as the Mac names it
+  (`CompanionChartTests`). The words
   for the dead written by the Mac's and the phone's own models
   (`VigilWordsTests`, `VigilWriterTests`, the phone's composer) run on CI's
   Mac with the run after it.

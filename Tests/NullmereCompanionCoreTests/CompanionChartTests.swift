@@ -473,3 +473,26 @@ final class CompanionChartTests: XCTestCase {
         }
     }
 }
+
+extension CompanionChartTests {
+    /// A vigil's light on the water, near enough the seat, is marked on the
+    /// phone's chart where it burns, named as the Mac names it; one beyond
+    /// the chart's reach is not.
+    func testAVigilBurningNearIsMarkedWhereItIs() throws {
+        var state = GameState(settings: GameSettings(seedText: "companion chart vigils", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let water = try XCTUnwrap(state.map.hexes.filter { [.still, .shallows].contains(state.map[$0]?.terrain) }
+            .min { ($0.distance(to: seat.position), $0.q, $0.r) < ($1.distance(to: seat.position), $1.q, $1.r) })
+        let far = try XCTUnwrap(state.map.hexes.first { $0.distance(to: seat.position) > CompanionChart.mostRadius + 2 })
+        let other = (me + 1) % state.houses.count
+        state.vigils = [Vigil(id: 41, house: other, words: "For those who fell at the ford", fallen: 2, lit: state.watch, position: water),
+                        Vigil(id: 42, house: me, words: "Ours", fallen: 1, lit: state.watch, position: far)]
+        let chart = CompanionChart(world: state.view(for: me), player: me)
+        let marked = chart.marks.filter { $0.thing == .vigil }
+        XCTAssertEqual(marked.map(\.id), ["vigil 41"], "Only the one within the chart's reach")
+        let mark = try XCTUnwrap(marked.first)
+        XCTAssertEqual(mark.hex, water)
+        XCTAssertEqual(mark.name, state.view(for: me).vigilTitle(state.vigils![0], for: me))
+    }
+}
