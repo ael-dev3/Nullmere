@@ -266,7 +266,8 @@ public struct CompanionChart: Equatable, Sendable {
             let dark = world.isUnlit(unit.id)
             marks.append(Mark(id: "company \(unit.id)", hex: unit.position, thing: .company, side: side(unit.owner),
                               name: "\(CompanionChart.capitalized(whose(unit.owner))) \(world.named(unit)), "
-                                + "\(GameState.counted(world.troops(of: unit))) troops" + (dark ? ", marching dark" : ""),
+                                + "\(GameState.counted(world.troops(of: unit))) troops" + (dark ? ", marching dark" : "")
+                                + (world.isWaiting(unit.id) ? ", lying in wait" : ""),
                               bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil, dark: dark))
         }
         self.marks = marks

@@ -64,5 +64,15 @@ final class CompanionTorchesTests: XCTestCase {
         _ = try state.perform(wait, as: me)
         XCTAssertTrue(try orders().contains { $0.title == "Stand down" && $0.command == standDown })
         XCTAssertFalse(try orders().contains { $0.command == wait }, "Waiting already")
+        // What it is about, and its mark on the chart, say it lies in wait,
+        // as the Mac's VoiceOver does.
+        let waiting = try XCTUnwrap(CompanionLedger(world: state.view(for: me), player: me).companies.first { $0.id == unit.id })
+        XCTAssertTrue(waiting.doing.hasSuffix(", its torches doused, lying in wait"), waiting.doing)
+        let mark = try XCTUnwrap(CompanionChart(world: state.view(for: me), player: me).marks.first { $0.id == "company \(unit.id)" })
+        XCTAssertTrue(mark.name.hasSuffix(", marching dark, lying in wait"), mark.name)
+        // No other House knows it.
+        let other = try XCTUnwrap(state.livingHouses.first { $0.id != me }).id
+        let theirs = CompanionChart(world: state.view(for: other), player: other).marks.first { $0.id == "company \(unit.id)" }
+        XCTAssertFalse(theirs?.name.contains("lying in wait") ?? false)
     }
 }

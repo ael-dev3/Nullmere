@@ -1735,8 +1735,9 @@ public struct CompanionLedger: Equatable, Sendable {
     /// no map beside the list (`GameState.marchSaid`).
     static func doing(_ unit: Unit, in world: GameState, for player: Int) -> String {
         let doing = about(unit, in: world, for: player)
-        // A company marching dark says so, as the Mac's panel does.
-        return world.isUnlit(unit.id) ? doing + ", its torches doused" : doing
+        // A company marching dark says so, as the Mac's panel does, and one
+        // lying in wait, as the Mac's VoiceOver does.
+        return doing + (world.isUnlit(unit.id) ? ", its torches doused" : "") + (world.isWaiting(unit.id) ? ", lying in wait" : "")
     }
 
     /// What a company is about, its torches aside.
