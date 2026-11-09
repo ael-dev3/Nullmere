@@ -435,7 +435,8 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   lights with their reflections (VigilLightsTests; the browser preview of
   the same shaders draws eight in a line across the lake, the four nearest
   the view's middle each laying a long warm streak on the water toward the
-  eye: [world-vigils.png](shots/world-vigils.png)). Not yet run on CI's
+  eye: [world-vigils.png](shots/world-vigils.png); and from afar, a short chain of gold lights on the black lake ringed by the holds'
+  glows: [world-vigils-afar.png](shots/world-vigils-afar.png)). Not yet run on CI's
   Mac: the Mac views and their test compile and run there first with the
   next run.
 

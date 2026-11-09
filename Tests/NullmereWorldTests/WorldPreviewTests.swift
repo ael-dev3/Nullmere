@@ -190,6 +190,8 @@ final class WorldPreviewTests: XCTestCase {
         var afar = scene
         afar.motes += WorldStage(map: state.map, relief: Relief(map: state.map))
             .glows(state.holds.map { HoldSight(hold: $0, colour: Vec4(1, 1, 1, 1)) }, scale: far.scale)
+        // And the vigils' procession on the lake, seen across it.
+        afar.motes += WorldStage.vigils(procession, progress: 0.5, scale: far.scale, time: 20).motes
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
             ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
