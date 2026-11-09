@@ -1023,6 +1023,9 @@ final class WorldRenderTests: XCTestCase {
         func seen(_ hex: Hex) -> CGPoint { afar.viewPoint(of: hex, height: Double(WorldRenderTests.world.relief.height(of: hex)), in: WorldRenderTests.size) }
         let alight = burning.map(seen), touched = (burning + ash).map(seen)
         var glowing = 0, elsewhere = 0, warmAfar = 0
+        // Where any change beyond the wood lies, by 60-point square, and how
+        // far its light moved: what a failure has to go on.
+        var strays: [String: (count: Int, change: Double)] = [:]
         let ground = (burning + ash).map { camera.viewPoint(of: $0, height: Double(WorldRenderTests.world.relief.height(of: $0)), in: WorldRenderTests.size) }
         var near = 0, beyond = 0, fiery = 0
         // Warmed, as the lanterns' and the vigils' light is judged: its red
@@ -1050,11 +1053,20 @@ final class WorldRenderTests: XCTestCase {
                 let about = touched.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 120 }
                 if there, warmed(far.pixels, over: farBare.pixels, at: i) { warmAfar += 1 }
                 guard abs(far.luminance(x, y) - farBare.luminance(x, y)) > 4 else { continue }
-                if there { glowing += 1 } else if !about { elsewhere += 1 }
+                if there { glowing += 1 } else if !about {
+                    elsewhere += 1
+                    let square = "\(x / 60 * 60),\(y / 60 * 60)"
+                    strays[square, default: (count: 0, change: 0)].count += 1
+                    strays[square, default: (count: 0, change: 0)].change += far.luminance(x, y) - farBare.luminance(x, y)
+                }
             }
         }
         print("RENDER wildfire: \(burning.count) tiles burning, \(ash.count) as ash; \(near) points changed by it, \(beyond) beyond; \(fiery) points warmed by its light; "
             + "afar \(glowing) points changed where it burns, \(elsewhere) beyond the wood it touched, \(warmAfar) warmed where it burns")
+        let fire = afar.viewPoint(of: heart, height: Double(WorldRenderTests.world.relief.height(of: heart)), in: WorldRenderTests.size)
+        print("RENDER wildfire afar: its heart at \(Int(fire.x)),\(Int(fire.y)); changed beyond it, by square: "
+            + strays.sorted { $0.value.count > $1.value.count }.prefix(6)
+                .map { "\($0.key) \($0.value.count) (\(Int($0.value.change / Double($0.value.count))) levels)" }.joined(separator: "; "))
         XCTAssertGreaterThan(near, 150, "The wood burning and burnt")
         XCTAssertLessThan(beyond, near / 2 + 20, "and the world beyond it as it was, but for its smoke")
         XCTAssertGreaterThan(fiery, 40, "Fire's own light, warm in the night")

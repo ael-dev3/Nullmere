@@ -40,8 +40,10 @@ final class WildfireStageTests: XCTestCase {
         let standing = trees.reduce(0) { $0 + (before[.furnishing($1)] ?? 0) }
         XCTAssertGreaterThan(standing, 0)
 
+        let whole = stage.furnitureVersion
         let burnt = stage.furnish(occupied: [], holds: [], burnt: [wooded])
-        XCTAssertEqual(stage.furnitureVersion, 2, "laid out again, and sent again")
+        XCTAssertGreaterThan(stage.furnitureVersion, whole, "laid out again, and sent again")
+        let ashen = stage.furnitureVersion
         let after = Self.pieces(burnt, in: wooded)
         XCTAssertEqual(after[.furnishing(.deadTree)], standing, "every tree stands dead where it stood")
         for key in after.keys { XCTAssertEqual(WorldStage.burnt(key), key, "\(key) is what the fire leaves") }
@@ -50,7 +52,7 @@ final class WildfireStageTests: XCTestCase {
         }
         for hex in wooded.neighbors { XCTAssertEqual(Self.pieces(burnt, in: hex), Self.pieces(all, in: hex), "nothing beside it touched") }
         XCTAssertEqual(stage.furnish(occupied: [], holds: [], burnt: [wooded]), burnt, "kept, not laid out again")
-        XCTAssertEqual(stage.furnitureVersion, 2)
+        XCTAssertEqual(stage.furnitureVersion, ashen)
         XCTAssertEqual(stage.furnish(occupied: [], holds: []), all, "grown back, as it stood")
         // Stone, salt and the rest are as they were.
         XCTAssertEqual(WorldStage.burnt(.furnishing(.boulder)), .furnishing(.boulder))

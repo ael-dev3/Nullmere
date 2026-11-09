@@ -20,17 +20,38 @@ final class StageTests: XCTestCase {
         batches.reduce(0) { $0 + $1.instances.count }
     }
 
+    /// Every layout of any stage's furniture has a number of its own: a
+    /// renderer keeps the furniture it was last sent until the number
+    /// changes, so two stages (two sessions', or a world's and the next
+    /// world's made after it) must never send one number for different
+    /// furniture, as run 866's far fire found when one renderer drew the
+    /// wood burning and the wood whole under the same number.
+    func testNoTwoStagesShareAFurnitureVersion() throws {
+        let map = Self.state.map
+        let wooded = try XCTUnwrap(map.hexes.first { map[$0]?.terrain == .blackwood }, "Blackwood to burn")
+        let whole = stage(), burnt = stage()
+        let standing = whole.furnish(occupied: [], holds: [])
+        let ashen = burnt.furnish(occupied: [], holds: [], burnt: [wooded])
+        XCTAssertNotEqual(standing, ashen, "different furniture")
+        XCTAssertNotEqual(whole.furnitureVersion, burnt.furnitureVersion, "under numbers of their own")
+        // A stage made anew for the same map takes a number no other has.
+        let anew = stage()
+        _ = anew.furnish(occupied: [], holds: [])
+        XCTAssertFalse([whole.furnitureVersion, burnt.furnitureVersion].contains(anew.furnitureVersion))
+    }
+
     /// Detail thins the land's furniture: about half of it at a half
     /// share, always the same pieces, none at none; laid out again as the
     /// share changes, and whole again at a whole one.
     func testDetailThinsTheLandsFurniture() {
         let stage = stage()
         let all = stage.furnish(occupied: [], holds: [])
+        let first = stage.furnitureVersion
         stage.furnitureShare = 1
-        XCTAssertEqual(stage.furnitureVersion, 1, "No change, nothing laid out again")
+        XCTAssertEqual(stage.furnitureVersion, first, "No change, nothing laid out again")
         stage.furnitureShare = 0.5
         let half = stage.furnish(occupied: [], holds: [])
-        XCTAssertEqual(stage.furnitureVersion, 2, "Laid out again at the new share")
+        XCTAssertGreaterThan(stage.furnitureVersion, first, "Laid out again at the new share")
         let share = Double(count(half)) / Double(count(all))
         XCTAssertEqual(share, 0.5, accuracy: 0.1, "About half: \(count(half)) of \(count(all))")
         let kept = Set(all.flatMap(\.instances).map { "\($0.model)" })
@@ -57,8 +78,9 @@ final class StageTests: XCTestCase {
             XCTAssertEqual(Library.model(batch.key).rig.count, 1, "furniture sways in the shader, not by its parts")
             XCTAssertTrue(batch.instances.allSatisfy { $0.palette == 0 && $0.colour.w == 0 && $0.flags == 0 })
         }
+        let laid = stage.furnitureVersion
         XCTAssertEqual(stage.furnish(occupied: [], holds: []), all, "kept, not laid out again")
-        XCTAssertEqual(stage.furnitureVersion, 1)
+        XCTAssertEqual(stage.furnitureVersion, laid)
 
         // A company comes to a wooded hex: whatever would rise among its
         // ranks gives way, in its hex and the edges of those beside it, and
@@ -69,7 +91,7 @@ final class StageTests: XCTestCase {
             map[hex]?.terrain == .blackwood && hex.neighbors.allSatisfy { map[$0]?.terrain == .blackwood }
         }, "A blackwood hex in the blackwood")
         let cleared = stage.furnish(occupied: [wooded], holds: [])
-        XCTAssertEqual(stage.furnitureVersion, 2, "laid out again, and sent again")
+        XCTAssertGreaterThan(stage.furnitureVersion, laid, "laid out again, and sent again")
         let centre = Relief.centre(of: wooded)
         func reach(_ instance: ModelInstance) -> Float {
             let p = instance.model.c3

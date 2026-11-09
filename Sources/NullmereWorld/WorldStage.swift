@@ -238,7 +238,12 @@ public final class WorldStage: @unchecked Sendable {
     private var openHolds: Set<Hex>?
     private var furnished: (occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex>)?
     private var furniture: [ModelBatch] = []
-    /// Moves each time the furniture is laid out again.
+    /// Moves each time the furniture is laid out again: a number no other
+    /// layout of any stage has had (`FurnitureVersions`), for a renderer
+    /// keeps the furniture it was last sent until the number changes, and
+    /// one renderer may be sent another stage's: another session's, or a
+    /// new world's stage made when the old one's went, whose own count
+    /// would start again at the old one's numbers.
     public private(set) var furnitureVersion = 0
     /// Where the furniture lies, region by region, so a frame draws only
     /// what its view reaches.
@@ -332,7 +337,7 @@ public final class WorldStage: @unchecked Sendable {
         furniture = gathered.batches
         furnitureRegions = gathered.regions
         furnished = (occupied, holds, burnt)
-        furnitureVersion += 1
+        furnitureVersion = FurnitureVersions.next()
         return furniture
     }
 
@@ -2197,5 +2202,19 @@ public final class WorldStage: @unchecked Sendable {
     /// A steady phase for what sways or flickers, so no two neighbours move as one.
     static func phase(of hex: Hex, salt: Int) -> Float {
         Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), UInt32(truncatingIfNeeded: salt)) * 20
+    }
+}
+
+/// The numbers the stages' furniture layouts take, one after another
+/// across every stage, so no two layouts ever share one.
+enum FurnitureVersions {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var last = 0
+
+    static func next() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        last += 1
+        return last
     }
 }
