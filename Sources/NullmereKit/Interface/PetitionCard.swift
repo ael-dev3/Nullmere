@@ -46,16 +46,21 @@ struct PetitionCard: View {
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.45))
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 4) {
-                    Text(verbatim: PetitionCard.waits(petition, at: state.watch))
-                        .font(.nm(10))
-                        .foregroundStyle(Palette.text(0.4))
-                    Spacer()
-                    QuietButton(title: "Turn away", size: 8.5) { session.perform(.answerPetition(petition.id, grant: false)) }
-                    QuietButton(title: PetitionCard.grant(petition), size: 8.5, prominent: true, enabled: refusal == nil) {
-                        session.perform(.answerPetition(petition.id, grant: true))
+                Text(verbatim: PetitionCard.waits(petition, at: state.watch))
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.4))
+                // The answers on a row of their own, one above the other
+                // where the row can't hold both (larger type), so the price
+                // never runs into the refusal.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        Spacer(minLength: 0)
+                        answers(petition, refusal: refusal)
                     }
-                    .help(refusal.map { PetitionCard.why($0) } ?? "")
+                    VStack(alignment: .trailing, spacing: 6) {
+                        answers(petition, refusal: refusal)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             .padding(14)
@@ -66,6 +71,16 @@ struct PetitionCard: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel("A plea at the gate, from \(state.petitioner(of: petition))")
         }
+    }
+
+    /// Turn away, and Grant with its price, off while the House can't.
+    @ViewBuilder
+    private func answers(_ petition: Petition, refusal: RuleError?) -> some View {
+        QuietButton(title: "Turn away", size: 8.5) { session.perform(.answerPetition(petition.id, grant: false)) }
+        QuietButton(title: PetitionCard.grant(petition), size: 8.5, prominent: true, enabled: refusal == nil) {
+            session.perform(.answerPetition(petition.id, grant: true))
+        }
+        .help(refusal.map { PetitionCard.why($0) } ?? "")
     }
 
     /// The petitioner's portrait's side in points.
