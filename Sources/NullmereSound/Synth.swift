@@ -117,6 +117,12 @@ public final class Synth: @unchecked Sendable {
     private var windLeft: Float = 0
     private var windRight: Float = 0
     private var gust: Float = 0
+    /// The watch's wind as the night's air is heard: how strongly it blows
+    /// (1 as ever, low on a still night) and from where across the view,
+    /// easing toward what it was last told.
+    private var air: (strength: Float, pan: Float) = (1, 0)
+    private var airTarget: (strength: Float, pan: Float) = (1, 0)
+    private var pendingAir: (strength: Float, pan: Float)?
     private var dronePhases: [Float] = [0, 0, 0, 0]
     private var score = Score()
     /// The hall the score and the cues ring in, and how long it has heard
@@ -244,6 +250,13 @@ public final class Synth: @unchecked Sendable {
         lock.lock(); pendingShore = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
     }
 
+    /// How the watch's wind blows as the night's air is heard: its strength,
+    /// 1 as ever and toward 0 on a still night, and from where across the
+    /// view it comes, from the left (-1) to the right (1).
+    public func setAir(strength: Float, pan: Float) {
+        lock.lock(); pendingAir = (min(max(strength, 0), 1.5), min(max(pan, -1), 1)); lock.unlock()
+    }
+
     /// How near the blackwood burning is to the view (0 none, 1 the wood
     /// alight all about its middle, close) and where across it, from the
     /// left (-1) to the right (1).
@@ -322,6 +335,12 @@ public final class Synth: @unchecked Sendable {
     var blazeHeard: (level: Float, pan: Float) {
         lock.lock(); defer { lock.unlock() }
         return blaze
+    }
+
+    /// The night's air as it is heard, for tests.
+    var airHeard: (strength: Float, pan: Float) {
+        lock.lock(); defer { lock.unlock() }
+        return air
     }
 
     /// The din as it is heard, for tests.
@@ -730,6 +749,10 @@ public final class Synth: @unchecked Sendable {
             blazeTarget = next
             pendingBlaze = nil
         }
+        if let next = pendingAir {
+            airTarget = next
+            pendingAir = nil
+        }
         if let next = pendingSawing {
             towns.sawing = next
             pendingSawing = nil
@@ -946,7 +969,12 @@ public final class Synth: @unchecked Sendable {
             cueLeft *= heard.effects
             cueRight *= heard.effects
             drone *= heard.ambience
-            let air = 0.6 * wind * level * heard.ambience
+            // The night's air as strong as the watch's wind blows, louder in
+            // the ear it comes from.
+            air.strength += (airTarget.strength - air.strength) * min(dt * 0.6, 1)
+            air.pan += (airTarget.pan - air.pan) * min(dt * 0.6, 1)
+            let blowing = 0.6 * wind * level * heard.ambience * air.strength
+            let rightEar = 1 + Self.airLeans * air.pan, leftEar = 1 - Self.airLeans * air.pan
             let played = score.sample(dt: dt)
             let musicLeft = played.left * level * heard.music, musicRight = played.right * level * heard.music
             // The cues sound whole while night falls, but go with the rest
@@ -962,8 +990,8 @@ public final class Synth: @unchecked Sendable {
             if hallQuiet < hall.seconds * 3 {
                 (hallLeft, hallRight) = hall.process(left: sentLeft, right: sentRight)
             }
-            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft + townLeft + shoreLeft + blazeLeft)
-            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight + townRight + shoreRight + blazeRight)
+            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * blowing * leftEar + dinLeft + townLeft + shoreLeft + blazeLeft)
+            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * blowing * rightEar + dinRight + townRight + shoreRight + blazeRight)
         }
         notes.removeAll { $0.age > $0.end }
     }
@@ -989,6 +1017,9 @@ public final class Synth: @unchecked Sendable {
     static let townGain: Float = 0.15
     /// How loud the shore is, at its nearest: about as loud as the night.
     static let shoreGain: Float = 0.2
+    /// How much louder the night's air is in the ear the wind comes from,
+    /// and softer in the other, when it blows from the side.
+    static let airLeans: Float = 0.45
     /// How loud the blackwood burning is, at its nearest: louder than the
     /// night beneath it, as fire is.
     static let blazeGain: Float = 0.375

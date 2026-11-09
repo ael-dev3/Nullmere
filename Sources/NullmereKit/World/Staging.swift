@@ -328,6 +328,7 @@ extension GameSession {
         hearTowns()
         hearShore()
         hearFire()
+        hearAir()
         return frame
     }
 

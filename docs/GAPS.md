@@ -564,7 +564,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   snapping, louder than the night beneath it and from where it burns
   across the view, the more of it about the view's middle the louder,
   from further back than the lake's lapping and only wood the House has
-  seen (`FireSound`); the phone's chart
+  seen (`FireSound`), and the night's own wind heard from the side of the
+  view the watch's wind blows from, falling to a whisper on a Still Night
+  (`Synth.setAir`, `GameSession.airSound`; SynthTests on Linux, −32.8
+  dBFS as ever against −40.1 on a still night, and FireHeardTests on the
+  Mac, **Unverified** until a CI run); the phone's chart
   draws each tile alight with three tongues of flame and the ash grey with
   dead trunks, and offers the order with the Mac's words. WildfireTests
   (the order and its refusals, the wind's shares over 400 watches, the

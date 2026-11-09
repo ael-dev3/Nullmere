@@ -339,8 +339,13 @@ public final class GameSession {
     /// Told how near the blackwood burning is to the view and where across
     /// it, as that changes: the sound's crackle and roar (`Ambience.setBlaze`).
     public var onBlaze: ((Float, Float) -> Void)?
+    /// Told how the watch's wind blows as the night's air is heard, as that
+    /// changes: its strength and from where across the view it comes
+    /// (`Ambience.setAir`).
+    public var onAir: ((Float, Float) -> Void)?
     @ObservationIgnored var shoreTold: (level: Float, pan: Float) = (0, 0)
     @ObservationIgnored var blazeTold: (level: Float, pan: Float) = (0, 0)
+    @ObservationIgnored var airTold: (strength: Float, pan: Float) = (1, 0)
     /// The strand last found about the view's middle, and for which view:
     /// found again only as the view's middle moves to another hex, comes
     /// nearer or draws back, or the watch turns.
@@ -2202,6 +2207,27 @@ public final class GameSession {
         guard abs(level - blazeTold.level) > 0.02 || abs(pan - blazeTold.pan) > 0.05 || (level == 0 && blazeTold.level != 0) else { return }
         blazeTold = (level, pan)
         onBlaze?(level, pan)
+    }
+
+    /// How strongly the night's air blows on a still night, against 1.
+    static let stillAir: Float = 0.15
+
+    /// The watch's wind as the night's air is heard (`Synth.setAir`): on a
+    /// still night a whisper; otherwise as ever, coming from the side of the
+    /// view it blows from, the realm's wind turned with the view.
+    func airSound() -> (strength: Float, pan: Float) {
+        guard let way = state.wind else { return (GameSession.stillAir, 0) }
+        let from = -WorldStage.windward(way)
+        let across = Double(from.x) * cos(camera.heading) - Double(from.z) * sin(camera.heading)
+        return (1, Float(min(max(across, -1), 1)))
+    }
+
+    /// Tells the sound the night's air when it has changed enough to hear.
+    func hearAir() {
+        let air = airSound()
+        guard abs(air.strength - airTold.strength) > 0.02 || abs(air.pan - airTold.pan) > 0.05 else { return }
+        airTold = air
+        onAir?(air.strength, air.pan)
     }
 
     /// Sounds a cue, from where in the world it happened.

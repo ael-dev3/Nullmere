@@ -29,6 +29,13 @@ func rms<C: Collection>(_ x: C) -> Float where C.Element == Float {
 
 func decibels(_ level: Float) -> Float { 20 * log10(max(level, 1e-12)) }
 
+/// How strongly the night's air blows on a still night, as the Mac's
+/// session tells the sound (`GameSession.stillAir`, which this module
+/// can't see).
+enum GameSessionStill {
+    static let air: Float = 0.15
+}
+
 /// The game's sound, rendered and measured away from the Mac: the bed of
 /// drone and wind quiet beneath everything, every cue heard above it, the
 /// score between them, from where each sound happened, and nothing ever
@@ -499,6 +506,37 @@ final class SynthTests: XCTestCase {
         XCTAssertLessThanOrEqual(abs(faster.cracks - blaze.cracks), 2)
         XCTAssertLessThanOrEqual(abs(faster.snaps - blaze.snaps), 1)
         XCTAssertEqual(rms(doubled), rms(sound), accuracy: rms(sound) * 0.2, "As loud at any rate")
+    }
+
+    /// The night's air blows as the watch's wind does: on a still night it
+    /// falls to a whisper, and from the side it comes from it is louder in
+    /// that ear and softer in the other; told nothing, the night sounds as
+    /// it always has.
+    func testTheNightsAirBlowsAsTheWatchsWindDoes() {
+        let held = (5 * 48_000)..<(8 * 48_000)
+        let plain = settled()
+        let asEver = rendered(plain, seconds: 8)
+        let told = settled()
+        told.setAir(strength: 1, pan: 0)
+        let same = rendered(told, seconds: 8)
+        XCTAssertEqual(rms(zip(same.left[held], asEver.left[held]).map { $0 - $1 }), 0, accuracy: 1e-6, "Told the night as it is, it is as it was")
+        // On a still night, a whisper: what is left of the night is its drone.
+        let still = settled()
+        still.setAir(strength: GameSessionStill.air, pan: 0)
+        let hushed = rendered(still, seconds: 8)
+        let wind = zip(asEver.left[held], hushed.left[held]).map { $0 - $1 }
+        print("SOUND air \(String(format: "%.1f", decibels(rms(asEver.left[held])))) dBFS as ever, "
+            + "\(String(format: "%.1f", decibels(rms(hushed.left[held])))) on a still night")
+        XCTAssertLessThan(rms(hushed.left[held]), rms(asEver.left[held]) * 0.85, "a still night quieter")
+        XCTAssertGreaterThan(rms(wind), rms(asEver.left[held]) * 0.2, "by the wind's own sound")
+        XCTAssertEqual(still.airHeard.strength, GameSessionStill.air, accuracy: 0.02)
+        // From the left: louder in the left ear, softer in the right.
+        let left = settled()
+        left.setAir(strength: 1, pan: -1)
+        let fromLeft = rendered(left, seconds: 8)
+        XCTAssertGreaterThan(rms(fromLeft.left[held]), rms(asEver.left[held]) * 1.05, "from the left, louder there")
+        XCTAssertLessThan(rms(fromLeft.right[held]), rms(asEver.right[held]) * 0.95, "and softer in the right")
+        XCTAssertEqual(left.airHeard.pan, -1, accuracy: 0.02)
     }
 
     /// The towns near the view are heard talking and at work, about as

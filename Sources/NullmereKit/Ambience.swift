@@ -109,6 +109,13 @@ public final class Ambience {
         synth.setShore(level: level, pan: pan)
     }
 
+    /// The watch's wind as the night's air is heard: how strongly it blows
+    /// (1 as ever, a whisper on a still night) and from where across the
+    /// view it comes, from the left (-1) to the right (1).
+    public func setAir(strength: Float, pan: Float) {
+        synth.setAir(strength: strength, pan: pan)
+    }
+
     /// The blackwood burning near the view: how near, from nothing (0) to
     /// the wood alight all about the view's middle, close (1), and where
     /// across the view, from the left (-1) to the right (1).

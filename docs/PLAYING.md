@@ -627,8 +627,10 @@ a vote on the realm's law to cast.
   warm over the dark, flickering; near, the fire is heard roaring and
   crackling from where it burns, the more of it about the view the louder
   (heard from further back than the lake's lapping, and only wood the
-  House has seen). The phone's chart draws it aflame and, after, grey with
-  ash. Stewards set no fires, and step their companies out of one.
+  House has seen); and the night's own wind is heard from the side of the
+  view it blows from, and falls to a whisper on a Still Night. The phone's
+  chart draws it aflame and, after, grey with ash. Stewards set no fires,
+  and step their companies out of one.
 - **Holds** gather what their land yields and store it, up to a limit that
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at

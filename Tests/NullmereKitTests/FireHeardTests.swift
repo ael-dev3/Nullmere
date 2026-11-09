@@ -76,4 +76,37 @@ final class FireHeardTests: XCTestCase {
         session.hearFire()
         XCTAssertEqual(heard.last?.0, 0, "Still under the stillest motion")
     }
+
+    /// The night's air heard as the watch's wind blows: from the side of the
+    /// view it blows from, turned with the view; a whisper on a still night;
+    /// told to the sound as it changes.
+    @MainActor
+    func testTheNightsAirIsHeardAsTheWatchsWindBlows() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "air heard", keepers: 1))
+        state.windOfWatch = 0
+        XCTAssertEqual(state.wind, 0, "blowing east")
+        let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("windy")))
+        var camera = session.camera
+        camera.heading = 0
+        session.camera = camera
+        let air = session.airSound()
+        XCTAssertEqual(air.strength, 1)
+        XCTAssertLessThan(air.pan, -0.9, "blowing east, it comes from the west: the left of a view with east to its right")
+        camera.heading = .pi
+        session.camera = camera
+        XCTAssertGreaterThan(session.airSound().pan, 0.9, "the view turned about, from the right")
+        state.windOfWatch = -1
+        XCTAssertNil(state.wind, "a still night")
+        let still = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("still")))
+        XCTAssertEqual(still.airSound().strength, GameSession.stillAir)
+        XCTAssertEqual(still.airSound().pan, 0)
+        var told: [(Float, Float)] = []
+        session.onAir = { told.append(($0, $1)) }
+        session.hearAir()
+        XCTAssertEqual(told.count, 1)
+        session.hearAir()
+        XCTAssertEqual(told.count, 1, "Told as it changes, not every frame")
+    }
 }
