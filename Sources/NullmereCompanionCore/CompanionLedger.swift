@@ -348,6 +348,9 @@ public struct CompanionLedger: Equatable, Sendable {
         /// Where the phone's model gives a steward's envoy words of its own,
         /// the key it keeps them by; nil for a keeper's, who sent their own.
         public var voice: String?
+        /// What came of the envoys before it between the two Houses, as the
+        /// Mac's card tells it (`GameState.remembered(_:for:)`); nil before any.
+        public var remembered: String?
     }
 
     /// A plea the folk of one of the House's holds bring to the gate, in
@@ -1001,7 +1004,8 @@ public struct CompanionLedger: Equatable, Sendable {
                             ? Order(title: "Accept", command: .answer(envoy: envoy.id, accept: true)) : nil,
                          refuse: Order(title: "Refuse", command: .answer(envoy: envoy.id, accept: false)),
                          refusingIsWar: world.refusingIsWar(envoy),
-                         voice: houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer ? "envoy-\(envoy.id)" : nil)
+                         voice: houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer ? "envoy-\(envoy.id)" : nil,
+                         remembered: world.remembered(envoy, for: player))
         }
         plea = world.petition(of: player).map { petition in
             let left = max(Petition.patience - (world.watch - petition.arrived), 1)

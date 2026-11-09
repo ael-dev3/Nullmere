@@ -360,6 +360,9 @@ final class NetworkRealmTests: XCTestCase {
         let answers = await MainActor.run { ear.events.compactMap { if case .answered(let events) = $0 { return events } else { return nil } } }
         XCTAssertEqual(answers.first, [.tradeAnswered(trade: trade, from: mine, to: other, accepted: true)])
         try await until("the stone to arrive") { (ear.world?.houses[mine].stock.stone ?? 0) == world.houses[mine].stock.stone + 12 }
+        // And her view remembers how the steward answered her envoy, as the
+        // next of its own to her will say.
+        try await until("the answer remembered in her view") { ear.world?.lastAnswer(from: mine, to: other)?.answer == .accepted }
     }
 
     func testAKeeperConnectingMidWatchCountsItsTimeTrue() async throws {

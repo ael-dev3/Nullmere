@@ -148,6 +148,8 @@ extension GameState {
         if let trade = envoy.trade {
             facts.append("\(house.title) would give \(trade.given) for \(trade.taken).")
         }
+        // What came of the envoys before it, which it knows.
+        facts += rememberedFacts(envoy)
         return Voicing.Moment(task: Voicing.envoyTask(envoy.proposal), facts: facts)
     }
 

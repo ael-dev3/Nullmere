@@ -953,6 +953,7 @@ extension GameState {
         if accepted {
             settle(proposal, between: house, and: target, by: house)
         }
+        remember(proposal, from: house, to: target, answer: accepted ? .accepted : .refused)
         var events: [GameEvent] = [.proposalAnswered(proposal: proposal, from: house, to: target, accepted: accepted)]
         if !accepted, proposal == .tribute {
             events += refuseTribute(demandedBy: house, of: target)
@@ -978,6 +979,9 @@ extension GameState {
         if accepted {
             settle(envoy.proposal, between: envoy.from, and: house, by: envoy.from)
         }
+        // Its House remembers the answer; an offer the keeper took that
+        // could no longer be kept was neither taken nor turned away.
+        if accept == accepted { remember(envoy.proposal, from: envoy.from, to: house, answer: accepted ? .accepted : .refused) }
         var events: [GameEvent] = [.proposalAnswered(proposal: envoy.proposal, from: envoy.from, to: house, accepted: accepted)]
         if !accepted, envoy.proposal == .tribute, stillValid, !houses[envoy.from].isEliminated {
             events += refuseTribute(demandedBy: envoy.from, of: house)

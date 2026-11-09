@@ -1414,6 +1414,12 @@ struct EnvoyRow: View {
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
+            if let remembered = envoy.remembered {
+                Text(verbatim: remembered)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             VoicedWords(key: envoy.voice, who: "the envoy")
             if let words = envoy.words {
                 Text(verbatim: "\u{201C}\(words)\u{201D}")

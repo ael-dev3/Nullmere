@@ -904,6 +904,13 @@ struct EnvoyCards: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
                         .fixedSize(horizontal: false, vertical: true)
+                    // What came of the envoys before it, as the realm keeps it.
+                    if let remembered = state.remembered(envoy, for: session.player) {
+                        Text(verbatim: remembered)
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.5))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     HStack(spacing: 4) {
                         Text(verbatim: left == 1 ? "Leaves after this watch" : "Waits \(left) watches")
                             .font(.nm(10))

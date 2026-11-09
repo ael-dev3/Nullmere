@@ -98,6 +98,7 @@ extension GameState {
 
         let accepted = RivalMind(house: target).acceptsTrade(trade, from: house, in: self)
             && settleTrade(trade, from: house, to: target)
+        remember(.trade, from: house, to: target, answer: accepted ? .accepted : .refused)
         return [.tradeAnswered(trade: trade, from: house, to: target, accepted: accepted)]
     }
 
@@ -152,6 +153,9 @@ extension GameState {
     mutating func answerTrade(_ envoy: Envoy, accept: Bool, as house: Int) -> [GameEvent] {
         guard let trade = envoy.trade else { return [] }
         let accepted = accept && settleTrade(trade, from: envoy.from, to: house)
+        // A trade the keeper took but couldn't pay sends the envoy away
+        // neither taken nor turned away.
+        if accept == accepted { remember(.trade, from: envoy.from, to: house, answer: accepted ? .accepted : .refused) }
         return [.tradeAnswered(trade: trade, from: envoy.from, to: house, accepted: accepted)]
     }
 }

@@ -187,6 +187,14 @@ extension VoiceQueueTests {
         XCTAssertNil(troubled.spoken[.envoy(901)])
         XCTAssertNil(troubled.voicing)
         XCTAssertNotNil(ImageRenderer(content: EnvoyCards(session: troubled).frame(width: 360)).cgImage)
+        // What came of the House's envoy before stands beneath its terms.
+        var remembering = state
+        remembering.remember(.pact, from: steward, to: me, answer: .refused)
+        XCTAssertEqual(remembering.remembered(remembering.envoys[0], for: me),
+                       "\(state.houses[steward].title)'s last envoy, in watch \(state.watch), came offering a pact, and you turned it away.")
+        let told = GameSession(state: remembering, store: LocalStore(directory: dir.appendingPathComponent("told")), voice: BusyVoice())
+        XCTAssertNotNil(told.state.lastAnswer(from: steward, to: me), "Kept in the session's world")
+        XCTAssertNotNil(ImageRenderer(content: EnvoyCards(session: told).frame(width: 360)).cgImage)
         // And a voice of no reasons of its own is told silent.
         let heard = await SlowVoice().speaking(VoiceFacts.envoy(state.envoys[0], in: state))
         XCTAssertEqual(heard, WordsHeard(words: "The water is still between our Houses.", trouble: nil))

@@ -285,6 +285,12 @@ final class SpacetimeIntegrationTests: XCTestCase {
         await MainActor.run { b.send(.answer(envoy: envoy.id, accept: true)) }
         try await until("the trade kept, as Bel's stores show it") { (earB.world?.houses[houseB].stock.grain ?? 0) >= grain + 10 }
         print("REALM one keeper's envoy carried a trade to another, who took it, and the stores changed hands")
+        // Both keepers' views remember how Bel answered Ama's envoy.
+        try await until("the answer remembered in both keepers' views") {
+            earA.world?.lastAnswer(from: houseA, to: houseB)?.answer == .accepted
+                && earB.world?.lastAnswer(from: houseA, to: houseB)?.answer == .accepted
+        }
+        print("REALM both keepers' views remember how Bel answered Ama's envoy")
 
         // Ama raises a banner and invites Bel, who joins it: one alliance of
         // two, as both keepers see it. Bel leaves it again, as war between

@@ -1798,6 +1798,16 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(tribute.refusingIsWar, "A steward's demand refused is war")
         let accept = try XCTUnwrap(tribute.accept)
         assertTaken([accept, tribute.refuse, trade.refuse], in: state, as: me)
+        // Nothing yet between them to remember; once the keeper has turned
+        // the trader's envoy away, its next is told so, in the Mac's words.
+        XCTAssertNil(trade.remembered)
+        var answered = state
+        _ = try answered.perform(.answer(envoy: trade.id, accept: false), as: me)
+        let next = Envoy(id: answered.takeID(), from: trader, to: me, proposal: .pact, arrived: answered.watch)
+        answered.envoys.append(next)
+        let remembered = try XCTUnwrap(CompanionLedger(world: answered, player: me).envoys.first { $0.id == next.id }?.remembered)
+        XCTAssertEqual(remembered, answered.remembered(next, for: me))
+        XCTAssertEqual(remembered, "\(state.houses[trader].title)'s last envoy, in watch \(answered.watch), came offering a trade, and you turned it away.")
 
         // Companies of a House at war gathered near the seat.
         XCTAssertTrue(ledger.gatherings.isEmpty)

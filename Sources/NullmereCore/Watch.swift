@@ -66,6 +66,7 @@ extension GameState {
         // An envoy unanswered is an envoy refused.
         let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }
         envoys.removeAll { watch - $0.arrived >= Envoy.patience }
+        for envoy in unanswered { remember(envoy.proposal, from: envoy.from, to: envoy.to, answer: .unanswered) }
         for envoy in unanswered where envoy.proposal == .tribute && !houses[envoy.from].isEliminated
             && !houses[envoy.to].isEliminated && stance(envoy.from, envoy.to) == .peace {
             events += refuseTribute(demandedBy: envoy.from, of: envoy.to)

@@ -1201,6 +1201,16 @@ a vote on the realm's law to cast.
   words written on your Mac; a keeper's envoy carries their own words, if
   they write any: one plain line, no addresses, read by that keeper alone.
   Hide a House's words from its envoy card; your Mac remembers.
+- **Envoys remember.** The realm keeps how the last envoy each House sent
+  another was answered, wherever a keeper is one of the two: taken,
+  turned away, or left waiting until it went home, which counts as turned
+  away, and how many have been turned away this age. Only those two
+  Houses know it. An envoy's card, on the Mac and the phone alike, says
+  it beneath the envoy's terms ("House Seris's last envoy, in watch 12,
+  came offering a pact, and you turned it away. You have turned away 2 of
+  their envoys this age."), and how that House answered your own last
+  envoy to it; a steward's envoy is given the same to speak from, so one
+  turned away before may come knowing it.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;

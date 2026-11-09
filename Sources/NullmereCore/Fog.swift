@@ -95,6 +95,8 @@ extension GameState {
         // of them its own Lanterns have sought.
         view.finds = finds?.filter { isExplored($0.position, by: house) }
         view.sought = sought?[house].map { [house: $0] }
+        // How its own envoys were answered, and how it answered others'.
+        view.answers = answers.map { all in all.filter { $0.from == house || $0.to == house } }.flatMap { $0.isEmpty ? nil : $0 }
         // A company in sight shows where it stands and how many it is, not
         // where it is bound, nor what it is about or carries, nor whether it
         // drills.
