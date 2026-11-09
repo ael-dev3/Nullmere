@@ -1186,6 +1186,9 @@ struct FindRow: View {
     /// Who the model gives words to, as its line at work says it.
     static func who(_ find: Find) -> String { find.kind == .hamlet ? "the hamlet's eldest" : "the barrow's stones" }
 
+    /// The side of its face beside its name.
+    static let portrait: CGFloat = 34
+
     /// What the row says of it: what came of the House's seeking, or what
     /// seeking it would bring.
     static func said(_ find: Find, in state: GameState, player: Int) -> String {
@@ -1196,12 +1199,17 @@ struct FindRow: View {
         let state = session.state
         let key = GameSession.Spoken.find(find.id)
         VStack(alignment: .leading, spacing: 4) {
-            Caps(find.named.lineBegun, size: 9.5, weight: .medium)
-                .foregroundStyle(Palette.glowWords)
-            Text(verbatim: Self.said(find, in: state, player: session.player))
-                .font(.nm(10.5))
-                .foregroundStyle(Palette.text(0.6))
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 8) {
+                Portrait(key: Portrait.key(of: find), size: Self.portrait)
+                VStack(alignment: .leading, spacing: 4) {
+                    Caps(find.named.lineBegun, size: 9.5, weight: .medium)
+                        .foregroundStyle(Palette.glowWords)
+                    Text(verbatim: Self.said(find, in: state, player: session.player))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             if state.hasSought(find.id, by: session.player) {
                 VoicingLine(session: session, key: key, who: Self.who(find))
                 if let spoken = session.spoken[key] {

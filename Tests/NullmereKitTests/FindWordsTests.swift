@@ -1,4 +1,5 @@
 import AppKit
+import NullmereModels
 import NullmereRealm
 import SwiftUI
 import XCTest
@@ -80,6 +81,7 @@ final class FindWordsTests: XCTestCase {
         let entry = try XCTUnwrap(session.state.discovery(of: hamlet, by: me))
         XCTAssertEqual(FindRow.said(hamlet, in: session.state, player: me), entry.text)
         XCTAssertEqual(FindRow.who(hamlet), "the hamlet's eldest")
+        XCTAssertEqual(Portrait.key(of: hamlet), .folk(variant: Folk.elder), "The eldest's face beside the hamlet's name")
         // Another House never sought it: nothing to voice for it.
         let other = try XCTUnwrap(sought.livingHouses.first { $0.id != me }).id
         XCTAssertNil(VoiceFacts.find(hamlet, by: other, in: sought))
@@ -100,6 +102,7 @@ final class FindWordsTests: XCTestCase {
         XCTAssertEqual(moment.kind, .find(.barrow))
         XCTAssertTrue(moment.prompt.hasPrefix(Voicing.barrowTask), moment.prompt)
         XCTAssertEqual(FindRow.who(barrow), "the barrow's stones")
+        XCTAssertEqual(Portrait.key(of: barrow), .barrowMound, "The barrow's mound beside its name")
         // Picked up again with the barrow already sought: counted as told.
         let session = opened(sought)
         let key = GameSession.Spoken.find(barrow.id)

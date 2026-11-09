@@ -184,3 +184,12 @@ struct Portrait: View {
         return WorldStage.colour(WorldView.houseColours, sigil: state.houses[house].sigil)
     }
 }
+
+extension Portrait {
+    /// The face of a hamlet or barrow the House has found, on its row of
+    /// the ground panel: the hamlet's eldest on their stick, or the barrow's
+    /// grassed mound.
+    static func key(of find: Find) -> ModelKey {
+        find.kind == .hamlet ? .folk(variant: Folk.elder) : .barrowMound
+    }
+}
