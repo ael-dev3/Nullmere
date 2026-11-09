@@ -207,10 +207,12 @@ extension GameState {
     mutating func turnWildfires() -> [GameEvent] {
         guard var fires = wildfires, !fires.isEmpty else { return [] }
         var events: [GameEvent] = []
-        if omen?.kind == .risingMist {
+        if omen?.kind == .risingMist || omen?.kind == .leanWatch {
+            // The mist on every shore, or a lean watch's cold rain, puts out
+            // every fire burning: what it burnt lies as ash.
             let doused = fires.indices.filter { fires[$0].isBurning(at: watch) }
             for index in doused { fires[index].out = watch }
-            if !doused.isEmpty { events.append(.firesDoused(doused.map { fires[$0].at })) }
+            if !doused.isEmpty { events.append(.firesDoused(doused.map { fires[$0].at }, rain: omen?.kind == .leanWatch)) }
         } else if let wind {
             // What burned as the watch began catches what lies beside it; what
             // catches now burns from this watch, and spreads as the next turns.

@@ -538,8 +538,9 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   strength of any company standing in it, and leaves ash that yields
   nothing to the hold whose land it is for thirty watches, its trees
   standing dead and its undergrowth gone, before the wood grows back. A
-  Still Night keeps it where it is; Rising Mist puts every fire out. Fire
-  takes nothing but the blackwood, never a hold's heart or a site's
+  Still Night keeps it where it is; Rising Mist puts every fire out, and so
+  does a Lean Watch's cold rain, which the world draws falling (WildfireTests
+  hold both). Fire takes nothing but the blackwood, never a hold's heart or a site's
   clearing; every House sees its smoke and hears who set it, and the House
   whose land it burns is told so; its commanders' counsel, asked of the
   on-device model, is grounded in it too (fire or ash on the House's land,

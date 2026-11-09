@@ -820,9 +820,11 @@ extension GameState {
             return lost
                 ? Tidings("A company of \(houses[owner].title)'s is lost to the fire \(placeName(of: at)).", .neutral)
                 : Tidings("The fire takes \(GameState.counted(troops)) troops of \(houses[owner].title)'s company \(placeName(of: at)).", .neutral)
-        case .firesDoused(let hexes):
+        case .firesDoused(let hexes, let rain):
             guard !hexes.isEmpty else { return nil }
-            return Tidings("The mist lies on the blackwood and puts out its fires.", .neutral)
+            return rain
+                ? Tidings("The cold rain falls on the blackwood and puts out its fires.", .neutral)
+                : Tidings("The mist lies on the blackwood and puts out its fires.", .neutral)
         case .wordReported(_, let by):
             guard by == viewer else { return nil }
             return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)

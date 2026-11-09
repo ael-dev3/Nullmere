@@ -186,11 +186,32 @@ final class WildfireTests: XCTestCase {
         state.omen = Omen(kind: .risingMist, began: state.watch, ends: state.watch + 3)
         state.keepTheWind()
         let doused = state.turnWildfires()
-        XCTAssertEqual(doused, [.firesDoused([at])])
+        XCTAssertEqual(doused, [.firesDoused([at], rain: false)])
         XCTAssertEqual(state.tidings(of: doused[0], for: me)?.text, "The mist lies on the blackwood and puts out its fires.")
         XCTAssertFalse(state.isBurning(at))
         XCTAssertNotNil(state.wildfire(at: at), "Its ash lies on")
         XCTAssertEqual(try XCTUnwrap(state.unit(spears.id)).health, health, "Out, it burns no one")
+    }
+
+    /// A lean watch comes with cold rain over the lake, as the world draws
+    /// it, and the rain puts out every fire burning in the blackwood as the
+    /// watch turns, the wood it burnt lying as ash.
+    func testALeanWatchsColdRainPutsTheFireOut() throws {
+        var (state, me, unit, at) = try kindling()
+        _ = try state.perform(.kindle(unit: unit), as: me)
+        state.units.removeAll { $0.id == unit }
+        state.watch += 1
+        state.omen = Omen(kind: .leanWatch, began: state.watch, ends: state.watch + 3)
+        state.keepTheWind()
+        let doused = state.turnWildfires()
+        XCTAssertEqual(doused, [.firesDoused([at], rain: true)], "Out, and spread nowhere")
+        XCTAssertEqual(state.tidings(of: doused[0], for: me)?.text, "The cold rain falls on the blackwood and puts out its fires.")
+        XCTAssertEqual(state.tidings(of: doused[0], for: (me + 1) % state.houses.count)?.text,
+                       "The cold rain falls on the blackwood and puts out its fires.", "Every House sees the smoke go")
+        XCTAssertFalse(state.isBurning(at))
+        XCTAssertEqual(state.ash, [at], "Its ash lies on")
+        XCTAssertEqual(state.burning, [])
+        XCTAssertEqual(state.problems(), [])
     }
 
     func testAshYieldsNothingUntilTheWoodGrowsBack() throws {
@@ -257,7 +278,7 @@ final class WildfireTests: XCTestCase {
         XCTAssertEqual(state.tidings(of: toll, for: other)?.text,
                        "The fire takes 1,200 troops of \(state.houses[me].title)'s company \(state.placeName(of: at)).")
         XCTAssertEqual(state.events([toll], heardBy: blind), [], "Unseen, no news either")
-        XCTAssertNil(state.tidings(of: .firesDoused([]), for: me))
+        XCTAssertNil(state.tidings(of: .firesDoused([], rain: false), for: me))
         // Every keeper is told the realm's wind, though a view holds no seed to find it by.
         var turning = state
         for _ in 0..<6 {

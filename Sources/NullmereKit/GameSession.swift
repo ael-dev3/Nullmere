@@ -1961,7 +1961,7 @@ public final class GameSession {
             return mark.at
         case .woodKindled(let at, _, _), .burnedInFire(_, _, let at, _, _):
             return at
-        case .fireSpread(let hexes, _, _), .firesDoused(let hexes):
+        case .fireSpread(let hexes, _, _), .firesDoused(let hexes, _):
             return hexes.first
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
             return at

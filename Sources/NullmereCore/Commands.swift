@@ -1142,8 +1142,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A company stood in fire as the watch turned: so many of its troops
     /// lost to it, and whether it was lost whole.
     case burnedInFire(unit: Int, owner: Int, at: Hex, troops: Int, lost: Bool)
-    /// Rising Mist lay on every shore and put out the fires burning there.
-    case firesDoused([Hex])
+    /// Rising Mist lay on every shore, or a Lean Watch's cold rain fell
+    /// (`rain`), and put out the fires burning there.
+    case firesDoused([Hex], rain: Bool)
     /// A letter sealed in a hold for the age to come.
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.

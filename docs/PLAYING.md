@@ -610,9 +610,10 @@ a vote on the realm's law to cast.
   catches the blackwood beside it, most of all downwind: the watch's wind
   blows the same over the whole lake, and the button says where it is
   from. No wind blows on a Still Night, and the fire keeps where it is;
-  Rising Mist lies on every shore and puts every fire out. A company
-  standing in fire as the watch turns loses a sixth of its strength, so
-  the one that set it walks on out of it with the moves it has left.
+  Rising Mist lies on every shore and puts every fire out, and so does
+  the cold rain that falls in a Lean Watch. A company standing in fire
+  as the watch turns loses a sixth of its strength, so the one that set
+  it walks on out of it with the moves it has left.
   Burnt, the wood lies as ash for thirty watches, its trees standing
   dead and its undergrowth gone, and yields nothing to the hold whose
   land it is; then it grows back. Fire takes nothing but the blackwood,
