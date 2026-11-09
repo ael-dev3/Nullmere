@@ -1,9 +1,15 @@
 import NullmereCore
+import NullmereModels
 
 /// The game's rules, in a few short sections, for the Guide panel.
 enum Guide {
     struct Section: Identifiable, Equatable {
         let title: String
+        /// What heads it, painted from the world's own models as the
+        /// panels' portraits are; nil for none.
+        var picture: ModelKey? = nil
+        /// Whether it is drawn in the keeper's own House's colours.
+        var housed = false
         let lines: [String]
         var id: String { title }
     }
@@ -16,24 +22,24 @@ enum Guide {
     }
 
     static let sections: [Section] = [
-        Section(title: "The watch", lines: [
+        Section(title: "The watch", picture: .work(.beacon, level: 3), housed: true, lines: [
             "The lake is one world, shared by every keeper in the realm. Each turn is a watch: give your orders, then say you're ready with ⌘↩.",
             "The watch turns when every keeper there is ready, or when its time runs out; while any keeper whose House stands is away, it lasts at least a third of its time. Your orders take effect as you give them. Through the watch, companies on the march walk on, a step at a time, a battle goes on blow after blow until a side falls or draws off, hosts strike the moment they are there, and the stewards play the seats no keeper holds, each at its own moment; when it turns, holds yield, works rise and companies are fresh again.",
             "The realm keeps the world. Leave, or leave the game open with no one at your Mac for five minutes, and after two watches away a caretaker keeps your House for you: it answers envoys, builds and trains, guards your holds, fights on in wars already begun and sues for peace in one going badly, but begins no war, demand or pact. It takes the peace a steward would take to end a war, but swears you no pact, which would lend your sight to another, and never bends the knee for you, though it takes a House offering fealty as your vassal. It keeps the standing orders you give it on the orders card (O). An empty realm sleeps until a keeper returns.",
         ]),
-        Section(title: "The land", lines: [
+        Section(title: "The land", picture: .furnishing(.elderTree), lines: [
             "Strand, salt flats, greyfields, blackwood and barrows ring the lake.",
             "Each yields grain, timber, stone or moonsalt to the hold whose land it lies in.",
             "Groves, seams, loam and moonsalt beds yield more. Drowned ruins hide something for the first to search them.",
             "The Still, the lake's deep water, yields nothing and can't be crossed; the shallows can. The Spine walls the world.",
             "Point at any tile to see what it is, what it yields, whose it is and what it costs to cross.",
         ]),
-        Section(title: "Holds", lines: [
+        Section(title: "Holds", picture: .keep(seat: false), housed: true, lines: [
             "Holds gather what their land yields and store it, up to a limit that grows with every hold.",
             "Build works: a Granary, Sawpit, Quarry or Saltworks to yield more of one store, Walls for a thicker ward, a Beacon to see further (at II, its land reaches a tile further too), and a Muster Hall for stronger companies, all but Lanterns trained a watch sooner at III.",
             "Short of something? Barter a surplus for it, three to one. Moonsalt counts as three of any other store, so one costs nine of them, and fetches one.",
         ]),
-        Section(title: "Companies", lines: [
+        Section(title: "Companies", picture: .figure(.spear, tier: 3), housed: true, lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Mangonels break walls. Founders found new holds.",
             "Mangonels muster from a Muster Hall of IV and hurl stones from two tiles away, nothing coming back at them: on a ward, a hold's, a standard's, a hall's or a storehouse's, a stone takes three times what another company's blow would. They take no hold, are soft in the field, and Riders fall on them half again as hard.",
             "A company is so many troops at its first muster, by its kind and tier: Spears 1,200 at I to 2,400 at V, Bows 1,000 to 2,000, Riders 800 to 1,600, Mangonels 300 to 600. As many stand as its health is a share of, and every battle is told in the troops each side slew and lost. Your army, all your companies of war, is counted in the Realm (6).",
@@ -48,11 +54,11 @@ enum Guide {
             "Raise an Infirmary, and your companies of war that fall are carried to the nearest hold with a bed free, two beds at I and one more at each level, rather than lost. Heal them from the hold's panel for half what mustering them anew costs: they rise whole, their rank kept, as the watch turns. A hold taken loses those in its beds.",
             "Two works hasten a House, and a keeper alone raises them: each level of a Wayhouse sends one more kind of your companies a step further every watch (Lanterns at I, Founders at II, Spears at III, Bows and Mangonels at IV, Riders at V), and each level of a Masons' Lodge raises every work of yours 6% sooner. Your highest of each, in any hold, counts.",
         ]),
-        Section(title: "Tiers and studies", lines: [
+        Section(title: "Tiers and studies", picture: .study(level: 4), housed: true, lines: [
             "Spears, Bows, Riders and Mangonels muster in five tiers, each stronger and dearer than the last: a tier needs its study (Close Order for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",
             "Build an Archive to study, one study at a time, in four branches: Husbandry, Arms, Masonry and Lore. A study of the second circle needs an Archive of II, and so on, and the studies it builds on. The Archive (3) shows the whole tree: what each grade does, costs and takes.",
         ]),
-        Section(title: "Commanders", lines: [
+        Section(title: "Commanders", picture: .commander(variant: 0), housed: true, lines: [
             "Your House keeps up to five commanders: one at the start, another as your seat's Muster Hall reaches III and V, and one with each grade of Banner Lore. Set one at the head of a company of war in Commanders (4); it leads it in every battle.",
             "A commander learns from every battle and every company of the wilds struck down, and rises in level; at levels V, X and XX its skills come to it. Its second skill fires in battle once its fury has risen. A commander whose company falls is carried home wounded, and mends in four watches.",
             "A commander whose company a keeper's company fells is taken prisoner. Their captor may question them in Commanders (4) once a watch, and each time they tell a true thing of their House: its army, its greatest company and where it stands, its stores, the hold it means to take, its seat's walls. Their House may ransom them for ten moonsalt a level, twenty at the least; their captor may let them go; after \(GameState.captivityLasts) watches they slip away. Freed, they come home to mend.",
@@ -64,13 +70,13 @@ enum Guide {
             "A Forge works makings into gear of three sets: the Warden's Harness, the Raider's Kit and the Pathfinder's Gear. The wilds leave makings as they fall, a lair broken leaves more, and companies bring them in with what they gather: hide with grain, heartwood with timber, iron with stone, moonglass with moonsalt. Forge a piece in Commanders (4), as fine as your highest Forge allows: plain at level I, fine at II, masterwork at IV, fabled at V. Two pieces of a set worn by one commander give its company more, all three more still.",
             "In the Ring, at the foot of Commanders (4), stand a line of up to \(GameState.ringLine) of your commanders, each weighing its level, its talents and its gear, and challenge other keepers' lines \(GameState.ringChallenges) times a watch. The heavier line wins, a fifth either way by chance, and takes standing from the loser, the more the higher the loser stood. At each full moon the three standing highest take \(GameState.ringHonours.map(String.init).joined(separator: ", ")) moonsalt, and every standing drifts halfway back to \(GameState.ringStart). No company fights and no commander is hurt.",
         ]),
-        Section(title: "The wilds and the sites", lines: [
+        Section(title: "The wilds and the sites", picture: .wild(tier: 2), lines: [
             "Companies of the wilds rise in the far country: every House's foe. Strike them for their spoils and for your commanders' learning; the higher their level, the richer and the harder.",
             "Holy sites (Moonwells, Still Stones and Salt Altars) stand far out on the land. A company of war standing on one as the watch turns, with no foe beside it, takes it for your House: its gift is your whole alliance's while you hold it. The Realm (6) lists those you have found.",
             "From the twelfth watch the wilds raise lairs far out in the country: a Salt Hollow, a Reavers' Stockade, a Barrow Hall, a Hunters' Eyrie or a Drowned Chapel, of levels I to V. No company alone can strike one. Select its ground and call a rally against it; your alliance's host strikes it together, and broken, its spoils are shared by the companies each House brought, with gear for the rally's caller. A lair that holds mends a little each watch.",
             "Sites of the land (fallow fields, deadfalls, screes and salt pans) hold stores to gather. Choose a company of war and right-click a site: it works it until it carries all it can, then brings the stores home to your nearest hold.",
         ]),
-        Section(title: "Houses", lines: [
+        Section(title: "Houses", picture: .keep(seat: true), housed: true, lines: [
             "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",
             "Every House comes of one of the lake's six peoples, dealt round the lake as the age begins: the Saltborn, the Fenfolk, the Blackwood Kin, the Spinewardens, the Mound Clans and the Strandfolk. Each has two strengths and a company of its own at the fifth tier, a twentieth stronger and firmer than others of its kind. Take up another in the Realm (6): the first time freely, then for \(Heritage.changeCost).",
             "Offers to a keeper wait as envoys for their answer, as theirs wait for yours.",
@@ -99,7 +105,7 @@ enum Guide {
             "Raise your seat anew on open ground of your own land, from that ground's panel, for \(GameState.seatMoveCost): its works, walls and ward go with it as they stand, and the company at its gates. Once in \(GameState.seatMoveRest) watches, and never while its ward is short of whole or a foe at war stands within \(GameState.seatMoveFoeReach) tiles of it.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
-        Section(title: "Alliances and rallies", lines: [
+        Section(title: "Alliances and rallies", picture: .standard, housed: true, lines: [
             "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off, four at most.",
             "Words (7) carry a line to every keeper of the realm, or to your alliance alone: plain words, with no addresses.",
             "Raise standards of your alliance on open ground near its holds, from that ground's panel, for timber, stone and moonsalt: the land two tiles about each is the alliance's, where its companies stand a tenth firmer, mend sooner and gather a fifth more, and its Houses' holds on it yield a tenth more of everything. An alliance keeps one standard, and one more for each of its Houses, eight at most. A House at war with the one that raised it can strike a standard down.",
@@ -109,7 +115,7 @@ enum Guide {
             "An alliance studies together: its leader chooses a study in Alliance (5), and every House of it gives stores toward each grade. A grade learned raises every House of the alliance at once, three grades a study; every \(GameState.givenPerHourglass) given, in barter worth, brings the giver a Salt Hourglass.",
             "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together the moment all are there. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
         ]),
-        Section(title: "Happenings and charges", lines: [
+        Section(title: "Happenings and charges", picture: .work(.musterHall, level: 3), housed: true, lines: [
             "From the tenth watch, a happening comes round every thirty, for ten watches: the Long Hunt, the Harvest Fair, the Raising, the Great Muster and the Learned Season. Points bring stores and items at 10, 25 and 50, and the three foremost are honoured as it ends. The Realm (6) shows it.",
             "Each watch you keep in the realm, there as it turns, wins you favour with the lake, the more for every watch kept unbroken. Favour raises your House by levels, I to X: more gathered at the land's sites, works and studies sooner, companies mustered sooner; every tenth watch kept unbroken brings a favour chest, the richer the higher you stand. It is yours across ages; the Realm (6) shows it.",
             "From the fifty-fifth watch, and every ninety after, comes the Sundering: for twelve watches the lake's Houses stand as two kingdoms, the Eastern and the Western Shore, each by where its seat stands, and every House is at war with each of the other shore it was at peace with, but its alliance's and its liege's, the wars laid down as it ends. Troops of the other shore slain, its holds taken and its alliances' works torn down count for your kingdom; every House of the kingdom that prevails shares its spoils, and its foremost is hailed its sword. The Realm (6) shows how the shores stand.",
@@ -122,11 +128,11 @@ enum Guide {
             "Of a deed of your House's in the Chronicle, a battle, a hold taken or lost, a war, a betrayal, a great work, or of the age's end, Make a ballad: your Mac's own model makes a few lines of verse of it. Sing it, and the realm keeps it in its songbook, Songs in the Chronicle, for every House to read: two to six short lines of plain words, one ballad of each deed, one a watch. Each ballad, five at the most, adds two to your renown as the age ends.",
             "Charges, a happening's marks and lairs broken fill your satchel, shown in the Realm (6). A Salt Hourglass brings a hold's work and muster a watch nearer, from the hold's panel, or your study; caches open into your stores; a Ward Stone makes a hold's ward whole; a Mending Draught mends every hurt company of yours by 30.",
         ]),
-        Section(title: "Omens", lines: [
+        Section(title: "Omens", picture: .shrine(.moonwell), lines: [
             "Now and then the lake turns, for every House at once, for three to five watches: Moonsalt Bloom doubles moonsalt, Rising Mist shortens every sight by a tile, a Lean Watch takes a third of the grain, and a Still Night mends wards twice as fast.",
             "The omen on the realm is shown under the top bar, with the watches it has left.",
         ]),
-        Section(title: "Winning", lines: [
+        Section(title: "Winning", picture: .work(.moonspire, level: 5), housed: true, lines: [
             "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): five of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a steward's seat while it has four holds or fewer left and no vassals of its own, and, if you are sworn to no one, it swears you fealty; beaten Houses may offer it too. A vassal's holds count with yours, and it can never turn on you, nor win, nor raise its Moonspire while it serves: the works on it stop when it bends the knee. Turn on it, and it is free; it goes free, too, if you fall.",
             "Stewards fear a rising Moonspire, and will march on it.",

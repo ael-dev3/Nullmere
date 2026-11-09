@@ -136,6 +136,27 @@ final class PanelRenderTests: XCTestCase {
         }
     }
 
+    /// The Guide's sections each headed by a picture of what they tell of,
+    /// painted from the world's own models, the House's own in its colours,
+    /// the keys alone with none; kept as a window draws the panel.
+    func testTheGuideIsPictured() throws {
+        let session = busySession()
+        let pictured = Guide.sections.filter { $0.picture != nil }
+        XCTAssertEqual(pictured.map(\.title), Guide.sections.dropLast().map(\.title), "Every section but the keys")
+        XCTAssertNil(Guide.sections.last?.picture, "The keys need none")
+        XCTAssertEqual(Set(pictured.compactMap(\.picture)).count, pictured.count, "Each its own")
+        XCTAssertEqual(pictured.filter(\.housed).map(\.title),
+                       ["The watch", "Holds", "Companies", "Tiers and studies", "Commanders", "Houses", "Alliances and rallies",
+                        "Happenings and charges", "Winning"], "What is the House's own in its colours; the land, the wilds and the omens in none")
+        guard Portraits.shared.prepareNow() else { throw XCTSkip("No Metal device to paint with") }
+        let colour = Portrait.colour(of: session.player, in: session.state)
+        for section in pictured {
+            XCTAssertNotNil(Portraits.shared.image(of: try XCTUnwrap(section.picture), colour: section.housed ? colour : nil),
+                            "\(section.title)'s picture painted")
+        }
+        try CardShot.keep(GuidePanel(session: session).padding(20), as: "game-guide.png", size: CGSize(width: 420, height: 760))
+    }
+
     func testTheSelectionPanelDrawsWhateverIsChosen() throws {
         let session = busySession()
         let state = session.state
