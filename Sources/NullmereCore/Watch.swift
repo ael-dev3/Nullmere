@@ -104,6 +104,7 @@ extension GameState {
         events += turnMirrorWalks()
         raiseWilds()
         events += turnTheEclipse()
+        events += raiseTheUnquiet()
         raiseLairs()
         raiseSites()
         refreshSight()

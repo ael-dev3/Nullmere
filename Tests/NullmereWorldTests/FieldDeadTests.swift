@@ -222,4 +222,32 @@ final class FieldDeadTests: XCTestCase {
         var frame = SceneFrame()
         XCTAssertTrue(stage.fieldDead([], watch: 5, time: 1, into: &frame).isEmpty)
     }
+
+    func testABarrowIsRaisedBesideTheFieldsHeartWithItsStone() throws {
+        let relief = Relief(map: state.map)
+        let stage = WorldStage(map: state.map, relief: relief)
+        let small = stage.graves([(at: Hex(3, -6), troops: 800)])
+        let great = stage.graves([(at: Hex(3, -6), troops: 30_000)])
+        let mound = try XCTUnwrap(small.first { $0.key == .furnishing(.barrowMound) }).instances
+        let stone = try XCTUnwrap(small.first { $0.key == .furnishing(.standingStone) }).instances
+        XCTAssertEqual(mound.count, 1)
+        XCTAssertEqual(stone.count, 1)
+        let heart = centre(Hex(3, -6))
+        let at = mound[0].model.transformPoint(.zero), head = stone[0].model.transformPoint(.zero)
+        XCTAssertEqual(flat(at, heart), WorldStage.graveOffset, accuracy: 1e-3, "beside the heart, off the ground a company stands on")
+        XCTAssertEqual(at.y, max(relief.height(atX: at.x, z: at.z), Relief.waterline), accuracy: 0.02, "on the ground")
+        XCTAssertEqual(head.y, max(relief.height(atX: head.x, z: head.z), Relief.waterline), accuracy: 0.02)
+        XCTAssertGreaterThan(flat(head, at), 0.1, "its stone at its head")
+        XCTAssertEqual(mound[0].hex, SIMD2(3, -6))
+        // The more laid in it, the larger, to a bound.
+        let side = { (batches: [ModelBatch]) -> Float in
+            let model = try! XCTUnwrap(batches.first { $0.key == .furnishing(.barrowMound) }).instances[0].model
+            let axis = model.transformDirection(Vec3(1, 0, 0))
+            return (axis.x * axis.x + axis.y * axis.y + axis.z * axis.z).squareRoot()
+        }
+        XCTAssertGreaterThan(side(great), side(small))
+        XCTAssertEqual(WorldStage.graveScale(troops: 30_000), WorldStage.graveScale(troops: 12_000))
+        XCTAssertEqual(WorldStage.graveScale(troops: -5), WorldStage.graveScale(troops: 0))
+        XCTAssertTrue(stage.graves([]).isEmpty)
+    }
 }

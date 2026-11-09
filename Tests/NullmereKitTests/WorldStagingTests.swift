@@ -613,24 +613,29 @@ final class WorldStagingTests: XCTestCase {
 
         // A blow struck on a hold's ward from beside it, which the walls
         // struck back: a flight from its battlements at the striker, a beat
-        // after the blow lands, and over the blow the ward's strength taken.
-        let ward = try XCTUnwrap(session.state.holds.first { $0.owner != player })
-        let beside = try XCTUnwrap(ward.position.neighbors.first { session.state.map[$0] != nil })
-        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: .spear, defender: nil,
-                                          defenderOwner: ward.owner, defenderKind: nil, hold: ward.id, at: ward.position, damageDealt: 12,
-                                          damageTaken: 9, attackerFell: false, defenderFell: false, lost: 300))],
-                          from: [striker.id: beside])
-        let onWard = try XCTUnwrap(session.blows.last)
+        // after the blow lands, and over the blow the ward's strength taken;
+        // in a session of its own, so no arrow or stone of the blows above
+        // is still in the air.
+        let walled = try self.session()
+        let wallStriker = try XCTUnwrap(walled.state.units(of: walled.player).first { $0.kind.isMilitary })
+        let ward = try XCTUnwrap(walled.state.holds.first { $0.owner != walled.player })
+        let beside = try XCTUnwrap(ward.position.neighbors.first { walled.state.map[$0] != nil })
+        walled.showBlows([.battle(Battle(attacker: wallStriker.id, attackerOwner: walled.player, attackerKind: .spear, defender: nil,
+                                         defenderOwner: ward.owner, defenderKind: nil, hold: ward.id, at: ward.position, damageDealt: 12,
+                                         damageTaken: 9, attackerFell: false, defenderFell: false, lost: 300))],
+                         from: [wallStriker.id: beside])
+        let onWard = try XCTUnwrap(walled.blows.last)
+        XCTAssertEqual(walled.blows.count, 1)
         XCTAssertFalse(onWard.isRanged)
         XCTAssertEqual(onWard.felled, "12", "the ward's strength taken, where no troops fell")
         XCTAssertEqual(onWard.strikersLost, "300")
-        XCTAssertTrue(session.arrows(at: onWard.start.addingTimeInterval(0.1)).isEmpty, "the walls answer a beat after")
-        let answering = session.arrows(at: onWard.start.addingTimeInterval(0.3))
+        XCTAssertTrue(walled.arrows(at: onWard.start.addingTimeInterval(0.1)).isEmpty, "the walls answer a beat after")
+        let answering = walled.arrows(at: onWard.start.addingTimeInterval(0.3))
         XCTAssertFalse(answering.isEmpty, "the walls answer the striker")
         let heart = Relief.centre(of: ward.position)
         XCTAssertTrue(answering.allSatisfy { Vec3($0.from.x - heart.x, 0, $0.from.z - heart.z).length < HoldLayout.wallRadius + 0.3 },
                       "loosed from the hold")
-        XCTAssertTrue(session.arrows(at: onWard.start.addingTimeInterval(2)).isEmpty, "all come down")
+        XCTAssertTrue(walled.arrows(at: onWard.start.addingTimeInterval(2)).isEmpty, "all come down")
     }
 
     /// Where a blow felled troops, its field keeps its dead a few watches:

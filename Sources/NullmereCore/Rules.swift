@@ -100,6 +100,8 @@ extension GameState {
             return try setWaiting(unit, waiting: waiting, as: house)
         case .watchfire(let hex):
             return try lightWatchfire(at: hex, as: house)
+        case .bury(let unit):
+            return try bury(by: unit, as: house)
         case let .seek(unit, find):
             return try seek(find, with: unit, as: house)
         case let .sealLetter(words, holdID):
@@ -548,6 +550,9 @@ extension GameState {
             hold: nil, at: hex, damageDealt: dealt, damageTaken: taken,
             attackerFell: attackerFell, defenderFell: defenderFell, slain: slain, lost: lost
         )), at: 0)
+        // A keeper's dead lie where they fell until they are buried.
+        layTheFallen(slain, of: defender.owner, at: hex)
+        layTheFallen(lost, of: attacker.owner, at: attacker.position)
 
         // The victor in close combat takes the field, unless a hold's ward
         // still stands, or it fought from within its own hold.
@@ -651,6 +656,7 @@ extension GameState {
             hold: holdID, at: hold.position, damageDealt: damage, damageTaken: returned,
             attackerFell: attackerFell, defenderFell: holds[holdIndex].ward == 0, lost: lost
         )), at: 0)
+        layTheFallen(lost, of: attacker.owner, at: attacker.position)
 
         if holds[holdIndex].ward == 0, !attackerFell, !ranged, attacker.kind.canCapture {
             events += capture(hold: holdID, with: unitID)

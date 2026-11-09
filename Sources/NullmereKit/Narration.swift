@@ -157,7 +157,7 @@ enum Narration {
              .fordOpened, .fordClosed, .crownSurfaced, .crownTaken, .crownFell, .crownSank, .carriedAshore, .recalled, .marchHalted,
              .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound, .vigilKept, .vigilHonoured, .vigilOut, .setOnTheWater, .ferried,
              .petitionBrought, .petitionAnswered, .petitionWithdrawn, .groundMarked, .markLifted, .markHeeded,
-             .woodKindled, .fireSpread, .burnedInFire, .firesDoused, .torchesSet, .waitSet, .ambushSprung, .watchfireLit, .madeOutByWatchfire,
+             .woodKindled, .fireSpread, .burnedInFire, .firesDoused, .torchesSet, .waitSet, .ambushSprung, .watchfireLit, .madeOutByWatchfire, .buried, .unquietRose,
              .findSought,
              .letterSealed, .letterFound, .standingOrdersGiven,
              .commanderTaken, .prisonerQuestioned, .prisonerFreed, .oathSworn, .oathRenounced, .oathEnded,

@@ -115,6 +115,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// (`Watchfire`), for timber: its House sees about it, and makes out
     /// companies marching dark there.
     case watchfire(Hex)
+    /// A company buries the dead lying unburied where it stands under a
+    /// barrow, its watch spent (`FieldOfDead`).
+    case bury(unit: Int)
     /// Sends the House's Lanterns, on or beside a hamlet or barrow the
     /// House knows of (`Find`), to seek it: a hamlet's gift, a barrow's
     /// grave goods; each House seeks each once.
@@ -600,6 +603,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case soughtAlready
     case watchfireBurning
     case watchfiresLit(Int)
+    /// No dead lie unburied where the company stands.
+    case noDeadHere
+    /// A company that has struck or worked this watch.
+    case spentThisWatch
     /// Words that say nothing an envoy, or the realm, would carry.
     case nothingToSay
     /// As many words as a watch allows, said.
@@ -828,6 +835,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownFind: return "Your House knows of no such hamlet or barrow."
         case .soughtAlready: return "Your Lanterns have been there already."
         case .watchfireBurning: return "A watchfire burns there already."
+        case .noDeadHere: return "No dead lie unburied where that company stands."
+        case .spentThisWatch: return "That company has struck or worked this watch; it may bury the dead at the next."
         case .watchfiresLit(let most): return "Your House keeps \(most) watchfires burning already, as many as it may."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
         case .saidEnough: return "You have said all a watch allows; say more as the watch turns."
@@ -1186,6 +1195,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case ambushSprung(unit: Int, owner: Int, at: Hex, struck: Int, struckOwner: Int)
     /// A House lit a watchfire on its own land.
     case watchfireLit(at: Hex, by: Int)
+    /// A House's company buried the dead lying unburied on a field.
+    case buried(FieldOfDead, by: Int)
+    /// At the dark of the moon the dead left unburied on a field rose as
+    /// a company of Barrowkin, at `at`.
+    case unquietRose(FieldOfDead, wild: Int, at: Hex, level: Int)
     /// A House's watchfire at `fire` made out a company of another House
     /// marching dark within its reach.
     case madeOutByWatchfire(Watchfire.Sighting, fire: Hex, by: Int)

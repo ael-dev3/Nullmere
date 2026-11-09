@@ -213,3 +213,35 @@ extension WorldStage {
         return WorldStage.batches(placed)
     }
 }
+
+extension WorldStage {
+    /// How far from a field's heart its barrow is raised, off the ground a
+    /// company stands on, and how large it stands for the troops laid in it.
+    public static let graveOffset: Float = 0.45
+    public static func graveScale(troops: Int) -> Float {
+        0.55 + 0.35 * min(Float(max(troops, 0)) / 12_000, 1)
+    }
+
+    /// The barrows raised over fields of the dead: a low mound beside the
+    /// field's heart, each turned its own way, the larger the more laid in
+    /// it, with a standing stone at its head.
+    public func graves(_ graves: [(at: Hex, troops: Int)]) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        for grave in graves {
+            let centre = Relief.centre(of: grave.at)
+            let bearing = WorldStage.phase(of: grave.at, salt: 83)
+            let x = centre.x + WorldStage.graveOffset * Float(cos(Double(bearing)))
+            let z = centre.z + WorldStage.graveOffset * Float(sin(Double(bearing)))
+            let hex = SIMD2(Int32(grave.at.q), Int32(grave.at.r))
+            let scale = WorldStage.graveScale(troops: grave.troops)
+            placed.append((.furnishing(.barrowMound), ModelInstance(model: .translation(Vec3(x, ground(atX: x, z: z), z))
+                                                                    * .rotationY(bearing) * .scale(scale), hex: hex)))
+            // Its stone at its head, along the way it is turned.
+            let head = 0.32 * scale
+            let sx = x + head * Float(sin(Double(bearing))), sz = z + head * Float(cos(Double(bearing)))
+            placed.append((.furnishing(.standingStone), ModelInstance(model: .translation(Vec3(sx, ground(atX: sx, z: sz), sz))
+                                                                      * .rotationY(bearing) * .scale(0.45), hex: hex)))
+        }
+        return WorldStage.batches(placed)
+    }
+}

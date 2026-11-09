@@ -547,7 +547,8 @@ extension GameState {
     /// alliances, their reports and bars on words, the drowned holds,
     /// bottles, barges, rallies, fields of battle, shrines, lairs,
     /// standards, halls and storehouses they know of, the vigils burning
-    /// for the fallen, the fires in the blackwood and their ash, the pleas
+    /// for the fallen, the fires in the blackwood and their ash, the dead
+    /// lying unburied and the barrows over those buried, the pleas
     /// their folk have brought them and what their folk remember of those
     /// answered, how their envoys were answered and how they answered
     /// others', their satchel and their makings.
@@ -582,6 +583,8 @@ extension GameState {
         var finds: [Find]?
         var sought: [Int: [Int]]?
         var watchfires: [Watchfire]?
+        var unburied: [FieldOfDead]?
+        var graves: [Grave]?
         var petitions: [Petition]?
         var answers: [EnvoyAnswer]?
         var pleas: [PleaAnswer]?
@@ -628,6 +631,8 @@ extension GameState {
             finds = world.finds
             sought = world.sought
             watchfires = world.watchfires
+            unburied = world.unburied
+            graves = world.graves
             petitions = world.petitions
             answers = world.answers
             pleas = world.pleas
@@ -676,6 +681,8 @@ extension GameState {
             world.finds = finds
             world.sought = sought
             world.watchfires = watchfires
+            world.unburied = unburied
+            world.graves = graves
             world.petitions = petitions
             world.answers = answers
             world.pleas = pleas

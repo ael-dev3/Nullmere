@@ -155,6 +155,22 @@ struct RivalMind {
         }
         events += drill(owners: owners, in: &state)
         events += answerMarks(in: &state)
+        if caretaking { events += buryTheDead(in: &state) }
+        return events
+    }
+
+    /// The caretaker of a keeper away buries the dead lying where a company
+    /// of the House's stands idle once its orders are given, one that has
+    /// neither moved nor struck this watch: the House's own, and any other's
+    /// there. Only a keeper's dead lie unburied, so a world the stewards
+    /// play alone is the same with this as without it.
+    private func buryTheDead(in state: inout GameState) -> [GameEvent] {
+        guard !state.fieldsOfDead.isEmpty else { return [] }
+        var events: [GameEvent] = []
+        for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) where state.fieldOfDead(at: unit.position) != nil {
+            guard state.burialRefusal(by: unit.id, as: house) == nil, unit.movesLeft == state.movement(of: unit) else { continue }
+            events += perform(.bury(unit: unit.id), in: &state)
+        }
         return events
     }
 

@@ -800,6 +800,18 @@ extension GameState {
                 ? Tidings("Your watchfire burns \(placeName(of: at)) for \(GameState.watches(Watchfire.burns)): your House sees about it, "
                           + "and makes out any company marching dark there.", .good)
                 : Tidings("\(houses[by].title) lights a watchfire \(placeName(of: at)): it keeps watch there.", .neutral)
+        case .buried(let field, let by):
+            guard houses.indices.contains(by) else { return nil }
+            let dead = "\(GameState.counted(field.troops)) troops"
+            if by == viewer {
+                return Tidings("Your company buries the dead \(placeName(of: field.at)), \(dead), under a barrow: they will not rise.", .good)
+            }
+            let whose = field.houses == [viewer] ? "your dead" : field.houses.contains(viewer) ? "your dead and others'" : "the dead"
+            return Tidings("\(houses[by].title) buries \(whose) \(placeName(of: field.at)), \(dead), under a barrow.", .neutral)
+        case .unquietRose(let field, _, let at, let level):
+            let whose = field.houses.contains(viewer) ? "Your dead left unburied" : "The dead left unburied"
+            return Tidings("At the dark of the moon \(whose.prefix(1).lowercased() + whose.dropFirst()) \(placeName(of: field.at)) rise: "
+                           + "\(WildKind.barrowkin.named(level: level)) stand \(placeName(of: at)), every House's foe.", .bad)
         case .madeOutByWatchfire(let sighting, let fire, let by):
             guard by == viewer, houses.indices.contains(sighting.owner) else { return nil }
             let company = "\(houses[sighting.owner].title)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner))"

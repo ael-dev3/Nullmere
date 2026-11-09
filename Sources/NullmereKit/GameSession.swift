@@ -1796,6 +1796,8 @@ public final class GameSession {
         // wood, dread where a foe's spring upon its company.
         case .ambushSprung(_, let owner, _, _, _) where owner == player: return .horn
         case .ambushSprung(_, _, _, _, let struckOwner) where struckOwner == player: return .dread
+        case .buried(_, let by) where by == player: return .honour
+        case .unquietRose(let field, _, _, _) where field.houses.contains(player): return .dread
         case .standardStruck(let standard, _, let by, _) where by != player
             && state?.standard(standard).map({ $0.alliance == state?.alliance(of: player)?.id }) == true: return .batter
         case .standardTorn(_, _, let by, _) where by == player: return .triumph
@@ -2034,6 +2036,10 @@ public final class GameSession {
         case .madeOutByWatchfire(let sighting, _, _):
             return sighting.at
         case .ambushSprung(_, _, let at, _, _):
+            return at
+        case .buried(let field, _):
+            return field.at
+        case .unquietRose(_, _, let at, _):
             return at
         case .findSought(let find, _, _, _):
             return state.findsInLand.first { $0.id == find }?.position

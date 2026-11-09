@@ -891,6 +891,23 @@ a vote on the realm's law to cast.
   torches or Stand down ends it. The order book reads WAIT <company>, and
   a commander in counsel may put an ambush to you. Stewards lie in wait
   for none. Rise of Kingdoms has no ambush.
+- **The unquiet dead.** Your House's troops fallen in battle lie where
+  they fell, unburied: on a field where your companies were struck, where
+  your foe's blow struck back. A company of war standing on them may
+  bury them (Bury the dead, in its panel, any House's dead lying there):
+  its watch is spent raising a barrow over them, which stays on the land,
+  and each field your House buries adds two to your renown as the age
+  ends (five fields at most). Left unburied where 6,000 troops or more
+  lie, at the dark of the moon (when the Houses dream, once in each moon
+  of thirty watches) they rise as Barrowkin, the stronger the
+  more of them, and stand there as the wilds do, every House's foe, until
+  some House strikes them down; a field where fewer lie the land takes
+  back then. The panel of a company standing on them, or of the tile,
+  says how many lie there and whose, and what comes of them, and when.
+  The Houses the stewards keep bury their own as they fall, and a keeper
+  away has theirs buried by the caretaker where a company of the House
+  stands idle on them, so a world the stewards play alone is the same
+  with this as without it.
 - **Hamlets and barrows.** Out in the mist lie hamlets of the free folk
   and old barrows open to the sky, a barrow for each seat on the barrows'
   ground and three hamlets for every two seats on the open land, each

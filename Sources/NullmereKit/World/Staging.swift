@@ -165,6 +165,9 @@ extension GameSession {
         // each watch, and birds come down to a field fought lately.
         let dead = fieldBlows.isEmpty ? [] : stage.fieldDead(fieldBlows.filter { inView($0.at, within: GameSession.companyReach) },
                                                             watch: state.watch, time: t, birds: full, into: &frame)
+        // The barrows raised over fields of the dead the keeper knows.
+        let barrows = state.gravesRaised.isEmpty ? [] : stage.graves(state.gravesRaised.filter { isExplored($0.at) && inView($0.at, within: 1) }
+            .map { (at: $0.at, troops: $0.troops) })
 
         // The land's sites the keeper knows, its holy sites and the lairs of
         // the wilds, and its furniture, cleared where companies, sites,
@@ -295,7 +298,7 @@ extension GameSession {
         // each in its brazier.
         let watchfires = stage.watchfires(state.watchfiresBurning.map(\.at).filter { isExplored($0) }).batches
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + watchfires + flights
-        frame.batches += roads + dead
+        frame.batches += roads + dead + barrows
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.

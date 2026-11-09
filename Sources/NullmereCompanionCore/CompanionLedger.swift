@@ -1053,6 +1053,8 @@ public struct CompanionLedger: Equatable, Sendable {
                 // Marching dark in the blackwood, it lies in wait there, or gives it up, as the Mac's panel offers it.
                 ("Lie in wait", .lieInWait(unit: unit.id, waiting: true), world.waitRefusal(unit.id, waiting: true, as: player) == nil),
                 ("Stand down", .lieInWait(unit: unit.id, waiting: false), world.waitRefusal(unit.id, waiting: false, as: player) == nil),
+                // Where the dead lie unburied, it buries them, as the Mac's panel offers it.
+                ("Bury the dead", .bury(unit: unit.id), world.fieldOfDead(at: unit.position) != nil && world.burialRefusal(by: unit.id, as: player) == nil),
             ]
             // Lanterns within reach of another House's hold scout it, the
             // nearest first, as the Mac offers it, where the rules would.

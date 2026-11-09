@@ -279,6 +279,7 @@ extension RealmState {
     /// it: five renown for each deed their House did, ten if it stood at
     /// the end, two for each ballad they sang of it (five at the most), two
     /// for each time another House honoured their vigils for its fallen
+    /// (five at the most), two for each field of dead their House buried
     /// (five at the most), and fifty and a title to the age's victor, less
     /// three for each time their House broke the realm's edicts (never
     /// below nothing); and every deed
@@ -292,6 +293,7 @@ extension RealmState {
             var gained = 5 * deeds.count + (world.houses[house].isEliminated ? 0 : 10)
                 + GameState.renownPerBallad * world.balladsCounted(of: house)
                 + GameState.renownPerHonour * world.honoursCounted(of: house)
+                + GameState.renownPerBurial * world.burialsCounted(of: house)
             if outcome.winner == house {
                 gained += 50
                 let title = outcome.kind == .ascendancy ? "Raiser of the Moonspire" : "Lord of the Lake"

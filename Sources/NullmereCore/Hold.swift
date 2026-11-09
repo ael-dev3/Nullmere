@@ -239,6 +239,9 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     /// count toward its keeper's renown as the age ends; none before the
     /// first.
     public var honoured: Int?
+    /// The fields of dead it has buried this age, which count toward its
+    /// keeper's renown as the age ends; none before the first.
+    public var buried: Int?
 
     public var title: String { "House \(name)" }
 

@@ -236,6 +236,10 @@ public struct GameState: Codable, Equatable, Sendable {
     var sought: [Int: [Int]]?
     /// The watchfires burning in the realm (`Watchfire`); none, nil.
     var watchfires: [Watchfire]?
+    /// The fields where a keeper's dead lie unburied (`FieldOfDead`), and
+    /// the barrows raised over those buried (`Grave`); none, nil.
+    var unburied: [FieldOfDead]?
+    var graves: [Grave]?
     /// How the last envoy each House sent another was answered, where a
     /// keeper is one of the two (`EnvoyAnswer`); nil while none has been.
     var answers: [EnvoyAnswer]?

@@ -268,6 +268,17 @@ extension GameState {
             told.seen = nil
             return told
         }
+        // The dead lying unburied, where the House's own lie or it sees
+        // the field; the barrows over those buried, its own and those on
+        // ground it has seen.
+        view.unburied = unburied.map { all in
+            all.filter { $0.houses.contains(house) || (map.index(of: $0.at).map { seen[$0] } ?? false) }
+        }.flatMap { $0.isEmpty ? nil : $0 }
+        view.graves = graves.map { all in
+            all.filter { grave in
+                grave.house == house || (map.index(of: grave.at).map { explored.indices.contains($0) && explored[$0] } ?? false)
+            }
+        }.flatMap { $0.isEmpty ? nil : $0 }
         // The pleas the House's own folk have brought it, none of another's.
         view.petitions = petitions.map { $0.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         view.petitioned = nil
@@ -510,6 +521,14 @@ extension GameState {
             case .watchfireLit:
                 // A watchfire, the whole realm sees.
                 return true
+            case .buried(let field, let by):
+                // A field's dead buried, the House that buried them, the
+                // Houses whose dead they were, and whoever sees the field.
+                return by == house || field.houses.contains(house) || visible(field.at)
+            case .unquietRose(let field, _, let at, _):
+                // The dead risen, the Houses whose dead they were and
+                // whoever sees where they stand.
+                return field.houses.contains(house) || visible(at) || visible(field.at)
             case .madeOutByWatchfire(_, _, let by):
                 // What a watchfire's light made out, the House that lit it
                 // is told.

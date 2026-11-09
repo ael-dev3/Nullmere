@@ -708,6 +708,13 @@ struct UnitPanel: View {
                     .foregroundStyle(Palette.text(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // The dead lying unburied where it stands, and what comes of them.
+            if mine, let field = state.fieldOfDead(at: unit.position) {
+                Text(verbatim: state.fieldOfDeadSaid(field, for: session.player))
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if mine {
                 if let hint = hint(for: unit) {
                     Text(verbatim: hint)
@@ -757,6 +764,15 @@ struct UnitPanel: View {
                             session.perform(.kindle(unit: unit.id))
                         }
                         .help(UnitPanel.kindleHelp(in: state))
+                    }
+                    // Where the dead lie unburied, a company of war may bury them.
+                    if unit.kind.isMilitary, state.fieldOfDead(at: unit.position) != nil {
+                        let refusal = state.burialRefusal(by: unit.id, as: session.player)
+                        QuietButton(title: "Bury the dead", enabled: refusal == nil, name: "Bury the dead here with \(unit.kind.title)",
+                                    why: refusal?.description) {
+                            session.perform(.bury(unit: unit.id))
+                        }
+                        .help(GameState.burialSaid)
                     }
                     // Its torches doused to march dark, or lit again.
                     let lit = !state.isUnlit(unit.id)
@@ -1403,6 +1419,19 @@ struct TilePanel: View {
                 // A hold of an age before, drowned here.
                 if let drowned = state.drowned(at: hex) {
                     Text(verbatim: drowned.told(searched: tile.feature != .drownedRuin))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.glowWords)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                // The dead lying unburied here, and the barrow over those buried.
+                if let field = state.fieldOfDead(at: hex) {
+                    Text(verbatim: state.fieldOfDeadSaid(field, for: session.player))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let grave = state.grave(at: hex) {
+                    Text(verbatim: state.graveSaid(grave, for: session.player))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.glowWords)
                         .fixedSize(horizontal: false, vertical: true)
