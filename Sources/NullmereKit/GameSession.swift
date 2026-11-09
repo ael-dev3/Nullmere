@@ -158,6 +158,9 @@ public final class GameSession {
     @ObservationIgnored var pressesShown: [Int: FrontPress] = [:]
     /// The road along each way the carts go, as laid, by way.
     @ObservationIgnored var roadsLaid: [WorldStage.Way: [ModelInstance]] = [:]
+    /// The blows seen struck lately, for the dead they left lying on their
+    /// fields a few watches after (`WorldStage.fieldDead`).
+    @ObservationIgnored var fieldBlows: [FieldBlow] = []
     /// Works finished lately, for the dust of their last course.
     @ObservationIgnored var completions: [Completion] = []
     /// The blackwood seen burning when the world was last drawn, nil before
@@ -1585,6 +1588,7 @@ public final class GameSession {
             clipsShown = [:]
             pressesShown = [:]
             roadsLaid = [:]
+            fieldBlows = []
             completions = []
             firesSeen = nil
             catchings = []
@@ -2328,6 +2332,32 @@ public final class GameSession {
 
     // MARK: Blows
 
+    /// Keeps a blow seen struck for the dead it leaves on its field: the
+    /// troops it felled lying where the struck stood, and those the blow
+    /// struck back cost its striker where the striker stood, each in their
+    /// House's colour and of their company's kind; forgetting those whose
+    /// dead are all carried off, and the oldest past the most a field keeps.
+    func keepDead(of battle: Battle, from: Hex) {
+        let watch = state.watch
+        fieldBlows.removeAll { watch - $0.watch >= WorldStage.deadKept }
+        func side(_ unit: Int?, kind: UnitKind?, owner: Int, troops: Int?) -> FieldBlow.Side? {
+            guard let kind, let troops, troops > 0, state.houses.indices.contains(owner) else { return nil }
+            let tier = unit.flatMap { state.unit($0) }?.tier ?? 1
+            return FieldBlow.Side(kind: .company(kind, tier: tier, heritage: state.heritage(of: owner)),
+                                  colour: WorldStage.colour(WorldView.houseColours, sigil: state.houses[owner].sigil), troops: troops)
+        }
+        let struck = battle.hold != nil && battle.defender == nil ? nil
+            : side(battle.defender, kind: battle.defenderKind, owner: battle.defenderOwner, troops: battle.slain)
+        let striker = side(battle.attacker, kind: battle.attackerKind, owner: battle.attackerOwner, troops: battle.lost)
+        guard struck != nil || striker != nil else { return }
+        fieldBlows.append(FieldBlow(from: from, at: battle.at, struck: struck, striker: striker, watch: watch, seed: blowCounter))
+        if fieldBlows.count > GameSession.fieldBlowsKept { fieldBlows.removeFirst(fieldBlows.count - GameSession.fieldBlowsKept) }
+    }
+
+    /// The most blows kept for their dead: more than a frame draws the dead
+    /// of, however the blows of a great field fall.
+    static let fieldBlowsKept = 400
+
     /// Draws the blows the player could see, then forgets them.
     func showBlows(_ events: [GameEvent], from before: [Int: Hex] = [:]) {
         fileReports(events)
@@ -2349,6 +2379,7 @@ public final class GameSession {
                               againstPlayer: battle.defenderOwner == player, start: now,
                               from: from, attacker: battle.attacker, defender: battle.defender, fallen: fallen,
                               hurled: battle.attackerKind == .mangonel, slain: battle.slain, lost: battle.lost))
+            keepDead(of: battle, from: from)
             // Each turns to face the other.
             if from != battle.at {
                 headings[battle.attacker] = CompanyPose.heading(from: from, to: battle.at)

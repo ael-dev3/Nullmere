@@ -192,10 +192,36 @@ final class WorldPreviewTests: XCTestCase {
             .glows(state.holds.map { HoldSight(hold: $0, colour: Vec4(1, 1, 1, 1)) }, scale: far.scale)
         // And the vigils' procession on the lake, seen across it.
         afar.motes += WorldStage.vigils(procession, progress: 0.5, scale: far.scale, time: 20).motes
+        // And a field fought on open land out from the seat this watch: each
+        // side's dead lying where the fronts met, a volley's among the arrows
+        // standing about them, and birds come down to it.
+        func open(_ hex: Hex) -> Bool {
+            state.map[hex]?.terrain == .greyfield && state.hold(at: hex) == nil && hex.distance(to: seat) >= 3
+        }
+        let field = state.map.hexes.filter { open($0) && (3...5).contains($0.distance(to: seat)) }.sorted().lazy.compactMap { stood -> (Hex, Hex, Hex)? in
+            guard let beside = stood.neighbors.first(where: open),
+                  let beyond = beside.neighbors.first(where: { open($0) && $0.distance(to: stood) == 2 }) else { return nil }
+            return (stood, beside, beyond)
+        }.first
+        let (stood, beside, beyond) = try XCTUnwrap(field, "three hexes of open land out from the seat")
+        let foe = WorldPreviewTests.houses[3], own = WorldPreviewTests.houses[state.houses[state.player].sigil % 16]
+        let blows = [FieldBlow(from: stood, at: beside, struck: .init(kind: .figure(.spear, tier: 2), colour: foe, troops: 2_400),
+                               striker: .init(kind: .figure(company.kind, tier: 1), colour: own, troops: 900), watch: 0, seed: 5),
+                     FieldBlow(from: stood, at: beyond, struck: .init(kind: .figure(.rider, tier: 1), colour: foe, troops: 1_600),
+                               striker: nil, watch: 0, seed: 6)]
+        var fought = scene
+        let dead = WorldStage(map: state.map, relief: Relief(map: state.map)).fieldDead(blows, watch: 0, time: 20, into: &fought)
+        XCTAssertFalse(dead.isEmpty)
+        fought.batches += dead
+        var fieldView = Camera(scale: 150, tilt: 0.9, heading: 0.5)
+        fieldView.focus(on: beside)
+        var volleyView = Camera(scale: 260, tilt: 0.95, heading: 0.5)
+        volleyView.focus(on: beyond)
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
             ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
             ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene), ("vigils", vigilView, whole, vigils),
+            ("field", fieldView, whole, fought), ("volley", volleyView, whole, fought),
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
@@ -215,12 +241,12 @@ final class WorldPreviewTests: XCTestCase {
             "indices": mesh.indices.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "heights": terrain.heights.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "columns": terrain.columns, "rows": terrain.rows, "side": TileTexture.side(for: state.map), "frames": frames,
-            "models": WorldPreviewTests.meshes(for: scene),
+            "models": WorldPreviewTests.meshes(for: fought),
             "viewport": [Double(WorldPreviewTests.viewport.width), Double(WorldPreviewTests.viewport.height)],
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 10)
+        XCTAssertEqual(frames.count, 12)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

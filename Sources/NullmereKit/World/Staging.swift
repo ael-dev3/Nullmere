@@ -161,6 +161,10 @@ extension GameSession {
         let posed = companyPoses(at: now, animated: full, time: time)
         let (poses, companyGround) = WorldStage.lyingInWait(posed, waiting: Set(posed.filter { $0.isOwn && state.isWaiting($0.unit) }.map(\.unit)))
         let companies = stage.companies(poses.filter { inView($0.hex, within: GameSession.companyReach) }, houses: houses, into: &frame)
+        // The dead of the blows seen lately, lying where they fell, fewer
+        // each watch, and birds come down to a field fought lately.
+        let dead = fieldBlows.isEmpty ? [] : stage.fieldDead(fieldBlows.filter { inView($0.at, within: GameSession.companyReach) },
+                                                            watch: state.watch, time: t, birds: full, into: &frame)
 
         // The land's sites the keeper knows, its holy sites and the lairs of
         // the wilds, and its furniture, cleared where companies, sites,
@@ -291,7 +295,7 @@ extension GameSession {
         // each in its brazier.
         let watchfires = stage.watchfires(state.watchfiresBurning.map(\.at).filter { isExplored($0) }).batches
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + watchfires + flights
-        frame.batches += roads
+        frame.batches += roads + dead
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.

@@ -632,4 +632,70 @@ final class WorldStagingTests: XCTestCase {
                       "loosed from the hold")
         XCTAssertTrue(session.arrows(at: onWard.start.addingTimeInterval(2)).isEmpty, "all come down")
     }
+
+    /// Where a blow felled troops, its field keeps its dead a few watches:
+    /// the struck's lying on its own ground where the fronts met, in its
+    /// House's colour and of its company's kind, the striker's where it
+    /// stood, long after the blow itself is over; fewer each watch, then
+    /// none; birds come down to it; nothing kept of a blow that cost no
+    /// troops.
+    func testAFieldKeepsItsDeadAFewWatches() throws {
+        let session = try session()
+        let player = session.player, foe = (player + 1) % 3
+        let striker = try XCTUnwrap(session.state.units(of: player).first { $0.kind.isMilitary })
+        let foeAt = try XCTUnwrap(striker.position.neighbors.first { session.state.map[$0] != nil })
+        func count(_ key: ModelKey, on hex: Hex, in frame: SceneFrame) -> Int {
+            frame.batches.filter { $0.key == key }.flatMap(\.instances).filter { $0.hex == SIMD2(Int32(hex.q), Int32(hex.r)) }.count
+        }
+        let now = Date()
+        let before = session.sceneFrame(at: 40, now: now)
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: striker.kind, defender: 9_999,
+                                          defenderOwner: foe, defenderKind: .spear, hold: nil, at: foeAt, damageDealt: 30,
+                                          damageTaken: 10, attackerFell: false, defenderFell: false, slain: 2_000, lost: 450))])
+        let kept = try XCTUnwrap(session.fieldBlows.last)
+        XCTAssertEqual(kept.at, foeAt)
+        XCTAssertEqual(kept.from, striker.position)
+        XCTAssertEqual(kept.watch, session.state.watch)
+        let theirs = try XCTUnwrap(kept.struck), ours = try XCTUnwrap(kept.striker)
+        XCTAssertEqual(theirs.troops, 2_000)
+        XCTAssertEqual(ours.troops, 450)
+        XCTAssertEqual(theirs.kind, .company(.spear, tier: 1, heritage: session.state.heritage(of: foe)))
+        XCTAssertEqual(ours.kind, .company(striker.kind, tier: striker.tier, heritage: session.state.heritage(of: player)))
+        XCTAssertEqual(theirs.colour, WorldStage.colour(WorldView.houseColours, sigil: session.state.houses[foe].sigil))
+        XCTAssertEqual(ours.colour, WorldStage.colour(WorldView.houseColours, sigil: session.state.houses[player].sigil))
+
+        // Half a minute on, the blow long over, its dead still lie there.
+        let after = session.sceneFrame(at: 70, now: now.addingTimeInterval(30))
+        XCTAssertEqual(count(theirs.kind, on: foeAt, in: after) - count(theirs.kind, on: foeAt, in: before),
+                       WorldStage.deadLying(theirs.kind, troops: 2_000, since: 0), "the troops it felled, lying where they stood")
+        XCTAssertEqual(count(ours.kind, on: striker.position, in: after) - count(ours.kind, on: striker.position, in: before),
+                       WorldStage.deadLying(ours.kind, troops: 450, since: 0), "and those it cost the striker where the striker stood")
+        XCTAssertFalse(after.batches.filter { $0.key == .prop(.bird) }.flatMap(\.instances)
+            .filter { $0.hex == SIMD2(Int32(foeAt.q), Int32(foeAt.r)) }.isEmpty, "birds come down to the field")
+
+        // A watch on, fewer; three on, none.
+        session.fieldBlows[session.fieldBlows.count - 1].watch -= 1
+        let next = session.sceneFrame(at: 70, now: now.addingTimeInterval(30))
+        XCTAssertEqual(count(theirs.kind, on: foeAt, in: next) - count(theirs.kind, on: foeAt, in: before),
+                       WorldStage.deadLying(theirs.kind, troops: 2_000, since: 1))
+        XCTAssertLessThan(WorldStage.deadLying(theirs.kind, troops: 2_000, since: 1), WorldStage.deadLying(theirs.kind, troops: 2_000, since: 0))
+        session.fieldBlows[session.fieldBlows.count - 1].watch -= 2
+        let gone = session.sceneFrame(at: 70, now: now.addingTimeInterval(30))
+        XCTAssertEqual(count(theirs.kind, on: foeAt, in: gone), count(theirs.kind, on: foeAt, in: before), "carried off")
+        XCTAssertEqual(count(ours.kind, on: striker.position, in: gone), count(ours.kind, on: striker.position, in: before))
+
+        // A ward struck keeps only the striker's dead; a blow that cost no
+        // troops keeps nothing, and those whose dead are all gone are forgotten.
+        let ward = try XCTUnwrap(session.state.holds.first { $0.owner != player })
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: striker.kind, defender: nil,
+                                          defenderOwner: ward.owner, defenderKind: nil, hold: ward.id, at: ward.position, damageDealt: 12,
+                                          damageTaken: 9, attackerFell: false, defenderFell: false, lost: 300))])
+        XCTAssertEqual(session.fieldBlows.count, 1, "the blow three watches gone forgotten")
+        XCTAssertNil(session.fieldBlows.last?.struck, "no troops fall in a ward")
+        XCTAssertEqual(session.fieldBlows.last?.striker?.troops, 300)
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: striker.kind, defender: 9_998,
+                                          defenderOwner: foe, defenderKind: .spear, hold: nil, at: foeAt, damageDealt: 0,
+                                          damageTaken: 0, attackerFell: false, defenderFell: false))])
+        XCTAssertEqual(session.fieldBlows.count, 1, "nothing kept of a blow that felled none")
+    }
 }

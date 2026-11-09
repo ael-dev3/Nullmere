@@ -987,7 +987,12 @@ a vote on the realm's law to cast.
   A company that draws off from a field goes in broken order, its ranks
   spread wide, at a hurried stride.
 - **Battle.** Attackers lean into their blows, the struck shake, Bows'
-  shots cross the gap, and the fallen fade where they stood.
+  shots cross the gap, and the fallen fade where they stood. The field
+  keeps its dead for a while: where a blow you saw felled troops, men of
+  each side lie on their own side of where the fronts met, in their
+  House's colour, a volley's arrows standing in the ground about those
+  it felled; fewer each watch as they are carried off, gone after the
+  third, and birds come down to a field fought this watch or the last.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;
   a seat holds half of them. A House that loses its seat is shaken: every
   hold it has left loses most of its ward. A House that loses every hold
