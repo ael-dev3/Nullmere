@@ -549,6 +549,24 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(dark(state), "dark: ", "Lit again")
     }
 
+    /// What the Mac tells the phone's smoke test of watchfires: each it sees
+    /// burning, where it burns, for the test to find the one the phone lit;
+    /// nothing, where none burns.
+    func testTheLinkReportTellsWhereWatchfiresBurn() throws {
+        var state = GameState(settings: GameSettings(seedText: "linked watchfires", houseCount: 4, radius: 12, keepers: 1))
+        func watchfires(_ world: GameState) -> String? {
+            GameApp.linkReport(of: world, player: world.player).split(separator: "\n").map(String.init).first { $0.hasPrefix("watchfires:") }
+        }
+        XCTAssertEqual(watchfires(state), "watchfires: ", "None burns as the age begins")
+        state.houses[state.player].stock.timber = 100
+        let owners = state.territory()
+        let at = try XCTUnwrap(state.map.hexes.first { hex in
+            state.territoryOwner(of: hex, in: owners) == state.player && state.watchfireRefusal(at: hex, as: state.player) == nil
+        })
+        _ = try state.perform(.watchfire(at), as: state.player)
+        XCTAssertEqual(watchfires(state.view(for: state.player)), "watchfires: \(at.q),\(at.r)", "Seen by the House that lit it")
+    }
+
     /// A keeper links their phone from the realm's door: the Mac shows a
     /// code in three fours with the QR code carrying it and the realm, the
     /// realm keeping only its digest; a phone bringing it comes in as the
@@ -656,6 +674,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(report[4], "standing: \(StandingOrders(house: mac.session?.player ?? -1).said)", "The caretaker's orders, none given")
         XCTAssertEqual(report[7], "burning: ", "No blackwood burning")
         XCTAssertEqual(report[8], "dark: ", "No company marching dark")
+        XCTAssertEqual(report[9], "watchfires: ", "No watchfire lit")
         XCTAssertEqual(Array(report.suffix(2)), ["said: Heard on the Mac", "alliance said: Heard by the accord"])
 
         // Out of reach: told so, both the offer and the letting go.

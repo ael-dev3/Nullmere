@@ -302,6 +302,19 @@ if [ -n "$DOUSED" ]; then
 else
     echo "The phone doused no torches: $(sed -n 's/^No torches doused: //p' "$REPORT" | head -n 1)"
 fi
+# The watchfire the phone lit from its chart, seen burning on the Mac where
+# it was lit; or why the phone could light none.
+WATCHFIRE_AT="$(sed -n 's/^Watchfire lit at: //p' "$REPORT" | head -n 1)"
+WATCHED=no
+if [ -n "$WATCHFIRE_AT" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qE "^watchfires: (.* )?$WATCHFIRE_AT( |$)" "$MAC_REPORT" 2>/dev/null; then WATCHED=yes; break; fi
+        sleep 1
+    done
+    echo "The Mac sees the watchfire the phone lit at $WATCHFIRE_AT: $WATCHED ($(grep '^watchfires: ' "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+else
+    echo "The phone lit no watchfire: $(sed -n 's/^No watchfire lit: //p' "$REPORT" | head -n 1)"
+fi
 
 # The phone's line to the realm cut and mended: in again by its own key, it
 # says the realm is out of reach and keeps the House, says words to the realm
@@ -447,6 +460,10 @@ if [ -n "$FIRE_AT" ] && [ "$ALIGHT" != yes ]; then
 fi
 if [ -n "$DOUSED" ] && [ "$DARK" != yes ]; then
     echo "error: the Mac never saw the company the phone doused marching dark" >&2
+    exit 1
+fi
+if [ -n "$WATCHFIRE_AT" ] && [ "$WATCHED" != yes ]; then
+    echo "error: the Mac never saw the watchfire the phone lit burning" >&2
     exit 1
 fi
 if [ "$CAME_BACK" != yes ]; then

@@ -36,4 +36,30 @@ final class CompanionWatchfireTests: XCTestCase {
             XCTAssertEqual(theirs.marks.first { $0.thing == .watchfire }?.name, "\(state.houses[me].title)'s watchfire, \(GameState.watches(Watchfire.burns)) more")
         }
     }
+
+    /// Where the phone's check on CI lights its watchfire: with the stores a
+    /// keeper comes into the realm with, the chart offers one in the place
+    /// the keeper taps on each tile of open ground of the House's own land
+    /// two or three tiles from its seat, and there are such tiles, in realms
+    /// of every seed tried.
+    func testAKeeperComingInIsOfferedAWatchfireNearTheSeat() throws {
+        for seed in ["watchfire near the seat", "smoke test", "the far shore", "cold water"] {
+            var realm = RealmState(name: "The Nullmere", seed: seed, seats: 6, radius: 18, watchLength: 600, now: 0)
+            _ = try realm.arrive("id-ama", name: "Ama", now: 1)
+            let me = try XCTUnwrap(realm.world.houses.first { $0.isPlayer }).id
+            XCTAssertGreaterThanOrEqual(realm.world.houses[me].stock.timber, Watchfire.cost.timber, seed)
+            let view = realm.world.view(for: me)
+            let chart = CompanionChart(world: view, player: me)
+            let open = chart.cells.filter { cell in
+                let distance = cell.hex.distance(to: chart.center)
+                return cell.explored && cell.land == .own && cell.terrain.isPassable && !cell.terrain.isWater
+                    && distance >= 2 && distance <= 3 && !chart.marks.contains { $0.hex == cell.hex }
+            }
+            XCTAssertFalse(open.isEmpty, seed)
+            for cell in open {
+                let orders = chart.place(at: cell.hex, in: view, player: me).raisings.flatMap(\.orders)
+                XCTAssertTrue(orders.contains { $0.command == .watchfire(cell.hex) }, "\(seed): \(cell.hex) \(orders.map(\.title))")
+            }
+        }
+    }
 }

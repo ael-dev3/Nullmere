@@ -324,7 +324,7 @@ enum CompanionCheck {
         /// written under `what`: never a name the smoke test reads a line by
         /// (Fortified company, Said to the realm, Raised the banner of, Said
         /// to the alliance, Standing orders, Watch, Fire set at, Torches
-        /// doused, At work), or
+        /// doused, Watchfire lit at, At work), or
         /// it reads the realm's word for what was done.
         func give(_ command: Command, told: String, as what: String) async {
             let asked = Date()
@@ -484,6 +484,32 @@ enum CompanionCheck {
             lines.append("Torches doused: \(bearer.id)")
         } else {
             lines.append("No torches doused: no company of the House carries them lit")
+        }
+        // A watchfire lit from the phone's chart, on open ground of the
+        // House's own land as the chart offers it to the keeper, two or three
+        // tiles from the seat; the realm's word on it heard, and where it
+        // burns written for the smoke test to find on the Mac.
+        if let world = session.world, let house = session.keeper?.house {
+            let chart = CompanionChart(world: world, player: house)
+            let open = chart.cells.filter { cell in
+                let distance = cell.hex.distance(to: chart.center)
+                return cell.explored && cell.land == .own && cell.terrain.isPassable && !cell.terrain.isWater
+                    && distance >= 2 && distance <= 3 && !chart.marks.contains { $0.hex == cell.hex }
+            }
+            let lighting = open.lazy.compactMap { cell in
+                chart.place(at: cell.hex, in: world, player: house).raisings.flatMap(\.orders).first { order in
+                    if case .watchfire = order.command { return true }
+                    return false
+                }.map { (at: cell.hex, order: $0) }
+            }.first
+            if let lighting {
+                await give(lighting.order.command, told: lighting.order.title, as: "Lit")
+                lines.append("Watchfire lit at: \(lighting.at.q),\(lighting.at.r)")
+            } else {
+                let why = open.first.flatMap { world.watchfireRefusal(at: $0.hex, as: house)?.description }
+                    ?? "no open ground of the House's own two or three tiles from its seat"
+                lines.append("No watchfire lit: " + why)
+            }
         }
         // The silver key the watch's turn brought, spent at the Lantern Inn
         // from the phone, what the chest held in the realm's word: never the
