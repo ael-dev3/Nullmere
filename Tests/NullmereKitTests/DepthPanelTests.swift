@@ -3087,3 +3087,49 @@ extension DepthPanelTests {
         draw(MonumentSection(session: raised, open: true))
     }
 }
+
+extension DepthPanelTests {
+    /// A company of the keeper's in the blackwood: with its torches lit its
+    /// panel offers no lying in wait; marching dark there, Lie in wait,
+    /// which sends the order; once it waits, Stand down. An ambush sprung
+    /// sounds a horn for the House whose company sprang, dread for the
+    /// House it fell on and nothing for any other, and is placed where the
+    /// company lay.
+    func testThePanelHasACompanyLieInWaitAndTheAmbushIsHeard() throws {
+        var state = world("an ambush from the panel")
+        let me = state.player
+        let unit = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let known = state.view(for: me)
+        let wood = try XCTUnwrap(state.map.hexes.filter { hex in
+            known.isCover(hex) && state.unit(at: hex) == nil && state.hold(at: hex) == nil && state.site(at: hex) == nil
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }, "Blackwood the House knows")
+        state.units[try XCTUnwrap(state.unitIndex(unit.id))].position = wood
+        func panel() throws -> DepthLink {
+            let (shown, link) = self.session(state)
+            draw(UnitPanel(session: shown, unit: try XCTUnwrap(shown.state.unit(unit.id))), width: 330, height: 900)
+            return link
+        }
+        _ = try panel()
+        XCTAssertFalse(shown.contains("Lie in wait"), "Its torches lit: \(shown)")
+        _ = try state.perform(.torches(unit: unit.id, lit: false), as: me)
+        let dark = try panel()
+        XCTAssertTrue(PressableButtons.press("Lie in wait"), "Among \(shown)")
+        XCTAssertEqual(dark.sent.last, .lieInWait(unit: unit.id, waiting: true))
+        _ = try state.perform(.lieInWait(unit: unit.id, waiting: true), as: me)
+        let waiting = try panel()
+        XCTAssertTrue(PressableButtons.press("Stand down"), "Among \(shown)")
+        XCTAssertEqual(waiting.sent.last, .lieInWait(unit: unit.id, waiting: false))
+        XCTAssertTrue(UnitPanel.waitHelp.hasPrefix("Lie in wait in the blackwood"))
+        // The ambush heard, and where.
+        let foe = try XCTUnwrap(state.livingHouses.first { $0.id != me }).id
+        let other = try XCTUnwrap(state.livingHouses.first { $0.id != me && $0.id != foe }).id
+        let sprung = GameEvent.ambushSprung(unit: unit.id, owner: me, at: wood, struck: 9_000, struckOwner: foe)
+        XCTAssertEqual(GameSession.cue(forDepth: sprung, in: state, player: me), .horn)
+        XCTAssertEqual(GameSession.cue(forDepth: sprung, in: state, player: foe), .dread)
+        XCTAssertNil(GameSession.cue(forDepth: sprung, in: state, player: other))
+        XCTAssertEqual(GameSession.place(of: sprung, in: state), wood)
+        XCTAssertNotNil(Narration.line(for: sprung, in: state, viewer: me))
+        XCTAssertNotNil(Narration.line(for: .waitSet(unit: unit.id, waiting: true, owner: me), in: state, viewer: me))
+    }
+}
