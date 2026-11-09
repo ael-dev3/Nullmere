@@ -196,8 +196,9 @@ public struct CommanderCounsel: Sendable {
         return "Within \(within) of your company, \(place), your House sees: " + nearest.map(\.told).joined(separator: "; ") + "."
     }
 
-    /// The House's affairs: its holds and companies, its stores, and how it
-    /// stands with the Houses it is at war with or sworn to.
+    /// The House's affairs: its holds and companies, its stores, how it
+    /// stands with the Houses it is at war with or sworn to, the fire on its
+    /// land, and its watchfires and what they lately made out marching dark.
     public var affairs: String {
         guard state.houses.indices.contains(player) else { return "Your House has fallen." }
         let house = state.houses[player]
@@ -219,10 +220,27 @@ public struct CommanderCounsel: Sendable {
             if burning > 0 { lines.append("Fire burns in the blackwood on \(tiles(burning)) of its land; \(state.windSaid).") }
             if ours.count > burning { lines.append("Ash lies on \(tiles(ours.count - burning)) of its land, yielding nothing.") }
         }
+        // Its watchfires, and the latest their light made out marching dark.
+        let watchfires = state.watchfiresBurning.filter { $0.by == player }
+        if !watchfires.isEmpty {
+            lines.append("Its watchfires burn " + watchfires.map { state.placeName(of: $0.at) }.joined(separator: ", ") + ".")
+            let made = watchfires.flatMap { fire in (fire.seen ?? []).map { (fire: fire.at, sighting: $0) } }
+                .sorted { ($0.sighting.watch, $0.sighting.unit) > ($1.sighting.watch, $1.sighting.unit) }
+            for seen in made.prefix(CommanderCounsel.sightingsTold) where state.houses.indices.contains(seen.sighting.owner) {
+                let sighting = seen.sighting
+                lines.append("In watch \(sighting.watch) its watchfire \(state.placeName(of: seen.fire)) made out "
+                             + "\(state.houses[sighting.owner].title)'s \(state.named(sighting.kind, tier: sighting.tier, of: sighting.owner)), "
+                             + "\(GameState.counted(sighting.troops)), marching dark \(state.placeName(of: sighting.at)).")
+            }
+        }
         return lines.joined(separator: " ")
     }
 
     // MARK: What the commander may put to the keeper
+
+    /// How many of what its House's watchfires made out a commander is told
+    /// of, the latest first.
+    public static let sightingsTold = 3
 
     /// What a commander may propose a company does.
     public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light"]

@@ -394,7 +394,10 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   phone's voice key); the Mac's line, its key and its asking by
   `WatchmanTests`, **Unverified** until a CI run's Mac tests run. The
   model's own words for him are **Unverified** where no eligible Mac or
-  iPhone has run it.
+  iPhone has run it. A commander in counsel, on the Mac or the phone, is
+  briefed with the House's watchfires and the latest three companies they
+  made out marching dark, whose, how many and where, so their counsel
+  can weigh a foe moving by night (`CommanderCounselTests`).
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

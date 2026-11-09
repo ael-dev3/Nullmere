@@ -236,6 +236,41 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertFalse(dark.propose("douse", company: handle, place: "").isGiven, "Dark already")
     }
 
+    /// A commander is told of the House's watchfires and of what their light
+    /// lately made out marching dark, the latest first, so their counsel
+    /// can weigh a foe moving by night.
+    func testACommanderIsToldWhatTheHousesWatchfiresMadeOut() throws {
+        var (counsel, world) = try counsel()
+        let me = counsel.player
+        XCTAssertFalse(counsel.affairs.contains("watchfire"), counsel.affairs)
+        world.houses[me].stock.timber = 100
+        let owners = world.territory()
+        let at = try XCTUnwrap(world.map.hexes.first { hex in
+            world.territoryOwner(of: hex, in: owners) == me && world.watchfireRefusal(at: hex, as: me) == nil
+        })
+        _ = try world.perform(.watchfire(at), as: me)
+        let lit = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        XCTAssertTrue(lit.affairs.contains("Its watchfires burn \(world.placeName(of: at))."), lit.affairs)
+        XCTAssertFalse(lit.affairs.contains("made out"), lit.affairs)
+        // A foe's company comes marching dark into its light.
+        let foe = try XCTUnwrap(world.livingHouses.first { $0.id != me && !world.watchers(for: me).contains($0.id) }).id
+        let spot = try XCTUnwrap(at.spiral(Watchfire.reach).first { hex in
+            guard hex != at, let terrain = world.map[hex]?.terrain else { return false }
+            return terrain.isPassable && !terrain.isWater && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+        })
+        let company = try XCTUnwrap(world.placeUnit(.spear, tier: 1, for: foe, near: spot))
+        world.units[try XCTUnwrap(world.unitIndex(company.id))].position = spot
+        _ = try world.perform(.torches(unit: company.id, lit: false), as: foe)
+        XCTAssertEqual(world.keepWatchByFire().count, 1)
+        let told = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        let sighting = try XCTUnwrap(world.watchfire(at: at)?.seen?.last)
+        XCTAssertTrue(told.affairs.contains("In watch \(sighting.watch) its watchfire \(world.placeName(of: at)) made out "
+                                            + "\(world.houses[foe].title)'s \(world.named(.spear, tier: 1, of: foe)), "
+                                            + "\(GameState.counted(sighting.troops)), marching dark \(world.placeName(of: spot))."), told.affairs)
+        XCTAssertTrue(told.briefing.contains("made out"), "Briefed with it")
+        XCTAssertEqual(CommanderCounsel.sightingsTold, 3)
+    }
+
     /// The commander remembers the last few exchanges, the oldest let go,
     /// and recalls the latest within a budget.
     func testTheCommanderRemembersTheLatestWithinABudget() throws {
