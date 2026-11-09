@@ -194,4 +194,57 @@ final class FindsTests: XCTestCase {
         XCTAssertEqual(read.findsInLand, state.findsInLand)
         XCTAssertTrue(read.hasSought(hamlet.id, by: me))
     }
+
+    /// What came of a seeking is kept in the chronicle as the realm wrote
+    /// it, and a hamlet's folk or a barrow's stones are given to the
+    /// device's model from it: the gift or the goods, where it lies, and for
+    /// a hamlet the holds within the reach of what its folk told. Nothing
+    /// for a find the House hasn't sought, nor for another House.
+    func testWhatASeekingBroughtIsVoicedFromTheChronicle() throws {
+        var state = world()
+        let me = state.player
+        let other = try XCTUnwrap(state.livingHouses.first { $0.id != me }).id
+        let (lantern, hamlet) = try lanternBeside(.hamlet, in: &state, for: me)
+        XCTAssertNil(state.discovery(of: hamlet, by: me), "Not sought yet")
+        XCTAssertNil(state.voiced(hamlet, by: me))
+        let gift = state.gift(of: hamlet, to: me)
+        _ = try state.perform(.seek(unit: lantern.id, find: hamlet.id), as: me)
+        let entry = try XCTUnwrap(state.discovery(of: hamlet, by: me))
+        XCTAssertEqual(entry.text, "\(state.houses[me].title)'s Lanterns come to \(hamlet.named), whose folk give them \(gift).")
+        XCTAssertEqual(entry.watch, state.watch)
+        XCTAssertNil(state.discovery(of: hamlet, by: other), "Another House never sought it")
+        XCTAssertNil(state.voiced(hamlet, by: other))
+        let folk = try XCTUnwrap(state.voiced(hamlet, by: me))
+        XCTAssertEqual(folk.task, Voicing.hamletTask)
+        XCTAssertEqual(folk.facts.count, 3, "\(folk.facts)")
+        XCTAssertEqual(folk.facts[0], entry.text)
+        XCTAssertEqual(folk.facts[1], "The hamlet of \(hamlet.name) lies \(state.placeName(of: hamlet.position)).")
+        let near = state.holds.filter { $0.position.distance(to: hamlet.position) <= GameState.hamletTells }
+        if let nearest = near.min(by: { ($0.position.distance(to: hamlet.position), $0.id) < ($1.position.distance(to: hamlet.position), $1.id) }) {
+            XCTAssertTrue(folk.facts[2].hasPrefix("Within 3 tiles of it stand"), folk.facts[2])
+            XCTAssertTrue(folk.facts[2].contains("\(nearest.name), a hold of \(state.houses[nearest.owner].title)"), folk.facts[2])
+        } else {
+            XCTAssertEqual(folk.facts[2], "No hold stands within 3 tiles of it.")
+        }
+        // Asked as every voice is asked: the task, then each fact.
+        let asked = Voicing.asking(folk.task, facts: folk.facts)
+        XCTAssertTrue(folk.facts.allSatisfy { asked.contains("- \($0)") })
+        // Among the moments a keeper's device gives words to, by the find's
+        // key: the latest three the House sought, never another House's.
+        XCTAssertEqual(state.voicedMoments(for: me).filter { $0.key.hasPrefix("find-") }.map(\.key), ["find-\(hamlet.id)"])
+        XCTAssertTrue(state.voicedMoments(for: other).allSatisfy { !$0.key.hasPrefix("find-") })
+
+        // A barrow: what it gave up, and where it lies.
+        var graves = world("the old graves")
+        let keeper = graves.player
+        let (digger, barrow) = try lanternBeside(.barrow, in: &graves, for: keeper)
+        let goods = try XCTUnwrap(graves.graveGoods(of: barrow, for: keeper))
+        _ = try graves.perform(.seek(unit: digger.id, find: barrow.id), as: keeper)
+        let stones = try XCTUnwrap(graves.voiced(barrow, by: keeper))
+        XCTAssertEqual(stones.task, Voicing.barrowTask)
+        XCTAssertEqual(stones.facts, [
+            "\(graves.houses[keeper].title)'s Lanterns go down into \(barrow.named) and bring up \(goods.counted(1)).",
+            "\(barrow.named.lineBegun) lies \(graves.placeName(of: barrow.position)).",
+        ])
+    }
 }

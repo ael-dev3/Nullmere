@@ -113,6 +113,10 @@ public struct CompanionChart: Equatable, Sendable {
         /// What the House's watchfire there last made out marching dark, as
         /// the Mac's panel says it, and its watchman's word on the phone.
         public var watchman: Watchman? = nil
+        /// What came of the House's Lanterns seeking the hamlet or barrow
+        /// there, as the realm's chronicle keeps it, and the folk's or the
+        /// stones' words on the phone.
+        public var found: Found? = nil
 
         /// Every order the rules would take there, each as offered.
         public var orders: [CompanionLedger.Order] {
@@ -131,6 +135,15 @@ public struct CompanionChart: Equatable, Sendable {
     public struct Watchman: Equatable, Sendable {
         public let said: String
         public let voice: String
+    }
+
+    /// What came of the House's Lanterns seeking a hamlet or barrow, as the
+    /// realm's chronicle keeps it, the key its folk's or its stones' words
+    /// are kept by among the phone's voices, and whose words they are.
+    public struct Found: Equatable, Sendable {
+        public let said: String
+        public let voice: String
+        public let who: String
     }
 
     /// Something the House may raise at a hex: what raising it does, as the
@@ -359,7 +372,16 @@ public struct CompanionChart: Equatable, Sendable {
                      scouts: scouts, gathers: gathers, marches: Array(marches),
                      raisings: CompanionChart.raisings(at: hex, in: world, player: player),
                      marking: CompanionChart.marking(at: hex, in: world, player: player),
-                     watchman: CompanionChart.watchman(at: hex, in: world, player: player))
+                     watchman: CompanionChart.watchman(at: hex, in: world, player: player),
+                     found: CompanionChart.found(at: hex, in: world, player: player))
+    }
+
+    /// What came of the House's Lanterns seeking the hamlet or barrow at
+    /// `hex`, and the key of its folk's or its stones' words; nil where
+    /// none lies there or the House hasn't sought it.
+    static func found(at hex: Hex, in world: GameState, player: Int) -> Found? {
+        guard let find = world.find(at: hex), let entry = world.discovery(of: find, by: player) else { return nil }
+        return Found(said: entry.text, voice: "find-\(find.id)", who: find.kind == .hamlet ? "the hamlet's eldest" : "the barrow's stones")
     }
 
     /// What the House's watchfire at `hex` last made out marching dark, and

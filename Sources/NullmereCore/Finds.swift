@@ -245,3 +245,51 @@ extension GameState {
         return events
     }
 }
+
+extension Voicing {
+    /// The eldest of a hamlet's folk, speaking to the keeper's Lanterns who
+    /// sought them out.
+    public static let hamletTask = "Speak as the eldest of the hamlet's folk, to the keeper's Lanterns who have come to them: a plain welcome, "
+        + "naming what the folk gave them and what stands about their land, keeping every name and number as given. "
+        + "One or two sentences, at most 40 words."
+
+    /// The words cut at a barrow's mouth, as the keeper's Lanterns read them
+    /// going down among its dead.
+    public static let barrowTask = "Give the words cut on the stones at the mouth of this barrow, as the keeper's Lanterns read them going down "
+        + "among its dead: old and plain, naming what was laid with them, keeping every name as given. One or two lines, at most 30 words."
+}
+
+extension GameState {
+    /// What the chronicle keeps of a House's Lanterns seeking a hamlet or a
+    /// barrow: the entry the realm wrote as they sought it, with what the
+    /// folk gave them or what the barrow gave up. Nil while that House
+    /// hasn't sought it, or where nothing came of it to be written.
+    public func discovery(of find: Find, by house: Int) -> ChronicleEntry? {
+        guard houses.indices.contains(house), hasSought(find.id, by: house) else { return nil }
+        let opening = find.kind == .hamlet ? "\(houses[house].title)'s Lanterns come to \(find.named),"
+            : "\(houses[house].title)'s Lanterns go down into \(find.named) and"
+        return chronicle.last { $0.kind == .discovery && $0.houses == [house] && $0.text.hasPrefix(opening) }
+    }
+
+    /// A hamlet's folk, or a barrow's stones, for the device's model to give
+    /// words to once the House's Lanterns have sought it: what the realm's
+    /// chronicle says came of it, where it lies, and for a hamlet the holds
+    /// that stand within the reach of what its folk told them.
+    public func voiced(_ find: Find, by house: Int) -> Voicing.Moment? {
+        guard let entry = discovery(of: find, by: house) else { return nil }
+        var facts = [entry.text, "\(find.named.lineBegun) lies \(placeName(of: find.position))."]
+        if find.kind == .hamlet {
+            let near = holds.filter { $0.position.distance(to: find.position) <= GameState.hamletTells }
+                .sorted { ($0.position.distance(to: find.position), $0.id) < ($1.position.distance(to: find.position), $1.id) }
+            if near.isEmpty {
+                facts.append("No hold stands within \(GameState.hamletTells) tiles of it.")
+            } else {
+                let named = near.prefix(3).map { hold in
+                    houses.indices.contains(hold.owner) ? "\(hold.name), a hold of \(houses[hold.owner].title)" : hold.name
+                }
+                facts.append("Within \(GameState.hamletTells) tiles of it stand\(near.count == 1 ? "s" : "") \(listed(named)).")
+            }
+        }
+        return Voicing.Moment(task: find.kind == .hamlet ? Voicing.hamletTask : Voicing.barrowTask, facts: facts)
+    }
+}

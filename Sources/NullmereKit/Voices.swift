@@ -87,6 +87,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// The watchman at the House's watchfire, telling what its light
         /// made out marching dark.
         case watchman
+        /// A hamlet's eldest welcoming the House's Lanterns, or the words
+        /// cut at a barrow's mouth, once the Lanterns have sought it.
+        case find(Find.Kind)
     }
 
     public let kind: Kind
@@ -120,6 +123,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = Voicing.petitionTask
         case .watchman:
             task = Voicing.watchmanTask
+        case .find(let kind):
+            task = kind == .hamlet ? Voicing.hamletTask : Voicing.barrowTask
         }
         return Voicing.asking(task, facts: facts)
     }
@@ -289,6 +294,13 @@ enum VoiceFacts {
     /// where, and how its House stands with the keeper's.
     static func watchman(_ sighting: Watchfire.Sighting, fire: Hex, for house: Int, in state: GameState) -> VoiceMoment {
         VoiceMoment(kind: .watchman, facts: state.voiced(sighting, fire: fire, for: house).facts)
+    }
+
+    /// A hamlet's folk or a barrow's stones, once the House's Lanterns have
+    /// sought it, from what the realm's chronicle says came of it; nothing
+    /// before.
+    static func find(_ find: Find, by house: Int, in state: GameState) -> VoiceMoment? {
+        state.voiced(find, by: house).map { VoiceMoment(kind: .find(find.kind), facts: $0.facts) }
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {

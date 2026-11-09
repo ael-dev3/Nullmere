@@ -1174,6 +1174,49 @@ struct WatchmanLine: View {
     }
 }
 
+/// A hamlet or barrow the keeper's House knows of, on its ground's panel:
+/// what it is, and what seeking it brings until the House's Lanterns have
+/// sought it; then what came of it as the realm's chronicle keeps it, and
+/// the folk's own words, or the words cut at the barrow's mouth, as this
+/// Mac's model gives them (or why it gave none).
+struct FindRow: View {
+    let session: GameSession
+    let find: Find
+
+    /// Who the model gives words to, as its line at work says it.
+    static func who(_ find: Find) -> String { find.kind == .hamlet ? "the hamlet's eldest" : "the barrow's stones" }
+
+    /// What the row says of it: what came of the House's seeking, or what
+    /// seeking it would bring.
+    static func said(_ find: Find, in state: GameState, player: Int) -> String {
+        state.discovery(of: find, by: player)?.text ?? UnitPanel.seekHelp(find)
+    }
+
+    var body: some View {
+        let state = session.state
+        let key = GameSession.Spoken.find(find.id)
+        VStack(alignment: .leading, spacing: 4) {
+            Caps(find.named.lineBegun, size: 9.5, weight: .medium)
+                .foregroundStyle(Palette.glowWords)
+            Text(verbatim: Self.said(find, in: state, player: session.player))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            if state.hasSought(find.id, by: session.player) {
+                VoicingLine(session: session, key: key, who: Self.who(find))
+                if let spoken = session.spoken[key] {
+                    Text(verbatim: "\"\(spoken)\"")
+                        .font(.nm(11.5, weight: .light).italic())
+                        .foregroundStyle(Palette.text(0.88))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Lending a hand to the keeper's alliance's rising standard: a watch
 /// sooner, for timber and stone, once each House; or why it can't.
 struct StandardHelpRow: View {
@@ -1468,6 +1511,12 @@ struct TilePanel: View {
                 } else if WatchfireRow.offered(at: hex, to: session.player, in: state) {
                     Rule(opacity: 0.18)
                     WatchfireRow(session: session, hex: hex)
+                }
+                // A hamlet or barrow the House knows of here, and once its
+                // Lanterns have sought it, its folk's or its stones' words.
+                if let find = state.find(at: hex) {
+                    Rule(opacity: 0.18)
+                    FindRow(session: session, find: find)
                 }
                 // The House's own land: its seat may be raised anew here.
                 if SeatMoveRow.offered(at: hex, in: state, player: session.player) {

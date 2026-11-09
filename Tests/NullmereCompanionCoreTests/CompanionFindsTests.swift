@@ -38,6 +38,16 @@ final class CompanionFindsTests: XCTestCase {
         let sought = try mark()
         XCTAssertEqual(sought.name, "The hamlet of \(hamlet.name), sought")
         XCTAssertTrue(sought.dark, "drawn dim once sought")
+        // Its place on the chart: what came of it as the chronicle keeps it,
+        // and the key of its folk's words among the phone's voices, which
+        // the phone's model is asked for as the Mac's is.
+        let view = state.view(for: me)
+        let place = CompanionChart(world: view, player: me).place(at: hamlet.position, in: view, player: me)
+        let entry = try XCTUnwrap(view.discovery(of: hamlet, by: me))
+        XCTAssertEqual(place.found, CompanionChart.Found(said: entry.text, voice: "find-\(hamlet.id)", who: "the hamlet's eldest"))
+        let keyed = try XCTUnwrap(view.voicedMoments(for: me).first { $0.key == "find-\(hamlet.id)" })
+        XCTAssertEqual(keyed.moment, view.voiced(hamlet, by: me))
+        XCTAssertNil(CompanionChart(world: view, player: me).place(at: beside, in: view, player: me).found, "Nothing found beside it")
         // Another House's chart marks it only once it has seen its ground, never as sought by this one.
         let other = try XCTUnwrap(state.livingHouses.first { $0.id != me }).id
         let theirs = CompanionChart(world: state.view(for: other), player: other).marks.first { $0.id == "find \(hamlet.id)" }

@@ -92,6 +92,17 @@ struct PlaceSections: View {
                     VoicedWords(key: watchman.voice, who: "the watchman")
                 }
             }
+            // What came of the House's Lanterns seeking the hamlet or barrow
+            // here, and its folk's or its stones' words, in this phone's
+            // model's words.
+            if let found = place.found {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: found.said)
+                        .font(Night.small)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VoicedWords(key: found.voice, who: found.who)
+                }
+            }
             ForEach(Array((place.strikes + place.calls).enumerated()), id: \.offset) { order in
                 Button(order.element.title) {
                     session.give(order.element.command, told: order.element.title)

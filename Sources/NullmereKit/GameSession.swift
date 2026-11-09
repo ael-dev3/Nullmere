@@ -181,6 +181,9 @@ public final class GameSession {
         /// What the House's watchfires made out marching dark, by its
         /// sighting's key (`Watchfire.Sighting.key`).
         case watchman(Int)
+        /// A hamlet's folk or a barrow's stones once the House's Lanterns
+        /// sought it, by the find's id.
+        case find(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -196,6 +199,7 @@ public final class GameSession {
             case .prisoner(let told): return "prisoner-\(told)"
             case .petition(let id): return "petition-\(id)"
             case .watchman(let key): return "watchman-\(key)"
+            case .find(let id): return "find-\(id)"
             }
         }
 
@@ -210,6 +214,7 @@ public final class GameSession {
             case "prisoner": self = .prisoner(number)
             case "petition": self = .petition(number)
             case "watchman": self = .watchman(number)
+            case "find": self = .find(number)
             default: return nil
             }
         }
@@ -583,6 +588,9 @@ public final class GameSession {
         // A game picked up again keeps what was said, and doesn't retell
         // the rest of its history.
         asked = Set(state.chronicle.indices.map { Spoken.chronicle($0) })
+        // Hamlets and barrows sought before the keeper came back count as
+        // told too: only those sought from here on are voiced.
+        asked.formUnion(state.findsInLand.filter { state.hasSought($0.id, by: house) }.map { Spoken.find($0.id) })
         for (key, words) in store.loadVoices() {
             if let spoken = Spoken(key: key) {
                 self.spoken[spoken] = words
@@ -2707,6 +2715,14 @@ public final class GameSession {
             asked.insert(.watchman(latest.sighting.key))
             voiceQueue.append((.watchman(latest.sighting.key),
                                VoiceFacts.watchman(latest.sighting, fire: latest.fire.at, for: player, in: state)))
+        }
+        // A hamlet's folk, or the words cut at a barrow's mouth, once the
+        // House's Lanterns have sought it.
+        for find in state.findsInLand where !asked.contains(.find(find.id)) && state.hasSought(find.id, by: player) {
+            asked.insert(.find(find.id))
+            if let moment = VoiceFacts.find(find, by: player, in: state) {
+                voiceQueue.append((.find(find.id), moment))
+            }
         }
         // The lake's riddle, set in the Still's voice.
         if let riddle = state.riddle(of: player), riddle.answered == nil, !asked.contains(.riddle(riddle.set)) {

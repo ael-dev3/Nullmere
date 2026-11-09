@@ -189,8 +189,9 @@ extension GameState {
     /// them, in their view of the world: envoys of stewards' Houses waiting
     /// on them (a keeper's envoy carries their own words), what the Still
     /// showed the House, its riddle while unanswered, what each prisoner
-    /// it holds last told, the plea its folk bring it, and what its
-    /// watchfires last made out marching dark.
+    /// it holds last told, the plea its folk bring it, what its
+    /// watchfires last made out marching dark, and the hamlets and barrows
+    /// its Lanterns sought last (the latest three).
     public func voicedMoments(for house: Int) -> [Voicing.Keyed] {
         var moments: [Voicing.Keyed] = []
         for envoy in envoys where envoy.to == house && houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer {
@@ -212,6 +213,14 @@ extension GameState {
         if let latest = latestSighting(by: house) {
             moments.append(Voicing.Keyed(key: "watchman-\(latest.sighting.key)",
                                          moment: voiced(latest.sighting, fire: latest.fire.at, for: house)))
+        }
+        let found = findsInLand.filter { hasSought($0.id, by: house) }
+            .compactMap { find in discovery(of: find, by: house).map { (find: find, watch: $0.watch) } }
+            .sorted { ($0.watch, $0.find.id) > ($1.watch, $1.find.id) }
+        for latest in found.prefix(3) {
+            if let moment = voiced(latest.find, by: house) {
+                moments.append(Voicing.Keyed(key: "find-\(latest.find.id)", moment: moment))
+            }
         }
         return moments
     }

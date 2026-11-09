@@ -903,9 +903,14 @@ a vote on the realm's law to cast.
   the further they live from every seat, and tell your Lanterns of the
   land within 3 tiles about it; a barrow gives up one of the things laid
   with its dead, an hourglass, a ward stone, a mending draught or a cache.
-  Only your House is told, and a hold raised over one takes it. The order
-  book reads SEEK <company>. Stewards seek none. Rise of Kingdoms' scouts
-  find its tribal villages and mysterious caves so.
+  Only your House is told as it happens (the chronicle keeps the deed, as
+  it keeps every discovery, but not where the find lies), and a hold
+  raised over one takes it. Once sought, its ground's panel tells what
+  came of it, and your Mac's own model gives the hamlet's eldest a
+  welcome, or the words cut at the barrow's mouth, from what the realm
+  says came of it; on the phone, its place on the chart. The order book
+  reads SEEK <company>. Stewards seek none. Rise of Kingdoms' scouts find
+  its tribal villages and mysterious caves so.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own
