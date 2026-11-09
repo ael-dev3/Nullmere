@@ -189,15 +189,19 @@ public struct HoldSight: Equatable, Sendable {
     /// Which of the townsfolk stands at its gate with a plea for its keeper
     /// (`Folk`'s variants), while one waits on the answer; nil for none.
     public var petitioner: Int?
+    /// The envoys waiting at its gate on its keeper's answer, each in the
+    /// colour of the House that sent it: a keeper's seat, where envoys come.
+    public var envoys: [Vec4]
 
     public init(hold: Hold, colour: Vec4, progress: Float? = nil, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil,
-                petitioner: Int? = nil) {
+                petitioner: Int? = nil, envoys: [Vec4] = []) {
         self.hold = hold
         self.colour = colour
         self.progress = progress
         self.finishing = finishing
         self.heritage = heritage
         self.petitioner = petitioner
+        self.envoys = envoys
     }
 }
 
@@ -905,11 +909,48 @@ public final class WorldStage: @unchecked Sendable {
                 frame.motes.append(lantern.glow)
             }
         }
+        // The envoys waiting on the keeper's answer, mounted at the seat's
+        // gate in their own Houses' colours, facing in: a few at most.
+        for sight in sights where !sight.envoys.isEmpty {
+            for (index, colour) in sight.envoys.prefix(WorldStage.envoysAtGate).enumerated() {
+                let (foot, heading) = envoyStand(at: sight.hold.position, index: index)
+                let salt = sight.hold.id &* 97 &+ index &* 13
+                let start = WorldStage.pose(WorldStage.envoyMount, .idle, at: time + Float(salt % 11) * 0.29, shared: &shared, into: &frame)
+                placed.append((WorldStage.envoyMount, ModelInstance(model: .translation(foot) * .rotationY(heading), colour: colour,
+                                                                    phase: Float(salt % 17) * 0.31,
+                                                                    hex: SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r)),
+                                                                    palette: start)))
+            }
+        }
         return WorldStage.batches(placed)
     }
 
     /// How far beyond a hold's gate its petitioner stands.
     static let petitionerOut: Float = 0.1
+    /// Envoys drawn waiting at a seat's gate, however many wait.
+    public static let envoysAtGate = 4
+    /// What an envoy rides up on: a rider of the second tier, in its
+    /// House's coat.
+    public static let envoyMount = ModelKey.figure(.rider, tier: 2)
+    /// How far beyond the gate the envoys wait, either side of its way,
+    /// and how far apart their rows stand.
+    static let envoyOut: Float = 0.12, envoyAside: Float = 0.1, envoyRow: Float = 0.11
+
+    /// Where the `index`th envoy waiting at a hold's gate stands, as the
+    /// hold is drawn (`grand`): the first either side of the gate's way just
+    /// beyond it, the next a row further out, and the way it faces: in,
+    /// toward the keep, clear of the petitioner on the way itself.
+    func envoyStand(at hex: Hex, index: Int) -> (foot: Vec3, heading: Float) {
+        let centre = Relief.centre(of: hex), gate = HoldLayout.gate(of: hex)
+        let dx = gate.x - centre.x, dz = gate.z - centre.z
+        let length = max((dx * dx + dz * dz).squareRoot(), 1e-4)
+        let out = (x: dx / length, z: dz / length)
+        let along = WorldStage.envoyOut + Float(index / 2) * WorldStage.envoyRow
+        let across = (index % 2 == 0 ? 1 : -1) * WorldStage.envoyAside
+        let spot = Vec3(gate.x + out.x * along - out.z * across, 0, gate.z + out.z * along + out.x * across)
+        let at = WorldStage.grand(spot, about: centre)
+        return (Vec3(at.x, ground(atX: at.x, z: at.z), at.z), Float(atan2(Double(-dx), Double(-dz))))
+    }
 
     /// Where a hold's petitioner stands, on the ground just beyond its gate
     /// as the hold is drawn (`grand`), and the way they face: in, toward the

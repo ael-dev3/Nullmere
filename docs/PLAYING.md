@@ -1018,7 +1018,9 @@ a vote on the realm's law to cast.
 
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
-  peace or a pact, and answer envoys. Pacts share sight; breaking one is
+  peace or a pact, and answer envoys; while an envoy waits on your answer
+  it stands mounted at your seat's gate in its own House's colours, a few
+  of them at most. Pacts share sight; breaking one is
   remembered. A steward makes no peace before its war has run three
   watches, fewer if your gifts have softened it but never less than one,
   and one far the stronger none until the war has run past thirty

@@ -96,15 +96,19 @@ extension GameSession {
         let view = size.map { ViewFrustum(viewProjection: camera.viewProjection(in: $0)) }
         func inView(_ hex: Hex, within reach: Float) -> Bool { view?.sees(hex, within: reach) ?? true }
 
-        // The holds the keeper knows of, each with its works, and the one
-        // whose folk wait at its gate with a plea for the keeper.
+        // The holds the keeper knows of, each with its works, the one whose
+        // folk wait at its gate with a plea for the keeper, and the seat
+        // where the envoys waiting on the keeper's answer stand.
         var sights: [HoldSight] = []
         let pleading = state.petition(of: player)
+        let envoys = state.envoys.filter { $0.to == player && state.houses.indices.contains($0.from) }
+            .map { WorldStage.colour(houses, sigil: state.houses[$0.from].sigil) }
         for hold in state.holds where isExplored(hold.position) {
             let colour = WorldStage.colour(houses, sigil: state.houses[hold.owner].sigil)
             let (progress, finishing) = rising(of: hold, at: now, animated: full)
             sights.append(HoldSight(hold: hold, colour: colour, progress: progress, finishing: finishing,
-                                    heritage: state.heritage(of: hold.owner), petitioner: pleading.flatMap { $0.hold == hold.id ? $0.plea.folk : nil }))
+                                    heritage: state.heritage(of: hold.owner), petitioner: pleading.flatMap { $0.hold == hold.id ? $0.plea.folk : nil },
+                                    envoys: hold.isSeat && hold.owner == player ? envoys : []))
         }
         let shown = sights.filter { inView($0.hold.position, within: GameSession.holdReach) }
         let (holds, hearths) = stage.holds(shown, time: t, into: &frame)

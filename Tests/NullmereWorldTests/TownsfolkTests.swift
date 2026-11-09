@@ -528,4 +528,41 @@ extension TownsfolkTests {
         XCTAssertEqual(stage.townsfolk([pleading], time: 3, into: &frame).flatMap(\.instances).count, 1)
         XCTAssertEqual(Petition.Plea.allCases.map(\.folk), [Folk.porter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
     }
+
+    /// The envoys waiting on a keeper's answer stand mounted at the seat's
+    /// gate, each in the colour of the House that sent it, facing in, either
+    /// side of the gate's way and clear of the petitioner on it; a few at
+    /// most, and none where none waits.
+    func testEnvoysWaitMountedAtTheSeatsGate() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let hold = try seat([.granary: 1])
+        var frame = SceneFrame()
+        let plain = HoldSight(hold: hold, colour: Vec4(0.8, 0.2, 0.2, 1))
+        func riders(_ batches: [ModelBatch]) -> [ModelInstance] { batches.filter { $0.key == WorldStage.envoyMount }.flatMap(\.instances) }
+        XCTAssertTrue(riders(stage.townsfolk([plain], time: 3, into: &frame)).isEmpty, "None where none waits")
+        let colours = (0..<6).map { Vec4(Float($0) / 6, 0.5, 0.3, 1) }
+        var waiting = plain
+        waiting.envoys = colours
+        waiting.petitioner = Petition.Plea.mend.folk
+        let mounted = riders(stage.townsfolk([waiting], time: 3, into: &frame))
+        XCTAssertEqual(mounted.count, WorldStage.envoysAtGate, "A few at most")
+        XCTAssertEqual(mounted.map(\.colour), Array(colours.prefix(WorldStage.envoysAtGate)), "Each in the colour of the House that sent it")
+        let centre = Relief.centre(of: hold.position)
+        let middle = Vec3(centre.x, 0, centre.z)
+        let gate = WorldStage.grand(HoldLayout.gate(of: hold.position), about: centre)
+        let (petitioner, _) = stage.petitionerStand(at: hold.position)
+        var feet: [Vec3] = []
+        for (index, rider) in mounted.enumerated() {
+            let (foot, heading) = stage.envoyStand(at: hold.position, index: index)
+            XCTAssertEqual(rider.model.c3.x, foot.x, accuracy: 1e-4)
+            XCTAssertEqual(rider.model.c3.z, foot.z, accuracy: 1e-4)
+            XCTAssertEqual(rider.model.c3.y, stage.ground(atX: foot.x, z: foot.z), accuracy: 1e-4, "On the ground")
+            XCTAssertGreaterThan(flat(foot, middle), flat(gate, middle), "Beyond the gate as the hold is drawn")
+            XCTAssertGreaterThan(flat(foot, petitioner), 0.1, "Clear of the petitioner")
+            let facing = Vec3(Float(sin(Double(heading))), 0, Float(cos(Double(heading))))
+            XCTAssertGreaterThan(facing.x * (middle.x - foot.x) + facing.z * (middle.z - foot.z), 0, "Facing the keep")
+            XCTAssertTrue(feet.allSatisfy { flat($0, foot) > 0.1 }, "Each apart from the rest")
+            feet.append(foot)
+        }
+    }
 }

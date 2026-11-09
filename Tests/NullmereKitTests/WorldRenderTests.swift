@@ -650,6 +650,53 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(warm, 8, "a lantern lit in their hand")
     }
 
+    /// The envoys waiting on the keeper's answer stand in the world: two
+    /// Houses' envoys mounted at the keeper's seat's gate, each in its own
+    /// House's colours. Drawn with them waiting and without, they change
+    /// the ground at the gate and nothing else.
+    @MainActor
+    func testEnvoysWaitMountedAtTheSeatsGate() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let senders = state.houses.indices.filter { $0 != me }.prefix(2)
+        for (index, from) in senders.enumerated() {
+            state.envoys.append(Envoy(id: state.takeID(), from: from, to: me, proposal: index == 0 ? .pact : .peace, arrived: state.watch))
+        }
+        var answered = state
+        answered.envoys.removeAll { $0.to == me }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let waiting = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("envoys")))
+        let quiet = GameSession(state: answered, store: LocalStore(directory: directory.appendingPathComponent("none")))
+        let scene = waiting.sceneFrame(at: 20), still = quiet.sceneFrame(at: 20)
+        let riders = scene.batches.first { $0.key == WorldStage.envoyMount }?.instances ?? []
+        let none = still.batches.first { $0.key == WorldStage.envoyMount }?.instances ?? []
+        let mounted = riders.filter { one in !none.contains { $0.model == one.model } }
+        XCTAssertEqual(mounted.count, senders.count, "Each envoy waits at the seat's gate")
+        XCTAssertEqual(mounted.map(\.colour), senders.map { WorldStage.colour(WorldView.houseColours, sigil: state.houses[$0].sigil) },
+                       "Each in the colours of the House that sent it")
+        let first = try XCTUnwrap(mounted.first).model.c3
+        let centre = Relief.centre(of: seat.position)
+        let outward = atan2(Double(first.x - centre.x), Double(first.z - centre.z))
+        let camera = Camera(centerX: Double(first.x), centerY: Double(first.z), scale: 220, tilt: 0.8, heading: outward + 0.7)
+        let drawn = try draw(renderer, "envoys", camera: camera, tiles: waiting.tileBytes, scene: scene)
+        let bare = try draw(renderer, "no envoys", camera: camera, tiles: quiet.tileBytes, scene: still)
+        try keep([drawn], as: "world-envoys")
+        let at = camera.viewPoint(worldX: Double(first.x), worldY: Double(first.z), height: Double(first.y), in: WorldRenderTests.size)
+        var near = 0, far = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) where abs(drawn.luminance(x, y) - bare.luminance(x, y)) > 4 {
+                if hypot(Double(x) - Double(at.x), Double(y) - Double(at.y)) < 160 { near += 1 } else { far += 1 }
+            }
+        }
+        print("RENDER envoys: \(mounted.count) mounted at the gate, \(near) points changed by them, \(far) beyond")
+        XCTAssertGreaterThan(near, 30, "The envoys stand at the gate")
+        XCTAssertLessThan(far, near / 4 + 10, "and nothing else in the view changes for them")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
