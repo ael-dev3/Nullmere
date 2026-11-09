@@ -49,6 +49,12 @@ final class VoiceCheckTests: XCTestCase {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }
         XCTAssertEqual(told.filter { $0.hasPrefix("words for the fallen (") }.count, 1, "Words asked for the House's dead")
+        // The watchman at a watchfire by the seat, asked of a foe's company
+        // made out marching dark, as the session asks him.
+        XCTAssertEqual(told.filter { $0.hasPrefix("watchman's word (") }.count, 1, "The watchman's word asked")
+        let watchman = try XCTUnwrap(moments.first { $0.moment.kind == .watchman }).moment
+        XCTAssertTrue(watchman.prompt.hasPrefix(Voicing.watchmanTask), watchman.prompt)
+        XCTAssertTrue(watchman.facts.contains { $0.hasSuffix("marching dark, its torches doused.") }, "\(watchman.facts)")
         // A plea of each kind at the seat's gate, its petitioner heard as the
         // card asks for their words.
         for plea in Petition.Plea.allCases {

@@ -69,6 +69,18 @@ public enum VoiceCheck {
         }
         // Words for the keeper's House's dead, for a vigil on the water.
         moments.append(("words for the fallen", VoiceFacts.vigil(of: state.player, in: state, reports: [])))
+        // The watchman at a watchfire beside the keeper's seat, telling of
+        // another House's company it made out marching dark past it.
+        let foes = state.livingHouses.filter { $0.id != state.player }.flatMap { state.units(of: $0.id) }
+        if let seat = state.seat(of: state.player), let foe = foes.first(where: { $0.kind.isMilitary }) ?? foes.first {
+            let open = seat.position.neighbors.filter { hex in state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true }
+            if let fire = open.first {
+                let passed = open.dropFirst().first ?? seat.position
+                let sighting = Watchfire.Sighting(unit: foe.id, owner: foe.owner, kind: foe.kind, tier: foe.tier,
+                                                  troops: state.troops(of: foe), at: passed, watch: state.watch)
+                moments.append(("watchman's word", VoiceFacts.watchman(sighting, fire: fire, for: state.player, in: state)))
+            }
+        }
         // A plea of each kind brought to the keeper's seat by its folk, as
         // the realm brings one: a mason's, a woodward's, a healer's for the
         // House's first company of war, the reeve's and a brewer's.
