@@ -247,7 +247,7 @@ struct PlayView: View {
                         case .houses?:
                             opened(HousesPanel(session: session), named: "Houses")
                         case .chronicle?:
-                            opened(ChroniclePanel(session: session), named: "Chronicle")
+                            opened(ChroniclePanel(session: session, shown: session.chronicleOpensOn), named: "Chronicle")
                         case .guide?:
                             opened(GuidePanel(session: session), named: "Guide")
                         case .archive?:

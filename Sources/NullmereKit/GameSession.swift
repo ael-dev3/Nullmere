@@ -96,6 +96,9 @@ public final class GameSession {
             emit(panel == nil ? .fold : .leaf)
         }
     }
+    /// Which of the Chronicle's pages it opens on, where something asked
+    /// for one; its history otherwise.
+    var chronicleOpensOn: ChroniclePanel.Shown?
     /// Page Up and Page Down, as heard: each panel that scrolls pages
     /// itself when one is meant for it.
     var pageRequest = PageRequest()
@@ -633,15 +636,18 @@ public final class GameSession {
     /// Counsel asked of the latest battle a commander of the House led in,
     /// as from its report, for CI to photograph after the House has been
     /// played a while (NULLMERE_SHOW=battlecounsel); with no such battle,
-    /// counsel taken as NULLMERE_SHOW=counsel takes it. Which, said on the
-    /// game's output at once (`Reporting`), as the smoke test reads it.
+    /// the House's reports shown instead, as the Chronicle keeps them, to
+    /// say why. Which, said on the game's output at once (`Reporting`), as
+    /// the smoke test reads it.
     func askOfABattleToBeSeen() {
         if let report = reports.first(where: { askable(of: $0) != nil }), let commander = askable(of: report) {
             Reporting.say("Counsel asked of a battle: \(commander.name), \(CommanderCounsel.askedOf(report))")
             ask(of: report)
         } else {
-            Reporting.say("Counsel asked of no battle: none of the House's \(reports.count) reports names a commander free to speak")
-            takeCounselToBeSeen()
+            Reporting.say("Counsel asked of no battle: none of the House's \(reports.count) reports names a commander free to speak; "
+                + "its reports shown instead")
+            chronicleOpensOn = .reports
+            panel = .chronicle
         }
     }
     #endif

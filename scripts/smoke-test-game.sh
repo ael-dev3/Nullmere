@@ -16,7 +16,8 @@
 # Apple's on-device model where this Mac's can be asked, or why none came
 # where it can't, as on CI's virtual Macs; and forty watches more on, the
 # commander who led in the House's latest battle asked of it, as from its
-# report (which, kept in build/game-counsel-battle.log).
+# report, or the House's reports where none names one (which, kept in
+# build/game-counsel-battle.log).
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -118,7 +119,7 @@ WORLD_LOG="$WORLD_LOG
 $LOG"
 # Forty watches more, played by the steward, then counsel of the commander
 # who led in the House's latest battle, asked of it as from its report; or,
-# where no report names one, counsel taken as above.
+# where no report names one, the House's reports as the Chronicle keeps them.
 WAIT=30 run build/game-counsel-battle.png 40 battlecounsel
 grep -h "^Counsel asked of" build/game-stdout.log > build/game-counsel-battle.log 2>/dev/null || true
 cat build/game-counsel-battle.log

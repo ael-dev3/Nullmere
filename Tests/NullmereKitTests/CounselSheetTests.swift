@@ -233,11 +233,13 @@ final class CounselSheetTests: XCTestCase {
     func testACommanderIsAskedOfABattleTheyLedFromItsReport() throws {
         let (session, link) = session()
         let commander = try XCTUnwrap(session.state.commanders(of: session.player).first)
-        // No report yet: CI's photograph takes counsel of the first commander free to speak.
+        // No report names one yet: CI's photograph shows the House's reports instead.
         session.askOfABattleToBeSeen()
-        XCTAssertEqual(session.commanderCounsel?.id, commander.id)
-        XCTAssertEqual(session.commanderCounsel?.counsel.battles.count, 0)
-        session.closeCounsel()
+        XCTAssertNil(session.commanderCounsel)
+        XCTAssertEqual(session.panel, .chronicle)
+        XCTAssertEqual(session.chronicleOpensOn, .reports)
+        draw(ChroniclePanel(session: session, shown: session.chronicleOpensOn))
+        session.panel = nil
 
         let report = try battleLed(by: commander, in: session)
         XCTAssertEqual(report.led, [commander.name])
