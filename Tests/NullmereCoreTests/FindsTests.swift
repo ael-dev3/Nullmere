@@ -67,6 +67,34 @@ final class FindsTests: XCTestCase {
         return (try XCTUnwrap(state.unit(lantern.id)), find)
     }
 
+    /// A realm of more than three hundred seats wants more hamlets than
+    /// there are heads and tails to name them (six hundred): every one is
+    /// still named once, told apart by its place and then by number, and
+    /// the naming ends, as it did not where "Upper" was borne already.
+    func testEveryHamletIsNamedOnceHoweverManyTheRealmWants() {
+        let bases = Set(Find.hamletHeads.flatMap { head in Find.hamletTails.map { head + $0 } })
+        XCTAssertEqual(bases.count, 600)
+        var random = SeededRandom(seed: 7)
+        var used = Set<String>()
+        for _ in 0..<2_000 {
+            let name = GameState.hamletName(using: &random, avoiding: used)
+            XCTAssertFalse(used.contains(name), name)
+            used.insert(name)
+        }
+        XCTAssertTrue(bases.isSubset(of: used), "Every head and tail borne before any is told apart")
+        XCTAssertTrue(used.contains { $0.hasPrefix("Upper ") } && used.contains { $0.hasPrefix("Nether ") })
+        // Every name and every Upper borne: the next is Nether.
+        var taken = bases.union(bases.map { "Upper \($0)" })
+        let nether = GameState.hamletName(using: &random, avoiding: taken)
+        XCTAssertTrue(nether.hasPrefix("Nether ") && bases.contains(String(nether.dropFirst("Nether ".count))), nether)
+        // Every place borne too: the next is told apart by number.
+        for place in Find.hamletPlaces { taken.formUnion(bases.map { "\(place) \($0)" }) }
+        let numbered = GameState.hamletName(using: &random, avoiding: taken)
+        XCTAssertTrue(numbered.hasSuffix(" 2") && bases.contains(String(numbered.dropLast(2))), numbered)
+        taken.insert(numbered)
+        XCTAssertFalse(taken.contains(GameState.hamletName(using: &random, avoiding: taken)))
+    }
+
     func testLanternsSeekAHamletOnceForItsGiftAndTheLandAboutIt() throws {
         var state = world()
         let me = state.player

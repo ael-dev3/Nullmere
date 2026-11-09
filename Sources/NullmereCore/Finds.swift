@@ -53,6 +53,9 @@ public struct Find: Codable, Equatable, Identifiable, Sendable {
         "by", "holt", "combe", "ley", "thorpe", "worth", "hope", "den", "hurst", "well",
         "cote", "field", "end", "hithe", "garth", "stow", "wold", "brook", "toft", "ings",
     ]
+    /// Where one hamlet lies from another of its name, the first of them
+    /// "Upper".
+    static let hamletPlaces = ["Upper", "Nether", "Little", "Great", "Far"]
     /// The names barrows take: an old word for what lies in each.
     static let barrowNames = [
         "the Grey Howe", "the Long Barrow", "the Sleeper's Howe", "the Hollow Hill", "the Nine Stones",
@@ -136,7 +139,7 @@ extension GameState {
             var count = 0
             for hex in ground where count < wanted {
                 guard !blocked.contains(hex), let tile = map[hex], terrain(tile.terrain) else { continue }
-                let name = kind == .hamlet ? hamletName(using: &random, avoiding: names) : barrowName(using: &random, avoiding: names)
+                let name = kind == .hamlet ? GameState.hamletName(using: &random, avoiding: names) : barrowName(using: &random, avoiding: names)
                 names.insert(name)
                 raised.append(Find(id: raised.count + 1, kind: kind, position: hex, name: name))
                 blocked.formUnion(hex.spiral(GameState.findsApart - 1))
@@ -148,15 +151,21 @@ extension GameState {
         finds = raised
     }
 
-    private func hamletName(using random: inout SeededRandom, avoiding used: Set<String>) -> String {
+    /// A hamlet's name no other hamlet bears: a head and a tail drawn, and
+    /// where every draw is borne already (a realm of a thousand seats wants
+    /// more hamlets than there are heads and tails), one told apart by its
+    /// place, "Upper Ashby" before "Nether Ashby", and past every place by
+    /// its number, "Ashby 2".
+    static func hamletName(using random: inout SeededRandom, avoiding used: Set<String>) -> String {
         for _ in 0..<32 {
             let name = random.pick(Find.hamletHeads) + random.pick(Find.hamletTails)
             if !used.contains(name) { return name }
         }
         let base = random.pick(Find.hamletHeads) + random.pick(Find.hamletTails)
+        if let placed = Find.hamletPlaces.lazy.map({ "\($0) \(base)" }).first(where: { !used.contains($0) }) { return placed }
         var suffix = 2
-        while used.contains("Upper \(base)") || used.contains("\(base) \(suffix)") { suffix += 1 }
-        return used.contains("Upper \(base)") ? "\(base) \(suffix)" : "Upper \(base)"
+        while used.contains("\(base) \(suffix)") { suffix += 1 }
+        return "\(base) \(suffix)"
     }
 
     private func barrowName(using random: inout SeededRandom, avoiding used: Set<String>) -> String {
