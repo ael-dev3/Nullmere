@@ -133,6 +133,45 @@ final class CorpseLightsTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(early.first).colour.y, try XCTUnwrap(early.first).colour.x * 1.8, "cold and pale")
     }
 
+    /// The dead lie quiet the watch they fall, and any watch their field is
+    /// fought over: their lights kindle once it falls quiet, so no battle is
+    /// fought under them.
+    func testTheLightsKindleOnceAFieldFallsQuiet() {
+        let fallenNow = FieldOfDead(at: field, troops: 8_000, houses: [0], since: 12)
+        let fallenBefore = FieldOfDead(at: Hex(-4, 2), troops: 3_000, houses: [1], since: 10)
+        let foughtOver = FieldOfDead(at: Hex(1, 1), troops: 7_000, houses: [0, 1], since: 9)
+        let besideIt = FieldOfDead(at: Hex(2, 1), troops: 6_500, houses: [1], since: 9)
+        let fields = [fallenNow, fallenBefore, foughtOver, besideIt]
+        XCTAssertEqual(UnburiedSight.kindled(fields, watch: 12, darkIn: 5).map(\.at), [Hex(-4, 2), Hex(1, 1), Hex(2, 1)],
+                       "none over the dead fallen this watch")
+        XCTAssertEqual(UnburiedSight.kindled([fallenBefore], watch: 12, darkIn: 5), [UnburiedSight(at: Hex(-4, 2), troops: 3_000, darkIn: 5)],
+                       "each lit with how many lie there and the watches to the dark")
+        // A blow struck from one field onto the next this watch: both are
+        // fought over, and their dead lie quiet while they are.
+        let blow = FieldBlow(from: Hex(1, 1), at: Hex(2, 1), struck: nil, striker: nil, watch: 12, seed: 1)
+        XCTAssertEqual(UnburiedSight.kindled(fields, watch: 12, darkIn: 5, blows: [blow]).map(\.at), [Hex(-4, 2)],
+                       "nor over a field a blow is struck on or from this watch")
+        let lastWatch = FieldBlow(from: Hex(1, 1), at: Hex(2, 1), struck: nil, striker: nil, watch: 11, seed: 1)
+        XCTAssertEqual(UnburiedSight.kindled(fields, watch: 12, darkIn: 5, blows: [lastWatch]).count, 3, "kindled once it falls quiet")
+        XCTAssertTrue(UnburiedSight.kindled(fields, watch: 9, darkIn: 5).isEmpty, "none before any of them have lain a watch")
+    }
+
+    /// Close in, a light's glow is a halo about its flame, however near the
+    /// view comes: a disc that faces the eye, where the men about it stand
+    /// upright under a camera looking steeply down, so a glow as wide as
+    /// half a man is tall had looked three times his height. A buried
+    /// field's rising lights the same.
+    func testCloseInTheGlowIsAHaloAboutItsFlame() throws {
+        let close = stage.corpseLights([UnburiedSight(at: field, troops: 9_000, darkIn: 1)], near: Vec3(0, 0, 0), scale: 400, time: 1)
+        let flame = try XCTUnwrap(close.motes.first).place.w, glow = try XCTUnwrap(close.motes.last).place.w
+        XCTAssertLessThanOrEqual(glow, 2.5 * flame, "no wider than two and a half of its flame")
+        XCTAssertGreaterThan(glow, 2 * flame, "and wider than its flame")
+        let man = Library.model(.figure(.spear, tier: 1)).mesh.bounds
+        XCTAssertLessThan(2 * glow, (man.max.y - man.min.y) * WorldStage.figureScale / 4, "a quarter of a spearman's height across, his spear and all")
+        let rising = try XCTUnwrap(stage.releasedLights(at: field, troops: 9_000, age: 1, scale: 400).last).place.w
+        XCTAssertLessThanOrEqual(rising, 2.5 * flame, "a buried field's lights the same")
+    }
+
     func testSeenFromAcrossTheRealmTheNearestFieldsFirst() throws {
         let sights = [UnburiedSight(at: field, troops: 9_000, darkIn: 1)]
         let near = stage.corpseLights(sights, near: Vec3(0, 0, 0), scale: 80, time: 1)

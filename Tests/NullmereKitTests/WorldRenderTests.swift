@@ -635,7 +635,8 @@ final class WorldRenderTests: XCTestCase {
         let around = field.neighbors.filter { open.contains($0) }.sorted { ($0.distance(to: seat), $0) < ($1.distance(to: seat), $1) }
         let paleAt = around[0], barrowAt = around[1]
         let quietState = state
-        state.layTheFallen(11_000, of: me, at: field)
+        // Fallen the watch before, the field quiet since, so its lights burn.
+        state.unburied = [FieldOfDead(at: field, troops: 11_000, houses: [me], since: state.watch - 1)]
         state.graves = [Grave(at: barrowAt, troops: 6_000, house: me, watch: state.watch, dead: [me])]
         state.wilds = (state.wilds ?? []) + [Wild(id: state.takeID(), kind: .barrowkin, level: 2, position: paleAt, raised: state.watch - 1)]
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

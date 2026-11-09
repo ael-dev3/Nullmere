@@ -26,6 +26,19 @@ public struct UnburiedSight: Equatable, Sendable {
     public static func risen(at hex: Hex, level: Int) -> UnburiedSight {
         UnburiedSight(at: hex, troops: GameState.unquietAt + max(level - 1, 0) * GameState.unquietPerLevel, darkIn: 1)
     }
+
+    /// The fields of dead whose lights hang at `watch`, `darkIn` watches from
+    /// the dark of the moon: every one given, unless its dead still lie
+    /// quiet, as they do the watch the first of them fell and any watch a
+    /// blow is struck on the field or from it (`blows`). The lights kindle
+    /// once a field falls quiet, so no battle is fought under them.
+    public static func kindled(_ fields: [FieldOfDead], watch: Int, darkIn: Int, blows: [FieldBlow] = []) -> [UnburiedSight] {
+        let fought = Set(blows.filter { $0.watch >= watch }.flatMap { [$0.at, $0.from] })
+        return fields.compactMap { field in
+            guard field.since < watch, !fought.contains(field.at) else { return nil }
+            return UnburiedSight(at: field.at, troops: field.troops, darkIn: darkIn)
+        }
+    }
 }
 
 extension WorldStage {
@@ -52,8 +65,12 @@ extension WorldStage {
     static let corpseFieldsMost = 24
     static let corpseLightsMost = 6
     /// The smallest a corpse-light and its glow show on the screen, in
-    /// points, however far the view.
+    /// points, however far the view; and the least they are across in the
+    /// world, close in, where the glow is a halo about its flame: a disc
+    /// facing the eye among men seen from steeply above, so it looks larger
+    /// beside them than it is.
     static let corpseFlamePoints: Float = 2.0, corpseGlowPoints: Float = 8
+    static let corpseFlameNearest: Float = 0.03, corpseGlowNearest: Float = 0.07
     /// How high over the field they hang, the lowest and how much higher
     /// the highest; how far each strays about its own place; and how wide of
     /// the field's heart they gather.
@@ -114,8 +131,8 @@ extension WorldStage {
             let x = centre.x + reach * Float(cos(Double(bearing))), z = centre.z + reach * Float(sin(Double(bearing)))
             let at = Vec3(x, ground(atX: x, z: z) + height + WorldStage.releaseHeight * climbed, z)
             let light = WorldStage.corpseLight * (1.5 * fade)
-            motes.append(Mote(at: at, size: max(0.03, WorldStage.corpseFlamePoints / points), light: light, cover: 0))
-            motes.append(Mote(at: at, size: max(0.14, WorldStage.corpseGlowPoints / points), light: light * 0.1, cover: 0))
+            motes.append(Mote(at: at, size: max(WorldStage.corpseFlameNearest, WorldStage.corpseFlamePoints / points), light: light, cover: 0))
+            motes.append(Mote(at: at, size: max(WorldStage.corpseGlowNearest, WorldStage.corpseGlowPoints / points), light: light * 0.1, cover: 0))
         }
         return motes
     }
@@ -167,8 +184,8 @@ extension WorldStage {
                 }
                 let at = Vec3(x, ground(atX: x, z: z) + height + rise, z)
                 let flame = WorldStage.corpseLight * (1.5 * strength * life)
-                motes.append(Mote(at: at, size: max(0.03, WorldStage.corpseFlamePoints / points), light: flame, cover: 0))
-                motes.append(Mote(at: at, size: max(0.14, WorldStage.corpseGlowPoints / points), light: flame * 0.1, cover: 0))
+                motes.append(Mote(at: at, size: max(WorldStage.corpseFlameNearest, WorldStage.corpseFlamePoints / points), light: flame, cover: 0))
+                motes.append(Mote(at: at, size: max(WorldStage.corpseGlowNearest, WorldStage.corpseGlowPoints / points), light: flame * 0.1, cover: 0))
             }
             let heart = Vec3(centre.x, ground(atX: centre.x, z: centre.z) + 0.25, centre.z)
             lights.append(PointLight(at: heart, reach: 1.1, colour: WorldStage.corpseLight * (1.6 * strength)))

@@ -646,13 +646,20 @@ final class WorldStagingTests: XCTestCase {
     /// troops.
     /// Where the keeper's dead lie unburied, corpse-lights hang over the
     /// field in the world, cold and pale, as many as the stage gives a field
-    /// of that many; none over the same world where none lie.
+    /// of that many; none over the same world where none lie; none yet over
+    /// dead fallen this watch, nor over a field while a blow is struck from
+    /// it: they kindle once it falls quiet.
     func testCorpseLightsHangWhereTheDeadLieUnburied() throws {
         var field: Hex?
         let haunted = try session { state in
             let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
-            state.layTheFallen(8_000, of: state.player, at: company.position)
+            // Fallen the watch before, the field quiet since.
+            state.unburied = [FieldOfDead(at: company.position, troops: 8_000, houses: [state.player], since: state.watch - 1)]
             field = company.position
+        }
+        let fresh = try session { state in
+            let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
+            state.layTheFallen(8_000, of: state.player, at: company.position)
         }
         let quiet = try session()
         let at = try XCTUnwrap(field)
@@ -669,6 +676,18 @@ final class WorldStagingTests: XCTestCase {
         let lit = haunted.sceneFrame(at: 40, now: now), dark = quiet.sceneFrame(at: 40, now: now)
         XCTAssertEqual(cold(lit) - cold(dark), 2 * WorldStage.corpseLightCount(troops: 8_000), "a flame and its glow for each light over the field")
         XCTAssertGreaterThan(lit.lights.count, dark.lights.count, "and the field's own light")
+        XCTAssertEqual(fresh.state.fieldOfDead(at: at)?.since, fresh.state.watch)
+        XCTAssertEqual(cold(fresh.sceneFrame(at: 40, now: now)), cold(dark), "none over dead fallen this watch")
+        // A blow struck from the field this watch: fought over again, its
+        // dead lie quiet while it is.
+        let striker = try XCTUnwrap(haunted.state.units(of: haunted.player).first { $0.kind.isMilitary })
+        XCTAssertEqual(striker.position, at)
+        let foeAt = try XCTUnwrap(at.neighbors.first { haunted.state.map[$0] != nil })
+        haunted.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: haunted.player, attackerKind: striker.kind, defender: 9_999,
+                                          defenderOwner: (haunted.player + 1) % 3, defenderKind: .spear, hold: nil, at: foeAt, damageDealt: 30,
+                                          damageTaken: 10, attackerFell: false, defenderFell: false, slain: 2_000, lost: 450))])
+        XCTAssertEqual(haunted.fieldBlows.last?.from, at)
+        XCTAssertEqual(cold(haunted.sceneFrame(at: 41, now: now)), cold(dark), "nor while it is fought over")
     }
 
     /// The dead risen as Barrowkin are drawn pale and cold, no House's,

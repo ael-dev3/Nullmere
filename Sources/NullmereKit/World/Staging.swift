@@ -360,11 +360,12 @@ extension GameSession {
         // Corpse-lights over the fields where the dead the keeper knows of
         // lie unburied, the more the more lie there, brighter as the dark of
         // the moon nears over those that will rise; still where motion is
-        // reduced.
+        // reduced. None over a field still fought over: they kindle once it
+        // falls quiet.
         let darkIn = state.watchesToTheDark(from: state.watch)
-        let unquiet = stage.corpseLights(state.fieldsOfDead.filter { isExplored($0.at) }.map {
-            UnburiedSight(at: $0.at, troops: $0.troops, darkIn: darkIn)
-        }, near: camera.focus, scale: camera.scale, time: t, still: !full)
+        let unquiet = stage.corpseLights(UnburiedSight.kindled(state.fieldsOfDead.filter { isExplored($0.at) }, watch: state.watch,
+                                                                darkIn: darkIn, blows: fieldBlows),
+                                         near: camera.focus, scale: camera.scale, time: t, still: !full)
         frame.motes += unquiet.motes
         frame.lights += unquiet.lights
         // And the Barrowkin in sight carry the lights of the field they rose

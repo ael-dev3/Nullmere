@@ -905,7 +905,8 @@ a vote on the realm's law to cast.
   back then. Pale, cold corpse-lights hang over every field you know
   where dead lie unburied, more the more lie there and brighter as the
   dark of the moon nears over a field that will rise, so you can see from
-  afar which fields to bury first. The panel of a company standing on
+  afar which fields to bury first. They kindle once the field falls
+  quiet: not the watch its dead fall, nor while blows are struck there. The panel of a company standing on
   them, or of the tile, says how many lie there and whose, and what comes
   of them, and when. Over a barrow your House raises, your Mac's own
   model gives the words cut on its standing stone, from whose dead lie
