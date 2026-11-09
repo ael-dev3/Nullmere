@@ -38,6 +38,14 @@ final class CompanionWildfireTests: XCTestCase {
         XCTAssertEqual(fire.name, "Blackwood ablaze, \(GameState.watches(Wildfire.burns)) more")
         XCTAssertEqual(fire.side, .own)
         XCTAssertEqual(burning.marks.firstIndex { $0.thing == .fire }, 0, "drawn under all else")
+        // And the whole hex in the fire's light, so it shows around a
+        // company standing in it; no other hex so.
+        let ablaze = try XCTUnwrap(burning.cells.first { $0.hex == at })
+        XCTAssertEqual(ablaze.burn, .burning)
+        XCTAssertEqual(burning.cells.filter { $0.burn != nil }.map(\.hex), [at])
+        let lit = CompanionChart.shade(of: ablaze), wood = CompanionChart.shade(of: .init(hex: at, terrain: .blackwood, explored: true, seen: true))
+        XCTAssertTrue(lit.red > 0.4 && lit.red > 2 * lit.green && lit.green > lit.blue, "the fire's own red: \(lit)")
+        XCTAssertGreaterThan(lit.red, 3 * wood.red, "far brighter than the wood unburnt")
         // Burnt out, it is ash on the chart.
         state.units.removeAll { $0.id == unit.id }
         state.wildfires = [Wildfire(at: at, by: me, caught: state.watch - 4, out: state.watch - 1)]
@@ -45,5 +53,11 @@ final class CompanionWildfireTests: XCTestCase {
         let ash = try XCTUnwrap(chart.marks.first { $0.hex == at })
         XCTAssertEqual(ash.thing, .ash)
         XCTAssertEqual(ash.name, "Blackwood burnt, the wood back in \(GameState.watches(Wildfire.ash - 1))")
+        // The hex grey with ash, the wood's green gone from it.
+        let burnt = try XCTUnwrap(chart.cells.first { $0.hex == at })
+        XCTAssertEqual(burnt.burn, .ash)
+        let grey = CompanionChart.shade(of: burnt)
+        XCTAssertTrue(abs(grey.red - grey.blue) < 0.03 && grey.green - grey.red < 0.04, "grey: \(grey)")
+        XCTAssertGreaterThan(grey.red, wood.red + 0.05, "paler than the wood")
     }
 }

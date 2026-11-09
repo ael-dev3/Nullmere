@@ -130,6 +130,40 @@ final class WildfireStageTests: XCTestCase {
         XCTAssertTrue(stage.fireGlows([], near: focus, scale: Camera.minimumScale, time: 0).isEmpty)
     }
 
+    func testTheBlackwoodBurningGlowsCloseByWhereMotionIsReduced() throws {
+        let stage = stage()
+        let map = Self.state.map
+        let burning = Array(map.hexes.filter { map[$0]?.terrain == .blackwood }.prefix(5))
+        let focus = Vec3(Relief.centre(of: burning[0]).x, 0, Relief.centre(of: burning[0]).z)
+        // Where motion is reduced the fires among the trees aren't drawn, so
+        // the glow stays at every distance: over each tile alight close by,
+        // at least as wide as the wood, where it would otherwise be gone.
+        for scale in [WorldStage.glowFrom, 60, Camera.maximumScale] {
+            XCTAssertTrue(stage.fireGlows(burning, near: focus, scale: scale, time: 3).isEmpty, "the fires among the trees tell it at \(scale)")
+            let close = stage.fireGlows(burning, near: focus, scale: scale, time: 3, still: true)
+            XCTAssertEqual(close.count, burning.count, "at \(scale)")
+            for hex in burning {
+                let centre = Relief.centre(of: hex)
+                let glow = try XCTUnwrap(close.first { abs($0.place.x - centre.x) < 0.001 && abs($0.place.z - centre.z) < 0.001 }, "a glow over \(hex)")
+                XCTAssertGreaterThanOrEqual(glow.place.w, WorldStage.stillFireGlow, "as wide as the wood alight")
+                XCTAssertEqual(glow.colour.w, 0, "light only, hiding nothing")
+                XCTAssertTrue(glow.colour.x > glow.colour.y && glow.colour.y > glow.colour.z && glow.colour.z > 0, "the fire's own orange")
+            }
+        }
+        // Steady, not flickering.
+        let now = stage.fireGlows(burning, near: focus, scale: Camera.maximumScale, time: 3, still: true)
+        for time in stride(from: Float(0), to: 2, by: 0.1) {
+            XCTAssertEqual(stage.fireGlows(burning, near: focus, scale: Camera.maximumScale, time: time, still: true).map(\.colour), now.map(\.colour))
+        }
+        // From afar, as bright as the moving glow at its brightest, and the
+        // same size on the screen.
+        let far = stage.fireGlows(burning, near: focus, scale: Camera.minimumScale, time: 3)
+        let farStill = stage.fireGlows(burning, near: focus, scale: Camera.minimumScale, time: 3, still: true)
+        XCTAssertEqual(farStill.map(\.place), far.map(\.place))
+        for (still, moving) in zip(farStill, far) { XCTAssertGreaterThanOrEqual(still.colour.x, moving.colour.x - 0.0001) }
+        XCTAssertTrue(stage.fireGlows([], near: focus, scale: Camera.maximumScale, time: 0, still: true).isEmpty)
+    }
+
     func testFlamesLickUpFromTheWoodUnderEmbersSmokeAndFirelight() {
         let origin = Vec3(1, 0.4, -2)
         // Flames rise from where they are thrown, narrowing as they climb, warm.

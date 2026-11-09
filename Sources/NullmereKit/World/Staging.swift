@@ -309,8 +309,11 @@ extension GameSession {
         frame.motes += stage.glows(shown, scale: camera.scale)
         // And each of the alliance's marks in its own light, from near or far.
         frame.motes += stage.markLights(marks.map { (hex: $0.at, kind: $0.kind) }, scale: camera.scale, time: t)
-        // And the blackwood burning, glowing from afar where the keeper knows the land.
-        frame.motes += stage.fireGlows(state.burning.map(\.at).filter { isExplored($0) }, near: camera.focus, scale: camera.scale, time: t)
+        // And the blackwood burning, glowing from afar where the keeper knows
+        // the land; where motion is reduced its fires among the trees aren't
+        // drawn, so close by too, steady.
+        frame.motes += stage.fireGlows(state.burning.map(\.at).filter { isExplored($0) }, near: camera.focus, scale: camera.scale, time: t,
+                                       still: !full)
         // The ways of the marches the keeper knows of, lit on the land in
         // their sides' hues from where each company is drawn now.
         frame.motes += stage.marchLines(marchWays(poses: poses) { inView($0, within: 1) }, time: t)

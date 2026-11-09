@@ -625,7 +625,15 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   burn; the other's order on her company was refused; as the watch turned
   both saw the fire as the realm left it" (that run's Mac jobs failed to
   build, the session reading the rules' own fires where it may only read
-  what is burning, mended in 7d1a30f).
+  what is burning, mended in 7d1a30f). Built since run 856: where motion
+  is reduced the flames among the trees aren't drawn, so the glow over
+  each tile alight stays close by too, steady and as wide as the wood
+  (`fireGlows(still:)`, WildfireStageTests on Linux); and the phone's
+  chart lays the fire's light over the whole hex alight and grey over the
+  ash, where run 856 showed only a faint ring of its mark about the
+  company standing in it (`ci-shots/856/companion-land.png`;
+  CompanionWildfireTests on Linux); each **Unverified** on the Mac and
+  the phone until a CI run draws it.
 
 ## The order of the work
 

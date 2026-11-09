@@ -625,12 +625,15 @@ a vote on the realm's law to cast.
   burning hold's with them), so you see which way a fire will run, and
   rising straight on a Still Night; where it catches new wood as the watch
   turns a tongue of flame leaps up from it and its light flashes over the
-  trees; from afar each tile alight glows warm over the dark, flickering;
+  trees; from afar each tile alight glows warm over the dark, flickering,
+  and where motion is reduced, so the flames among the trees aren't drawn,
+  it glows over the wood close by as well, steady;
   near, the fire is heard roaring and crackling from where it burns, the
   more of it about the view the louder (heard from further back than the
   lake's lapping, and only wood the House has seen); and the night's own
   wind is heard from the side of the view it blows from, and falls to a
-  whisper on a Still Night. The phone's chart draws it aflame and, after,
+  whisper on a Still Night. The phone's chart draws it aflame, the whole
+  hex in its light so it shows about a company standing in it, and, after,
   grey with ash. Stewards set no fires, and step their companies out of
   one.
 - **Holds** gather what their land yields and store it, up to a limit that

@@ -21,6 +21,15 @@ public struct CompanionChart: Equatable, Sendable {
         /// Whose land it lies in, by the holds' claims the keeper's view
         /// knows of; none's, nil.
         public var land: Side? = nil
+        /// The blackwood burning on it, or lying as ash; neither, nil. The
+        /// whole hex takes the fire's light or the ash's grey, so the fire
+        /// shows around a company or hold standing in it.
+        public var burn: Burn? = nil
+    }
+
+    /// The blackwood burning, or the ash it leaves, on a hex.
+    public enum Burn: String, Equatable, Sendable {
+        case burning, ash
     }
 
     /// An edge of a hex of some House's land where it meets another House's
@@ -167,12 +176,15 @@ public struct CompanionChart: Equatable, Sendable {
         // Whose land each hex lies in, by the claims of the holds the view knows.
         let claims = world.territory()
         var owner: [Hex: Int] = [:]
+        // The blackwood burning and the ash it left, every House seeing them.
+        let fires = world.wildfiresByHex
         cells = center.spiral(radius).compactMap { hex in
             guard let index = world.map.index(of: hex) else { return nil }
             let house = claims.indices.contains(index) ? claims[index].flatMap { world.hold($0)?.owner } : nil
             if let house { owner[hex] = house }
             return Cell(hex: hex, terrain: world.map[index].terrain, explored: explored.indices.contains(index) && explored[index],
-                        seen: seen.indices.contains(index) && seen[index], land: house.map(side))
+                        seen: seen.indices.contains(index) && seen[index], land: house.map(side),
+                        burn: fires[hex].map { $0.isBurning(at: world.watch) ? .burning : .ash })
         }
         // Each land's edge where it meets another House's land or no one's,
         // within the chart: the House's own wherever it runs, another's only
@@ -374,8 +386,23 @@ public struct CompanionChart: Equatable, Sendable {
     /// How a cell is drawn, its red, green and blue from 0 to 1: its
     /// ground's own colour by night, dimmed where the House doesn't see it
     /// now, and under fog where the House hasn't explored it, its water
-    /// alone showing through, as every shore knows the lake.
+    /// alone showing through, as every shore knows the lake; and where the
+    /// blackwood burns, the fire's light over it, where it lies as ash, the
+    /// ash's grey, as every House sees them.
     public static func shade(of cell: Cell) -> (red: Double, green: Double, blue: Double) {
+        let ground = groundShade(of: cell)
+        guard let burn = cell.burn else { return ground }
+        let over = burn == .burning ? firelight : ashGrey, share = burn == .burning ? 0.6 : 0.5
+        return (ground.red + (over.red - ground.red) * share, ground.green + (over.green - ground.green) * share,
+                ground.blue + (over.blue - ground.blue) * share)
+    }
+
+    /// The fire's light over a hex of blackwood burning.
+    public static let firelight = (red: 0.78, green: 0.27, blue: 0.06)
+    /// The grey of a hex of blackwood burnt to ash.
+    public static let ashGrey = (red: 0.30, green: 0.29, blue: 0.28)
+
+    static func groundShade(of cell: Cell) -> (red: Double, green: Double, blue: Double) {
         let ground: (Double, Double, Double)
         switch cell.terrain {
         case .still: ground = (0.02, 0.03, 0.06)

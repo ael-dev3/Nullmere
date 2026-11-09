@@ -375,24 +375,29 @@ public final class WorldStage: @unchecked Sendable {
 
     /// The most tiles of blackwood alight a frame glows over from afar.
     public static let mostFireGlows = 96
+    /// How wide, at least, a tile alight glows where motion is reduced: over
+    /// the wood itself, near as well as far.
+    public static let stillFireGlow: Float = 0.42
 
     /// The blackwood burning as it is seen from afar: a warm glow over each
     /// tile alight, holding its size on the screen as the view draws away,
     /// coming in as the keeps' glows do and flickering, the nearest
     /// `mostFireGlows` tiles to `focus`. Near, the fires among the trees
-    /// tell it (`woodFires`).
-    public func fireGlows(_ hexes: [Hex], near focus: Vec3, scale: Double, time: Float) -> [Mote] {
-        let fade = 1 - WorldStage.smoothstep(Float(WorldStage.glowFull), Float(WorldStage.glowFrom), Float(scale))
+    /// tell it (`woodFires`); where motion is reduced (`still`) they aren't
+    /// drawn, so the glow stays close by too, steady and at least as wide
+    /// as the wood alight, and the fire is never lost from the world.
+    public func fireGlows(_ hexes: [Hex], near focus: Vec3, scale: Double, time: Float, still: Bool = false) -> [Mote] {
+        let fade = still ? 1 : 1 - WorldStage.smoothstep(Float(WorldStage.glowFull), Float(WorldStage.glowFrom), Float(scale))
         guard fade > 0, !hexes.isEmpty else { return [] }
         func far(_ hex: Hex) -> Float {
             let centre = Relief.centre(of: hex)
             return (centre.x - focus.x) * (centre.x - focus.x) + (centre.z - focus.z) * (centre.z - focus.z)
         }
-        let size = Float(6 / max(scale, 1))
+        let size = max(Float(6 / max(scale, 1)), still ? WorldStage.stillFireGlow : 0)
         return hexes.sorted { (far($0), $0.q, $0.r) < (far($1), $1.q, $1.r) }.prefix(WorldStage.mostFireGlows).map { hex in
             let centre = Relief.centre(of: hex)
             let salt = Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), 97)
-            let flicker = 0.75 + 0.25 * Float(sin(Double(time * 9 + salt * 6.28)))
+            let flicker = still ? 1 : 0.75 + 0.25 * Float(sin(Double(time * 9 + salt * 6.28)))
             return Mote(at: Vec3(centre.x, ground(atX: centre.x, z: centre.z) + 0.5, centre.z), size: size,
                         light: Vec3(1.0, 0.42, 0.12) * (0.3 * flicker * fade), cover: 0)
         }
