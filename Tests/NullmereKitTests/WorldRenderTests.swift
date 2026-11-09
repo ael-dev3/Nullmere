@@ -826,6 +826,7 @@ final class WorldRenderTests: XCTestCase {
     /// flames, embers and smoke move from frame to frame where the bare
     /// land under them is still, the smoke borne off downwind. CI keeps it
     /// as a moving picture, world-wildfire-motion.gif.
+    @MainActor
     func testTheBlackwoodBurnsInMotion() throws {
         let renderer = try renderer()
         renderer.meshSource = { Library.model($0).mesh }
@@ -844,6 +845,7 @@ final class WorldRenderTests: XCTestCase {
         try keepMoving(moving.frames, as: "world-wildfire-motion")
     }
 
+    @MainActor
     func testTheBlackwoodBurnsAndLiesAsAsh() throws {
         let renderer = try renderer()
         renderer.meshSource = { Library.model($0).mesh }
