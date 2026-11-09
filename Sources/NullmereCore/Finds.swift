@@ -293,3 +293,31 @@ extension GameState {
         return Voicing.Moment(task: find.kind == .hamlet ? Voicing.hamletTask : Voicing.barrowTask, facts: facts)
     }
 }
+
+extension GameState {
+    /// The world as it would stand had the House's Lanterns sought `find`
+    /// this watch: one of them beside it, fresh (one mustered there if the
+    /// House has none), and the find sought as the rules seek it, gift,
+    /// goods and the chronicle's line and all. For the Mac's voice check,
+    /// which asks the on-device model for a hamlet's folk's words or a
+    /// barrow's where none has been sought yet. The world as it was for no
+    /// House of the realm, a find a hold stands over, or one with no open
+    /// ground beside it.
+    public func seeking(_ find: Find, by house: Int) -> GameState {
+        var world = self
+        guard houses.indices.contains(house), self.find(find.id) != nil else { return world }
+        guard let lantern = world.units(of: house).first(where: { $0.kind == .lantern })?.id
+                ?? world.placeUnit(.lantern, for: house, near: find.position)?.id,
+              let index = world.unitIndex(lantern) else { return world }
+        func open(_ hex: Hex) -> Bool {
+            world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && world.hold(at: hex) == nil
+                && (world.unit(at: hex) == nil || world.unit(at: hex)?.id == lantern)
+        }
+        guard let beside = find.position.neighbors.first(where: open) else { return world }
+        world.units[index].position = beside
+        world.units[index].movesLeft = max(world.units[index].movesLeft, 1)
+        world.refreshSight()
+        _ = try? world.perform(.seek(unit: lantern, find: find.id), as: house)
+        return world
+    }
+}

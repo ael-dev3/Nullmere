@@ -234,6 +234,17 @@ final class FindsTests: XCTestCase {
         XCTAssertEqual(state.voicedMoments(for: me).filter { $0.key.hasPrefix("find-") }.map(\.key), ["find-\(hamlet.id)"])
         XCTAssertTrue(state.voicedMoments(for: other).allSatisfy { !$0.key.hasPrefix("find-") })
 
+        // The world as it would stand had the House's Lanterns sought one,
+        // for the Mac's voice check: sought as the rules seek it, the world
+        // it was made from untouched.
+        let fresh = world("a rehearsal")
+        let first = try XCTUnwrap(fresh.findsInLand.first { $0.kind == .hamlet })
+        let rehearsed = fresh.seeking(first, by: fresh.player)
+        XCTAssertTrue(rehearsed.hasSought(first.id, by: fresh.player))
+        XCTAssertNotNil(rehearsed.voiced(first, by: fresh.player))
+        XCTAssertFalse(fresh.hasSought(first.id, by: fresh.player))
+        XCTAssertEqual(fresh.seeking(first, by: 99), fresh, "No Lanterns, no seeking")
+
         // A barrow: what it gave up, and where it lies.
         var graves = world("the old graves")
         let keeper = graves.player

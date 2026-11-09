@@ -81,6 +81,15 @@ public enum VoiceCheck {
                 moments.append(("watchman's word", VoiceFacts.watchman(sighting, fire: fire, for: state.player, in: state)))
             }
         }
+        // A hamlet's eldest and a barrow's stones, as the session asks them
+        // once the House's Lanterns have sought each: the first of each kind
+        // in the land, sought in a copy of the age for the asking.
+        for kind in Find.Kind.allCases {
+            if let find = state.findsInLand.first(where: { $0.kind == kind && state.find(at: $0.position) != nil }),
+               let moment = VoiceFacts.find(find, by: state.player, in: state.seeking(find, by: state.player)) {
+                moments.append((kind == .hamlet ? "words of a hamlet's eldest" : "words at a barrow's mouth", moment))
+            }
+        }
         // A plea of each kind brought to the keeper's seat by its folk, as
         // the realm brings one: a mason's, a woodward's, a healer's for the
         // House's first company of war, the reeve's and a brewer's.

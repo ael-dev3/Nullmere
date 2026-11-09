@@ -55,6 +55,14 @@ final class VoiceCheckTests: XCTestCase {
         let watchman = try XCTUnwrap(moments.first { $0.moment.kind == .watchman }).moment
         XCTAssertTrue(watchman.prompt.hasPrefix(Voicing.watchmanTask), watchman.prompt)
         XCTAssertTrue(watchman.facts.contains { $0.hasSuffix("marching dark, its torches doused.") }, "\(watchman.facts)")
+        // A hamlet's eldest and a barrow's stones, asked as the session asks
+        // them once the House's Lanterns have sought each.
+        XCTAssertEqual(told.filter { $0.hasPrefix("words of a hamlet's eldest (") }.count, 1, "A hamlet's folk asked")
+        XCTAssertEqual(told.filter { $0.hasPrefix("words at a barrow's mouth (") }.count, 1, "A barrow's stones asked")
+        let folk = moments.filter { if case .find = $0.moment.kind { return true } else { return false } }
+        XCTAssertEqual(folk.map(\.moment.kind), [.find(.hamlet), .find(.barrow)])
+        XCTAssertTrue(folk[0].moment.prompt.hasPrefix(Voicing.hamletTask), folk[0].moment.prompt)
+        XCTAssertTrue(folk[1].moment.prompt.hasPrefix(Voicing.barrowTask), folk[1].moment.prompt)
         // A plea of each kind at the seat's gate, its petitioner heard as the
         // card asks for their words.
         for plea in Petition.Plea.allCases {
