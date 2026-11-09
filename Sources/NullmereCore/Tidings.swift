@@ -775,6 +775,13 @@ extension GameState {
         case .petitionWithdrawn(let petition):
             guard petition.house == viewer else { return nil }
             return Tidings("\(petition.name) of \(hold(petition.hold)?.name ?? "the hold") withdraws the plea: its need has passed.", .neutral)
+        case .groundMarked(let mark):
+            guard alliance(of: viewer)?.id == mark.alliance else { return nil }
+            let who = mark.by == viewer ? "You mark" : "\(houses.indices.contains(mark.by) ? houses[mark.by].title : "The alliance's leader") marks"
+            return Tidings("\(who) the ground \(placeName(of: mark.at)) for the alliance. \(mark.said)", .neutral)
+        case .markLifted(let mark, let lapsed):
+            guard alliance(of: viewer)?.id == mark.alliance else { return nil }
+            return Tidings("The alliance's mark \(placeName(of: mark.at)) (\(mark.kind.title)) \(lapsed ? "lapses" : "is lifted").", .neutral)
         case .wordReported(_, let by):
             guard by == viewer else { return nil }
             return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)

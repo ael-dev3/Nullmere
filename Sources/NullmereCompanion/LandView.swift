@@ -124,6 +124,19 @@ struct PlaceSections: View {
                 }
             }
         }
+        // The alliance's mark here lifted, or the ground marked for it, as
+        // the Mac offers its leader.
+        if let marking = place.marking {
+            Section("For the alliance") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: marking.said)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                    FlowOrders(session: session, orders: marking.orders)
+                }
+            }
+        }
         if let ledger = session.ledger {
             ForEach(ledger.companies.filter { place.companies.contains($0.id) }) { company in
                 Section {
@@ -438,7 +451,32 @@ struct ChartView: View {
             let lantern = CGRect(x: x + size * 0.32, y: y + size * 0.22, width: size * 0.2, height: size * 0.2)
             context.fill(Path(ellipseIn: lantern.insetBy(dx: -size * 0.08, dy: -size * 0.08)), with: .color(Self.flame.opacity(0.25)))
             context.fill(Path(ellipseIn: lantern), with: .color(Self.flame))
+        case .allianceMark:
+            // The alliance's pennant at the hex's upper left, clear of a
+            // keep, in its mark's hue as the world lights it.
+            let hue = mark.bids.map(Self.hue) ?? Night.good
+            let foot = CGPoint(x: x - size * 0.4, y: y + size * 0.1)
+            let top = CGPoint(x: foot.x, y: foot.y - size * 0.75)
+            var pole = Path()
+            pole.move(to: foot)
+            pole.addLine(to: top)
+            context.stroke(pole, with: .color(edge), lineWidth: 1.6)
+            let pennant = Path { path in
+                path.move(to: top)
+                path.addLine(to: CGPoint(x: top.x + size * 0.46, y: top.y + size * 0.15))
+                path.addLine(to: CGPoint(x: top.x, y: top.y + size * 0.3))
+                path.closeSubpath()
+            }
+            context.fill(Path(ellipseIn: CGRect(x: top.x - size * 0.2, y: top.y - size * 0.12, width: size * 0.7, height: size * 0.54)),
+                         with: .color(hue.opacity(0.22)))
+            context.fill(pennant, with: .color(hue))
+            context.stroke(pennant, with: .color(edge), lineWidth: 0.8)
         }
+    }
+
+    /// A mark's hue, as the world lights it.
+    static func hue(_ kind: AllianceMark.Kind) -> Color {
+        Color(red: Double(kind.hue.red), green: Double(kind.hue.green), blue: Double(kind.hue.blue))
     }
 
     /// A vigil's flame, as the world draws it.

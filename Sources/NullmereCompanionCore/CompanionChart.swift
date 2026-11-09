@@ -41,7 +41,7 @@ public struct CompanionChart: Equatable, Sendable {
 
     /// What a mark stands for.
     public enum Thing: String, CaseIterable, Equatable, Sendable {
-        case seat, hold, company, wild, lair, site, shrine, vigil, plea
+        case seat, hold, company, wild, lair, site, shrine, vigil, plea, allianceMark
     }
 
     /// Something on the chart.
@@ -56,6 +56,8 @@ public struct CompanionChart: Equatable, Sendable {
         public var label: String? = nil
         /// Where one of the House's own companies is bound, while it marches.
         public var bound: Hex? = nil
+        /// What the House's alliance's mark bids, drawn in its hue.
+        public var bids: AllianceMark.Kind? = nil
     }
 
     /// What lies at a hex of the chart, and what the House may do there.
@@ -85,9 +87,20 @@ public struct CompanionChart: Equatable, Sendable {
         /// it: a standard of its alliance, a hand lent to one rising, the
         /// alliance's hall, storehouse or yards, or its own seat anew.
         public var raisings: [Raising] = []
+        /// The House's alliance's mark there lifted, or the ground marked
+        /// for it, as the Mac's ground panel offers its leader.
+        public var marking: Raising? = nil
 
         /// Every order the rules would take there, each as offered.
-        public var orders: [CompanionLedger.Order] { strikes + calls + scouts + gathers + marches + raisings.flatMap(\.orders) }
+        public var orders: [CompanionLedger.Order] {
+            var all = strikes + calls
+            all += scouts
+            all += gathers
+            all += marches
+            all += raisings.flatMap(\.orders)
+            all += marking?.orders ?? []
+            return all
+        }
     }
 
     /// Something the House may raise at a hex: what raising it does, as the
@@ -196,6 +209,11 @@ public struct CompanionChart: Equatable, Sendable {
             marks.append(Mark(id: "plea \(petition.id)", hex: hold.position, thing: .plea, side: .own,
                               name: "A plea at the gate: \(world.petitioner(of: petition))"))
         }
+        // The ground the House's alliance has marked, each in its hue.
+        for mark in world.marksSeen(by: player) where reached(mark.at) {
+            marks.append(Mark(id: CompanionChart.markID(mark), hex: mark.at, thing: .allianceMark, side: mark.by == player ? .own : .ally,
+                              name: "The alliance's mark: \(mark.said)", bids: mark.kind))
+        }
         for lair in world.lairsStanding where reached(lair.position) {
             marks.append(Mark(id: "lair \(lair.id)", hex: lair.position, thing: .lair, side: .wilds, name: CompanionChart.capitalized(lair.named)))
         }
@@ -236,6 +254,10 @@ public struct CompanionChart: Equatable, Sendable {
         var lines = marks.filter { $0.hex == hex }.map(\.name)
         if lines.isEmpty {
             lines = [explored ? "Nothing your House knows of stands here." : "Your House hasn't explored this ground."]
+        }
+        // The alliance's mark here, who made it and how long it stands.
+        if let mark = world.marksSeen(by: player).first(where: { $0.at == hex }), marks.contains(where: { $0.id == CompanionChart.markID(mark) }) {
+            lines.append(world.markMaker(mark))
         }
         let own = world.units(of: player).sorted { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }
         // The House's companies told apart where two would be named alike.
@@ -283,7 +305,26 @@ public struct CompanionChart: Equatable, Sendable {
                      hold: hold.flatMap { $0.owner == player ? $0.id : nil }, strikes: strikes,
                      calls: CompanionLedger.calls(in: world, player: player, holds: world.holds(of: player), at: hex),
                      scouts: scouts, gathers: gathers, marches: Array(marches),
-                     raisings: CompanionChart.raisings(at: hex, in: world, player: player))
+                     raisings: CompanionChart.raisings(at: hex, in: world, player: player),
+                     marking: CompanionChart.marking(at: hex, in: world, player: player))
+    }
+
+    /// A mark of the House's alliance as the chart knows it.
+    static func markID(_ mark: AllianceMark) -> String { "alliance mark \(mark.id)" }
+
+    /// The House's alliance's mark at `hex` lifted, or the ground marked
+    /// for it to gather, strike, hold or beware, by the rules' own
+    /// refusals, as the Mac offers its leader: nil where neither may be.
+    static func marking(at hex: Hex, in world: GameState, player: Int) -> Raising? {
+        typealias Order = CompanionLedger.Order
+        var orders: [Order] = []
+        if world.markRefusal(at: hex, as: player) == nil {
+            orders += AllianceMark.Kind.allCases.map { Order(title: "Mark: \($0.title)", command: .markGround(hex, $0, words: nil)) }
+        }
+        if let mark = world.marksSeen(by: player).first(where: { $0.at == hex }), world.unmarkRefusal(mark.id, as: player) == nil {
+            orders.append(Order(title: "Lift the alliance's mark", command: .unmarkGround(mark.id)))
+        }
+        return orders.isEmpty ? nil : Raising(said: AllianceMark.explained, orders: orders)
     }
 
     /// What `player`'s House may raise at `hex`, each where the rules would

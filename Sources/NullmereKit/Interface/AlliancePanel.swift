@@ -88,6 +88,7 @@ struct AlliancePanel: View {
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
+            AllianceMarksList(session: session, alliance: alliance)
             AllianceStores(session: session, alliance: alliance)
             StudiesTogether(session: session, alliance: alliance, isLeader: board.isLeader)
             Rule(opacity: 0.18)
@@ -296,6 +297,37 @@ private struct RallyRow: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The ground the alliance's leader has marked for it, each in its hue as
+/// the world lights it and said as the Houses' ledgers say it, with the
+/// view carried there on asking; nothing while it has none.
+private struct AllianceMarksList: View {
+    let session: GameSession
+    let alliance: Alliance
+
+    var body: some View {
+        let state = session.state
+        let marks = state.marks(of: alliance.id)
+        if !marks.isEmpty {
+            Caps("Its marks", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+            let said = state.marksSaid(of: alliance.id)
+            ForEach(Array(marks.enumerated()), id: \.element.id) { index, mark in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Circle().fill(MarkRow.hue(mark.kind)).frame(width: 7, height: 7)
+                        .accessibilityHidden(true)
+                    Text(verbatim: said[index])
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    QuietButton(title: "Look", size: 8.5, name: "Look at the alliance's mark: \(mark.kind.title)") {
+                        session.glide(to: mark.at)
+                    }
+                }
+            }
+        }
     }
 }
 

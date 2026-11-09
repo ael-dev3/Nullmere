@@ -297,6 +297,15 @@ extension GameState {
         for petition in petitions ?? [] where !houseIDs.contains(petition.house) || hold(petition.hold) == nil {
             found.append("Petition \(petition.id) of House \(petition.house) from no hold of the realm (\(petition.hold))")
         }
+        // Every alliance's marks its own, on the map, three at most.
+        let allianceIDs = Set((alliances ?? []).map(\.id))
+        for mark in allianceMarks ?? [] where !allianceIDs.contains(mark.alliance) || map.index(of: mark.at) == nil
+            || (mark.words?.count ?? 0) > AllianceMark.wordsLimit {
+            found.append("Alliance mark \(mark.id) of alliance \(mark.alliance) at \(mark.at) not the realm's to keep")
+        }
+        for (alliance, marks) in Dictionary(grouping: allianceMarks ?? [], by: \.alliance) where marks.count > AllianceMark.most {
+            found.append("Alliance \(alliance) keeps \(marks.count) marks, more than \(AllianceMark.most)")
+        }
         if Set((petitions ?? []).map(\.house)).count != (petitions ?? []).count {
             found.append("A House is brought more than one plea at once")
         }

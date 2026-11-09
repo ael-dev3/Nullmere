@@ -426,6 +426,62 @@ final class StageTests: XCTestCase {
         XCTAssertLessThanOrEqual(Library.model(.hostBanner).mesh.triangleCount, ModelKey.hostBanner.budget)
     }
 
+    /// An alliance's marks: its banner planted on the marked ground toward
+    /// the eye, in the alliance's colour, seen wherever it lies; a ring of
+    /// light turning about it, light rising from it and a glow over it, in
+    /// the mark's own hue, the glow keeping its size on the screen from
+    /// afar.
+    func testAllianceMarksStandOnTheirGroundInTheirHues() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(2))
+        let teal = Vec4(0.1, 0.7, 0.6, 1)
+        let batches = stage.allianceMarks([(hex: hexes[0], colour: teal), (hex: hexes[1], colour: teal)])
+        XCTAssertEqual(batches.map(\.key), [.hostBanner])
+        let banners = try XCTUnwrap(batches.first).instances
+        XCTAssertEqual(banners.count, 2)
+        for (banner, hex) in zip(banners, hexes) {
+            let centre = Relief.centre(of: hex)
+            XCTAssertEqual(banner.colour, teal)
+            XCTAssertEqual(banner.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(banner.model.c3.z, centre.z + WorldStage.markBannerOffset, accuracy: 1e-4, "Toward the eye, clear of a keep")
+            XCTAssertEqual(banner.flags & ModelInstance.alwaysShown, ModelInstance.alwaysShown, "The alliance sees it wherever it lies")
+            XCTAssertEqual(banner.hex, SIMD2(Int32(hex.q), Int32(hex.r)))
+        }
+        XCTAssertTrue(stage.allianceMarks([]).isEmpty)
+
+        // Its light: a ring on its ground, light rising, a glow over it.
+        let ringLights = WorldStage.markRingLights, rising = WorldStage.markRisingLights
+        let close = stage.markLights([(hex: hexes[0], kind: .strike)], scale: 240, time: 3)
+        XCTAssertEqual(close.count, ringLights + rising + 1)
+        let centre = Relief.centre(of: hexes[0])
+        let foot = stage.ground(atX: centre.x, z: centre.z)
+        for mote in close.prefix(ringLights) {
+            XCTAssertEqual(Vec3(mote.place.x - centre.x, 0, mote.place.z - centre.z).length, WorldStage.markRing, accuracy: 1e-3, "On its ring")
+            XCTAssertEqual(mote.place.y, stage.ground(atX: mote.place.x, z: mote.place.z) + 0.05, accuracy: 1e-4, "Laid on the ground")
+        }
+        for mote in close.dropFirst(ringLights).prefix(rising) {
+            XCTAssertLessThan(Vec3(mote.place.x - centre.x, 0, mote.place.z - centre.z).length, 0.08, "Rising from its heart")
+            XCTAssertGreaterThanOrEqual(mote.place.y, foot - 1e-4)
+            XCTAssertLessThanOrEqual(mote.place.y, foot + WorldStage.markRise + 1e-4)
+        }
+        // All of it the mark's hue, and light only.
+        let red = WorldStage.markHue(.strike)
+        for mote in close where mote.colour.x > 1e-6 {
+            XCTAssertEqual(mote.colour.y / mote.colour.x, red.y / red.x, accuracy: 1e-4)
+            XCTAssertEqual(mote.colour.z / mote.colour.x, red.z / red.x, accuracy: 1e-4)
+            XCTAssertEqual(mote.colour.w, 0, "It hides nothing")
+        }
+        // The glow keeps its size on the screen as the view draws away.
+        let far = stage.markLights([(hex: hexes[0], kind: .strike)], scale: 5, time: 3)
+        XCTAssertEqual(try XCTUnwrap(far.last).place.w * 5, 10, accuracy: 1e-3)
+        XCTAssertEqual(try XCTUnwrap(close.last).place.w, 0.32, accuracy: 1e-4, "Never smaller than its ground's heart")
+        // Each kind its own hue; the ring turns with the time.
+        XCTAssertEqual(Set(AllianceMark.Kind.allCases.map { "\(WorldStage.markHue($0))" }).count, AllianceMark.Kind.allCases.count)
+        let later = stage.markLights([(hex: hexes[0], kind: .strike)], scale: 240, time: 4)
+        XCTAssertNotEqual(later.first?.place, close.first?.place)
+        XCTAssertTrue(stage.markLights([], scale: 240, time: 3).isEmpty)
+    }
+
     /// A commander's leading talents glow on the ground beneath it as its
     /// company marches, in its tree's own sigil, wider the more ranks it
     /// holds; at rest, or untaught, there is none.

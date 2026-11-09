@@ -1274,8 +1274,9 @@ public struct CompanionLedger: Equatable, Sendable {
             if whole, !laid.isZero, world.takeBackRefusal(laid, by: player) == nil {
                 takeBack.append(Order(title: "Take back all you laid up", command: .takeBack(laid)))
             }
+            // And the ground its leader has marked for it, wherever it lies.
             return AllianceOwn(lines: [world.standardsSaid(of: own), world.hallSaid(of: own), world.coffersSaid(of: own),
-                                       world.storehouseSaid(of: own), world.yardsSaid(of: own)],
+                                       world.storehouseSaid(of: own), world.yardsSaid(of: own)] + world.marksSaid(of: own.id),
                                laidUp: whole ? Storehouse.laidUpSaid(laid) : nil, layUp: layUp, takeBack: takeBack)
         }
         calls = CompanionLedger.calls(in: world, player: player, holds: holds)

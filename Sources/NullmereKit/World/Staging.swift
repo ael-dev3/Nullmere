@@ -172,6 +172,12 @@ extension GameSession {
         let flags = state.standardsStanding.filter { isExplored($0.position) }
         let standards = stage.animate(stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses), Float($0.progress)) }),
                                       time: t, into: &frame)
+        // The marks the keeper's alliance has made, its banner planted on
+        // each, seen wherever it lies.
+        let marks = state.allianceMarks ?? []
+        let markBanners = stage.animate(stage.allianceMarks(marks.map { mark in
+            (hex: mark.at, colour: allianceColour(mark.alliance, else: mark.by, houses))
+        }), time: t, into: &frame)
         // The war camps of rallies gathering at holds in sight, in their
         // callers' colours.
         let camps = stage.rallyCamps(state.ralliesStanding.compactMap { rally in
@@ -258,7 +264,7 @@ extension GameSession {
             guard glimpse.owner != state.player, !isVisible(glimpse.at), state.houses.indices.contains(glimpse.owner) else { return nil }
             return (kind: glimpse.kind, hex: glimpse.at, colour: WorldStage.colour(houses, sigil: state.houses[glimpse.owner].sigil))
         } + walking), time: t, into: &frame)
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + flights
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.
@@ -294,6 +300,8 @@ extension GameSession {
         // From afar each hold the keeper knows glows over its keep, still
         // where motion is reduced: it does not move.
         frame.motes += stage.glows(shown, scale: camera.scale)
+        // And each of the alliance's marks in its own light, from near or far.
+        frame.motes += stage.markLights(marks.map { (hex: $0.at, kind: $0.kind) }, scale: camera.scale, time: t)
         // The vigils' lights for the fallen out on the lake, carried on with
         // the current through the watch, each mirrored in the water.
         let vigils = WorldStage.vigils(state.vigilsOnTheLake.map { vigil in

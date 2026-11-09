@@ -697,6 +697,66 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(far, near / 4 + 10, "and nothing else in the view changes for them")
     }
 
+    /// The ground the keeper's alliance has marked, drawn as the world
+    /// draws it: the alliance's banner planted on each mark, a ring of
+    /// light turning about it and light rising from it in its hue, gold to
+    /// gather, red to strike, blue to hold; and from afar each a glow that
+    /// keeps its size on the screen. Drawn marked and unmarked, close and
+    /// far, they change the ground at the marks and nothing else.
+    @MainActor
+    func testTheAlliancesMarksStandLitOnTheirGround() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "Lantern Oath"), as: me)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let ring = seat.position.spiral(2).filter { hex in
+            hex.distance(to: seat.position) == 2 && state.map[hex]?.terrain.isPassable == true && state.hold(at: hex) == nil
+                && state.map.index(of: hex).map { state.houses[me].explored[$0] } == true
+        }
+        let grounds = stride(from: 0, to: ring.count, by: max(ring.count / 3, 1)).prefix(3).map { ring[$0] }
+        XCTAssertEqual(grounds.count, 3)
+        for (hex, kind) in zip(grounds, [AllianceMark.Kind.gather, .strike, .hold]) {
+            _ = try state.perform(.markGround(hex, kind, words: nil), as: me)
+        }
+        XCTAssertEqual(state.marksSeen(by: me).map(\.at), grounds)
+        var unmarked = state
+        unmarked.allianceMarks = nil
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let marked = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("marked")))
+        let bare = GameSession(state: unmarked, store: LocalStore(directory: directory.appendingPathComponent("bare")))
+        var close = Camera(scale: 110, tilt: 0.85, heading: 0.4)
+        close.focus(on: seat.position)
+        var far = Camera(scale: 9)
+        far.focus(on: seat.position)
+        var near = 0, beyond = 0, afar = 0, elsewhere = 0
+        var kept: [Drawn] = []
+        for (camera, reach) in [(close, 90.0), (far, 16.0)] {
+            let drawn = try draw(renderer, "marks", camera: camera, tiles: marked.tileBytes, scene: marked.sceneFrame(at: 20))
+            let none = try draw(renderer, "no marks", camera: camera, tiles: bare.tileBytes, scene: bare.sceneFrame(at: 20))
+            kept.append(drawn)
+            let points = grounds.map { camera.viewPoint(of: $0, height: Double(WorldRenderTests.world.relief.height(of: $0)), in: WorldRenderTests.size) }
+            for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+                for x in stride(from: 0, to: WorldRenderTests.width, by: 2) where abs(drawn.luminance(x, y) - none.luminance(x, y)) > 4 {
+                    let marking = points.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < reach }
+                    if camera.scale == close.scale {
+                        if marking { near += 1 } else { beyond += 1 }
+                    } else {
+                        if marking { afar += 1 } else { elsewhere += 1 }
+                    }
+                }
+            }
+        }
+        try keep(kept, as: "world-marks")
+        print("RENDER marks: close \(near) points changed at the marks, \(beyond) beyond; afar \(afar) at them, \(elsewhere) beyond")
+        XCTAssertGreaterThan(near, 150, "Each mark stands lit on its ground")
+        XCTAssertLessThan(beyond, near / 4 + 10, "and nothing else in the view changes for them")
+        XCTAssertGreaterThan(afar, 12, "From afar each glows where it lies")
+        XCTAssertLessThan(elsewhere, afar / 2 + 10)
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world

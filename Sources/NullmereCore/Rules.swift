@@ -88,6 +88,10 @@ extension GameState {
             return try honourVigil(id, as: house)
         case let .answerPetition(id, grant):
             return try answerPetition(id, grant: grant, as: house)
+        case let .markGround(hex, kind, words):
+            return try markGround(hex, kind, words: words, as: house)
+        case .unmarkGround(let id):
+            return try unmarkGround(id, as: house)
         case let .sealLetter(words, holdID):
             return try sealLetter(words, in: holdID, as: house)
         case .stand(let order):

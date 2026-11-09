@@ -225,6 +225,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The watch each keeper's House was last brought a plea; absent
     /// before the first.
     var petitioned: [Int: Int]?
+    /// The ground alliances' leaders have marked for their Houses, the
+    /// oldest first; absent while none is.
+    public internal(set) var allianceMarks: [AllianceMark]?
     /// Barges out on the water this watch; absent when none is.
     public internal(set) var barges: [Ferrying]?
     /// The edicts put to the realm this age, the latest last; absent

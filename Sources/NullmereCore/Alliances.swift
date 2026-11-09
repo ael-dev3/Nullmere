@@ -216,6 +216,11 @@ extension GameState {
         let alliance = alliances![index]
         guard !alliance.members.isEmpty else {
             alliances!.remove(at: index)
+            // Its marks on the ground are gone with it.
+            allianceMarks = allianceMarks.flatMap { all in
+                let kept = all.filter { $0.alliance != allianceID }
+                return kept.isEmpty ? nil : kept
+            }
             record(.alliance, [], "\(alliance.titled) is no more.")
             return [.allianceDisbanded(alliance: allianceID, name: alliance.name)]
         }

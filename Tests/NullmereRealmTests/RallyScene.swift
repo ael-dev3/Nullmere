@@ -1571,3 +1571,36 @@ extension RallyScene {
         XCTAssertEqual(honoured.1, 1, "The honour, every House's to see")
     }
 }
+
+extension RallyScene {
+    /// Alliance marks (RoK's alliance markers), between two clients: Ama,
+    /// the alliance's leader, marks ground her House has seen from her own
+    /// client, with words of her own, and Bel, sworn to it, sees it in his
+    /// where it lies; his own mark is refused by the realm, for he does not
+    /// lead; and Ama lifts hers, gone from both.
+    func markTheGround(ama: Int, bel: Int) async throws {
+        let words = "Hold the ford"
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            guard let seat = world.holds.first(where: { $0.owner == ama && $0.isSeat }) else { return }
+            staged.at = seat.position.spiral(3).first { $0 != seat.position && world.markRefusal(at: $0, as: ama) == nil }
+        }
+        let spot = try XCTUnwrap(staged.at, "Ground Ama's House has seen, near her seat")
+        await MainActor.run { a.send(.markGround(spot, .hold, words: words)) }
+        try await until("both to see the mark where it lies, with her words") {
+            earA.world?.marksSeen(by: ama).contains { $0.at == spot && $0.kind == .hold && $0.words == words } == true
+                && earB.world?.marksSeen(by: bel).contains { $0.at == spot && $0.kind == .hold && $0.words == words } == true
+        }
+        await MainActor.run { b.send(.markGround(spot, .strike, words: nil)) }
+        try await until("Bel refused: he does not lead the alliance") {
+            earB.refusals.contains(RuleError.notAllianceLeader.description)
+        }
+        let id = try await MainActor.run { try XCTUnwrap(earA.world?.marksSeen(by: ama).first { $0.at == spot }?.id) }
+        await MainActor.run { a.send(.unmarkGround(id)) }
+        try await until("the mark lifted, as both keepers see it") {
+            earA.world?.marksSeen(by: ama).contains { $0.id == id } == false
+                && earB.world?.marksSeen(by: bel).contains { $0.id == id } == false
+        }
+    }
+}

@@ -349,7 +349,10 @@ a vote on the realm's law to cast.
   standard of its alliance near its holds, a hand lent to its alliance's
   standard as it rises, and, for the alliance's leader on its land, the
   alliance's hall, storehouse and a yard of each store it has none of
-  (paid first from the alliance's coffers); the House's
+  (paid first from the alliance's coffers); For the alliance, its marks
+  there and, for its leader, a mark to gather, strike, hold or beware
+  made there or lifted (the alliance's marks are pennants on the chart in
+  their hue, as they are lights in the world); the House's
   own companies and hold there come with their orders, as on the Army and
   House tabs. VoiceOver reads each mark on the chart and chooses it.
 - **Army.** Each company as the order book names it (two alike in kind,
@@ -1165,6 +1168,20 @@ a vote on the realm's law to cast.
   flying the caller's banner, a war drum on its trestle and a fire. On the
   march, the host goes under the caller's war banner, borne high among its
   company nearest the target.
+- **Alliance marks.** A keeper who leads an alliance marks ground their
+  House has seen for its Houses: Gather here, Strike here, Hold this
+  ground or Beware, with up to sixty characters of their own words if
+  they will, from the ground panel or the panel of a hold (Mark for the
+  alliance…), or from the phone's chart. Each stands 24 watches, three at
+  most an alliance: a fourth takes the oldest's place, and a mark on
+  marked ground takes that one's. The leader lifts one when they will; an
+  alliance's marks go with it. Only the alliance's Houses see them and
+  hear of them, wherever they lie: the alliance's banner planted on the
+  ground, a ring of light turning about it and light rising from it in
+  the mark's hue (gold to gather, red to strike, blue to hold, pale violet
+  to beware), and from afar a glow that keeps its size as the view draws
+  away; on the phone's chart, a pennant in the same hue. Stewards make
+  none.
 - **Keeping an ally's gates.** A company of war sent to an ally's hold
   stands at its gates; while it stands there, a company of a House at war
   with its own that strikes the hold is struck back from where it stands.

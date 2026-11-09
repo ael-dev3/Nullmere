@@ -55,6 +55,7 @@ extension GameState {
         events += dream()
         events += driftBottles()
         events += tendVigils()
+        events += lapseMarks()
         events += landCrossings()
         events += turnEdicts()
         forgetOldGifts()

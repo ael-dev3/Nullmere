@@ -467,6 +467,77 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// How far toward the eye from its ground's heart an alliance mark's
+    /// banner is planted, clear of a keep standing there.
+    public static let markBannerOffset: Float = 0.42
+    /// How wide the ring of light turning on a mark's ground is.
+    public static let markRing: Float = 0.62
+    /// How high the light rising from a mark climbs before it fades.
+    public static let markRise: Float = 1.9
+    /// How many points of light make a mark's ring, and its rising light.
+    public static let markRingLights = 20
+    public static let markRisingLights = 12
+
+    /// The hue of a mark's light by what it bids (`AllianceMark.Kind.hue`).
+    public static func markHue(_ kind: AllianceMark.Kind) -> Vec3 {
+        Vec3(kind.hue.red, kind.hue.green, kind.hue.blue)
+    }
+
+    /// The marks the keeper's alliance has made, each where it lies: the
+    /// alliance's banner planted on the marked ground, a little toward the
+    /// eye from its heart, so a keep standing there never hides it.
+    public func allianceMarks(_ marks: [(hex: Hex, colour: Vec4)]) -> [ModelBatch] {
+        WorldStage.batches(marks.map { mark in
+            let centre = Relief.centre(of: mark.hex)
+            let x = centre.x, z = centre.z + WorldStage.markBannerOffset
+            let at = Vec3(x, ground(atX: x, z: z) - Scatter.sink, z)
+            return (.hostBanner, ModelInstance(model: .translation(at) * .rotationY(WorldStage.phase(of: mark.hex, salt: 71) * 0.4 - 0.2),
+                                               colour: mark.colour, phase: WorldStage.phase(of: mark.hex, salt: 73),
+                                               hex: SIMD2(Int32(mark.hex.q), Int32(mark.hex.r)), flags: ModelInstance.alwaysShown))
+        })
+    }
+
+    /// The light of the marks the keeper's alliance has made, in each
+    /// one's hue (`markHue`): a ring of points turning on its ground, light
+    /// rising from its heart and fading as it climbs, and over it a soft
+    /// glow that keeps its size on the screen as the view draws away, so
+    /// the alliance sees from across the realm where its leader bids it
+    /// gather, strike, hold or beware. Light only: it hides nothing. Where
+    /// motion is reduced it stands still (`time` held).
+    public func markLights(_ marks: [(hex: Hex, kind: AllianceMark.Kind)], scale: Double, time: Float) -> [Mote] {
+        var motes: [Mote] = []
+        motes.reserveCapacity(marks.count * (WorldStage.markRingLights + WorldStage.markRisingLights + 1))
+        for mark in marks {
+            let centre = Relief.centre(of: mark.hex)
+            let foot = Vec3(centre.x, ground(atX: centre.x, z: centre.z), centre.z)
+            let hue = WorldStage.markHue(mark.kind)
+            let own = WorldStage.phase(of: mark.hex, salt: 79)
+            // The ring, turning slowly, brightest where it has just passed.
+            let ringLights = WorldStage.markRingLights
+            for index in 0..<ringLights {
+                let a = Float(index) / Float(ringLights) * 2 * .pi + time * 0.35 + own
+                let x = foot.x + WorldStage.markRing * Float(cos(Double(a)))
+                let z = foot.z + WorldStage.markRing * Float(sin(Double(a)))
+                let shimmer = 0.7 + 0.3 * Float(sin(Double(time * 2.2 + Float(index) * 0.9 + own)))
+                motes.append(Mote(at: Vec3(x, ground(atX: x, z: z) + 0.05, z), size: 0.04, light: hue * (1.1 * shimmer), cover: 0))
+            }
+            // Light rising from its heart, each point climbing and fading.
+            let rising = WorldStage.markRisingLights
+            for index in 0..<rising {
+                let up = (Float(index) / Float(rising) + time * 0.28 + own).truncatingRemainder(dividingBy: 1)
+                let turn = Float(index) * 2.4 + time * 0.8
+                let wide = 0.07 * (1 - 0.5 * up)
+                let at = foot + Vec3(wide * Float(cos(Double(turn))), WorldStage.markRise * up, wide * Float(sin(Double(turn))))
+                motes.append(Mote(at: at, size: 0.035, light: hue * (1.4 * (1 - up) * min(up * 6, 1)), cover: 0))
+            }
+            // The glow over it, holding its size on the screen from afar.
+            let size = max(Float(10 / max(scale, 1)), 0.32)
+            let breathe = 0.85 + 0.15 * Float(sin(Double(time * 1.6 + own)))
+            motes.append(Mote(at: foot + Vec3(0, 0.45, 0), size: size, light: hue * (0.32 * breathe), cover: 0))
+        }
+        return motes
+    }
+
     /// The alliances' halls the keeper has found, each in its alliance's
     /// colour, one rising drawn up as far as it has come within its
     /// scaffold; and where the whole ones' louvres smoke.

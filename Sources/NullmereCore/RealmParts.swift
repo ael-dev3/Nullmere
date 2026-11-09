@@ -575,6 +575,7 @@ extension GameState {
         var bottles: [Bottle]?
         var vigils: [Vigil]?
         var petitions: [Petition]?
+        var allianceMarks: [AllianceMark]?
         var barges: [Ferrying]?
         var rallies: [Rally]?
         var fields: [Field]?
@@ -612,6 +613,7 @@ extension GameState {
             bottles = world.bottles
             vigils = world.vigils
             petitions = world.petitions
+            allianceMarks = world.allianceMarks
             barges = world.barges
             rallies = world.rallies
             fields = world.fields
@@ -651,6 +653,7 @@ extension GameState {
             world.bottles = bottles
             world.vigils = vigils
             world.petitions = petitions
+            world.allianceMarks = allianceMarks
             world.barges = barges
             world.rallies = rallies
             world.fields = fields

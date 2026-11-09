@@ -243,6 +243,9 @@ extension GameState {
         // The pleas the House's own folk have brought it, none of another's.
         view.petitions = petitions.map { $0.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         view.petitioned = nil
+        // The ground the House's own alliance has marked, none of another's.
+        let ally = alliance(of: house)?.id
+        view.allianceMarks = allianceMarks.map { $0.filter { $0.alliance == ally } }.flatMap { $0.isEmpty ? nil : $0 }
         // The holds of the ages before, where they have seen the ground.
         view.drowned = drowned.map { all in
             all.filter { hold in map.index(of: hold.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
@@ -463,6 +466,9 @@ extension GameState {
             case .petitionBrought(let petition), .petitionAnswered(let petition, _, _), .petitionWithdrawn(let petition):
                 // A House's folk speak to their own keeper alone.
                 return petition.house == house
+            case .groundMarked(let mark), .markLifted(let mark, _):
+                // An alliance's marks are its own Houses' alone.
+                return alliance(of: house)?.id == mark.alliance
             case .letterSealed(_, let by):
                 return by == house
             case .letterFound:

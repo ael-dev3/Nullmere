@@ -513,4 +513,68 @@ extension CompanionChartTests {
         XCTAssertEqual(mark.side, .own)
         XCTAssertEqual(mark.name, "A plea at the gate: \(state.petitioner(of: petition))")
     }
+
+    /// The ground the House's alliance has marked is on the phone's chart
+    /// where it lies, in the mark's hue, said as the Mac says it; its leader
+    /// marks ground and lifts a mark from the chart, by the rules' own
+    /// refusals, and a House sworn to it only sees them.
+    func testTheAlliancesMarksAreOnTheChartAndMadeFromIt() throws {
+        var state = GameState(settings: GameSettings(seedText: "companion chart marks", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let ally = try XCTUnwrap(state.houses.indices.first { $0 != me })
+        _ = try state.perform(.foundAlliance(name: "Lantern Oath"), as: me)
+        let alliance = try XCTUnwrap(state.alliance(of: me))
+        state.alliances![try XCTUnwrap(state.alliances?.firstIndex { $0.id == alliance.id })].members.append(ally)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let ground = try XCTUnwrap(seat.position.neighbors.first { hex in
+            state.map.index(of: hex).map { state.houses[me].explored[$0] } ?? false
+        })
+        // Unmarked, its leader is offered every kind of mark there.
+        let before = CompanionChart(world: state.view(for: me), player: me)
+        let offered = try XCTUnwrap(before.place(at: ground, in: state.view(for: me), player: me).marking)
+        XCTAssertEqual(offered.said, AllianceMark.explained)
+        XCTAssertEqual(offered.orders.map(\.title), ["Mark: Gather here", "Mark: Strike here", "Mark: Hold this ground", "Mark: Beware"])
+        assertTaken(offered.orders, in: state, as: me)
+        XCTAssertNil(before.place(at: ground, in: state.view(for: ally), player: ally).marking, "A sworn House marks nothing")
+
+        // Marked, the alliance's Houses see it where it lies.
+        _ = try state.perform(.markGround(ground, .strike, words: "Before the moon"), as: me)
+        let made = try XCTUnwrap(state.marksSeen(by: me).first)
+        for (house, side) in [(me, CompanionChart.Side.own), (ally, .ally)] {
+            let view = state.view(for: house)
+            // Wherever it lies, the House's ledger says it with its alliance's own.
+            let said = try XCTUnwrap(CompanionLedger(world: view, player: house).allianceOwn).lines
+            XCTAssertEqual(said.last, view.marksSaid(of: alliance.id).last)
+            XCTAssertEqual(said.last, "Strike here, \(view.placeName(of: ground)): “Before the moon”. \(view.markMaker(made))")
+            // On the chart where the chart reaches it: always about the leader's own seat.
+            let chart = CompanionChart(world: view, player: house)
+            guard chart.contains(ground) else {
+                XCTAssertNotEqual(house, me)
+                XCTAssertFalse(chart.marks.contains { $0.thing == .allianceMark }, "Beyond the chart, on the ledger alone")
+                continue
+            }
+            let mark = try XCTUnwrap(chart.marks.first { $0.thing == .allianceMark })
+            XCTAssertEqual(mark.id, "alliance mark \(made.id)")
+            XCTAssertEqual(mark.hex, ground)
+            XCTAssertEqual(mark.side, side)
+            XCTAssertEqual(mark.bids, .strike)
+            XCTAssertEqual(mark.name, "The alliance's mark: Strike here: “Before the moon”")
+            let place = chart.place(at: ground, in: view, player: house)
+            XCTAssertTrue(place.lines.contains(mark.name))
+            XCTAssertEqual(place.lines.last, view.markMaker(made))
+            if house == me {
+                let orders = try XCTUnwrap(place.marking).orders
+                XCTAssertEqual(orders.last?.title, "Lift the alliance's mark")
+                XCTAssertEqual(orders.last?.command, .unmarkGround(made.id))
+                assertTaken(orders, in: state, as: me)
+            } else {
+                XCTAssertNil(place.marking, "Only its leader lifts it")
+            }
+        }
+        // No other House sees it.
+        let other = try XCTUnwrap(state.houses.indices.first { $0 != me && $0 != ally })
+        XCTAssertFalse(CompanionChart(world: state.view(for: other), player: other).marks.contains { $0.thing == .allianceMark })
+        // Each kind's hue its own.
+        XCTAssertEqual(Set(AllianceMark.Kind.allCases.map { "\($0.hue)" }).count, AllianceMark.Kind.allCases.count)
+    }
 }

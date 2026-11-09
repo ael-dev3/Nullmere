@@ -97,6 +97,11 @@ public enum Command: Codable, Equatable, Sendable {
     /// The keeper's answer to a plea their House's folk brought: granted,
     /// paid for, or turned away.
     case answerPetition(Int, grant: Bool)
+    /// An alliance's leader marks ground for its Houses: to gather there,
+    /// strike there, hold it or beware it, with a few words if they will.
+    case markGround(Hex, AllianceMark.Kind, words: String?)
+    /// An alliance's leader lifts one of its marks.
+    case unmarkGround(Int)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -1107,6 +1112,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case petitionAnswered(Petition, granted: Bool, silently: Bool)
     /// A plea whose need passed before it was answered, withdrawn.
     case petitionWithdrawn(Petition)
+    /// Ground marked for an alliance by its leader.
+    case groundMarked(AllianceMark)
+    /// An alliance's mark lifted by its leader, given way to another, or
+    /// lapsed.
+    case markLifted(AllianceMark, lapsed: Bool)
     /// A letter sealed in a hold for the age to come.
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.

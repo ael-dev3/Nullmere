@@ -157,6 +157,38 @@ final class PanelRenderTests: XCTestCase {
         try CardShot.keep(GuidePanel(session: session).padding(20), as: "game-guide.png", size: CGSize(width: 420, height: 760))
     }
 
+    /// The alliance's marks on the keeper's panels: on the ground card the
+    /// mark made there, in its hue with its words, who made it and how long
+    /// it stands, with its leader's Lift; unfolded, what a mark may bid;
+    /// and the alliance panel listing every mark with Look. Kept as a
+    /// window draws it for CI's screenshots (game-mark.png).
+    @MainActor
+    func testTheAlliancesMarksAreOnTheGroundCardAndTheAlliancePanel() throws {
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "marks on the card", keepers: 1)),
+                                  store: LocalStore(directory: dir.appendingPathComponent("marks")))
+        let me = session.player
+        XCTAssertTrue(session.perform(.foundAlliance(name: "Lantern Oath")))
+        let seat = try XCTUnwrap(session.state.seat(of: me))
+        let ground = try XCTUnwrap(seat.position.neighbors.first { session.isExplored($0) && session.state.hold(at: $0) == nil })
+        XCTAssertTrue(MarkRow.offered(at: ground, in: session.state, player: me), "Its leader may mark it")
+        XCTAssertTrue(session.perform(.markGround(ground, .gather, words: "Bring the spears")))
+        let mark = try XCTUnwrap(session.state.marksSeen(by: me).first)
+        XCTAssertEqual(mark.at, ground)
+        XCTAssertEqual(mark.words, "Bring the spears")
+        XCTAssertEqual(GameSession.place(of: .groundMarked(mark), in: session.state), ground, "Heard from where it lies")
+        XCTAssertEqual(GameSession.cue(forDepth: .groundMarked(mark), in: session.state, player: me), nil, "Its own leader hears no horn for it")
+        session.selection = .tile(ground)
+        try draw(SelectionPanel(session: session), width: PanelWidth.record)
+        try CardShot.keep(MarkRow(session: session, hex: ground, open: true, words: "Hold till dawn")
+            .padding(16).frame(width: PanelWidth.record).panelBackground().padding(20),
+                          as: "game-mark.png")
+        _ = try CardShot.draw(AlliancePanel(session: session), size: CGSize(width: PanelWidth.rail + 40, height: 700))
+        // Lifted, the card offers marking it again, and the alliance lists none.
+        XCTAssertTrue(session.perform(.unmarkGround(mark.id)))
+        XCTAssertTrue(session.state.marksSeen(by: me).isEmpty)
+        try draw(SelectionPanel(session: session), width: PanelWidth.record)
+    }
+
     func testTheSelectionPanelDrawsWhateverIsChosen() throws {
         let session = busySession()
         let state = session.state

@@ -228,6 +228,11 @@ struct OwnHoldDetails: View {
             }
             // A letter to the age to come, sealed under the hold's stones.
             LetterComposer(session: session, hold: hold)
+            // The alliance's mark on it, or its leader's means to make one.
+            if MarkRow.offered(at: hold.position, in: state, player: session.player) {
+                Rule()
+                MarkRow(session: session, hex: hold.position)
+            }
             // What it does on the water, folded to a line until asked for:
             // what its stone heard, while it heard anything.
             let bottles = state.castingWater(beside: hold) != nil
@@ -555,6 +560,11 @@ struct ForeignHoldPanel: View {
                 .fixedSize(horizontal: false, vertical: true)
             if stance == .war, session.state.alliance(of: session.player) != nil {
                 rally
+            }
+            // The alliance's mark on it, or its leader's means to make one.
+            if MarkRow.offered(at: hold.position, in: session.state, player: session.player) {
+                Rule(opacity: 0.18)
+                MarkRow(session: session, hex: hold.position)
             }
             scouting
         }
@@ -1297,6 +1307,11 @@ struct TilePanel: View {
                     if !stores.isEmpty, state.site(at: hex) == nil {
                         YardRow(session: session, hex: hex, stores: stores)
                     }
+                }
+                // The alliance's mark here, or its leader's means to make one.
+                if MarkRow.offered(at: hex, in: state, player: session.player) {
+                    Rule(opacity: 0.18)
+                    MarkRow(session: session, hex: hex)
                 }
                 // The House's own land: its seat may be raised anew here.
                 if SeatMoveRow.offered(at: hex, in: state, player: session.player) {
