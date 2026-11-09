@@ -804,6 +804,7 @@ final class WorldRenderTests: XCTestCase {
     /// company with its torches doused, marching dark, carries none, and
     /// nothing else in the view changes. CI keeps both, lit then dark, as
     /// world-torches.png.
+    @MainActor
     func testACompanyCarriesItsTorchesAndMarchingDarkNone() throws {
         let renderer = try renderer()
         renderer.meshSource = { Library.model($0).mesh }
