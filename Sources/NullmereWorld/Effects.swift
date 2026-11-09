@@ -123,14 +123,19 @@ public struct Emitter: Equatable, Sendable {
     public var seed: UInt32
     /// How strongly: a fire's height, a dust cloud's thickness.
     public var strength: Float
+    /// How the air carries its smoke and embers: nil, the night's own slow
+    /// air as ever; otherwise the way and strength the watch's wind bears
+    /// them on the ground, zero where none blows and they rise straight.
+    public var drift: Vec3?
 
-    public init(_ effect: Effect, at origin: Vec3, rate: Float, spread: Float = 0.1, seed: UInt32, strength: Float = 1) {
+    public init(_ effect: Effect, at origin: Vec3, rate: Float, spread: Float = 0.1, seed: UInt32, strength: Float = 1, drift: Vec3? = nil) {
         self.effect = effect
         self.origin = origin
         self.rate = rate
         self.spread = spread
         self.seed = seed
         self.strength = strength
+        self.drift = drift
     }
 }
 
@@ -140,6 +145,8 @@ public struct Emitter: Equatable, Sendable {
 public enum Effects {
     /// No more than this many in a frame: the oldest emitters' last motes go first.
     public static let most = 4_000
+    /// How the night's own slow air leans smoke when no wind is told.
+    public static let nightAir = Vec3(0.09, 0, -0.05)
 
     /// Every mote alive at `time`.
     public static func motes(bursts: [Burst], emitters: [Emitter], at time: Float) -> [Mote] {
@@ -163,7 +170,7 @@ public enum Effects {
                 let seed = emitter.seed &+ UInt32(truncatingIfNeeded: born) &* 0x9E37_79B9
                 let spot = Vec3(unit(seed, 1) * 2 - 1, 0, unit(seed, 2) * 2 - 1) * emitter.spread
                 if let mote = mote(emitter.effect, index: 0, seed: seed, origin: emitter.origin + spot, age: time - birth,
-                                   scale: emitter.strength) {
+                                   scale: emitter.strength, drift: emitter.drift) {
                     motes.append(mote)
                 }
             }
@@ -175,7 +182,7 @@ public enum Effects {
     /// One mote of an effect, `age` seconds after it was thrown, or nil if
     /// it is not yet, or no longer, to be seen.
     static func mote(_ effect: Effect, index: UInt32, seed: UInt32, origin: Vec3, age: Float, scale: Float,
-                     tint: Vec3 = Vec3(1, 1, 1)) -> Mote? {
+                     tint: Vec3 = Vec3(1, 1, 1), drift: Vec3? = nil) -> Mote? {
         // Each mote lives a little more or less than its kind; a sigil's
         // fade together.
         let life = effect == .sigil ? effect.lifetime : effect.lifetime * (0.65 + 0.7 * unit(seed &+ index, 3))
@@ -199,9 +206,10 @@ public enum Effects {
             let show = 0.42 * (1 - t) * min(age * 8, 1)
             return Mote(at: at, size: (0.07 + 0.16 * t) * scale, light: Vec3(0.050, 0.044, 0.036) * show, cover: show)
         case .smoke:
-            // Rising and leaning with the night's air, spreading as it goes.
+            // Rising and leaning with the night's air, or borne on the
+            // watch's wind, spreading as it goes.
             let rise = (0.32 + 0.18 * b) * age * scale
-            let lean = Vec3(0.09, 0, -0.05) * age * age
+            let lean = (drift ?? Effects.nightAir) * age * age
             let curl = around * (0.05 + 0.08 * t) * scale
             let show = 0.6 * Float(sin(Double(t) * .pi)) * (0.6 + 0.4 * c)
             // Lit from below by its fire while it is low.
@@ -214,7 +222,9 @@ public enum Effects {
             let sway = around * 0.12 * Float(sin(Double(age * (3 + 4 * c))))
             let wink = 0.55 + 0.45 * Float(sin(Double(age * (17 + 13 * a))))
             let heat = (1 - t) * wink
-            return Mote(at: origin + Vec3(0, rise, 0) + sway, size: 0.016 * scale, light: Vec3(2.2, 0.95, 0.28) * heat, cover: 0)
+            // Borne off on the watch's wind, where one blows.
+            let carried = (drift ?? Vec3(0, 0, 0)) * (0.6 * age * age)
+            return Mote(at: origin + Vec3(0, rise, 0) + sway + carried, size: 0.016 * scale, light: Vec3(2.2, 0.95, 0.28) * heat, cover: 0)
         case .flash:
             // One swell of light where the blow lands, quick to come and go.
             let swell = Float(sin(Double(min(t, 1)) * .pi))
@@ -406,6 +416,12 @@ public struct Happenings: Equatable, Sendable {
     /// The blackwood burning (`Wildfire`): a few spots to each tile
     /// alight, each its own fire among the trees.
     public var woodFires: [Spot] = []
+    /// How the air bears the smoke and embers of what burns: nil, the
+    /// night's own slow air, where the watch's wind is not told; zero on a
+    /// still night, the smoke rising straight; otherwise the wind's way on
+    /// the ground (`WorldStage.windward`) at its strength
+    /// (`Happenings.windCarries`), so the smoke shows where a fire will run.
+    public var air: Vec3?
     /// Where the night's fireflies wander.
     public var fireflies: [Spot] = []
     /// Where commanders' skills fired, when, and how each looks.
@@ -447,6 +463,10 @@ public struct Happenings: Equatable, Sendable {
     }
     /// How often each front throws a clash of steel, in seconds.
     public static let clashEvery: Float = 0.22
+    /// How strongly the watch's wind bears smoke off, a unit a second each
+    /// second: a plume leaning well over, three tiles downwind before it is
+    /// gone, against the night's own air, a third as strong.
+    public static let windCarries: Float = 0.2
     /// Where a struck throng's ranks take the foe's blows, beat on beat, in
     /// time with their figures reeling (`Clip.hit`): steel on shields and
     /// mail, dust kicked from the staggering feet, timber split from an
@@ -582,9 +602,9 @@ public struct Happenings: Equatable, Sendable {
         }
         for blaze in blazes {
             let top = blaze.at + Vec3(0, 0.75, 0)
-            emitters.append(Emitter(.embers, at: top, rate: 16 * blaze.strength, spread: 0.18, seed: blaze.seed, strength: 1))
+            emitters.append(Emitter(.embers, at: top, rate: 16 * blaze.strength, spread: 0.18, seed: blaze.seed, strength: 1, drift: air))
             emitters.append(Emitter(.smoke, at: top + Vec3(0, 0.1, 0), rate: 5 * blaze.strength, spread: 0.14, seed: blaze.seed &+ 7,
-                                    strength: 0.8 + 0.6 * blaze.strength))
+                                    strength: 0.8 + 0.6 * blaze.strength, drift: air))
             // Firelight, flickering.
             let flicker = 0.75 + 0.25 * Float(sin(Double(time * 11 + Float(blaze.seed % 97)))) * Float(sin(Double(time * 7.3)))
             lights.append(PointLight(at: top, reach: 2.6, colour: Vec3(2.2, 1.0, 0.35) * blaze.strength * flicker))
@@ -595,9 +615,9 @@ public struct Happenings: Equatable, Sendable {
             emitters.append(Emitter(.flames, at: fire.at + Vec3(0, 0.03, 0), rate: 30 * fire.strength, spread: 0.2, seed: fire.seed,
                                     strength: 1))
             emitters.append(Emitter(.embers, at: fire.at + Vec3(0, 0.3, 0), rate: 9 * fire.strength, spread: 0.22, seed: fire.seed &+ 3,
-                                    strength: 1))
+                                    strength: 1, drift: air))
             emitters.append(Emitter(.smoke, at: fire.at + Vec3(0, 0.42, 0), rate: 4 * fire.strength, spread: 0.26, seed: fire.seed &+ 7,
-                                    strength: 1.2))
+                                    strength: 1.2, drift: air))
             let flicker = 0.7 + 0.3 * Float(sin(Double(time * 13 + Float(fire.seed % 89)))) * Float(sin(Double(time * 5.1 + 1)))
             lights.append(PointLight(at: fire.at + Vec3(0, 0.3, 0), reach: 2.0, colour: Vec3(2.4, 0.95, 0.28) * fire.strength * flicker))
         }

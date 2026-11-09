@@ -721,6 +721,9 @@ extension GameSession {
         // knows the land.
         let burning = state.burning.map(\.at).filter { isExplored($0) }
         if !burning.isEmpty { happenings.woodFires = stage.woodFires(burning, near: camera.focus) }
+        // Its smoke, and every burning hold's, borne on the watch's wind as
+        // the realm tells it, rising straight on a still night.
+        happenings.air = state.wind.map { WorldStage.windward($0) * Happenings.windCarries } ?? Vec3(0, 0, 0)
         if camera.scale >= 40 {
             happenings.fireflies = stage.fireflySpots(near: camera.focus).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0) &+ 17) }
         }

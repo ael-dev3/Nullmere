@@ -61,6 +61,54 @@ final class EffectsTests: XCTestCase {
         XCTAssertGreaterThan(embers.map(\.place.y).reduce(0, +) / Float(max(embers.count, 1)), origin.y)
     }
 
+    /// Smoke leans with the night's own slow air where no wind is told,
+    /// rises straight where none blows, and is borne off on the watch's wind
+    /// where one does, its embers with it, so a fire's smoke shows where it
+    /// will run; the wind's way on the ground as the world lies is toward
+    /// the neighbouring hex the realm names, and what burns in the world
+    /// carries the air it is given.
+    func testSmokeIsBorneOnTheWatchsWind() {
+        let origin = Vec3(2, 0.5, -1)
+        func lean(_ effect: Effect, _ drift: Vec3?) -> Vec3 {
+            let emitter = Emitter(effect, at: origin, rate: 20, spread: 0, seed: 9, strength: 1, drift: drift)
+            let placed = positions(Effects.motes(bursts: [], emitters: [emitter], at: 30))
+            return placed.reduce(Vec3(0, 0, 0)) { $0 + ($1 - origin) } / Float(max(placed.count, 1))
+        }
+        let east = WorldStage.windward(0) * Happenings.windCarries
+        let night = lean(.smoke, nil), still = lean(.smoke, Vec3(0, 0, 0)), windy = lean(.smoke, east)
+        XCTAssertGreaterThan(night.x, 0.1, "the night's own air leans it as ever")
+        XCTAssertLessThan(abs(still.x) + abs(still.z), (abs(night.x) + abs(night.z)) / 2, "rising straight where no wind blows")
+        XCTAssertGreaterThan(windy.x, night.x * 1.5, "borne off downwind, further than the night's air leans it")
+        XCTAssertLessThan(abs(windy.z - still.z), 0.05, "and only downwind")
+        XCTAssertEqual(windy.y, still.y, accuracy: 0.001, "rising alike")
+        XCTAssertGreaterThan(lean(.embers, east).x, lean(.embers, nil).x + 0.05, "its embers with it")
+        // The wind's way on the ground: a unit long, toward the hex it
+        // names, opposite ways opposite, the first east.
+        for way in 0..<6 {
+            let wind = WorldStage.windward(way), back = WorldStage.windward(way + 3)
+            XCTAssertEqual(wind.length, 1, accuracy: 0.001)
+            XCTAssertEqual(wind.y, 0)
+            XCTAssertEqual(wind.x, -back.x, accuracy: 0.001)
+            XCTAssertEqual(wind.z, -back.z, accuracy: 0.001)
+            let toward = Relief.centre(of: Hex.directions[way]), here = Relief.centre(of: Hex(0, 0))
+            let dx = toward.x - here.x, dz = toward.z - here.z
+            XCTAssertGreaterThan(wind.x * dx + wind.z * dz, 0.999 * (dx * dx + dz * dz).squareRoot(), "toward the hex it names")
+        }
+        XCTAssertGreaterThan(WorldStage.windward(0).x, 0.9)
+        XCTAssertEqual(WorldStage.windward(-1), WorldStage.windward(5))
+        // A wood afire's smoke and a burning hold's carry the air given them.
+        func smoke(_ air: Vec3?) -> Float {
+            var happenings = Happenings()
+            happenings.woodFires = [Happenings.Spot(at: origin, strength: 1, seed: 5)]
+            happenings.blazes = [Happenings.Spot(at: origin + Vec3(0, 0, 4), strength: 1, seed: 6)]
+            happenings.air = air
+            let covering = happenings.effects(at: 30).motes.filter { $0.colour.w > 0 }
+            return covering.map { $0.place.x - origin.x }.reduce(0, +) / Float(max(covering.count, 1))
+        }
+        XCTAssertGreaterThan(smoke(east), smoke(nil) + 0.3, "the wind bears it off")
+        XCTAssertLessThan(abs(smoke(Vec3(0, 0, 0))), abs(smoke(nil)), "a still night's smoke rising straight")
+    }
+
     func testAnEmitterKeepsAsteadyCountAndFirefliesStayByTheirReeds() {
         let smoke = Emitter(.smoke, at: .zero, rate: 5, seed: 11)
         let counts = stride(from: Float(30), to: 40, by: 0.7).map { Effects.motes(bursts: [], emitters: [smoke], at: $0).count }

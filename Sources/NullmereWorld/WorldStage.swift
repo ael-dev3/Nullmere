@@ -364,6 +364,15 @@ public final class WorldStage: @unchecked Sendable {
         return spots
     }
 
+    /// The way the watch's wind blows over the land as the world lies, a
+    /// unit long on the ground: toward the neighbouring hex `way` names
+    /// (`Hex.directions`), as the wind the realm tells blows.
+    public static func windward(_ way: Int) -> Vec3 {
+        let step = Hex.directions[((way % 6) + 6) % 6]
+        let from = Relief.centre(of: Hex(0, 0)), to = Relief.centre(of: step)
+        return Vec3(to.x - from.x, 0, to.z - from.z).normalized
+    }
+
     /// The most tiles of blackwood alight a frame glows over from afar.
     public static let mostFireGlows = 96
 

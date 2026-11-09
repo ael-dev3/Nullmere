@@ -547,7 +547,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   and the watch's wind). Stewards set none, so worlds of stewards alone
   play as they did, and step their companies out of one. In the world,
   three fires to each tile alight, flames licking up among the trees under
-  embers and rolling smoke, the firelight on the wood, and from afar a warm
+  embers and rolling smoke, the smoke and embers borne off on the watch's
+  wind as the realm tells it, every burning hold's with them, so the
+  smoke shows which way a fire will run, and rising straight on a Still
+  Night (`Happenings.air`, `WorldStage.windward`; EffectsTests on Linux),
+  the firelight on the wood, and from afar a warm
   glow over each tile alight that keeps its size on the screen and comes
   in as the holds' glows do, flickering (the nearest 96 tiles to the
   view); near, the fire heard (`Blaze`): a low roar surging as it draws
@@ -567,7 +571,9 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   with CI's sounds (`fire.wav`) and the session's hearing held on the Mac
   (FireHeardTests), **Unverified** until a CI run; WorldRenderTests draws
   the blackwood burning and burnt beside the same wood unburnt with the
-  world's own shaders, close and from afar (`world-wildfire.png`),
+  world's own shaders, close and from afar (`world-wildfire.png`), and in
+  motion, a tenth of a second apart for two seconds with the wind blowing
+  east, kept as a moving picture (`world-wildfire-motion.gif`), each
   **Unverified** until a CI run draws it;
   RallyScene.setTheWoodAlight plays it between two clients (Ama sets it,
   both see it burn, Bel's order on her company refused, both see the fire

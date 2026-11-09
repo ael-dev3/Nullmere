@@ -799,14 +799,13 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, along / 3 + 10, "and nothing else in the view changes for it")
     }
 
-    func testTheBlackwoodBurnsAndLiesAsAsh() throws {
-        let renderer = try renderer()
-        renderer.meshSource = { Library.model($0).mesh }
+    /// A stretch of blackwood the keeper knows, near their seat: its heart
+    /// and the wood about it burning, and the ring beyond lying as ash; and
+    /// the same world unburnt.
+    func blackwoodAlight() throws -> (state: GameState, unburnt: GameState, heart: Hex, burning: [Hex], ash: [Hex]) {
         var state = WorldRenderTests.world.state
         let me = state.player
         let seat = try XCTUnwrap(state.seat(of: me)).position
-        // A stretch of blackwood the keeper knows, near their seat: its heart
-        // and the wood about it burning, and the ring beyond lying as ash.
         let explored = state.houses[me].explored
         func known(_ hex: Hex) -> Bool { state.map.index(of: hex).map { explored[$0] } ?? false }
         let heart = try XCTUnwrap(state.map.hexes.filter { hex in
@@ -819,6 +818,36 @@ final class WorldRenderTests: XCTestCase {
         state.wildfires = burning.map { Wildfire(at: $0, by: me, caught: state.watch, out: state.watch + Wildfire.burns) }
             + ash.map { Wildfire(at: $0, by: me, caught: state.watch - 4, out: state.watch - 1) }
         XCTAssertEqual(state.problems(), [])
+        return (state, unburnt, heart, burning, ash)
+    }
+
+    /// The blackwood burning in motion, drawn a tenth of a second apart for
+    /// two seconds as the game draws it, the watch's wind blowing east: its
+    /// flames, embers and smoke move from frame to frame where the bare
+    /// land under them is still, the smoke borne off downwind. CI keeps it
+    /// as a moving picture, world-wildfire-motion.gif.
+    func testTheBlackwoodBurnsInMotion() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let alight = try blackwoodAlight()
+        var state = alight.state
+        let heart = alight.heart
+        state.windOfWatch = 0
+        XCTAssertEqual(state.wind, 0, "the wind blowing east")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let centre = Relief.centre(of: heart)
+        let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 64, tilt: 0.95, heading: 0)
+        let moving = try motion(of: GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("afire"))),
+                                camera: camera, renderer: renderer, name: "wildfire")
+        XCTAssertGreaterThan(moving.pixels, moving.bare + 50, "the fire moves where it burns, more than its bare land")
+        try keepMoving(moving.frames, as: "world-wildfire-motion")
+    }
+
+    func testTheBlackwoodBurnsAndLiesAsAsh() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let (state, unburnt, heart, burning, ash) = try blackwoodAlight()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let afire = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("afire")))

@@ -602,30 +602,32 @@ a vote on the realm's law to cast.
   world made without streams, as the rules' tests make theirs, is made as
   it always was; the streams are laid over the land with randomness of
   their own, and a realm kept from before them has them from its next age.
-- **Fire in the blackwood.** A company of war of a keeper's House
-  standing in the blackwood may set it alight, for one of its moves
-  (Set the wood alight on its record, on the Mac or the phone), on its
-  own House's land, land no hold's, or the land of a House at war with
-  its own. The fire burns three watches, and as each watch turns it
-  catches the blackwood beside it, most of all downwind: the watch's wind
-  blows the same over the whole lake, and the button says where it is
-  from. No wind blows on a Still Night, and the fire keeps where it is;
-  Rising Mist lies on every shore and puts every fire out, and so does
-  the cold rain that falls in a Lean Watch. A company standing in fire
-  as the watch turns loses a sixth of its strength, so the one that set
-  it walks on out of it with the moves it has left.
-  Burnt, the wood lies as ash for thirty watches, its trees standing
-  dead and its undergrowth gone, and yields nothing to the hold whose
-  land it is; then it grows back. Fire takes nothing but the blackwood,
-  never a hold's heart or a site's clearing. Every House sees its smoke
-  and hears who set it, and the House whose land it burns is told so; in
-  the world the wood burns with flames licking up among the trees under
-  embers and rolling smoke, and from afar each tile alight glows warm
-  over the dark, flickering; near, the fire is heard roaring and
-  crackling from where it burns, the more of it about the view the
-  louder (heard from further back than the lake's lapping, and only wood
-  the House has seen). The phone's chart draws it aflame and, after, grey
-  with ash. Stewards set no fires, and step their companies out of one.
+- **Fire in the blackwood.** A company of war of a keeper's House standing
+  in the blackwood may set it alight, for one of its moves (Set the wood
+  alight on its record, on the Mac or the phone), on its own House's land,
+  land no hold's, or the land of a House at war with its own. The fire
+  burns three watches, and as each watch turns it catches the blackwood
+  beside it, most of all downwind: the watch's wind blows the same over
+  the whole lake, and the button says where it is from. No wind blows on a
+  Still Night, and the fire keeps where it is; Rising Mist lies on every
+  shore and puts every fire out, and so does the cold rain that falls in a
+  Lean Watch. A company standing in fire as the watch turns loses a sixth
+  of its strength, so the one that set it walks on out of it with the
+  moves it has left. Burnt, the wood lies as ash for thirty watches, its
+  trees standing dead and its undergrowth gone, and yields nothing to the
+  hold whose land it is; then it grows back. Fire takes nothing but the
+  blackwood, never a hold's heart or a site's clearing. Every House sees
+  its smoke and hears who set it, and the House whose land it burns is
+  told so; in the world the wood burns with flames licking up among the
+  trees under embers and rolling smoke, the smoke and embers borne off on
+  the watch's wind (and every burning hold's with them), so you see which
+  way a fire will run, and rising straight on a Still Night; from afar
+  each tile alight glows warm over the dark, flickering; near, the fire is
+  heard roaring and crackling from where it burns, the more of it about
+  the view the louder (heard from further back than the lake's lapping,
+  and only wood the House has seen). The phone's chart draws it aflame
+  and, after, grey with ash. Stewards set no fires, and step their
+  companies out of one.
 - **Holds** gather what their land yields and store it, up to a limit that
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at
