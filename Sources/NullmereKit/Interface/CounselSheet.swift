@@ -17,6 +17,10 @@ struct CounselSheet: View {
     var body: some View {
         let commander = counsel.counsel.commander
         let unavailable = counsel.unavailable
+        // Where the model can't speak and nothing has been said, there is
+        // no conversation to show: the sheet keeps to what it tells, not a
+        // window of empty dark under it.
+        let quiet = unavailable != nil && counsel.lines.isEmpty && counsel.partial == nil && counsel.offers.isEmpty
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 10) {
                 Portrait(key: .commander(variant: Archetype.allCases.firstIndex(of: commander.archetype) ?? 0),
@@ -39,34 +43,36 @@ struct CounselSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel("Counsel unavailable: \(unavailable.said)")
             }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 9) {
-                        if counsel.lines.isEmpty && unavailable == nil {
-                            Text(verbatim: "Ask \(commander.name) what they see, what they would do, or how the House stands.")
-                                .font(.nm(10.5))
-                                .foregroundStyle(Palette.text(0.5))
-                                .fixedSize(horizontal: false, vertical: true)
+            if !quiet {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 9) {
+                            if counsel.lines.isEmpty && unavailable == nil {
+                                Text(verbatim: "Ask \(commander.name) what they see, what they would do, or how the House stands.")
+                                    .font(.nm(10.5))
+                                    .foregroundStyle(Palette.text(0.5))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            ForEach(counsel.lines) { line in
+                                CounselLineView(line: line, commander: commander.name)
+                                    .id(line.id)
+                            }
+                            if let partial = counsel.partial {
+                                CounselLineView(line: .init(id: -1, kind: .commander, text: partial.isEmpty ? "…" : partial), commander: commander.name)
+                                    .id(-1)
+                            }
+                            ForEach(counsel.offers) { offer in
+                                OfferCard(offer: offer, give: { session.give(offer) }, setAside: { counsel.setAside(offer) })
+                            }
                         }
-                        ForEach(counsel.lines) { line in
-                            CounselLineView(line: line, commander: commander.name)
-                                .id(line.id)
-                        }
-                        if let partial = counsel.partial {
-                            CounselLineView(line: .init(id: -1, kind: .commander, text: partial.isEmpty ? "…" : partial), commander: commander.name)
-                                .id(-1)
-                        }
-                        ForEach(counsel.offers) { offer in
-                            OfferCard(offer: offer, give: { session.give(offer) }, setAside: { counsel.setAside(offer) })
-                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
-                }
-                .onChange(of: counsel.lines.count) {
-                    if let last = counsel.lines.last { proxy.scrollTo(last.id, anchor: .bottom) }
-                }
-                .onChange(of: counsel.partial) {
-                    if counsel.partial != nil { proxy.scrollTo(-1, anchor: .bottom) }
+                    .onChange(of: counsel.lines.count) {
+                        if let last = counsel.lines.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                    .onChange(of: counsel.partial) {
+                        if counsel.partial != nil { proxy.scrollTo(-1, anchor: .bottom) }
+                    }
                 }
             }
             HStack(spacing: 8) {
@@ -94,7 +100,7 @@ struct CounselSheet: View {
                 .foregroundStyle(Palette.text(0.45))
         }
         .padding(18)
-        .frame(width: 480, height: 580)
+        .frame(width: 480, height: quiet ? nil : 580)
         .background(Palette.panel)
         .onAppear { typing = unavailable == nil }
     }

@@ -58,10 +58,17 @@ final class CounselSheetTests: XCTestCase {
         XCTAssertEqual(counsel.unavailable, .unavailable(.deviceNotEligible))
         draw(CounselSheet(session: session, counsel: counsel))
         XCTAssertFalse(PressableButtons.press("Ask"), "Nothing to ask with while the model can't speak")
+        // Nothing said and no model to say it: the sheet keeps to what it
+        // tells, with no window of empty conversation under it.
+        let told = NSHostingView(rootView: CounselSheet(session: session, counsel: counsel)).fittingSize
+        XCTAssertEqual(told.width, 480)
+        XCTAssertLessThan(told.height, 400, "no empty conversation under why it can't be")
         counsel.ask("What do you see?")
         XCTAssertEqual(counsel.lines.map(\.kind), [.trouble])
         XCTAssertEqual(counsel.lines.first?.text, CounselTrouble.unavailable(.deviceNotEligible).said)
         draw(CounselSheet(session: session, counsel: counsel))
+        XCTAssertEqual(NSHostingView(rootView: CounselSheet(session: session, counsel: counsel)).fittingSize.height, 580,
+                       "something said: the conversation shown at its full height")
         XCTAssertTrue(link.sent.isEmpty, "Counsel orders nothing of itself")
         session.closeCounsel()
         XCTAssertNil(session.commanderCounsel)
