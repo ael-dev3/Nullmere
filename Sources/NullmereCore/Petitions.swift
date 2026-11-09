@@ -1,6 +1,7 @@
 /// Petitions at the gate: the folk of a keeper's hold come to its keeper
 /// with a plea of their own, grounded in how the hold stands. Its ward
-/// broken, its masons would mend it whole, for stone; a company of the
+/// broken, its masons would mend it whole, for stone; the blackwood on its
+/// land alight, its woodwards would beat the fire out, for grain; a company of the
 /// House lying hurt at its gates, its healers would tend it, for grain; a
 /// work or a muster under way, its reeve would lend the folk's hands to
 /// bring it a watch nearer, for grain; at the full moon, the seat's
@@ -18,6 +19,9 @@ public struct Petition: Codable, Equatable, Sendable, Identifiable {
     public enum Plea: String, Codable, CaseIterable, Sendable, PlainCases {
         /// The hold's ward under half: its masons would mend it whole.
         case mend
+        /// The blackwood burning on the hold's land: its woodwards would
+        /// beat the fire out.
+        case douse
         /// A company of the House hurt at the hold: its healers would tend it.
         case tend
         /// A work or a muster two watches or more from done: the folk would
@@ -30,6 +34,7 @@ public struct Petition: Codable, Equatable, Sendable, Identifiable {
         public var trade: String {
             switch self {
             case .mend: return "a mason"
+            case .douse: return "a woodward"
             case .tend: return "a healer"
             case .hands: return "the reeve"
             case .feast: return "a brewer"
@@ -94,6 +99,11 @@ extension GameState {
         case .mend:
             let ward = hold(petition.hold).map { " (\($0.ward) of \($0.maximumWard))" } ?? ""
             return "\(place)'s ward is broken\(ward). \(price), its masons will mend it whole."
+        case .douse:
+            let alight = hold(petition.hold).map { burningLand(of: $0).count } ?? 0
+            guard alight > 0 else { return "The blackwood on \(place)'s land burns no longer." }
+            let tiles = alight == 1 ? "a tile" : "\(GameState.counted(alight)) tiles"
+            return "Fire burns in the blackwood on \(tiles) of \(place)'s land, and \(windSaid). \(price), its woodwards will beat it out."
         case .tend:
             let company = petition.unit.flatMap { unit($0) }.map { "your \(named($0.kind, tier: $0.tier, of: $0.owner))" } ?? "your company"
             let strength = petition.unit.flatMap { unit($0) }.map { ", at \($0.health) of its strength," } ?? ""
@@ -109,13 +119,21 @@ extension GameState {
     public static let turnedAwaySaid = "Turned away, the folk go back to their work grudging: what the hold has under way is set back a watch."
 
     /// The plea a House's hold would bring now, the most pressing first: a
-    /// broken ward, a company hurt at its gates, hands for a work or
-    /// muster, and at the full moon a feast at the seat; nil if none.
+    /// broken ward, the blackwood alight on its land, a company hurt at its
+    /// gates, hands for a work or muster, and at the full moon a feast at
+    /// the seat; nil if none.
     func plea(for house: Int) -> (hold: Hold, plea: Petition.Plea, price: Stock, unit: Int?)? {
         let holds = holds(of: house).sorted { $0.id < $1.id }
         if let broken = holds.filter({ $0.ward * 2 < $0.maximumWard })
             .min(by: { ($0.ward * 100 / max($0.maximumWard, 1), $0.id) < ($1.ward * 100 / max($1.maximumWard, 1), $1.id) }) {
             return (broken, .mend, Stock(stone: 10 + 10 * broken.level(.walls)), nil)
+        }
+        if wildfires?.contains(where: { $0.isBurning(at: watch) }) == true {
+            let owners = territory()
+            for hold in holds {
+                let alight = burningLand(of: hold, territory: owners).count
+                if alight > 0 { return (hold, .douse, Stock(grain: min(20 + 5 * alight, 60)), nil) }
+            }
         }
         let hurt = units(of: house).filter { $0.health < Petition.hurt }.sorted { ($0.health, $0.id) < ($1.health, $1.id) }
         for unit in hurt {
@@ -137,6 +155,7 @@ extension GameState {
         guard let hold = hold(petition.hold), hold.owner == petition.house else { return false }
         switch petition.plea {
         case .mend: return hold.ward < hold.maximumWard
+        case .douse: return !burningLand(of: hold).isEmpty
         case .tend: return petition.unit.flatMap { unit($0) }.map { $0.owner == petition.house && $0.health < 100 } ?? false
         case .hands: return (hold.project?.watchesLeft ?? 0) > 1 || (hold.training?.watchesLeft ?? 0) > 1
         case .feast: return true
@@ -199,6 +218,15 @@ extension GameState {
         switch petition.plea {
         case .mend:
             if let index = holdIndex(petition.hold) { holds[index].ward = holds[index].maximumWard }
+        case .douse:
+            // Every fire on the hold's land beaten out: the wood it has
+            // burnt so far lies as ash, and it spreads no further.
+            if let hold = hold(petition.hold) {
+                let alight = Set(burningLand(of: hold))
+                for index in (wildfires ?? []).indices where alight.contains(wildfires![index].at) && wildfires![index].isBurning(at: watch) {
+                    wildfires![index].out = watch
+                }
+            }
         case .tend:
             if let unit = petition.unit, let index = unitIndex(unit) {
                 units[index].health = min(100, units[index].health + GameState.draughtMending)
@@ -221,6 +249,15 @@ extension GameState {
             holds[index].training?.watchesLeft += 1
         }
         return [.petitionAnswered(petition, granted: false, silently: silently)]
+    }
+
+    /// The tiles of a hold's land where the blackwood burns now.
+    func burningLand(of hold: Hold, territory owners: [Int?]? = nil) -> [Hex] {
+        guard let fires = wildfires, fires.contains(where: { $0.isBurning(at: watch) }) else { return [] }
+        let owners = owners ?? territory()
+        return fires.filter { fire in
+            fire.isBurning(at: watch) && map.index(of: fire.at).map { owners[$0] == hold.id } == true
+        }.map(\.at)
     }
 
     /// What a hold has under way comes a watch nearer, so long as a watch

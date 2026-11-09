@@ -3,9 +3,9 @@ import XCTest
 @testable import NullmereCore
 
 /// Petitions at the gate: the folk of a keeper's hold bring a plea grounded
-/// in how the hold stands, the most pressing first (a broken ward, a
-/// company hurt at its gates, hands for its work, a feast at the full
-/// moon); granted, the House pays what they ask and the boon is done;
+/// in how the hold stands, the most pressing first (a broken ward, the
+/// blackwood alight on its land, a company hurt at its gates, hands for its
+/// work, a feast at the full moon); granted, the House pays what they ask and the boon is done;
 /// turned away, by the keeper or by silence, what the hold has under way
 /// is set back a watch; a plea whose need passed is withdrawn owing
 /// nothing. Keepers' Houses alone, one plea at a time, the next some
@@ -96,6 +96,82 @@ final class PetitionTests: XCTestCase {
                       world.asked(by: petition))
         try world.perform(.answerPetition(petition.id, grant: true), as: me)
         XCTAssertEqual(world.unit(company.id)?.health, Petition.hurt - 1 + GameState.draughtMending)
+    }
+
+    /// The blackwood alight on a keeper's hold's land brings its woodwards
+    /// to the gate, after a broken ward and before all else; granted, every
+    /// fire on its land is beaten out, the wood burnt so far lying as ash;
+    /// burnt out on its own, the plea is withdrawn. Fire on another House's
+    /// land, or land no hold's, brings the House none.
+    func testFireOnAHoldsLandBringsItsWoodwardsAndGrantingBeatsItOut() throws {
+        var found: (world: GameState, me: Int, seat: Hold, at: Int, land: [Hex])?
+        for attempt in 0..<40 {
+            let (world, me, seat, at) = try world("woodwards \(attempt)")
+            let owners = world.territory()
+            let land = world.map.hexes.filter { hex in
+                world.isBlackwood(hex) && world.hold(at: hex) == nil && !world.sitesInLand.contains { $0.position == hex }
+                    && world.map.index(of: hex).map { owners[$0] == seat.id } == true
+            }
+            if land.count >= 3 { found = (world, me, seat, at, land); break }
+        }
+        var (world, me, seat, at, land) = try XCTUnwrap(found, "A seat with blackwood on its land")
+        let alight = Array(land.prefix(2))
+        let before = world
+        world = world.catching(alight + [alight[0]], by: (me + 1) % world.houses.count)
+        XCTAssertEqual(world.burning.map(\.at).sorted(), alight.sorted(), "Each tile caught once")
+        XCTAssertEqual(world.problems(), [])
+        XCTAssertEqual(world.plea(for: me)?.plea, .douse)
+        XCTAssertEqual(world.plea(for: me)?.hold.id, seat.id)
+        XCTAssertEqual(world.plea(for: me)?.price, Stock(grain: 30), "Priced by the tiles alight")
+        // A broken ward still comes first; the fire before a company hurt at the gates.
+        var broken = world
+        broken.holds[at].ward = 0
+        XCTAssertEqual(broken.plea(for: me)?.plea, .mend)
+        var hurt = world
+        let company = try XCTUnwrap(hurt.units(of: me).first)
+        let unit = try XCTUnwrap(hurt.unitIndex(company.id))
+        hurt.units[unit].position = seat.position
+        hurt.units[unit].health = Petition.hurt - 1
+        XCTAssertEqual(hurt.plea(for: me)?.plea, .douse)
+
+        let events = world.bringPetitions()
+        let petition = try XCTUnwrap(world.petition(of: me))
+        XCTAssertEqual(events, [.petitionBrought(petition)])
+        XCTAssertEqual(petition.plea, .douse)
+        XCTAssertEqual(world.petitioner(of: petition), "\(petition.name), a woodward of \(seat.name)")
+        XCTAssertEqual(world.asked(by: petition),
+                       "Fire burns in the blackwood on 2 tiles of \(seat.name)'s land, and \(world.windSaid). For \(petition.price), its woodwards will beat it out.")
+        XCTAssertEqual(world.tidings(of: events[0], for: me)?.text,
+                       "\(petition.name), a woodward of \(seat.name) comes to your gate with a plea. \(world.asked(by: petition))")
+        // The on-device model is told the fire as it stands when it voices the woodward.
+        XCTAssertTrue(world.voiced(petition).facts.contains(world.asked(by: petition)))
+
+        // Granted: paid for, every fire on the hold's land beaten out, the wood burnt so far ash.
+        var granted = world
+        let answered = try granted.perform(.answerPetition(petition.id, grant: true), as: me)
+        XCTAssertEqual(answered, [.petitionAnswered(petition, granted: true, silently: false)])
+        XCTAssertTrue(granted.burning.isEmpty)
+        XCTAssertEqual(granted.ash, Set(alight))
+        XCTAssertEqual(granted.houses[me].stock.grain, world.houses[me].stock.grain - 30)
+        XCTAssertEqual(granted.tidings(of: answered[0], for: me)?.text,
+                       "You grant the plea of \(petition.name) of \(seat.name): its woodwards beat out the fire on its land.")
+        XCTAssertEqual(granted.problems(), [])
+        XCTAssertEqual(granted.asked(by: petition), "The blackwood on \(seat.name)'s land burns no longer.")
+        // Burnt out on its own, the plea is withdrawn, owing nothing.
+        var out = world
+        out.watch += Wildfire.burns
+        XCTAssertEqual(out.bringPetitions(), [.petitionWithdrawn(petition)])
+        XCTAssertEqual(out.petitionRefusal(petition.id, grant: true, as: me), .notApplicable)
+
+        // Fire on land no hold's, or another House's, brings this House none.
+        let owners = before.territory()
+        let elsewhere = before.map.hexes.filter { hex in
+            before.isBlackwood(hex) && before.hold(at: hex) == nil
+                && before.map.index(of: hex).map { owners[$0].flatMap { before.hold($0)?.owner } != me } == true
+        }
+        let far = before.catching(Array(elsewhere.prefix(4)), by: me)
+        XCTAssertFalse(far.burning.isEmpty)
+        XCTAssertNil(far.plea(for: me))
     }
 
     func testTurnedAwayOrUnansweredTheHoldIsSetBackAndAPassedNeedIsWithdrawn() throws {

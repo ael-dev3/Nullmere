@@ -151,6 +151,22 @@ extension GameState {
         return fires[hex] == nil && !sites.contains(hex) && !holdsAt.contains(hex)
     }
 
+    /// The world as it would stand had the blackwood at `hexes` caught
+    /// alight this watch, set by `house`: only what fire may take there
+    /// (`mayBurn`), each tile once. For the Mac's voice check, which asks
+    /// the on-device model for a woodward's plea where nothing burns yet.
+    public func catching(_ hexes: [Hex], by house: Int) -> GameState {
+        var world = self
+        var fires = wildfiresByHex
+        let sites = Set(sitesInLand.map(\.position)), holdsAt = Set(holds.map(\.position))
+        for hex in hexes where mayBurn(hex, sites: sites, holdsAt: holdsAt, fires: fires) {
+            let fire = Wildfire(at: hex, by: house, caught: watch, out: watch + Wildfire.burns)
+            fires[hex] = fire
+            world.wildfires = (world.wildfires ?? []) + [fire]
+        }
+        return world
+    }
+
     /// Why a company can't set the blackwood where it stands alight, if it
     /// can't: only a keeper's company of war, with a move left this watch,
     /// in blackwood not already burning or burnt, on its own House's land,

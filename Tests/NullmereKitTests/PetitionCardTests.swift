@@ -85,7 +85,7 @@ final class PetitionCardTests: XCTestCase {
 
     func testThePetitionerIsPaintedAndVoicedUnderTheirOwnKey() throws {
         let (session, _, petition) = try session()
-        XCTAssertEqual(Petition.Plea.allCases.map { PetitionCard.variant(of: $0) }, [Folk.porter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
+        XCTAssertEqual(Petition.Plea.allCases.map { PetitionCard.variant(of: $0) }, [Folk.porter, Folk.timberCarter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
         XCTAssertEqual(PetitionCard.waits(petition, at: petition.arrived), "Waits \(Petition.patience) watches")
         XCTAssertEqual(PetitionCard.waits(petition, at: petition.arrived + Petition.patience - 1), "Waits this watch")
         XCTAssertEqual(GameSession.Spoken.petition(petition.id).key, "petition-\(petition.id)")

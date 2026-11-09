@@ -70,14 +70,15 @@ public enum VoiceCheck {
         // Words for the keeper's House's dead, for a vigil on the water.
         moments.append(("words for the fallen", VoiceFacts.vigil(of: state.player, in: state, reports: [])))
         // A plea of each kind brought to the keeper's seat by its folk, as
-        // the realm brings one: a mason's, a healer's for the House's first
-        // company of war, the reeve's and a brewer's.
+        // the realm brings one: a mason's, a woodward's, a healer's for the
+        // House's first company of war, the reeve's and a brewer's.
         if let seat = state.seat(of: state.player) {
             let company = state.units(of: state.player).first { $0.kind.isMilitary }
             for (index, plea) in Petition.Plea.allCases.enumerated() {
                 let price: Stock
                 switch plea {
                 case .mend: price = Stock(stone: 30)
+                case .douse: price = Stock(grain: 30)
                 case .tend: price = Stock(grain: 30)
                 case .hands: price = Stock(grain: 40)
                 case .feast: price = Stock(grain: 60)
@@ -85,7 +86,17 @@ public enum VoiceCheck {
                 let petition = Petition(id: 9_100 + index, house: state.player, hold: seat.id, plea: plea, arrived: state.watch,
                                         name: ["Edda", "Osric", "Wenna", "Brand"][index % 4], price: price,
                                         unit: plea == .tend ? company?.id : nil)
-                moments.append(("petition of \(plea.trade)", VoiceFacts.petition(petition, in: state)))
+                // The woodward pleads against a fire: the blackwood nearest
+                // the seat on its land set alight for the asking.
+                var world = state
+                if plea == .douse {
+                    let owners = state.territory()
+                    let land = state.map.hexes.filter { hex in
+                        state.isBlackwood(hex) && state.map.index(of: hex).map { owners[$0] == seat.id } == true
+                    }.sorted { ($0.distance(to: seat.position), $0.q, $0.r) < ($1.distance(to: seat.position), $1.q, $1.r) }
+                    world = state.catching(Array(land.prefix(3)), by: other)
+                }
+                moments.append(("petition of \(plea.trade)", VoiceFacts.petition(petition, in: world)))
             }
         }
         // A ballad of the latest deed of arms the age brought.

@@ -526,7 +526,7 @@ extension TownsfolkTests {
         hold.ward = 0
         pleading.hold = hold
         XCTAssertEqual(stage.townsfolk([pleading], time: 3, into: &frame).flatMap(\.instances).count, 1)
-        XCTAssertEqual(Petition.Plea.allCases.map(\.folk), [Folk.porter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
+        XCTAssertEqual(Petition.Plea.allCases.map(\.folk), [Folk.porter, Folk.timberCarter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
     }
 
     /// The envoys waiting on a keeper's answer stand mounted at the seat's

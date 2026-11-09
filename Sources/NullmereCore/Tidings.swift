@@ -764,6 +764,7 @@ extension GameState {
                 let done: String
                 switch petition.plea {
                 case .mend: done = "its masons mend the ward whole"
+                case .douse: done = "its woodwards beat out the fire on its land"
                 case .tend: done = "its healers tend your company"
                 case .hands: done = "its folk bring what it has under way a watch nearer"
                 case .feast: done = "its folk feast, and give your House a \(ItemKind.hourglass.title) in thanks"

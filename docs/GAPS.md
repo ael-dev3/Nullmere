@@ -457,7 +457,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
 - [x] **Petitions at the gate.** The folk of a keeper's holds come to its
   keeper with pleas of their own, grounded in how each hold stands, the
   most pressing first: a broken ward (a mason asks stone to mend it
-  whole), a company of the House hurt at its gates (a healer asks grain to
+  whole), the blackwood alight on its land (a woodward asks grain to beat
+  the fire out, and granted every fire on the hold's land is out, the
+  model told how many tiles burn and the watch's wind when it voices
+  them; `testFireOnAHoldsLandBringsItsWoodwardsAndGrantingBeatsItOut`),
+  a company of the House hurt at its gates (a healer asks grain to
   tend it), a work or muster under way (the reeve asks grain to bring it a
   watch nearer), and at the full moon the seat's feast (a brewer asks
   grain, and the folk give a Salt Hourglass in thanks). Granted, the House

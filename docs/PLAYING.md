@@ -1561,15 +1561,19 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   holds come to the gate with a plea of their own, grounded in how the
   hold stands, the most pressing first: its ward broken under half, a
   mason asks stone (ten, and ten for each level of its walls) to mend it
-  whole; a company of your House lying hurt at its gates, a healer asks
-  30 grain to tend it by thirty; a work or a muster two watches or more
-  from done, the reeve asks 40 grain to bring it a watch nearer; at the
-  full moon, a brewer of the seat asks 60 grain for a feast, and the folk
-  give your House a Salt Hourglass in thanks. The petitioner stands at the
-  hold's gate in the world while the plea waits, facing in, a lantern in
-  hand where they carry one, even at a hold whose ward is broken and whose
-  folk keep within. Its card stands beside the world where envoys come,
-  the petitioner painted from the hold's own townsfolk, and your Mac's model gives them words of their own from the
+  whole; the blackwood alight on its land, a woodward asks grain (twenty,
+  and five for each tile alight, sixty at most) to beat the fire out, and
+  granted, every fire on the hold's land is out at once, the wood it has
+  burnt lying as ash; a company of your House lying hurt at its gates, a
+  healer asks 30 grain to tend it by thirty; a work or a muster two
+  watches or more from done, the reeve asks 40 grain to bring it a watch
+  nearer; at the full moon, a brewer of the seat asks 60 grain for a
+  feast, and the folk give your House a Salt Hourglass in thanks. The
+  petitioner stands at the hold's gate in the world while the plea waits,
+  facing in, a lantern in hand where they carry one, even at a hold whose
+  ward is broken and whose folk keep within. Its card stands beside the
+  world where envoys come, the petitioner painted from the hold's own
+  townsfolk, and your Mac's model gives them words of their own from the
   plea's facts, the seconds counted as it does, or says why it can't; the
   plea stands in the realm's words beneath. Grant it, paying what they
   ask, or Turn it away; unanswered three watches, it is turned away by
@@ -1577,10 +1581,10 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   hold has under way is set back a watch. A plea whose need has passed is
   withdrawn, owing nothing. One plea at a time, the next eight watches
   after the last; only keepers' Houses are petitioned, and while you are
-  away your caretaker grants a plea your stores would hold twice over.
-  The phone shows the same plea on its House tab, voiced by its own
-  model, with the same answers, and marks the hold on its chart with a
-  lantern at the gate.
+  away your caretaker grants a plea your stores would hold twice over. The
+  phone shows the same plea on its House tab, voiced by its own model,
+  with the same answers, and marks the hold on its chart with a lantern at
+  the gate.
 - **The Eclipse.** In an age with an age drowned beneath it, the moon is
   eaten at the full of the sixtieth watch, and of every ninetieth after,
   and the drowned age walks: from its greatest holds, six at most, rise
