@@ -61,6 +61,7 @@ final class VoiceCheckTests: XCTestCase {
         // and stopped a moment in, back at once.
         XCTAssertEqual(told.filter { $0.hasPrefix("orders read (") && $0.hasSuffix("s): 1. FORTIFY C1 / And nothing more.") }.count, 1, report.text)
         XCTAssertEqual(told.filter { $0.hasPrefix("orders stopped 0.3 s in: back in ") && $0.hasSuffix(" s") }.count, 1, report.text)
+        XCTAssertEqual(told.filter { $0.hasPrefix("petition of a mason stopped 0.3 s in: back in ") }.count, 1, report.text)
         let age = VoiceCheck.age()
         let (words, briefing) = try XCTUnwrap(VoiceCheck.orders(in: age))
         XCTAssertTrue(words.hasPrefix("Have C"), words)
@@ -98,6 +99,37 @@ final class VoiceCheckTests: XCTestCase {
         XCTAssertTrue(report.failures.allSatisfy { $0.hasSuffix(": silent") }, "\(report.failures)")
         XCTAssertTrue(report.text.contains("\nOut of bounds:\n"), report.text)
         XCTAssertFalse(report.text.hasSuffix(VoiceCheck.passed))
+    }
+
+    /// A petitioner's words stopped a moment in come back at once from a
+    /// voice that heeds being stopped; one that speaks on regardless is named.
+    func testACharactersWordsStoppedComeBackAtOnceOrAreNamed() async throws {
+        struct Heeding: Voice {
+            func speak(_ moment: VoiceMoment) async -> String? {
+                try? await Task.sleep(for: .seconds(30))
+                return nil
+            }
+        }
+        /// Half a second to every plea, unless stopped: then on regardless,
+        /// well past the allowance.
+        struct Heedless: Voice {
+            func speak(_ moment: VoiceMoment) async -> String? {
+                guard moment.kind == .petition else { return "The water keeps its silence, and the Houses watch the shore." }
+                try? await Task.sleep(for: .seconds(0.5))
+                if Task.isCancelled {
+                    await withCheckedContinuation { done in
+                        DispatchQueue.global().asyncAfter(deadline: .now() + VoiceCheck.stopAllowance + 3) { done.resume() }
+                    }
+                }
+                return "We would mend it, keeper."
+            }
+        }
+        let moment = try XCTUnwrap(VoiceCheck.moments().first { $0.moment.kind == .petition }).moment
+        let heeded = await VoiceCheck.stopped(Heeding(), speaking: moment, after: 0.05)
+        XCTAssertLessThan(heeded, 1, "Back at once")
+        let report = await VoiceCheck.run(Heedless(), source: "a voice that won't stop")
+        XCTAssertTrue(report.text.contains("\npetition of a mason stopped 0.3 s in: back in "), report.text)
+        XCTAssertEqual(report.failures.filter { $0.hasPrefix("petition of a mason stopped: ran on ") }.count, 1, "\(report.failures)")
     }
 
     /// A reading stopped a moment in comes back at once from a clerk that

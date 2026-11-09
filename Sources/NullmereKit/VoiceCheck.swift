@@ -148,6 +148,18 @@ public enum VoiceCheck {
         return Date().timeIntervalSince(stopping)
     }
 
+    /// How long a character's words take to come back once stopped
+    /// `after` seconds into their asking, as the Mac stops them when the
+    /// envoy or the plea they speak for has gone (`GameSession`).
+    static func stopped(_ voice: any Voice, speaking moment: VoiceMoment, after: Double) async -> Double {
+        let speaking = Task { await voice.speaking(moment) }
+        try? await Task.sleep(for: .seconds(after))
+        let stopping = Date()
+        speaking.cancel()
+        _ = await speaking.value
+        return Date().timeIntervalSince(stopping)
+    }
+
     /// What the clerk's reading broke: nothing, if it read the words into
     /// at least one order of the book's forms.
     static func problems(ofOrders answer: String?, in state: GameState) -> [String] {
@@ -170,6 +182,16 @@ public enum VoiceCheck {
             let told = line?.replacingOccurrences(of: "\n", with: " / ")
             lines.append("\(name) (\(String(format: "%.1f", seconds)) s): \(told ?? "(silent)")")
             failures += problems(of: line, for: moment).map { "\(name): \($0)" }
+        }
+        // A petitioner's words stopped a moment in, as the Mac stops them
+        // once the plea is answered: the model's asking cancelled, and the
+        // voice back at once.
+        if let plea = moments.first(where: { $0.moment.kind == .petition }) {
+            let back = await stopped(voice, speaking: plea.moment, after: stopAfter)
+            lines.append("\(plea.name) stopped \(String(format: "%.1f", stopAfter)) s in: back in \(String(format: "%.2f", back)) s")
+            if back > stopAllowance {
+                failures.append("\(plea.name) stopped: ran on \(String(format: "%.1f", back)) s after it was stopped")
+            }
         }
         if let asked = orders(in: state) {
             let started = Date()
