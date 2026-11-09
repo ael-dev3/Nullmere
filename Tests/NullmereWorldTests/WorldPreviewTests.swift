@@ -217,11 +217,26 @@ final class WorldPreviewTests: XCTestCase {
         fieldView.focus(on: beside)
         var volleyView = Camera(scale: 260, tilt: 0.95, heading: 0.5)
         volleyView.focus(on: beyond)
+        // And the same ground some watches on, the dead gone from sight but
+        // lying unburied still: corpse-lights over the field where enough lie
+        // to rise, on the eve of the dark of the moon, a glimmer over the few
+        // beyond it, and a barrow raised over the field buried beside them.
+        var unquietView = Camera(scale: 110, tilt: 0.9, heading: 0.5)
+        unquietView.focus(on: beside)
+        var unquiet = scene
+        let land = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let corpses = land.corpseLights([UnburiedSight(at: beside, troops: 11_000, darkIn: 1),
+                                         UnburiedSight(at: beyond, troops: 1_400, darkIn: 1)],
+                                        near: unquietView.focus, scale: unquietView.scale, time: 20)
+        XCTAssertEqual(corpses.lights.count, 2)
+        unquiet.motes += corpses.motes
+        unquiet.lights += corpses.lights
+        unquiet.batches += land.graves([(at: stood, troops: 6_000)])
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
             ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
             ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene), ("vigils", vigilView, whole, vigils),
-            ("field", fieldView, whole, fought), ("volley", volleyView, whole, fought),
+            ("field", fieldView, whole, fought), ("volley", volleyView, whole, fought), ("unquiet", unquietView, whole, unquiet),
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
@@ -241,12 +256,12 @@ final class WorldPreviewTests: XCTestCase {
             "indices": mesh.indices.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "heights": terrain.heights.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "columns": terrain.columns, "rows": terrain.rows, "side": TileTexture.side(for: state.map), "frames": frames,
-            "models": WorldPreviewTests.meshes(for: fought),
+            "models": WorldPreviewTests.meshes(for: fought).merging(WorldPreviewTests.meshes(for: unquiet)) { kept, _ in kept },
             "viewport": [Double(WorldPreviewTests.viewport.width), Double(WorldPreviewTests.viewport.height)],
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 12)
+        XCTAssertEqual(frames.count, 13)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

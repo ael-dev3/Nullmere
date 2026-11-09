@@ -789,8 +789,19 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   has seen), the order in the Mac's company panel with the field's words
   in it and the tile's, barrows drawn on the land (`WorldStage.graves`),
   notices and cues; BurialTests hold the rules on Linux, FieldDeadTests
-  the barrows. The phone's chart, and the Mac's panels and barrows drawn,
-  Unverified until a CI run.
+  the barrows. Corpse-lights hang over every field the keeper knows where
+  dead lie unburied (`WorldStage.corpseLights`): cold, pale flames, one
+  over a few, two over three thousand or more, and over a field that will
+  rise three and one more for each level its Barrowkin would rise at (six
+  at most), straying and breathing each in its own time, brighter as the
+  dark of the moon nears over a field that will rise and never more than
+  a glimmer over one the land will take back, still where motion is
+  reduced, seen from across the realm; CorpseLightsTests hold them on
+  Linux and the browser preview draws them (its `unquiet` view). Run 887
+  (b8d79cb) compiled the Mac's panel order, notices, cues and barrows,
+  and built the phone's chart for the simulator and an iPhone, the phone
+  beside the Mac green; the Mac's tests of them, and its corpse-lights,
+  Unverified until a run's Mac Test step passes with them.
 
 ## The order of the work
 

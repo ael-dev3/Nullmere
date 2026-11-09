@@ -644,6 +644,33 @@ final class WorldStagingTests: XCTestCase {
     /// stood, long after the blow itself is over; fewer each watch, then
     /// none; birds come down to it; nothing kept of a blow that cost no
     /// troops.
+    /// Where the keeper's dead lie unburied, corpse-lights hang over the
+    /// field in the world, cold and pale, as many as the stage gives a field
+    /// of that many; none over the same world where none lie.
+    func testCorpseLightsHangWhereTheDeadLieUnburied() throws {
+        var field: Hex?
+        let haunted = try session { state in
+            let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
+            state.layTheFallen(8_000, of: state.player, at: company.position)
+            field = company.position
+        }
+        let quiet = try session()
+        let at = try XCTUnwrap(field)
+        XCTAssertEqual(haunted.state.fieldOfDead(at: at)?.troops, 8_000)
+        let heart = Relief.centre(of: at)
+        func cold(_ frame: SceneFrame) -> Int {
+            frame.motes.filter { mote in
+                let x = mote.place.x - heart.x, z = mote.place.z - heart.z
+                return (x * x + z * z).squareRoot() < 0.7 && mote.colour.w == 0
+                    && mote.colour.y > mote.colour.x * 1.8 && mote.colour.z > mote.colour.x * 1.5
+            }.count
+        }
+        let now = Date()
+        let lit = haunted.sceneFrame(at: 40, now: now), dark = quiet.sceneFrame(at: 40, now: now)
+        XCTAssertEqual(cold(lit) - cold(dark), 2 * WorldStage.corpseLightCount(troops: 8_000), "a flame and its glow for each light over the field")
+        XCTAssertGreaterThan(lit.lights.count, dark.lights.count, "and the field's own light")
+    }
+
     func testAFieldKeepsItsDeadAFewWatches() throws {
         let session = try session()
         let player = session.player, foe = (player + 1) % 3

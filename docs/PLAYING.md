@@ -902,8 +902,12 @@ a vote on the realm's law to cast.
   of thirty watches) they rise as Barrowkin, the stronger the
   more of them, and stand there as the wilds do, every House's foe, until
   some House strikes them down; a field where fewer lie the land takes
-  back then. The panel of a company standing on them, or of the tile,
-  says how many lie there and whose, and what comes of them, and when.
+  back then. Pale, cold corpse-lights hang over every field you know
+  where dead lie unburied, more the more lie there and brighter as the
+  dark of the moon nears over a field that will rise, so you can see from
+  afar which fields to bury first. The panel of a company standing on
+  them, or of the tile, says how many lie there and whose, and what comes
+  of them, and when.
   The Houses the stewards keep bury their own as they fall, and a keeper
   away has theirs buried by the caretaker where a company of the House
   stands idle on them, so a world the stewards play alone is the same

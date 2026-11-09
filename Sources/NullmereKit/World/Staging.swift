@@ -357,6 +357,16 @@ extension GameSession {
         }, progress: GameSession.watchProgress(state), scale: camera.scale, time: t)
         frame.motes += vigils.motes
         frame.lights += vigils.lights
+        // Corpse-lights over the fields where the dead the keeper knows of
+        // lie unburied, the more the more lie there, brighter as the dark of
+        // the moon nears over those that will rise; still where motion is
+        // reduced.
+        let darkIn = state.watchesToTheDark(from: state.watch)
+        let unquiet = stage.corpseLights(state.fieldsOfDead.filter { isExplored($0.at) }.map {
+            UnburiedSight(at: $0.at, troops: $0.troops, darkIn: darkIn)
+        }, near: camera.focus, scale: camera.scale, time: t, still: !full)
+        frame.motes += unquiet.motes
+        frame.lights += unquiet.lights
         // The sound of the fields in sight, and of the towns and the lake's
         // edge near the view, follows the picture of them.
         hearBattles()
