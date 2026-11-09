@@ -167,7 +167,7 @@ extension GameState {
         var facts = ["The keeper's watchfire burns \(placeName(of: fire))."]
         if houses.indices.contains(sighting.owner) {
             facts.append("\(houses[sighting.owner].title)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner)), "
-                         + "\(GameState.counted(sighting.troops)), passed \(placeName(of: sighting.at)) marching dark, its torches doused.")
+                         + "\(GameState.counted(sighting.troops)) troops, passed \(placeName(of: sighting.at)) marching dark, its torches doused.")
             let standing: String
             switch stance(house, sighting.owner) {
             case .war: standing = "is at war with the keeper's House"

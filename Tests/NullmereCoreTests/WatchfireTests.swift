@@ -132,7 +132,7 @@ final class WatchfireTests: XCTestCase {
         // Told to the House that lit it, and to no other.
         let told = try XCTUnwrap(state.tidings(of: events[1], for: me)).text
         XCTAssertEqual(told, "Your watchfire \(state.placeName(of: at)) makes out \(state.houses[foe].title)'s "
-                       + "\(state.named(.spear, tier: 1, of: foe)), \(GameState.counted(sighting.troops)), marching dark "
+                       + "\(state.named(.spear, tier: 1, of: foe)), \(GameState.counted(sighting.troops)) troops, marching dark "
                        + "\(state.placeName(of: company.position)).")
         XCTAssertNil(state.tidings(of: events[1], for: foe))
         XCTAssertEqual(state.events([events[1]], heardBy: me), [events[1]])
@@ -161,14 +161,14 @@ final class WatchfireTests: XCTestCase {
         XCTAssertNil(state.latestSighting(by: foe))
         XCTAssertEqual(state.sightingSaid(made, of: try XCTUnwrap(state.watchfire(at: at))),
                        "Made out in watch \(state.watch): \(state.houses[foe].title)'s \(state.named(.spear, tier: 1, of: foe)), "
-                       + "\(GameState.counted(made.troops)), marching dark \(state.placeName(of: second.position)). 2 made out as it burns.")
+                       + "\(GameState.counted(made.troops)) troops, marching dark \(state.placeName(of: second.position)). 2 made out as it burns.")
         // The watchman tells the keeper of the latest, through the device's
         // own model, keeping to the realm's facts; no other House hears him.
         let moment = try XCTUnwrap(state.voicedMoments(for: me).first { $0.key == "watchman-\(made.key)" }).moment
         XCTAssertEqual(moment.task, Voicing.watchmanTask)
         XCTAssertEqual(moment.facts, ["The keeper's watchfire burns \(state.placeName(of: at)).",
                                       "\(state.houses[foe].title)'s \(state.named(.spear, tier: 1, of: foe)), "
-                                      + "\(GameState.counted(made.troops)), passed \(state.placeName(of: second.position)) "
+                                      + "\(GameState.counted(made.troops)) troops, passed \(state.placeName(of: second.position)) "
                                       + "marching dark, its torches doused.",
                                       "\(state.houses[foe].title) is at peace with the keeper's House."])
         XCTAssertFalse(state.voicedMoments(for: foe).contains { $0.key.hasPrefix("watchman-") })

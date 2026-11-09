@@ -137,7 +137,7 @@ extension GameState {
         let whose = houses.indices.contains(sighting.owner) ? houses[sighting.owner].title : "A fallen House"
         let count = fire.seen?.count ?? 1
         return "Made out in watch \(sighting.watch): \(whose)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner)), "
-            + "\(GameState.counted(sighting.troops)), marching dark \(placeName(of: sighting.at))."
+            + "\(GameState.counted(sighting.troops)) troops, marching dark \(placeName(of: sighting.at))."
             + (count > 1 ? " \(count) made out as it burns." : "")
     }
 

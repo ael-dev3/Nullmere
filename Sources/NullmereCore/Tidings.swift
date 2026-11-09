@@ -804,7 +804,7 @@ extension GameState {
             guard by == viewer, houses.indices.contains(sighting.owner) else { return nil }
             let company = "\(houses[sighting.owner].title)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner))"
             let foe = stance(by, sighting.owner) == .war
-            return Tidings("Your watchfire \(placeName(of: fire)) makes out \(company), \(GameState.counted(sighting.troops)), "
+            return Tidings("Your watchfire \(placeName(of: fire)) makes out \(company), \(GameState.counted(sighting.troops)) troops, "
                            + "marching dark \(placeName(of: sighting.at)).", foe ? .bad : .neutral)
         case .waitSet(let id, let waiting, let owner):
             guard owner == viewer, let unit = unit(id) else { return nil }

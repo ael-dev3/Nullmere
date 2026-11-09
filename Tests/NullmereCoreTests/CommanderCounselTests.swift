@@ -300,7 +300,7 @@ final class CommanderCounselTests: XCTestCase {
         let sighting = try XCTUnwrap(world.watchfire(at: at)?.seen?.last)
         XCTAssertTrue(told.affairs.contains("In watch \(sighting.watch) its watchfire \(world.placeName(of: at)) made out "
                                             + "\(world.houses[foe].title)'s \(world.named(.spear, tier: 1, of: foe)), "
-                                            + "\(GameState.counted(sighting.troops)), marching dark \(world.placeName(of: spot))."), told.affairs)
+                                            + "\(GameState.counted(sighting.troops)) troops, marching dark \(world.placeName(of: spot))."), told.affairs)
         XCTAssertTrue(told.briefing.contains("made out"), "Briefed with it")
         XCTAssertEqual(CommanderCounsel.sightingsTold, 3)
     }

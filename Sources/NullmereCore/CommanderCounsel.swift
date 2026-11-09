@@ -236,7 +236,7 @@ public struct CommanderCounsel: Sendable {
                 let sighting = seen.sighting
                 lines.append("In watch \(sighting.watch) its watchfire \(state.placeName(of: seen.fire)) made out "
                              + "\(state.houses[sighting.owner].title)'s \(state.named(sighting.kind, tier: sighting.tier, of: sighting.owner)), "
-                             + "\(GameState.counted(sighting.troops)), marching dark \(state.placeName(of: sighting.at)).")
+                             + "\(GameState.counted(sighting.troops)) troops, marching dark \(state.placeName(of: sighting.at)).")
             }
         }
         return lines.joined(separator: " ")
