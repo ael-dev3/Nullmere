@@ -2,6 +2,10 @@
 
 Short notes that land on main under ael's GitHub identity so the contribution graph reflects real work days. Claude's session commits still carry the game forward; this file is the daily stamp when needed.
 
+## 2026-11-10 (Europe/Belgrade)
+
+The 9th on main brought a new mechanic, the unquiet dead: a field keeps its dead after battle, corpse-lights hang over unburied fields, the fallen rise pale as Barrowkin at the dark of the moon, and companies bury them under barrows whose stone words come from the Mac's own model. Battle fronts now meet with companies pressing in pairs, walls answer with arrows, roads run between holds, and the phone's chart marks unburied fields and barrows (`578eab6` tip, run 895 green). Real on-device Apple model answers on eligible hardware and an iPhone device run remain unverified. Next push: on-device inference evidence, companion iOS sync and reconnection end to end, Rise of Kingdoms and Warpkeep parity gaps, UI declutter. Session stays Opus 5.5 Max. Standing bar unchanged: Rise of Kingdoms or better, live multiplayer, original 3D, minimal UI.
+
 ## 2026-11-09 (Europe/Belgrade)
 
 The 8th on main was mostly the black lake at night: lanterns carried through the town's lanes, lanterns and fires lying on the water, holds glowing warm from afar, the strand's waves on the scene's clock, a lake shore sound, and a Dark/Moonlit/Bright night brightness choice fixing the too-dark default view (`60f590b` tip, run 815 green). The Mac now shows the phone's presence and can cancel an on-device model reading. Real on-device Apple model answers and an iPhone run remain unverified. Next push: on-device Foundation Models inference for NPC/commander talk, companion iOS sync and reconnection end to end, then Rise of Kingdoms and Warpkeep parity gaps. Session stays Opus 5.5 Max. Standing bar unchanged: Rise of Kingdoms or better, live multiplayer, original 3D, minimal UI.
