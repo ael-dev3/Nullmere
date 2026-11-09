@@ -851,7 +851,8 @@ a vote on the realm's law to cast.
   than one, and another House sees it, and is told of its steps, only
   within a tile of a company or hold of that House's own or its allies'.
   Its own House and its allies see it as ever, carrying no torches, and
-  its panel says it marches dark. The dark hides it from eyes, not ears: a Beacon still
+  its panel says it marches dark, as VoiceOver does on the map; the
+  phone's chart draws it as a hollow ring. The dark hides it from eyes, not ears: a Beacon still
   warns of it bound for its hold, and listening stones still hear it
   where eyes would see nothing. Light torches lights them again. Stewards
   march with their torches lit, and a steward's companies strike one

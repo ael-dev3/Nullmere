@@ -15,16 +15,27 @@ final class CompanionTorchesTests: XCTestCase {
         func company() throws -> CompanionLedger.Company {
             try XCTUnwrap(CompanionLedger(world: state.view(for: me), player: me).companies.first { $0.id == unit.id })
         }
+        func mark() throws -> CompanionChart.Mark {
+            try XCTUnwrap(CompanionChart(world: state.view(for: me), player: me).marks.first { $0.id == "company \(unit.id)" })
+        }
         let lit = try company()
         XCTAssertTrue(lit.orders.contains { $0.title == "Douse the torches" && $0.command == douse }, "\(lit.orders.map(\.title))")
         XCTAssertFalse(lit.orders.contains { $0.command == light }, "Lit already")
         XCTAssertFalse(lit.doing.contains("torches"))
+        let litMark = try mark()
+        XCTAssertFalse(litMark.dark)
+        XCTAssertFalse(litMark.name.contains("dark"), litMark.name)
         _ = try state.perform(douse, as: me)
         let dark = try company()
         XCTAssertTrue(dark.orders.contains { $0.title == "Light the torches" && $0.command == light })
         XCTAssertFalse(dark.orders.contains { $0.command == douse }, "Dark already")
         XCTAssertTrue(dark.doing.hasSuffix(", its torches doused"), dark.doing)
+        // On the chart, drawn hollow and named so.
+        let darkMark = try mark()
+        XCTAssertTrue(darkMark.dark)
+        XCTAssertTrue(darkMark.name.hasSuffix(", marching dark"), darkMark.name)
         _ = try state.perform(light, as: me)
         XCTAssertFalse(try company().doing.contains("torches"))
+        XCTAssertFalse(try mark().dark)
     }
 }

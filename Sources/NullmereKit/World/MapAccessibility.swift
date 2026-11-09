@@ -171,6 +171,7 @@ enum MapAccessibility {
             var parts = ["\(rank)\(state.title(of: unit)), \(whose(unit.owner)), \(place(unit.position))", "health \(unit.health)"]
             if unit.kind.hasTiers { parts.append("tier \(unit.tier)") }
             if state.field(of: unit.id) != nil { parts.append("in battle") }
+            if state.isUnlit(unit.id) { parts.append("marching dark") }
             if unit.owner == player {
                 if unit.fortified { parts.append("fortified") }
                 else if unit.destination != nil { parts.append("marching") }

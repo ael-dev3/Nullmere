@@ -342,7 +342,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   (`SpokenOrdersTests`), a two-client scene on the in-process realm
   (`NetworkRallyTests`: one keeper's spears lost to the other's client in
   the dark and seen again, torchless, by that keeper's seat), the phone's Army tab
-  offering it (`CompanionTorchesTests`), and a commander told in counsel
+  offering it and its chart drawing a company marching dark as a hollow
+  ring named so (`CompanionTorchesTests`; drawn on the phone **Unverified**
+  until a CI run photographs it), VoiceOver on the Mac's map saying it
+  marches dark (`MapAccessibilityTests`, **Unverified** until a CI run),
+  and a commander told in counsel
   when its company marches dark and putting it to the keeper that a
   company douse its torches or light them again, weighed as the realm
   weighs it (`CommanderCounselTests`; the model's own choosing of it

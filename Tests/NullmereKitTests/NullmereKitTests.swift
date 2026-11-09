@@ -718,6 +718,22 @@ final class MapAccessibilityTests: XCTestCase {
         }
         XCTAssertEqual(Set(items.map(\.id)).count, items.count)
     }
+
+    func testVoiceOverTellsACompanyMarchingDark() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "voiceover in the dark", houseCount: 3, radius: 16, keepers: 1))
+        let dark = try XCTUnwrap(state.units(of: state.player).first)
+        _ = try state.perform(.torches(unit: dark.id, lit: false), as: state.player)
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let items = MapAccessibility.items(for: session)
+        let told = try XCTUnwrap(items.first { $0.selection == .unit(dark.id) })
+        XCTAssertTrue(told.label.contains(", marching dark"), told.label)
+        for unit in session.state.units(of: session.player) where unit.id != dark.id {
+            let lit = try XCTUnwrap(items.first { $0.selection == .unit(unit.id) })
+            XCTAssertFalse(lit.label.contains("marching dark"), lit.label)
+        }
+    }
 }
 
 @MainActor

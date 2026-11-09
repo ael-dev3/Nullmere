@@ -420,8 +420,15 @@ struct ChartView: View {
             context.stroke(keep, with: .color(edge), lineWidth: 1)
         case .company:
             let body = circle(size * 0.3)
-            context.fill(body, with: .color(tint))
-            context.stroke(body, with: .color(edge), lineWidth: 1)
+            if mark.dark {
+                // Marching dark, its torches doused: a hollow ring in its
+                // side's colour, as the world shows it without its torches.
+                context.fill(body, with: .color(edge))
+                context.stroke(circle(size * 0.25), with: .color(tint), lineWidth: 1.6)
+            } else {
+                context.fill(body, with: .color(tint))
+                context.stroke(body, with: .color(edge), lineWidth: 1)
+            }
         case .wild:
             let wild = triangle(size * 0.3, up: false)
             context.fill(wild, with: .color(tint))

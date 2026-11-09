@@ -70,6 +70,9 @@ public struct CompanionChart: Equatable, Sendable {
         public var bound: Hex? = nil
         /// What the House's alliance's mark bids, drawn in its hue.
         public var bids: AllianceMark.Kind? = nil
+        /// A company marching dark, its torches doused: drawn hollow, as
+        /// the world draws it without its torches.
+        public var dark = false
     }
 
     /// What lies at a hex of the chart, and what the House may do there.
@@ -243,10 +246,11 @@ public struct CompanionChart: Equatable, Sendable {
                               name: wild.called.lineBegun))
         }
         for unit in world.units where reached(unit.position) {
+            let dark = world.isUnlit(unit.id)
             marks.append(Mark(id: "company \(unit.id)", hex: unit.position, thing: .company, side: side(unit.owner),
                               name: "\(CompanionChart.capitalized(whose(unit.owner))) \(world.named(unit)), "
-                                + "\(GameState.counted(world.troops(of: unit))) troops",
-                              bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil))
+                                + "\(GameState.counted(world.troops(of: unit))) troops" + (dark ? ", marching dark" : ""),
+                              bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil, dark: dark))
         }
         self.marks = marks
         regions = (world.atlas?.regions ?? []).filter { reached($0.heart) }.map { ($0.name, $0.heart) }
