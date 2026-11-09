@@ -828,7 +828,7 @@ extension GameSession {
 
     /// The arrows of the bows' blows, a few to each, loosed one after
     /// another and coming down about the mark; a Mangonel's, one stone,
-    /// slower and higher.
+    /// slower and higher; and a hold's walls answering a blow on their ward.
     func arrows(at now: Date) -> [ArrowFlight] {
         var flights: [ArrowFlight] = []
         for blow in blows where blow.isRanged {
@@ -852,6 +852,16 @@ extension GameSession {
                 flights.append(ArrowFlight(from: Vec3(from.x, rise, from.z) + spread * 0.5, to: Vec3(to.x, fall, to.z) + spread,
                                            progress: progress))
             }
+        }
+        // A hold's walls answering a blow struck on their ward from beside
+        // them, as the rules strike back at its striker: a flight from the
+        // battlements facing it, where the blow struck back cost it troops.
+        for blow in blows where blow.defender == nil && !blow.isRanged && (blow.lost ?? 0) > 0 {
+            guard let hold = holdsByPosition[blow.at] else { continue }
+            let heart = Relief.centre(of: blow.at), striker = Relief.centre(of: blow.from)
+            flights += WorldStage.wallVolley(from: Vec3(heart.x, Float(groundHeight(of: blow.at)), heart.z),
+                                             at: Vec3(striker.x, Float(groundHeight(of: blow.from)), striker.z),
+                                             walled: hold.level(.walls) > 0, age: Float(now.timeIntervalSince(blow.start)), seed: blow.id)
         }
         return flights
     }

@@ -163,3 +163,38 @@ final class FrontPressTests: XCTestCase {
         XCTAssertTrue(across.allSatisfy { abs($0) <= Happenings.clashAcross + 0.001 })
     }
 }
+
+/// A hold's walls answer a blow struck on their ward: a flight of arrows
+/// from the battlements facing the striker, a beat after the blow, along
+/// the wall, coming down about the striker; from the keep where it has no
+/// walls.
+final class WallVolleyTests: XCTestCase {
+    private let hold = Vec3(4, 0.2, 2), striker = Vec3(4 + Relief.hexSpacing, 0.1, 2)
+
+    func testTheWallsFacingTheStrikerLooseAFlightAtIt() {
+        XCTAssertTrue(WorldStage.wallVolley(from: hold, at: striker, walled: true, age: 0.1, seed: 3).isEmpty,
+                      "not before the blow has landed and the walls answer")
+        let flying = WorldStage.wallVolley(from: hold, at: striker, walled: true,
+                                           age: WorldStage.wallAnswer + 0.06 * Float(WorldStage.wallArrows) + 0.05, seed: 3)
+        XCTAssertEqual(flying.count, WorldStage.wallArrows, "the whole flight in the air")
+        for arrow in flying {
+            XCTAssertTrue((0...1).contains(arrow.progress))
+            // Loosed from the wall walk on the striker's side of the hold.
+            XCTAssertEqual(arrow.from.y, hold.y + WorldStage.wallWalk, accuracy: 0.0001)
+            XCTAssertGreaterThan(arrow.from.x - hold.x, HoldLayout.wallRadius * 0.8, "from the battlements that face the striker")
+            XCTAssertLessThan((arrow.from - hold).length, HoldLayout.wallRadius + 0.3, "on the walls, not beyond them")
+            // Coming down about the striker.
+            XCTAssertLessThan(Vec3(arrow.to.x - striker.x, 0, arrow.to.z - striker.z).length, 0.4)
+        }
+        XCTAssertGreaterThan(Set(flying.map(\.from.z)).count, 1, "loosed along the wall, not from one point")
+        XCTAssertTrue(WorldStage.wallVolley(from: hold, at: striker, walled: true, age: 3, seed: 3).isEmpty, "all come down")
+    }
+
+    func testAHoldWithNoWallsAnswersFromItsKeepAndNoneAtAStrikerOnItsOwnHex() {
+        let flying = WorldStage.wallVolley(from: hold, at: striker, walled: false, age: WorldStage.wallAnswer + 0.3, seed: 1)
+        XCTAssertFalse(flying.isEmpty)
+        XCTAssertTrue(flying.allSatisfy { abs($0.from.y - (hold.y + WorldStage.keepLoft)) < 0.0001 }, "from the keep's height")
+        XCTAssertTrue(flying.allSatisfy { $0.from.x - hold.x < HoldLayout.wallRadius * 0.5 }, "from near its heart")
+        XCTAssertTrue(WorldStage.wallVolley(from: hold, at: hold, walled: true, age: 0.4, seed: 1).isEmpty)
+    }
+}

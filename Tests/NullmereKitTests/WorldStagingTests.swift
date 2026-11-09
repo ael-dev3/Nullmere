@@ -610,5 +610,26 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(session.arrows(at: hurled.start.addingTimeInterval(1)).filter(\.stone).isEmpty, "landed")
         let thrown = session.sceneFrame(at: 2, now: hurled.start.addingTimeInterval(0.4))
         XCTAssertTrue(thrown.batches.contains { $0.key == .prop(.stone) })
+
+        // A blow struck on a hold's ward from beside it, which the walls
+        // struck back: a flight from its battlements at the striker, a beat
+        // after the blow lands, and over the blow the ward's strength taken.
+        let ward = try XCTUnwrap(session.state.holds.first { $0.owner != player })
+        let beside = try XCTUnwrap(ward.position.neighbors.first { session.state.map[$0] != nil })
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: .spear, defender: nil,
+                                          defenderOwner: ward.owner, defenderKind: nil, hold: ward.id, at: ward.position, damageDealt: 12,
+                                          damageTaken: 9, attackerFell: false, defenderFell: false, lost: 300))],
+                          from: [striker.id: beside])
+        let onWard = try XCTUnwrap(session.blows.last)
+        XCTAssertFalse(onWard.isRanged)
+        XCTAssertEqual(onWard.felled, "12", "the ward's strength taken, where no troops fell")
+        XCTAssertEqual(onWard.strikersLost, "300")
+        XCTAssertTrue(session.arrows(at: onWard.start.addingTimeInterval(0.1)).isEmpty, "the walls answer a beat after")
+        let answering = session.arrows(at: onWard.start.addingTimeInterval(0.3))
+        XCTAssertFalse(answering.isEmpty, "the walls answer the striker")
+        let heart = Relief.centre(of: ward.position)
+        XCTAssertTrue(answering.allSatisfy { Vec3($0.from.x - heart.x, 0, $0.from.z - heart.z).length < HoldLayout.wallRadius + 0.3 },
+                      "loosed from the hold")
+        XCTAssertTrue(session.arrows(at: onWard.start.addingTimeInterval(2)).isEmpty, "all come down")
     }
 }

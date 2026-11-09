@@ -109,3 +109,46 @@ public struct FrontPress: Equatable, Sendable {
         return press.amount > 0 ? press : nil
     }
 }
+
+/// A hold's walls answering a blow struck on their ward: the rules strike
+/// back at a company that strikes a ward from beside it, the harder the
+/// higher its walls (`GameState.strike(hold:with:)`); its bowmen loose a
+/// flight of arrows from the battlements that face the striker, a beat
+/// after the blow lands, one after another along the wall, coming down
+/// about the striker; from the keep's height where the hold has no walls.
+extension WorldStage {
+    /// How high on its walls, and on its keep, a hold's bowmen loose from.
+    public static let wallWalk: Float = 0.24
+    public static let keepLoft: Float = 0.4
+    /// How long after a blow on a ward begins the walls answer it.
+    public static let wallAnswer: Float = 0.18
+    /// How many arrows the walls loose at a blow, and how far apart along them.
+    public static let wallArrows = 4
+    public static let wallArrowsApart: Float = 0.16
+
+    /// The walls' arrows in flight `age` seconds after a blow on their ward
+    /// began, from the hold's heart `hold` at the striker standing at
+    /// `striker`: none before the walls answer or once the last has come
+    /// down, nor at a striker on the hold's own hex.
+    public static func wallVolley(from hold: Vec3, at striker: Vec3, walled: Bool, age: Float, seed: Int) -> [ArrowFlight] {
+        var way = Vec3(striker.x - hold.x, 0, striker.z - hold.z)
+        let length = way.length
+        guard length > 0.0001 else { return [] }
+        way = way * (1 / length)
+        let side = Vec3(-way.z, 0, way.x)
+        let reach = walled ? HoldLayout.wallRadius * 0.9 : 0.25
+        let loft = walled ? wallWalk : keepLoft
+        var flights: [ArrowFlight] = []
+        for shaft in 0..<wallArrows {
+            let s = Float(shaft)
+            let progress = (age - wallAnswer - s * 0.06) / Happenings.arrowFlight
+            guard progress >= 0, progress <= 1 else { continue }
+            let along = (s - Float(wallArrows - 1) / 2) * wallArrowsApart
+            let wobble = 0.08 * Float(sin(Double(seed % 977) * 1.7 + Double(s) * 2.3))
+            let from = hold + way * reach + side * along + Vec3(0, loft, 0)
+            let to = striker + side * (along * 0.7 + wobble) + Vec3(0, 0.05, 0)
+            flights.append(ArrowFlight(from: from, to: to, progress: progress))
+        }
+        return flights
+    }
+}
