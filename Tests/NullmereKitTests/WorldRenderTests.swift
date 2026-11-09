@@ -873,15 +873,21 @@ final class WorldRenderTests: XCTestCase {
         try keep([drawn, far], as: "world-wildfire")
         func seen(_ hex: Hex) -> CGPoint { afar.viewPoint(of: hex, height: Double(WorldRenderTests.world.relief.height(of: hex)), in: WorldRenderTests.size) }
         let alight = burning.map(seen), touched = (burning + ash).map(seen)
-        var glowing = 0, elsewhere = 0, warmAfar = 0, warmAfarBefore = 0
+        var glowing = 0, elsewhere = 0, warmAfar = 0
         let ground = (burning + ash).map { camera.viewPoint(of: $0, height: Double(WorldRenderTests.world.relief.height(of: $0)), in: WorldRenderTests.size) }
-        var near = 0, beyond = 0, fiery = 0, fieryBefore = 0
+        var near = 0, beyond = 0, fiery = 0
+        // Warmed, as the lanterns' and the vigils' light is judged: its red
+        // risen well above what it was, and by half as much again as its
+        // blue, the pixels being BGRA. Fire's flames are gold as much as
+        // orange, so neither is held to a hue of its own.
+        func warmed(_ lit: [UInt8], over dark: [UInt8], at i: Int) -> Bool {
+            let red = Int(lit[i + 2]) - Int(dark[i + 2]), blue = Int(lit[i]) - Int(dark[i])
+            return red >= 24 && Double(red) > 1.5 * Double(blue)
+        }
         for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
             for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
                 let i = (y * WorldRenderTests.width + x) * 4
-                func warm(_ pixels: [UInt8]) -> Bool { Int(pixels[i + 2]) > 90 && Int(pixels[i + 2]) > Int(pixels[i + 1]) * 3 / 2 && pixels[i + 2] > pixels[i] &* 2 }
-                if warm(drawn.pixels) { fiery += 1 }
-                if warm(bare.pixels) { fieryBefore += 1 }
+                if warmed(drawn.pixels, over: bare.pixels, at: i) { fiery += 1 }
                 guard abs(drawn.luminance(x, y) - bare.luminance(x, y)) > 4 else { continue }
                 if ground.contains(where: { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 120 }) { near += 1 } else { beyond += 1 }
             }
@@ -889,23 +895,23 @@ final class WorldRenderTests: XCTestCase {
         for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
             for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
                 let i = (y * WorldRenderTests.width + x) * 4
-                func warm(_ pixels: [UInt8]) -> Bool { Int(pixels[i + 2]) > 60 && Int(pixels[i + 2]) > Int(pixels[i + 1]) * 3 / 2 && pixels[i + 2] > pixels[i] &* 2 }
                 let there = alight.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 12 }
-                let about = touched.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 30 }
-                if there, warm(far.pixels) { warmAfar += 1 }
-                if there, warm(farBare.pixels) { warmAfarBefore += 1 }
+                // Its smoke and its light reach as far from afar as near: the
+                // same 120 points about the wood it touched.
+                let about = touched.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 120 }
+                if there, warmed(far.pixels, over: farBare.pixels, at: i) { warmAfar += 1 }
                 guard abs(far.luminance(x, y) - farBare.luminance(x, y)) > 4 else { continue }
                 if there { glowing += 1 } else if !about { elsewhere += 1 }
             }
         }
-        print("RENDER wildfire: \(burning.count) tiles burning, \(ash.count) as ash; \(near) points changed by it, \(beyond) beyond; \(fiery) points of firelight, \(fieryBefore) before; "
-            + "afar \(glowing) points changed where it burns, \(elsewhere) beyond the wood it touched, \(warmAfar) warm where it burns, \(warmAfarBefore) before")
+        print("RENDER wildfire: \(burning.count) tiles burning, \(ash.count) as ash; \(near) points changed by it, \(beyond) beyond; \(fiery) points warmed by its light; "
+            + "afar \(glowing) points changed where it burns, \(elsewhere) beyond the wood it touched, \(warmAfar) warmed where it burns")
         XCTAssertGreaterThan(near, 150, "The wood burning and burnt")
         XCTAssertLessThan(beyond, near / 2 + 20, "and the world beyond it as it was, but for its smoke")
-        XCTAssertGreaterThan(fiery, fieryBefore + 40, "Fire's own light, orange in the night")
+        XCTAssertGreaterThan(fiery, 40, "Fire's own light, warm in the night")
         XCTAssertGreaterThan(glowing, 12, "From afar the fire glows where it burns")
         XCTAssertLessThan(elsewhere, glowing / 2 + 10, "and nowhere else")
-        XCTAssertGreaterThan(warmAfar, warmAfarBefore, "warm, as fire is")
+        XCTAssertGreaterThan(warmAfar, 12, "warm, as fire is")
     }
 
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
