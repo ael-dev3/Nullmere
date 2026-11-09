@@ -349,7 +349,9 @@ extension GameState {
 
     /// The highest Archive among a House's holds.
     public func archiveLevel(of house: Int) -> Int {
-        holds.lazy.filter { $0.owner == house }.map { $0.level(.archive) }.max() ?? 0
+        // Its own holds where the list has them, not every hold of a wide
+        // realm looked over for each of its asks.
+        holds.places(of: house).lazy.map { holds[$0].level(.archive) }.max() ?? 0
     }
 
     /// A count of watches made shorter by a percentage, rounded, never under one.

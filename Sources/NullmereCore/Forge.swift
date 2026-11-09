@@ -156,7 +156,9 @@ extension GameState {
 
     /// The highest Forge among a House's holds.
     public func forgeLevel(of house: Int) -> Int {
-        holds.lazy.filter { $0.owner == house }.map { $0.level(.forge) }.max() ?? 0
+        // Its own holds where the list has them, not every hold of a wide
+        // realm looked over for each of its asks.
+        holds.places(of: house).lazy.map { holds[$0].level(.forge) }.max() ?? 0
     }
 
     /// What forging a piece of a kind this fine takes of each making, at a

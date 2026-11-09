@@ -166,10 +166,22 @@ extension GameState {
                 list[index].holder = nil
                 list[index].since = nil
             }
-            guard let keeper = units.first(where: { $0.position == shrine.position && $0.kind.isMilitary }),
-                  list[index].holder != keeper.owner else { continue }
-            let contested = units.contains { other in
-                other.kind.isMilitary && other.position.distance(to: shrine.position) <= 1 && isAtWar(other.owner, keeper.owner)
+            // Who stands on it and beside it, asked of the companies where
+            // they stand, not of every company in the realm for each of a
+            // wide realm's hundreds of shrines: the first company of war on
+            // it as the list has them, and any at war with its House within
+            // one of it.
+            let standing = units.ids(at: shrine.position).compactMap(units.index(ofID:)).sorted()
+            guard let keeperAt = standing.first(where: { units[$0].kind.isMilitary }) else { continue }
+            let keeper = units[keeperAt]
+            guard list[index].holder != keeper.owner else { continue }
+            var contested = false
+            shrine.position.forEach(within: 1) { hex in
+                guard !contested else { return }
+                for id in units.ids(at: hex) {
+                    guard let other = units.index(ofID: id).map({ units[$0] }) else { continue }
+                    if other.kind.isMilitary && isAtWar(other.owner, keeper.owner) { contested = true; return }
+                }
             }
             guard !contested else { continue }
             // Heard by every House as it happens, and kept in the Realm's

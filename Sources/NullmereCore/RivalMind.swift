@@ -449,13 +449,26 @@ struct RivalMind {
     /// none of its own already bound there.
     private func seekHolySite(garrisons: [Int: Hex], in state: inout GameState) -> [GameEvent] {
         let holds = state.holds(of: house).map(\.position)
+        // With no hold, no holy site is near its holds.
+        guard !holds.isEmpty else { return [] }
         let side = Set([house] + (state.alliance(of: house)?.members ?? []))
         let mine = state.units(of: house)
         // No way into the Crown's heart while every gate stands.
         let crowned = state.gatesStanding.count == Lair.gateQuarters.count
+        // The bounds of its holds, as far again as it goes for a holy site:
+        // a wide realm's hundreds of shrines beyond them passed over at a
+        // glance, not measured from each of its holds in turn.
+        let reach = RivalMind.holySiteReach
+        var low = (q: Int.max, r: Int.max, s: Int.max), high = (q: Int.min, r: Int.min, s: Int.min)
+        for hold in holds {
+            low = (min(low.q, hold.q - reach), min(low.r, hold.r - reach), min(low.s, hold.s - reach))
+            high = (max(high.q, hold.q + reach), max(high.r, hold.r + reach), max(high.s, hold.s + reach))
+        }
         let wanted = state.holySites.filter { shrine in
-            !(shrine.holder.map(side.contains) ?? false) && !(crowned && shrine.kind == .heartstone)
-                && holds.contains { $0.distance(to: shrine.position) <= RivalMind.holySiteReach }
+            let at = shrine.position
+            return !(shrine.holder.map(side.contains) ?? false) && !(crowned && shrine.kind == .heartstone)
+                && at.q >= low.q && at.q <= high.q && at.r >= low.r && at.r <= high.r && at.s >= low.s && at.s <= high.s
+                && holds.contains { $0.distance(to: at) <= reach }
                 && !mine.contains { $0.position == shrine.position || $0.destination == shrine.position }
                 && state.unit(at: shrine.position) == nil
         }
