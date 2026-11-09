@@ -191,6 +191,46 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertTrue(["DOUSE <company>", "LIGHT <company>"].allSatisfy(SpokenOrders.forms.contains))
     }
 
+    /// The dead buried from the book: BURY has a company of war bury the
+    /// dead lying unburied where it stands, the briefing telling the model
+    /// which may; where none lie, told why not; and a commander may put it
+    /// forward, the House's unburied dead in counsel's briefing.
+    func testTheDeadAreBuriedFromTheBookAndCounselMayProposeIt() throws {
+        var state = world()
+        let me = state.player
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let unit = try XCTUnwrap(companies.first { $0.kind.isMilitary })
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == unit.id }) + 1)"
+        XCTAssertTrue(SpokenOrders.forms.contains("BURY <company>"))
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("BURY \(handle)", in: state, player: me).first).why,
+                       RuleError.noDeadHere.description, "none lie there")
+        XCTAssertFalse(SpokenOrders.briefing(for: state, player: me).contains("(BURY)"))
+        state.layTheFallen(7_000, of: me, at: unit.position)
+        let briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(handle): ") && $0.hasSuffix(", where 7,000 troops' dead lie unburied, which it may bury (BURY)") },
+                      "\(briefing)")
+        let bury = try XCTUnwrap(SpokenOrders.read("bury \(handle)", in: state, player: me).first)
+        XCTAssertEqual(bury.command, .bury(unit: unit.id))
+        XCTAssertNil(bury.why)
+        XCTAssertEqual(bury.told, "Your \(SpokenOrders.named(unit, in: state)) bury the dead that lie there under a barrow.")
+        // A commander's counsel knows of them, and may put the burial forward.
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        let counsel = try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id))
+        XCTAssertTrue(counsel.affairs.contains("Its dead lie unburied: 7,000 troops \(state.placeName(of: unit.position)), "
+                                               + "who rise as Barrowkin at the dark of the moon unless buried; the dark of the moon comes in "),
+                      counsel.affairs)
+        XCTAssertTrue(CommanderCounsel.actions.contains("bury"))
+        let ownHandle = try XCTUnwrap(counsel.handle(of: unit))
+        let proposed = counsel.propose("bury", company: ownHandle, place: "")
+        XCTAssertEqual(proposed.command, .bury(unit: unit.id))
+        XCTAssertNil(proposed.why)
+        XCTAssertTrue(CommanderCounsel.onlyThese.contains("bury"))
+        // Buried, nothing more to bury.
+        _ = try state.perform(.bury(unit: unit.id), as: me)
+        XCTAssertFalse(SpokenOrders.briefing(for: state, player: me).contains("(BURY)"))
+        XCTAssertFalse(try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id)).affairs.contains("unburied"))
+    }
+
     /// An ambush from the book: WAIT has a company marching dark in the
     /// blackwood lie in wait there, the briefing telling the model which
     /// may and which wait; out of the wood or lit, told why not.

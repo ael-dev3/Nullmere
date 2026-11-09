@@ -232,6 +232,14 @@ public struct CommanderCounsel: Sendable {
             if burning > 0 { lines.append("Fire burns in the blackwood on \(tiles(burning)) of its land; \(state.windSaid).") }
             if ours.count > burning { lines.append("Ash lies on \(tiles(ours.count - burning)) of its land, yielding nothing.") }
         }
+        // Its dead lying unburied, and what comes of them at the dark of the moon.
+        let unburied = state.fieldsOfDead.filter { $0.houses.contains(player) }
+        if !unburied.isEmpty {
+            lines.append("Its dead lie unburied: " + unburied.prefix(4).map { field in
+                "\(GameState.counted(field.troops)) troops \(state.placeName(of: field.at))"
+                    + (field.troops >= GameState.unquietAt ? ", who rise as Barrowkin at the dark of the moon unless buried" : "")
+            }.joined(separator: "; ") + "; the dark of the moon comes in \(GameState.watches(state.watchesToTheDark(from: state.watch) == 0 ? GameState.lunarMonth : state.watchesToTheDark(from: state.watch))).")
+        }
         // Its watchfires, and the latest their light made out marching dark.
         let watchfires = state.watchfiresBurning.filter { $0.by == player }
         if !watchfires.isEmpty {
@@ -255,11 +263,12 @@ public struct CommanderCounsel: Sendable {
     public static let sightingsTold = 3
 
     /// What a commander may propose a company does.
-    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait"]
+    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury"]
 
     /// Why a commander can't put forward anything else.
     public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood "
-        + "alight), douse (its torches, to march dark), light (its torches again) or wait (lie in wait in the blackwood, marching dark)."
+        + "alight), douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark) "
+        + "or bury (the dead lying unburied where it stands)."
 
     /// An order put to the keeper, read and weighed as the order book weighs
     /// a line: given if the realm would take it, or told why not.
@@ -271,7 +280,7 @@ public struct CommanderCounsel: Sendable {
         switch verb {
         case "march": line = "MARCH \(handle) TO \(place)"
         case "strike": line = "STRIKE \(place) WITH \(handle)"
-        case "fortify", "halt", "drill", "kindle", "douse", "light", "wait": line = "\(verb.uppercased()) \(handle)"
+        case "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,
                                    why: CommanderCounsel.onlyThese)

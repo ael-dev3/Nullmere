@@ -828,7 +828,14 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   dark over two and a half seconds from when the keeper first sees them,
   whole at once where motion is reduced (`WorldStage.risenShowing`);
   CorpseLightsTests on Linux, WorldStagingTests on the Mac, Unverified
-  there until a CI run.
+  there until a CI run. The order book reads BURY <company>, so a keeper
+  may bury the dead in their own words on the Mac or the phone and leave
+  a standing order of it, its briefing naming each company that stands
+  where it may bury; and a commander's counsel knows where the House's
+  dead lie unburied and whether they will rise, and when the dark of the
+  moon comes, and may put a burial forward for the keeper to decide
+  (`CommanderCounsel.actions`, SpokenOrdersTests and CommanderCounselTests
+  on Linux).
 
 ## The order of the work
 
