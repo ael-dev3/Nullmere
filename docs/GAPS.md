@@ -480,7 +480,9 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   and the petitioner drawn in the world standing just beyond their hold's
   gate as the hold is drawn, facing in, a lantern in hand where their kind
   carries one, at a hold whose ward is broken as at any
-  (`testThePetitionerStandsAtTheGate`); on the phone's House tab with the same answers
+  (`testThePetitionerStandsAtTheGate`), the phone's chart marking the
+  hold with a lantern at its gate (`testAPleaAtTheGateIsMarkedAtItsHold`);
+  on the phone's House tab with the same answers
   and its own model's words (`PhoneVoicesTests`). CI logs the plea waiting
   forty watches on with its photograph (`game-plea.log`,
   `game-later.png`); the petitioner's own words from a model are heard

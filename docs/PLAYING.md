@@ -1521,7 +1521,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   after the last; only keepers' Houses are petitioned, and while you are
   away your caretaker grants a plea your stores would hold twice over.
   The phone shows the same plea on its House tab, voiced by its own
-  model, with the same answers.
+  model, with the same answers, and marks the hold on its chart with a
+  lantern at the gate.
 - **The Eclipse.** In an age with an age drowned beneath it, the moon is
   eaten at the full of the sixtieth watch, and of every ninetieth after,
   and the drowned age walks: from its greatest holds, six at most, rise
