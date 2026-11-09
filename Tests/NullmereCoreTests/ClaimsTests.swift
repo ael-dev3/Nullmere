@@ -116,6 +116,123 @@ final class ClaimsTests: XCTestCase {
         XCTAssertEqual(saved.territory(), state.territory())
     }
 
+    /// Where a few holds differ from those that last asked, what was kept is
+    /// amended about them, not made afresh for the whole map: tile by tile
+    /// the claims made afresh, whether holds are founded (before their
+    /// neighbours as well as after), grown, lost or moved, one at a time or
+    /// several at once, or stand on the Spine.
+    func testClaimsAreAmendedWhereAFewHoldsDiffer() throws {
+        var state = GameState(settings: GameSettings(seedText: "claims amended", houseCount: 4, radius: 16))
+        func land(_ hex: Hex) -> Bool {
+            state.map[hex].map { Claims.claimable($0.terrain, tile: 0, home: nil) } == true && state.hold(at: hex) == nil
+        }
+        func reached(_ hex: Hex) -> Bool { state.holds.contains { $0.position.distance(to: hex) <= $0.territoryRadius } }
+        // Two places for holds three from a seat and two apart, with land
+        // between them that no hold reaches yet.
+        var room: (seat: Int, a: Hex, b: Hex, between: Hex)?
+        search: for seat in state.holds.indices {
+            let home = state.holds[seat].position
+            for a in home.spiral(3) where a.distance(to: home) == 3 && land(a) {
+                for b in a.spiral(2) where b.distance(to: a) == 2 && land(b) && state.holds.allSatisfy({ $0.position.distance(to: b) >= 4 }) {
+                    if let between = a.spiral(1).first(where: { $0.distance(to: b) == 1 && $0 != a && land($0) && !reached($0) }) {
+                        room = (seat, a, b, between)
+                        break search
+                    }
+                }
+            }
+        }
+        let place = try XCTUnwrap(room, "Room for two holds by a seat")
+        let between = try XCTUnwrap(state.map.index(of: place.between))
+        // Ground of the Spine where the second hold will later stand.
+        let spine = try XCTUnwrap(state.map.hexes.first { land($0) && !reached($0) && $0.distance(to: place.a) > 6 && $0.distance(to: place.b) > 6 })
+        state.map.set(spine, Tile(terrain: .spine))
+        _ = state.territory()
+
+        /// Amends what was kept to the holds now, and finds it the claims
+        /// made afresh.
+        func amended(_ note: String, line: UInt = #line) throws -> [Int?] {
+            let owners = try XCTUnwrap(state.map.claims.amend(to: state.claimants, token: state.holds.claims, on: state.map),
+                                       "\(note): amended", line: line)
+            XCTAssertEqual(owners, try fresh(state), note, line: line)
+            XCTAssertEqual(state.territory(), owners, "\(note): kept under the holds' token", line: line)
+            return owners
+        }
+        func found(at hex: Hex, in watch: Int) -> Int {
+            let id = state.takeID()
+            state.holds.append(Hold(id: id, name: "Hold \(id)", owner: state.holds[place.seat].owner, position: hex, isSeat: false, foundedWatch: watch))
+            return id
+        }
+
+        // A hold founded late beside the seat: the seat keeps what both reach.
+        let late = found(at: place.a, in: 5)
+        var owners = try amended("Founded after its neighbours")
+        XCTAssertEqual(owners[between], late)
+        // One founded before it: it takes what both reach from the later.
+        let early = found(at: place.b, in: 1)
+        owners = try amended("Founded before its neighbour")
+        XCTAssertEqual(owners[between], early, "The older hold keeps a tile when two reach it")
+        // Grown: its beacon reaches further.
+        let earlyIndex = try XCTUnwrap(state.holds.index(ofID: early))
+        state.holds[earlyIndex].levels[.beacon] = 2
+        _ = try amended("A beacon raised")
+        // Lost: what it held goes to the next that reaches it, or to none.
+        state.holds.remove(at: earlyIndex)
+        owners = try amended("A hold lost")
+        XCTAssertEqual(owners[between], late, "The later hold has it now")
+        // Several at once: one moved onto the Spine, another founded, the
+        // beacon raised of the seat farthest from where they stood.
+        let lateIndex = try XCTUnwrap(state.holds.index(ofID: late))
+        state.holds[lateIndex].position = spine
+        let third = found(at: place.b, in: 0)
+        let farthest = try XCTUnwrap(state.holds.indices.filter { state.holds[$0].isSeat }
+            .max { state.holds[$0].position.distance(to: place.between) < state.holds[$1].position.distance(to: place.between) })
+        state.holds[farthest].levels[.beacon] = 2
+        owners = try amended("Moved, founded and grown in one")
+        let onSpine = try XCTUnwrap(state.map.index(of: spine))
+        XCTAssertEqual(owners[onSpine], late, "A hold claims the Spine it stands on")
+        XCTAssertEqual(owners[between], third)
+        // Lost from the Spine: none other may claim it.
+        state.holds.remove(at: lateIndex)
+        owners = try amended("Lost from the Spine")
+        XCTAssertNil(owners[onSpine], "The Spine is no one's but the hold's that stands on it")
+    }
+
+    /// Nothing to amend from, too many holds changed, a map of another
+    /// size, or a holder that is none of the holds: made afresh instead.
+    func testClaimsAreMadeAfreshWhereTheyCannotBeAmended() throws {
+        let state = GameState(settings: GameSettings(seedText: "claims made afresh", houseCount: 4, radius: 16))
+        let claims = Claims()
+        let claimants = state.claimants
+        XCTAssertNil(claims.amend(to: claimants, token: 1, on: state.map), "Nothing kept")
+        let many = (0..<(Claims.mostAmended + 1)).map { Claims.Claimant(id: 1_000 + $0, position: Hex(0, 0), founded: 0, reach: 1) }
+        claims.keep(Array(repeating: nil, count: state.map.count), for: [], token: 1)
+        XCTAssertNil(claims.amend(to: many, token: 2, on: state.map), "Too many changed")
+        claims.keep([nil], for: [], token: 1)
+        XCTAssertNil(claims.amend(to: Array(claimants.prefix(1)), token: 2, on: state.map), "Kept for another map")
+        let first = try XCTUnwrap(claimants.first)
+        var owners = [Int?](repeating: nil, count: state.map.count)
+        owners[try XCTUnwrap(state.map.index(of: first.position))] = 999
+        claims.keep(owners, for: [], token: 1)
+        XCTAssertNil(claims.amend(to: [first], token: 2, on: state.map), "A holder none of the holds")
+        XCTAssertNil(claims.owners(forToken: 2), "Nothing kept of it")
+        XCTAssertEqual(Claims.founded(of: first.id, in: claimants), first.founded)
+        XCTAssertEqual(Claims.founded(of: first.id, in: Array(claimants.reversed())), first.founded, "Found out of order")
+        XCTAssertNil(Claims.founded(of: 999, in: claimants))
+    }
+
+    /// Through a played age, its holds founded, grown, taken and lost by
+    /// the stewards in the midst of their watches, what the holds claim is
+    /// always the claims made afresh.
+    func testThroughAPlayedAgeTheClaimsAreAlwaysThoseMadeAfresh() throws {
+        var state = GameState(settings: GameSettings(seedText: "claims through an age", houseCount: 6, radius: 20))
+        let holds = state.holds.count
+        for watch in 1...30 {
+            state.endWatch()
+            XCTAssertEqual(state.territory(), try fresh(state), "Watch \(watch)")
+        }
+        XCTAssertGreaterThan(state.holds.count, holds, "Holds founded through the age")
+    }
+
     /// The deepest of a lake's water is sought once and kept with its map,
     /// the same as sought afresh; let go of as the ground changes, by the
     /// copy whose ground changed alone.

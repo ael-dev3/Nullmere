@@ -584,13 +584,12 @@ public struct GameState: Codable, Equatable, Sendable {
         // or, the token new, to holds the same in all that decides it.
         let token = holds.claims
         if let kept = map.claims.owners(forToken: token) { return kept }
-        var claimants: [Claims.Claimant] = []
-        claimants.reserveCapacity(holds.count)
-        for index in holds.indices {
-            claimants.append(Claims.Claimant(id: holds[index].id, position: holds[index].position, founded: holds[index].foundedWatch,
-                                             reach: holds[index].territoryRadius))
-        }
+        let claimants = self.claimants
         if let kept = map.claims.owners(for: claimants, token: token) { return kept }
+        // A hold founded, lost or grown changes hands only of the tiles
+        // about it: what was kept is amended, not the whole map's every
+        // tile worked out afresh, where a few holds differ (`Claims.amend`).
+        if let amended = map.claims.amend(to: claimants, token: token, on: map) { return amended }
         var owners = [Int?](repeating: nil, count: map.count)
         // The holds in the order they were founded, by index, none copied;
         // what each claims is the same in whatever order its hexes come.
@@ -598,17 +597,24 @@ public struct GameState: Codable, Equatable, Sendable {
         for index in order {
             let id = claimants[index].id, at = claimants[index].position, home = map.index(of: at)
             map.forEachIndex(within: claimants[index].reach, of: at) { tile in
-                guard owners[tile] == nil else { return }
-                switch map[tile].terrain {
-                case .still, .shallows, .ford, .stream, .shoal: return
-                case .spine: if tile != home { return }
-                case .strand, .saltFlat, .greyfield, .blackwood, .barrow: break
-                }
+                guard owners[tile] == nil, Claims.claimable(map[tile].terrain, tile: tile, home: home) else { return }
                 owners[tile] = id
             }
         }
         map.claims.keep(owners, for: claimants, token: token)
         return owners
+    }
+
+    /// The holds as they claim the land, in the order they lie: by all that
+    /// decides what each claims.
+    var claimants: [Claims.Claimant] {
+        var claimants: [Claims.Claimant] = []
+        claimants.reserveCapacity(holds.count)
+        for index in holds.indices {
+            claimants.append(Claims.Claimant(id: holds[index].id, position: holds[index].position, founded: holds[index].foundedWatch,
+                                             reach: holds[index].territoryRadius))
+        }
+        return claimants
     }
 
     /// The House whose territory covers a hex.
