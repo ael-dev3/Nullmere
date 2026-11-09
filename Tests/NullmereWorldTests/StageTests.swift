@@ -482,6 +482,62 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.markLights([], scale: 240, time: 3).isEmpty)
     }
 
+    /// The ways of the marches the keeper knows of, lit on the land: lights
+    /// from where each company stands along every hex it will pass, in its
+    /// side's hue, evenly spaced back from the way's end so they keep their
+    /// places, dimmer as they go, a glint running along them; a ring where
+    /// the keeper's own is bound; the keeper's own first, and no more lights
+    /// than a frame allows.
+    func testMarchesAreLitAlongTheirWays() throws {
+        let stage = stage()
+        let east = Hex.directions[0]
+        let start = try XCTUnwrap(Self.state.map.hexes.first { hex in
+            (0...4).allSatisfy { Self.state.map[hex + east * $0]?.terrain.isPassable == true }
+        })
+        let route = (1...4).map { start + east * $0 }
+        let heart = Relief.centre(of: start), end = Relief.centre(of: route[3])
+        let from = Vec3(heart.x, stage.ground(atX: heart.x, z: heart.z), heart.z)
+        let ring = 10
+        let lights = stage.marchLines([(from: from, route: route, side: .own, bound: route[3])], time: 0)
+        XCTAssertGreaterThan(lights.count, ring + 10)
+        let way = Array(lights.dropLast(ring))
+        let own = WorldStage.MarchSide.own.hue
+        for mote in way {
+            XCTAssertEqual(mote.place.z, heart.z, accuracy: 1e-3, "On the way east, where the route runs")
+            XCTAssertGreaterThan(mote.place.x, heart.x)
+            XCTAssertLessThanOrEqual(mote.place.x, end.x + 1e-3)
+            XCTAssertEqual(mote.place.y, stage.ground(atX: mote.place.x, z: mote.place.z) + 0.04, accuracy: 1e-4, "Lit on the land")
+            XCTAssertEqual(mote.colour.y / mote.colour.x, own.y / own.x, accuracy: 1e-4)
+            XCTAssertEqual(mote.colour.w, 0, "It hides nothing")
+        }
+        for (a, b) in zip(way, way.dropFirst()) {
+            XCTAssertEqual(b.place.x - a.place.x, WorldStage.marchSpacing, accuracy: 1e-3, "Evenly spaced")
+        }
+        XCTAssertEqual(try XCTUnwrap(way.last).place.x, end.x - WorldStage.marchSpacing / 2, accuracy: 1e-3, "Set back from its end")
+        XCTAssertGreaterThan(way[0].colour.x, try XCTUnwrap(way.last).colour.x, "Dimmer as it goes")
+        for mote in lights.suffix(ring) {
+            XCTAssertEqual(Vec3(mote.place.x - end.x, 0, mote.place.z - end.z).length, WorldStage.marchEndRing, accuracy: 1e-3,
+                           "A ring where it is bound")
+        }
+        // A glint running along it, the lights keeping their places.
+        let later = Array(stage.marchLines([(from: from, route: route, side: .own, bound: route[3])], time: 0.5).dropLast(ring))
+        XCTAssertEqual(later.map(\.place), way.map(\.place))
+        XCTAssertTrue(zip(later, way).contains { abs($0.colour.x - $1.colour.x) > 1e-3 }, "Its glint has run on")
+        // Each side its hue, the keeper's own first, and no ring but for its own.
+        let both = stage.marchLines([(from: from, route: route, side: .foe, bound: route[3]),
+                                     (from: from, route: route, side: .own, bound: nil)], time: 0)
+        XCTAssertEqual(both.count, 2 * way.count)
+        XCTAssertEqual(both[0].colour.y / both[0].colour.x, own.y / own.x, accuracy: 1e-4)
+        let foe = WorldStage.MarchSide.foe.hue
+        XCTAssertEqual(try XCTUnwrap(both.last).colour.y / XCTUnwrap(both.last).colour.x, foe.y / foe.x, accuracy: 1e-4)
+        XCTAssertEqual(Set(WorldStage.MarchSide.allCases.map { "\($0.hue)" }).count, WorldStage.MarchSide.allCases.count)
+        // However many march, no more lights than a frame allows.
+        let many = (0..<400).map { _ in (from: from, route: route, side: WorldStage.MarchSide.ally, bound: Hex?.none) }
+        XCTAssertEqual(stage.marchLines(many, time: 0).count, WorldStage.mostMarchLights)
+        XCTAssertTrue(stage.marchLines([], time: 0).isEmpty)
+        XCTAssertTrue(stage.marchLines([(from: from, route: [], side: .own, bound: nil)], time: 0).isEmpty)
+    }
+
     /// A commander's leading talents glow on the ground beneath it as its
     /// company marches, in its tree's own sigil, wider the more ranks it
     /// holds; at rest, or untaught, there is none.

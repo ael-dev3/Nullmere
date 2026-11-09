@@ -302,6 +302,9 @@ extension GameSession {
         frame.motes += stage.glows(shown, scale: camera.scale)
         // And each of the alliance's marks in its own light, from near or far.
         frame.motes += stage.markLights(marks.map { (hex: $0.at, kind: $0.kind) }, scale: camera.scale, time: t)
+        // The ways of the marches the keeper knows of, lit on the land in
+        // their sides' hues from where each company is drawn now.
+        frame.motes += stage.marchLines(marchWays(poses: poses) { inView($0, within: 1) }, time: t)
         // The vigils' lights for the fallen out on the lake, carried on with
         // the current through the watch, each mirrored in the water.
         let vigils = WorldStage.vigils(state.vigilsOnTheLake.map { vigil in
@@ -320,6 +323,30 @@ extension GameSession {
 
     /// An alliance's colour: its leader's House's, or else the given
     /// House's; grey for none.
+    /// The marches the keeper knows of as their ways are lit: from where
+    /// each company is drawn now, the hexes of its way it has yet to pass,
+    /// whose it is, and where the keeper's own is bound; only those whose
+    /// way, or company, the view takes in.
+    func marchWays(poses: [CompanyPose], inView: (Hex) -> Bool) -> [(from: Vec3, route: [Hex], side: WorldStage.MarchSide, bound: Hex?)] {
+        let marches = state.marches ?? []
+        guard !marches.isEmpty else { return [] }
+        var drawn: [Int: CompanyPose] = [:]
+        for pose in poses where pose.unit >= 0 { drawn[pose.unit] = pose }
+        return marches.compactMap { march in
+            guard let unit = state.unit(march.unit) else { return nil }
+            let pose = drawn[march.unit]
+            var route = march.route
+            // What it has passed already, as it is drawn, left behind.
+            if let at = pose?.hex, let passed = route.firstIndex(of: at) { route.removeFirst(passed + 1) }
+            guard !route.isEmpty, route.contains(where: inView) || inView(unit.position) else { return nil }
+            let heart = Relief.centre(of: unit.position)
+            let from = pose?.position ?? Vec3(heart.x, 0, heart.z)
+            let side: WorldStage.MarchSide = march.owner == player ? .own
+                : state.areAllied(player, march.owner) ? .ally : state.isAtWar(player, march.owner) ? .foe : .other
+            return (from: from, route: route, side: side, bound: side == .own ? march.destination : nil)
+        }
+    }
+
     func allianceColour(_ alliance: Int, else house: Int, _ houses: [Vec4]) -> Vec4 {
         let leader = state.alliance(alliance)?.leader ?? house
         return state.houses.indices.contains(leader) ? WorldStage.colour(houses, sigil: state.houses[leader].sigil) : Vec4(0.6, 0.6, 0.6, 1)

@@ -803,7 +803,12 @@ a vote on the realm's law to cast.
   company should be in reach of it; and for any other company in their
   sight on the march, the way it goes as far as they see it, never where
   it is bound. The ways are worked out on the keeper's own view of the
-  land, so none bends round what they can't see.
+  land, so none bends round what they can't see. In the world each way
+  is lit on the land as Rise of Kingdoms draws its marches: small lights
+  along every hex the company will pass, in the moon's white for the
+  keeper's own, green for an ally's, red for a foe's and grey for
+  another's, dimmer toward the end with a glint running along them toward
+  it, and a small ring where one of the keeper's own is bound.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own

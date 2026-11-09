@@ -757,6 +757,48 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(elsewhere, afar / 2 + 10)
     }
 
+    /// A march's way lit on the land, as Rise of Kingdoms draws its marches:
+    /// one of the keeper's companies bound for ground six tiles off, the
+    /// lights of its way flowing from its feet to a ring where it is bound,
+    /// drawn with the world's own shaders. Drawn with the march and
+    /// without, they change the ground along the way and nothing else.
+    @MainActor
+    func testAMarchsWayIsLitOnTheLand() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let bound = try XCTUnwrap(company.position.spiral(6).filter { hex in
+            hex.distance(to: company.position) == 6 && state.map[hex]?.terrain.isPassable == true && state.hold(at: hex) == nil
+                && state.unit(at: hex) == nil && state.path(for: company, to: hex) != nil
+        }.first)
+        let resting = state
+        state.units[try XCTUnwrap(state.unitIndex(company.id))].destination = bound
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let marching = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("marching")))
+        let still = GameSession(state: resting, store: LocalStore(directory: directory.appendingPathComponent("still")))
+        let march = try XCTUnwrap(marching.state.marches?.first { $0.unit == company.id }, "The keeper's view holds its own march")
+        XCTAssertEqual(march.destination, bound)
+        XCTAssertNil(still.state.marches?.first { $0.unit == company.id })
+        let middle = Relief.centre(of: march.route[march.route.count / 2])
+        let camera = Camera(centerX: Double(middle.x), centerY: Double(middle.z), scale: 70, tilt: 0.9, heading: 0.3)
+        let drawn = try draw(renderer, "march", camera: camera, tiles: marching.tileBytes, scene: marching.sceneFrame(at: 20))
+        let bare = try draw(renderer, "no march", camera: camera, tiles: still.tileBytes, scene: still.sceneFrame(at: 20))
+        try keep([drawn], as: "world-march")
+        let way = ([company.position] + march.route).map { camera.viewPoint(of: $0, height: Double(WorldRenderTests.world.relief.height(of: $0)), in: WorldRenderTests.size) }
+        var along = 0, beyond = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) where abs(drawn.luminance(x, y) - bare.luminance(x, y)) > 4 {
+                if way.contains(where: { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 70 }) { along += 1 } else { beyond += 1 }
+            }
+        }
+        print("RENDER march: \(march.route.count) hexes of the way lit, \(along) points changed along it, \(beyond) beyond")
+        XCTAssertGreaterThan(along, 40, "Its way lit on the land")
+        XCTAssertLessThan(beyond, along / 3 + 10, "and nothing else in the view changes for it")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world

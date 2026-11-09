@@ -538,6 +538,93 @@ public final class WorldStage: @unchecked Sendable {
         return motes
     }
 
+    /// Whose a march is, as its way is lit: the keeper's own, an ally's, a
+    /// foe's, or another House's.
+    public enum MarchSide: Int, Sendable, CaseIterable {
+        case own, ally, foe, other
+
+        /// The hue its way is lit in: the moon's for the keeper's own, green
+        /// for an ally's, red for a foe's, grey for another's.
+        public var hue: Vec3 {
+            switch self {
+            case .own: return Vec3(0.86, 0.9, 1.0)
+            case .ally: return Vec3(0.45, 0.95, 0.55)
+            case .foe: return Vec3(1.0, 0.3, 0.22)
+            case .other: return Vec3(0.62, 0.62, 0.66)
+            }
+        }
+    }
+
+    /// How far apart the lights along a march's way lie; how long the glint
+    /// running along them is, and how fast it runs toward the way's end;
+    /// and the most lights a frame gives all marches.
+    public static let marchSpacing: Float = 0.32
+    public static let marchGlint: Float = 1.6
+    public static let marchFlow: Float = 0.9
+    public static let mostMarchLights = 800
+    /// How wide the ring is where the keeper's own company is bound.
+    public static let marchEndRing: Float = 0.34
+
+    /// The ways of the marches the keeper knows of, each lit on the land in
+    /// its side's hue (`MarchSide`): small lights along every hex it will
+    /// pass from where the company stands, set back from the way's end so
+    /// they keep their places as the company walks on, dimmer toward the
+    /// end, a glint running along them toward it; and a small ring of light
+    /// where one of the keeper's own companies is bound. Light only: it
+    /// hides nothing. The keeper's own first, then allies', foes' and
+    /// others', as many as `mostMarchLights` allows. Where motion is
+    /// reduced the glint stands still (`time` held).
+    public func marchLines(_ marches: [(from: Vec3, route: [Hex], side: MarchSide, bound: Hex?)], time: Float) -> [Mote] {
+        var motes: [Mote] = []
+        for march in marches.sorted(by: { $0.side.rawValue < $1.side.rawValue }) where !march.route.isEmpty {
+            guard motes.count < WorldStage.mostMarchLights else { break }
+            let hue = march.side.hue
+            let strength: Float = march.side == .own ? 0.75 : 0.55
+            // The way as a line on the land: from the company to each hex's heart.
+            var points = [(x: march.from.x, z: march.from.z)]
+            for hex in march.route { points.append(Relief.centre(of: hex)) }
+            var spans: [Float] = []
+            for (a, b) in zip(points, points.dropFirst()) { spans.append(Vec3(b.x - a.x, 0, b.z - a.z).length) }
+            let length = spans.reduce(0, +)
+            guard length > 0.01 else { continue }
+            // Spaced back from its end, the nearest the company left out.
+            var lights: [(x: Float, z: Float, along: Float)] = []
+            var back = WorldStage.marchSpacing * 0.5
+            var segment = spans.count - 1, segmentEnd = length
+            while back < length - WorldStage.marchSpacing * 0.5, motes.count + lights.count < WorldStage.mostMarchLights {
+                let along = length - back
+                while segment > 0, along < segmentEnd - spans[segment] {
+                    segmentEnd -= spans[segment]
+                    segment -= 1
+                }
+                let span = spans[segment]
+                let t = span > 0 ? min(max((along - (segmentEnd - span)) / span, 0), 1) : 0
+                let a = points[segment], b = points[segment + 1]
+                lights.append((a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, along))
+                back += WorldStage.marchSpacing
+            }
+            for light in lights.reversed() {
+                let fade = 1 - 0.55 * light.along / length
+                let wave = Float(cos(Double((light.along - time * WorldStage.marchFlow) / WorldStage.marchGlint * 2 * .pi)))
+                let glint = 0.7 + 0.3 * max(wave, 0)
+                motes.append(Mote(at: Vec3(light.x, ground(atX: light.x, z: light.z) + 0.04, light.z), size: 0.026,
+                                  light: hue * (strength * fade * glint), cover: 0))
+            }
+            // Where the keeper's own company is bound, a small ring.
+            if march.side == .own, let bound = march.bound {
+                let centre = Relief.centre(of: bound)
+                for index in 0..<10 where motes.count < WorldStage.mostMarchLights {
+                    let a = Float(index) / 10 * 2 * .pi
+                    let x = centre.x + WorldStage.marchEndRing * Float(cos(Double(a)))
+                    let z = centre.z + WorldStage.marchEndRing * Float(sin(Double(a)))
+                    let shimmer = 0.75 + 0.25 * Float(sin(Double(time * 2 + Float(index))))
+                    motes.append(Mote(at: Vec3(x, ground(atX: x, z: z) + 0.04, z), size: 0.03, light: hue * (0.7 * shimmer), cover: 0))
+                }
+            }
+        }
+        return motes
+    }
+
     /// The alliances' halls the keeper has found, each in its alliance's
     /// colour, one rising drawn up as far as it has come within its
     /// scaffold; and where the whole ones' louvres smoke.
