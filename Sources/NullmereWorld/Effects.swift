@@ -526,8 +526,12 @@ public struct Happenings: Equatable, Sendable {
     /// What happens in sight as motes and light at a moment, leaving out
     /// the kinds of mote asked (a film shot of the world leaves out what
     /// would read as a mark laid over it, as a skill's ring or a blow's
-    /// flash can).
-    public func effects(at time: Float, leaving omitted: Set<Effect> = []) -> (motes: [Mote], lights: [PointLight]) {
+    /// flash can). `fireLight`, from 0 to 1, is how much of their own light
+    /// the fires in the blackwood and the watchfires cast on the ground:
+    /// from afar their glow stands for them (`WorldStage.fireGlows`), and
+    /// their light there would only take the frame's few lights from the
+    /// lanterns, boats and works in view (`WorldStage.fireLight(at:)`).
+    public func effects(at time: Float, leaving omitted: Set<Effect> = [], fireLight: Float = 1) -> (motes: [Mote], lights: [PointLight]) {
         var bursts: [Burst] = []
         var emitters: [Emitter] = []
         var lights: [PointLight] = []
@@ -634,7 +638,10 @@ public struct Happenings: Equatable, Sendable {
             emitters.append(Emitter(.smoke, at: fire.at + Vec3(0, 0.42, 0), rate: 4 * fire.strength, spread: 0.26, seed: fire.seed &+ 7,
                                     strength: 1.2, drift: air))
             let flicker = 0.7 + 0.3 * Float(sin(Double(time * 13 + Float(fire.seed % 89)))) * Float(sin(Double(time * 5.1 + 1)))
-            lights.append(PointLight(at: fire.at + Vec3(0, 0.3, 0), reach: 2.0, colour: Vec3(2.4, 0.95, 0.28) * fire.strength * flicker))
+            if fireLight > 0 {
+                lights.append(PointLight(at: fire.at + Vec3(0, 0.3, 0), reach: 2.0,
+                                         colour: Vec3(2.4, 0.95, 0.28) * fire.strength * flicker * fireLight))
+            }
         }
         for fire in watchfires {
             // A tall flame in the brazier, embers and a thread of smoke going
@@ -645,8 +652,10 @@ public struct Happenings: Equatable, Sendable {
             emitters.append(Emitter(.smoke, at: fire.at + Vec3(0, 0.32, 0), rate: 2 * fire.strength, spread: 0.08, seed: fire.seed &+ 7,
                                     strength: 0.8, drift: air))
             let flicker = 0.8 + 0.2 * Float(sin(Double(time * 12 + Float(fire.seed % 83)))) * Float(sin(Double(time * 4.7 + 2)))
-            lights.append(PointLight(at: fire.at + Vec3(0, 0.2, 0), reach: Happenings.watchfireReach,
-                                     colour: Vec3(2.3, 1.05, 0.34) * fire.strength * flicker))
+            if fireLight > 0 {
+                lights.append(PointLight(at: fire.at + Vec3(0, 0.2, 0), reach: Happenings.watchfireReach,
+                                         colour: Vec3(2.3, 1.05, 0.34) * fire.strength * flicker * fireLight))
+            }
         }
         for caught in catching {
             bursts.append(Burst(.flames, at: caught.at + Vec3(0, 0.05, 0), start: caught.start, count: 48, seed: caught.seed,
@@ -656,9 +665,9 @@ public struct Happenings: Equatable, Sendable {
             bursts.append(Burst(.flash, at: caught.at + Vec3(0, 0.3, 0), start: caught.start, count: 1, seed: caught.seed &+ 2,
                                 scale: 1.8))
             let age = time - caught.start
-            if age >= 0, age < Happenings.flareLight {
+            if age >= 0, age < Happenings.flareLight, fireLight > 0 {
                 lights.append(PointLight(at: caught.at + Vec3(0, 0.4, 0), reach: 2.6,
-                                         colour: Vec3(2.8, 1.2, 0.35) * (1 - age / Happenings.flareLight)))
+                                         colour: Vec3(2.8, 1.2, 0.35) * (1 - age / Happenings.flareLight) * fireLight))
             }
         }
         for spot in fireflies {

@@ -188,4 +188,42 @@ final class WildfireStageTests: XCTestCase {
         XCTAssertGreaterThan(lights[0].colour.x, lights[0].colour.z, "firelight")
         XCTAssertTrue(happenings.effects(at: 3, leaving: [.flames, .embers, .smoke]).motes.isEmpty, "all of it the fire's")
     }
+
+    /// From afar a fire's glow stands for its light on the ground: the light
+    /// fades out as the glow fades in, so a fire seen from afar takes none
+    /// of the frame's few lights from the lanterns, boats and works in view;
+    /// its flames, embers and smoke are as they were.
+    func testFromAfarAFiresGlowStandsForItsLight() {
+        XCTAssertEqual(WorldStage.fireLight(at: Camera.maximumScale), 1)
+        XCTAssertEqual(WorldStage.fireLight(at: WorldStage.glowFrom), 1, accuracy: 0.0001)
+        XCTAssertEqual(WorldStage.fireLight(at: WorldStage.glowFull), 0, accuracy: 0.0001)
+        XCTAssertEqual(WorldStage.fireLight(at: Camera.minimumScale), 0)
+        let between = WorldStage.fireLight(at: (WorldStage.glowFull + WorldStage.glowFrom) / 2)
+        XCTAssertGreaterThan(between, 0)
+        XCTAssertLessThan(between, 1)
+        var happenings = Happenings()
+        happenings.woodFires = [Happenings.Spot(at: Vec3(1, 0.4, -2), strength: 1, seed: 5)]
+        happenings.watchfires = [Happenings.Spot(at: Vec3(4, 0.5, 1), strength: 1, seed: 9)]
+        happenings.catching = [Happenings.Spot(at: Vec3(1, 0.4, -2), start: 2.9, seed: 3)]
+        let near = happenings.effects(at: 3)
+        XCTAssertEqual(near.lights.count, 3, "the wood's, the watchfire's and the catching's light")
+        let halfway = happenings.effects(at: 3, fireLight: 0.5)
+        XCTAssertEqual(halfway.lights.count, 3)
+        for (half, whole) in zip(halfway.lights, near.lights) {
+            XCTAssertEqual(half.colour.x, whole.colour.x * 0.5, accuracy: 0.0001)
+            XCTAssertEqual(half.position, whole.position)
+        }
+        let afar = happenings.effects(at: 3, fireLight: 0)
+        XCTAssertTrue(afar.lights.isEmpty, "none of the frame's lights taken")
+        XCTAssertEqual(afar.motes.count, near.motes.count, "its flames, embers and smoke as they were")
+        // Other lights in view keep their places among the frame's few.
+        let lantern = PointLight(at: Vec3(9, 0.3, 9), reach: 1.5, colour: Vec3(1.9, 1.15, 0.45))
+        let lanterns = (0..<FrameUniforms.lightSlots).map { index in
+            PointLight(at: lantern.position + Vec3(Float(index), 0, 0), reach: lantern.reach, colour: lantern.colour)
+        }
+        let focus = Vec3(1, 0, -2)
+        XCTAssertEqual(PointLight.strongest(lanterns + afar.lights, near: focus), PointLight.strongest(lanterns, near: focus))
+        XCTAssertNotEqual(PointLight.strongest(lanterns + near.lights, near: focus), PointLight.strongest(lanterns, near: focus),
+                          "Close in, the fire's light is among them")
+    }
 }

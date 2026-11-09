@@ -379,6 +379,15 @@ public final class WorldStage: @unchecked Sendable {
     /// the wood itself, near as well as far.
     public static let stillFireGlow: Float = 0.42
 
+    /// How much of their own light on the ground the fires in the blackwood
+    /// and the watchfires cast as the view stands: all of it close in, none
+    /// from afar, where their glow stands for them, fading out as the glow
+    /// fades in (`fireGlows`), so a fire seen from afar never takes the
+    /// frame's few lights from the lanterns, boats and works about it.
+    public static func fireLight(at scale: Double) -> Float {
+        WorldStage.smoothstep(Float(WorldStage.glowFull), Float(WorldStage.glowFrom), Float(scale))
+    }
+
     /// The blackwood burning as it is seen from afar: a warm glow over each
     /// tile alight, holding its size on the screen as the view draws away,
     /// coming in as the keeps' glows do and flickering, the nearest

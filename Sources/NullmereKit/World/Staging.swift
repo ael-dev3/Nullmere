@@ -279,7 +279,8 @@ extension GameSession {
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.
-            let (motes, lights) = happened.effects(at: t)
+            // From afar the fires' glow stands for their light on the ground.
+            let (motes, lights) = happened.effects(at: t, fireLight: WorldStage.fireLight(at: camera.scale))
             frame.motes += motes
             frame.lights += lights
             // Commanders' skills at work where they fired, each its look made whole.
