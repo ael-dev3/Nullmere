@@ -102,6 +102,15 @@ extension GameState {
         return known.sorted { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }
     }
 
+    /// The hamlet or barrow a company stands on or beside that its House
+    /// knows of and has yet to seek, the nearest first: the one its
+    /// Lanterns would seek (`seek`), whether the rules let them now or not.
+    public func findToSeek(by unit: Unit, as house: Int) -> Find? {
+        findsKnown(by: house, near: unit.position).first { find in
+            find.position.distance(to: unit.position) <= GameState.seekReach && !hasSought(find.id, by: house)
+        }
+    }
+
     /// The land's hamlets and barrows, found as the world is made: a barrow
     /// for each seat out on the barrows' ground, and three hamlets for every
     /// two seats on the open land, two of each at least; away from every

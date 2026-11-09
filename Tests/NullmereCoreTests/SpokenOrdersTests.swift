@@ -224,6 +224,54 @@ final class SpokenOrdersTests: XCTestCase {
                        RuleError.waitingAlready(true).description, "Waiting already")
     }
 
+    /// A hamlet or barrow from the book: SEEK has Lanterns on or beside one
+    /// their House knows of seek it, the briefing telling the model which
+    /// may; Lanterns by none, or by one sought already, told why not.
+    func testLanternsSeekAHamletFromTheBook() throws {
+        var state = world()
+        let me = state.player
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let lantern = try XCTUnwrap(companies.first { $0.kind == .lantern })
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == lantern.id }) + 1)"
+        XCTAssertTrue(SpokenOrders.forms.contains("SEEK <company>"))
+        XCTAssertNil(state.findToSeek(by: lantern, as: me), "None by the Lanterns as the age opens")
+        let none = try XCTUnwrap(SpokenOrders.read("SEEK \(handle)", in: state, player: me).first)
+        XCTAssertNil(none.command)
+        XCTAssertEqual(none.why, "Your \(SpokenOrders.named(lantern, in: state)) stand by no hamlet or barrow your House has yet to seek.")
+        let hamlet = try XCTUnwrap(state.findsInLand.first { $0.kind == .hamlet })
+        let beside = try XCTUnwrap(hamlet.position.neighbors.first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && state.unit(at: hex) == nil
+        })
+        state.units[try XCTUnwrap(state.unitIndex(lantern.id))].position = beside
+        state.refreshSight()
+        let moved = try XCTUnwrap(state.unit(lantern.id))
+        XCTAssertEqual(state.findToSeek(by: moved, as: me), hamlet)
+        var briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(handle): ") && $0.contains(", by \(hamlet.named), which it may seek (SEEK)") },
+                      "\(briefing)")
+        let seek = try XCTUnwrap(SpokenOrders.read("seek \(handle)", in: state, player: me).first)
+        XCTAssertEqual(seek.command, .seek(unit: lantern.id, find: hamlet.id))
+        XCTAssertNil(seek.why)
+        XCTAssertEqual(seek.told, "Your \(SpokenOrders.named(moved, in: state)) seek out \(hamlet.named).")
+        // A company of war by it may not: the rules say why.
+        let spears = try XCTUnwrap(companies.first { $0.kind.isMilitary })
+        let other = "C\(try XCTUnwrap(companies.firstIndex { $0.id == spears.id }) + 1)"
+        let open = try XCTUnwrap(hamlet.position.neighbors.first { hex in
+            hex != beside && state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && state.unit(at: hex) == nil
+        })
+        state.units[try XCTUnwrap(state.unitIndex(spears.id))].position = open
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("SEEK \(other)", in: state, player: me).first).why,
+                       RuleError.notAScout.description)
+        briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertFalse(briefing.contains { $0.hasPrefix("\(other): ") && $0.contains("(SEEK)") }, "Only Lanterns are told they may seek")
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(handle): ") && $0.contains("(SEEK)") })
+        // Sought: told no more, and why not.
+        _ = try state.perform(.seek(unit: lantern.id, find: hamlet.id), as: me)
+        briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertFalse(briefing.contains { $0.hasPrefix("\(handle): ") && $0.contains("(SEEK)") }, "\(briefing)")
+        XCTAssertNil(try XCTUnwrap(SpokenOrders.read("SEEK \(handle)", in: state, player: me).first).command)
+    }
+
     /// The House's dealings with the others: envoys of peace, of a pact or
     /// demanding tribute, war, gifts and offers of trade, each House named
     /// by its title or its name alone.

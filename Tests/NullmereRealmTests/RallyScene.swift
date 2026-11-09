@@ -1746,6 +1746,79 @@ extension RallyScene {
         }
     }
 
+    /// A hamlet sought, between two clients: Ama's Lanterns beside a hamlet
+    /// her House has found seek it from her own client, which is told of
+    /// its folk's gift while Bel's is told nothing; sought once, her
+    /// Lanterns are refused it again, and Bel's own Lanterns still seek it
+    /// for his House, Ama's client told nothing of that.
+    func seekAHamlet(ama: Int, bel: Int) async throws {
+        let ours = StagedWalk(), theirs = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            func open(_ hex: Hex) -> Bool {
+                world.map[hex]?.terrain.isPassable == true && world.map[hex]?.terrain.isWater == false
+                    && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+            }
+            let fires = world.firesAndAsh.map(\.at)
+            guard let hamlet = world.findsInLand.first(where: { find in
+                find.kind == .hamlet && world.find(at: find.position) != nil && find.position.neighbors.filter(open).count >= 2
+                    && fires.allSatisfy { $0.distance(to: find.position) > 3 }
+                    && !world.hasSought(find.id, by: ama) && !world.hasSought(find.id, by: bel)
+            }) else { return }
+            let beside = hamlet.position.neighbors.filter(open)
+            let mine = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: mine, kind: .lantern, owner: ama, position: beside[0]))
+            let his = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: his, kind: .lantern, owner: bel, position: beside[1]))
+            realm.world.refreshSight()
+            ours.unit = mine
+            ours.at = hamlet.position
+            theirs.unit = his
+        }
+        let lantern = try XCTUnwrap(ours.unit, "A hamlet with open ground on two sides of it")
+        let hamletAt = try XCTUnwrap(ours.at)
+        let belsLantern = try XCTUnwrap(theirs.unit)
+        try await until("Ama's client to know the hamlet her Lanterns stand beside") {
+            earA.world?.unit(lantern) != nil && earA.world?.find(at: hamletAt) != nil
+        }
+        let hamlet = try await MainActor.run { try XCTUnwrap(earA.world?.find(at: hamletAt)).id }
+        let heard: @MainActor @Sendable (Listener, (GameEvent) -> Bool) -> Bool = { ear, match in
+            ear.events.contains { event in
+                switch event {
+                case .heard(let events), .answered(let events), .watchTurned(_, let events), .settled(_, let events): return events.contains(where: match)
+                default: return false
+                }
+            }
+        }
+        await MainActor.run { a.send(.seek(unit: lantern, find: hamlet)) }
+        try await until("Ama's client told of the folk's gift, her House having sought the hamlet") {
+            earA.world?.hasSought(hamlet, by: ama) == true && heard(earA) { event in
+                guard case .findSought(hamlet, ama, let gift, nil) = event else { return false }
+                return gift.grain + gift.timber + gift.stone + gift.moonsalt > 0
+            }
+        }
+        let belTold = await MainActor.run { heard(earB) { if case .findSought(hamlet, ama, _, _) = $0 { return true } else { return false } } }
+        XCTAssertFalse(belTold, "Bel's client is told nothing of Ama's seeking")
+        let belKnows = await MainActor.run { earB.world?.hasSought(hamlet, by: ama) ?? false }
+        XCTAssertFalse(belKnows, "nor knows that her House has sought it")
+        // Sought once: refused again.
+        let refused = await MainActor.run { earA.refusals.count }
+        await MainActor.run { a.send(.seek(unit: lantern, find: hamlet)) }
+        try await until("Ama refused: her Lanterns have been there already") { earA.refusals.count > refused }
+        let refusal = await MainActor.run { earA.refusals.last }
+        XCTAssertEqual(refusal, RuleError.soughtAlready.description)
+        // Bel's own Lanterns may still seek it, for his House.
+        try await until("Bel's client to know the hamlet his Lanterns stand beside") {
+            earB.world?.unit(belsLantern) != nil && earB.world?.find(hamlet) != nil
+        }
+        await MainActor.run { b.send(.seek(unit: belsLantern, find: hamlet)) }
+        try await until("Bel's client told his House has sought it too") {
+            earB.world?.hasSought(hamlet, by: bel) == true && heard(earB) { if case .findSought(hamlet, bel, _, _) = $0 { return true } else { return false } }
+        }
+        let amaTold = await MainActor.run { heard(earA) { if case .findSought(hamlet, bel, _, _) = $0 { return true } else { return false } } }
+        XCTAssertFalse(amaTold, "Ama's client is told nothing of Bel's")
+    }
+
     func markTheGround(ama: Int, bel: Int) async throws {
         let words = "Hold the ford"
         let staged = StagedWalk()

@@ -35,7 +35,7 @@ public enum SpokenOrders {
 
     /// The forms of the order book's lines.
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
-                               "DRILL <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>",
+                               "DRILL <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>", "SEEK <company>",
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
@@ -62,6 +62,13 @@ public enum SpokenOrders {
     static func waitSaid(_ unit: Unit, in state: GameState, player: Int) -> String {
         if state.isWaiting(unit.id) { return ", lying in wait in the wood" }
         return state.waitRefusal(unit.id, waiting: true, as: player) == nil ? ", in the blackwood where it may lie in wait (WAIT)" : ""
+    }
+
+    /// A hamlet or barrow a company stands on or beside that its House has
+    /// yet to seek (SEEK), as the briefing tells it.
+    static func seekSaid(_ unit: Unit, in state: GameState, player: Int) -> String {
+        guard unit.kind == .lantern, let find = state.findToSeek(by: unit, as: player) else { return "" }
+        return ", by \(find.named), which it may seek (SEEK)"
     }
 
     /// A company as the briefing and the orders name it.
@@ -113,6 +120,7 @@ public enum SpokenOrders {
             lines.append("C\(index + 1): \(named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops"
                          + (alight ? ", in blackwood it may set alight (KINDLE)" : "")
                          + Self.waitSaid(unit, in: state, player: player)
+                         + Self.seekSaid(unit, in: state, player: player)
                          + (state.isUnlit(unit.id) ? ", marching dark, its torches doused (LIGHT)" : ""))
         }
         lines.append("This watch \(state.windSaid).")
@@ -187,7 +195,7 @@ public enum SpokenOrders {
             return verb == "MARCH"
                 ? given(.move(unit: unit.id, to: place.at), "Your \(named(unit, in: state)) march to \(place.name).")
                 : given(.attack(unit: unit.id, target: place.at), "Your \(named(unit, in: state)) strike \(place.name).")
-        case "FORTIFY", "HALT", "DRILL", "KINDLE", "DOUSE", "LIGHT", "WAIT":
+        case "FORTIFY", "HALT", "DRILL", "KINDLE", "DOUSE", "LIGHT", "WAIT", "SEEK":
             let handle = rest.joined(separator: " ")
             guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
             switch verb {
@@ -197,6 +205,12 @@ public enum SpokenOrders {
             case "DOUSE": return given(.torches(unit: unit.id, lit: false), "Your \(named(unit, in: state)) douse their torches and march dark.")
             case "LIGHT": return given(.torches(unit: unit.id, lit: true), "Your \(named(unit, in: state)) light their torches again.")
             case "WAIT": return given(.lieInWait(unit: unit.id, waiting: true), "Your \(named(unit, in: state)) lie in wait in the wood.")
+            case "SEEK":
+                guard let find = state.findToSeek(by: unit, as: player) else {
+                    return refused(text, "Your \(named(unit, in: state)) stand by no hamlet or barrow your House has yet to seek.")
+                }
+                return given(.seek(unit: unit.id, find: find.id), find.kind == .hamlet
+                    ? "Your \(named(unit, in: state)) seek out \(find.named)." : "Your \(named(unit, in: state)) go down into \(find.named).")
             default: return given(.drill(unit: unit.id), "Your \(named(unit, in: state)) drill.")
             }
         case "BUILD", "TRAIN":

@@ -834,9 +834,7 @@ struct UnitPanel: View {
     /// The nearest hamlet or barrow a Lantern stands on or beside that its
     /// House knows of and hasn't sought, which it would seek.
     static func seekable(by unit: Unit, in state: GameState, player: Int) -> Find? {
-        state.findsKnown(by: player, near: unit.position).first { find in
-            find.position.distance(to: unit.position) <= GameState.seekReach && !state.hasSought(find.id, by: player)
-        }
+        state.findToSeek(by: unit, as: player)
     }
 
     /// What seeking a hamlet or barrow brings, as its button's help says it.
