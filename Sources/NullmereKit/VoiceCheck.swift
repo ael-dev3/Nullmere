@@ -38,8 +38,10 @@ public enum VoiceCheck {
         return state
     }
 
-    /// The moments to speak: an envoy with each kind of offer, and the latest
-    /// of each kind of chronicle entry sixty watches of a lake bring.
+    /// The moments to speak: an envoy with each kind of offer, the latest
+    /// of each kind of chronicle entry sixty watches of a lake bring, the
+    /// Still's dream, a prisoner, the lake's riddle, words for the fallen,
+    /// a plea of each kind at the seat's gate, and a ballad.
     static func moments(in state: GameState = age()) -> [(name: String, moment: VoiceMoment)] {
         var moments: [(name: String, moment: VoiceMoment)] = []
         let other = state.livingHouses.first { $0.id != state.player }?.id ?? 1
@@ -67,6 +69,25 @@ public enum VoiceCheck {
         }
         // Words for the keeper's House's dead, for a vigil on the water.
         moments.append(("words for the fallen", VoiceFacts.vigil(of: state.player, in: state, reports: [])))
+        // A plea of each kind brought to the keeper's seat by its folk, as
+        // the realm brings one: a mason's, a healer's for the House's first
+        // company of war, the reeve's and a brewer's.
+        if let seat = state.seat(of: state.player) {
+            let company = state.units(of: state.player).first { $0.kind.isMilitary }
+            for (index, plea) in Petition.Plea.allCases.enumerated() {
+                let price: Stock
+                switch plea {
+                case .mend: price = Stock(stone: 30)
+                case .tend: price = Stock(grain: 30)
+                case .hands: price = Stock(grain: 40)
+                case .feast: price = Stock(grain: 60)
+                }
+                let petition = Petition(id: 9_100 + index, house: state.player, hold: seat.id, plea: plea, arrived: state.watch,
+                                        name: ["Edda", "Osric", "Wenna", "Brand"][index % 4], price: price,
+                                        unit: plea == .tend ? company?.id : nil)
+                moments.append(("petition of \(plea.trade)", VoiceFacts.petition(petition, in: state)))
+            }
+        }
         // A ballad of the latest deed of arms the age brought.
         if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {
             let singer = entry.houses.first ?? state.player

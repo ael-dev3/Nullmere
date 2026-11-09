@@ -40,7 +40,8 @@ final class VoiceCheckTests: XCTestCase {
         let sung = told.filter { $0.hasPrefix("ballad of ") && $0.hasSuffix("s): The moon lay still upon the water, / and the shore remembered.") }
         let asked = told.filter { $0.hasPrefix("riddle of the lake ") && $0.hasSuffix("s): Whose House was it, ———, that the water remembers?") }
         XCTAssertEqual(sung.count, 1, "A ballad made of the latest deed of arms, its lines on one")
-        let riddles = VoiceCheck.moments().filter { $0.moment.kind == .riddle }.count
+        let moments = VoiceCheck.moments()
+        let riddles = moments.filter { $0.moment.kind == .riddle }.count
         XCTAssertLessThanOrEqual(riddles, 1)
         XCTAssertEqual(asked.count, riddles, "The riddle the lake set at the last half moon, if the House stood to be set one")
         XCTAssertEqual(heard.count + sung.count + asked.count, report.moments, "A line told for every moment")
@@ -48,6 +49,14 @@ final class VoiceCheckTests: XCTestCase {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }
         XCTAssertEqual(told.filter { $0.hasPrefix("words for the fallen (") }.count, 1, "Words asked for the House's dead")
+        // A plea of each kind at the seat's gate, its petitioner heard as the
+        // card asks for their words.
+        for plea in Petition.Plea.allCases {
+            XCTAssertEqual(told.filter { $0.hasPrefix("petition of \(plea.trade) (") }.count, 1, "A plea brought by \(plea.trade)")
+        }
+        let pleas = moments.filter { $0.moment.kind == .petition }
+        XCTAssertEqual(pleas.count, Petition.Plea.allCases.count)
+        XCTAssertTrue(pleas.allSatisfy { $0.moment.prompt.hasPrefix(Voicing.petitionTask) }, "Asked as the card asks")
         // The clerk asked to read the keeper's words, its answer on one line;
         // and stopped a moment in, back at once.
         XCTAssertEqual(told.filter { $0.hasPrefix("orders read (") && $0.hasSuffix("s): 1. FORTIFY C1 / And nothing more.") }.count, 1, report.text)

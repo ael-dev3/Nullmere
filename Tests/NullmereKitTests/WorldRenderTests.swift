@@ -596,6 +596,60 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertEqual(darker, 0, "darkening nothing")
     }
 
+    /// A plea at the gate stands in the world: the seat's ward broken, one
+    /// of its folk waits just beyond its gate as the seat is drawn, facing
+    /// in, a lantern in hand, in the House's colour, while the plea waits on
+    /// its keeper. Drawn with the plea and without it, the petitioner and
+    /// their light change the ground at the gate and nothing else.
+    @MainActor
+    func testAPetitionerWaitsAtTheGate() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let index = try XCTUnwrap(state.holds.firstIndex { $0.isSeat && $0.owner == me })
+        state.holds[index].ward = 1
+        state.watch = max(state.watch, Petition.from)
+        _ = state.bringPetitions()
+        let petition = try XCTUnwrap(state.petition(of: me), "the seat's masons come to its gate")
+        XCTAssertEqual(petition.plea, .mend)
+        XCTAssertEqual(petition.hold, state.holds[index].id)
+        var answered = state
+        answered.petitions = nil
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pleading = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("plea")))
+        let quiet = GameSession(state: answered, store: LocalStore(directory: directory.appendingPathComponent("none")))
+        let scene = pleading.sceneFrame(at: 20), still = quiet.sceneFrame(at: 20)
+        let key = ModelKey.folk(variant: petition.plea.folk)
+        func standing(_ scene: SceneFrame) -> [ModelInstance] { scene.batches.first { $0.key == key }?.instances ?? [] }
+        let petitioner = standing(scene).filter { one in !standing(still).contains { $0.model == one.model } }
+        XCTAssertEqual(petitioner.count, 1, "one of the hold's folk stands at its gate while the plea waits")
+        let foot = try XCTUnwrap(petitioner.first).model.c3
+        let centre = Relief.centre(of: state.holds[index].position)
+        let outward = atan2(Double(foot.x - centre.x), Double(foot.z - centre.z))
+        // Seen from without the gate and to one side, the seat beyond.
+        let camera = Camera(centerX: Double(foot.x), centerY: Double(foot.z), scale: 240, tilt: 0.8, heading: outward + 0.7)
+        let pleaded = try draw(renderer, "petitioner", camera: camera, tiles: pleading.tileBytes, scene: scene)
+        let bare = try draw(renderer, "no petitioner", camera: camera, tiles: quiet.tileBytes, scene: still)
+        try keep([pleaded], as: "world-petition")
+        let at = camera.viewPoint(worldX: Double(foot.x), worldY: Double(foot.z), height: Double(foot.y), in: WorldRenderTests.size)
+        var near = 0, far = 0, warm = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                guard abs(pleaded.luminance(x, y) - bare.luminance(x, y)) > 4 else { continue }
+                if hypot(Double(x) - Double(at.x), Double(y) - Double(at.y)) < 100 { near += 1 } else { far += 1 }
+                // Its red against its blue, the pixels being BGRA.
+                let i = (y * WorldRenderTests.width + x) * 4
+                if Double(pleaded.pixels[i + 2]) - Double(bare.pixels[i + 2]) > 1.5 * (Double(pleaded.pixels[i]) - Double(bare.pixels[i])) { warm += 1 }
+            }
+        }
+        print("RENDER petitioner: \(near) points changed at the gate, \(far) beyond it; \(warm) of them warm")
+        XCTAssertGreaterThan(near, 30, "the petitioner and their light stand at the gate")
+        XCTAssertLessThan(far, near / 4 + 10, "and nothing else in the view changes for them")
+        XCTAssertGreaterThan(warm, 8, "a lantern lit in their hand")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
