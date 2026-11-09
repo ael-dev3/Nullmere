@@ -806,6 +806,16 @@ extension GameState {
             let foe = stance(by, sighting.owner) == .war
             return Tidings("Your watchfire \(placeName(of: fire)) makes out \(company), \(GameState.counted(sighting.troops)) troops, "
                            + "marching dark \(placeName(of: sighting.at)).", foe ? .bad : .neutral)
+        case .findSought(let id, let by, let gift, let item):
+            guard by == viewer, let find = findsInLand.first(where: { $0.id == id }) else { return nil }
+            switch find.kind {
+            case .hamlet:
+                return Tidings("Your Lanterns come to \(find.named) \(placeName(of: find.position)): its folk give you \(gift), and tell "
+                               + "you of the land about it.", .good)
+            case .barrow:
+                let brought = item.map { "bring up \($0.counted(1)) from among the old bones" } ?? "find only old bones"
+                return Tidings("Your Lanterns go down into \(find.named) \(placeName(of: find.position)) and \(brought).", .good)
+            }
         case .waitSet(let id, let waiting, let owner):
             guard owner == viewer, let unit = unit(id) else { return nil }
             return waiting

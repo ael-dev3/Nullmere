@@ -33,6 +33,10 @@ enum HoverInfo {
         if !state.lettersUnfound(at: hex).isEmpty {
             parts.append("a letter sealed within")
         }
+        // A hamlet or barrow the mist hid, and whether the House's Lanterns have sought it.
+        if let find = state.find(at: hex) {
+            parts.append(find.named + (state.hasSought(find.id, by: state.player) ? ", sought" : ", for your Lanterns to seek"))
+        }
         if let hold = state.hold(at: hex) {
             parts.append(hold.name)
             if state.isVeiled(hold.owner), let veil = state.veil(of: hold.owner) {

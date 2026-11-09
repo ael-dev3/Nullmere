@@ -115,6 +115,10 @@ public enum Command: Codable, Equatable, Sendable {
     /// (`Watchfire`), for timber: its House sees about it, and makes out
     /// companies marching dark there.
     case watchfire(Hex)
+    /// Sends the House's Lanterns, on or beside a hamlet or barrow the
+    /// House knows of (`Find`), to seek it: a hamlet's gift, a barrow's
+    /// grave goods; each House seeks each once.
+    case seek(unit: Int, find: Int)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -589,6 +593,11 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notInTheWood
     /// A company on the march can't lie in wait.
     case onTheMarch
+    /// A hamlet or barrow the House knows of no such, or one a hold now
+    /// stands over.
+    case unknownFind
+    /// A hamlet or barrow the House's Lanterns sought already.
+    case soughtAlready
     case watchfireBurning
     case watchfiresLit(Int)
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -816,6 +825,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notMarchingDark: return "Only a company marching dark may lie in wait: douse its torches first."
         case .notInTheWood: return "It may lie in wait only in the blackwood, where the wood isn't burnt."
         case .onTheMarch: return "It is on the march: halt it first."
+        case .unknownFind: return "Your House knows of no such hamlet or barrow."
+        case .soughtAlready: return "Your Lanterns have been there already."
         case .watchfireBurning: return "A watchfire burns there already."
         case .watchfiresLit(let most): return "Your House keeps \(most) watchfires burning already, as many as it may."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -1178,6 +1189,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A House's watchfire at `fire` made out a company of another House
     /// marching dark within its reach.
     case madeOutByWatchfire(Watchfire.Sighting, fire: Hex, by: Int)
+    /// A House's Lanterns sought out a hamlet or barrow: what its folk
+    /// gave, or what was brought up out of it.
+    case findSought(find: Int, by: Int, gift: Stock, item: ItemKind?)
     /// A House's fire caught the blackwood beside it, with the watch's wind
     /// (an index into `Hex.directions`, the way it blows).
     case fireSpread(to: [Hex], by: Int, wind: Int)

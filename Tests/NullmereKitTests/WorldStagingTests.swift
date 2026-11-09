@@ -420,6 +420,50 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(leaves(session.sceneFrame(at: 50, now: spring.start.addingTimeInterval(0.3)).motes), 0, "still, none")
     }
 
+    /// The hamlets and barrows the keeper's House has found are drawn where
+    /// they lie, the land's growth giving way to them as it does to a site
+    /// or a lair (their hearts clear, nothing tall on their ground, only
+    /// grass, heather or a fern at their edges); one in the mist it has not
+    /// seen is not.
+    func testHamletsAndBarrowsFoundAreDrawnWhereTheyLie() throws {
+        var hidden: Find?
+        let session = try session { state in
+            let me = state.player
+            hidden = state.findsInLand.first { !state.isExplored($0.position, by: me) }
+        }
+        let unseen = try XCTUnwrap(hidden, "A find still in the mist")
+        func key(_ hex: Hex) -> SIMD2<Int32> { SIMD2(Int32(hex.q), Int32(hex.r)) }
+        func drawn(_ find: Find, in frame: SceneFrame) -> Bool {
+            frame.batches.contains { batch in
+                (batch.key == .town(.well) || batch.key == .furnishing(.barrowMound)) && batch.instances.contains { $0.hex == key(find.position) }
+            }
+        }
+        XCTAssertFalse(drawn(unseen, in: session.sceneFrame(at: 20)), "Not while the mist hides it")
+        // Every one found, once the House has seen the whole land.
+        let known = try session { state in
+            state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
+        }
+        let frame = known.sceneFrame(at: 20)
+        for find in known.state.findsInLand where known.state.find(at: find.position) != nil && known.state.site(at: find.position) == nil {
+            XCTAssertTrue(drawn(find, in: frame), "\(find.named) drawn")
+            // The land's growth gives way to it: nothing in its heart, where
+            // its homes or its mound stand, and nothing taller than what lies
+            // underfoot within its ground.
+            let centre = Relief.centre(of: find.position)
+            for batch in frame.fixed {
+                guard case .furnishing(let furnishing) = batch.key else { continue }
+                for piece in batch.instances where piece.hex == key(find.position) {
+                    let at = hypot(piece.model.c3.x - centre.x, piece.model.c3.z - centre.z)
+                    XCTAssertGreaterThanOrEqual(at, Scatter.heart, "\(find.named)'s heart cleared of \(furnishing)")
+                    if Scatter.height(furnishing) > Scatter.underfoot {
+                        XCTAssertGreaterThanOrEqual(at, Scatter.held, "nothing tall within \(find.named)'s ground: \(furnishing)")
+                    }
+                }
+            }
+        }
+        XCTAssertTrue(frame.batches.contains { $0.key == .town(.well) }, "A hamlet among them")
+    }
+
     /// Wood seen catching alight flares up where it catches, for a few
     /// seconds; a fire already burning when the world is first drawn
     /// doesn't.

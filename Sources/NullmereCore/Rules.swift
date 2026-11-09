@@ -100,6 +100,8 @@ extension GameState {
             return try setWaiting(unit, waiting: waiting, as: house)
         case .watchfire(let hex):
             return try lightWatchfire(at: hex, as: house)
+        case let .seek(unit, find):
+            return try seek(find, with: unit, as: house)
         case let .sealLetter(words, holdID):
             return try sealLetter(words, in: holdID, as: house)
         case .stand(let order):

@@ -577,6 +577,8 @@ extension GameState {
         var wildfires: [Wildfire]?
         var unlit: [Int]?
         var waiting: [Int]?
+        var finds: [Find]?
+        var sought: [Int: [Int]]?
         var watchfires: [Watchfire]?
         var petitions: [Petition]?
         var allianceMarks: [AllianceMark]?
@@ -619,6 +621,8 @@ extension GameState {
             wildfires = world.wildfires
             unlit = world.unlit
             waiting = world.waiting
+            finds = world.finds
+            sought = world.sought
             watchfires = world.watchfires
             petitions = world.petitions
             allianceMarks = world.allianceMarks
@@ -663,6 +667,8 @@ extension GameState {
             world.wildfires = wildfires
             world.unlit = unlit
             world.waiting = waiting
+            world.finds = finds
+            world.sought = sought
             world.watchfires = watchfires
             world.petitions = petitions
             world.allianceMarks = allianceMarks

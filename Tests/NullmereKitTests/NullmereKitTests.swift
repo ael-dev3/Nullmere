@@ -529,6 +529,10 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(all.contains("burns 8 watches: your House sees within 2 tiles of it, and makes out there any company marching dark"), all)
         XCTAssertTrue(all.contains("Its watchman tells you of each company it makes out"), all)
         XCTAssertTrue(all.contains("a company of war may lie in wait there: it springs upon the first company of a House at war with yours"), all)
+        // Hamlets and barrows, as the rules let Lanterns seek them.
+        XCTAssertTrue(all.contains("a hamlet's folk give what they can spare, of what their ground grows, and tell them of the land within 3 tiles about it"), all)
+        XCTAssertTrue(all.contains("a barrow gives up one of the things laid with its dead"), all)
+        XCTAssertEqual(GameState.hamletTells, 3)
         XCTAssertEqual(GameState.darkSight, 1)
         XCTAssertEqual(Happening.marks, [10, 25, 50])
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
@@ -737,6 +741,36 @@ final class MapAccessibilityTests: XCTestCase {
             let lit = try XCTUnwrap(items.first { $0.selection == .unit(unit.id) })
             XCTAssertFalse(lit.label.contains("marching dark"), lit.label)
         }
+    }
+
+    /// The hamlets and barrows the keeper's House has found are among the
+    /// land VoiceOver tells, each said sought once its Lanterns have sought
+    /// it; the ground under the pointer names one so too.
+    func testVoiceOverAndThePointerTellTheHamletsAndBarrowsFound() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "voiceover in the mist", houseCount: 3, radius: 16, keepers: 1))
+        let me = state.player
+        let hamlet = try XCTUnwrap(state.findsInLand.first { $0.kind == .hamlet })
+        let lantern = try XCTUnwrap(state.units(of: me).first { $0.kind == .lantern })
+        let beside = try XCTUnwrap(hamlet.position.neighbors.first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && state.unit(at: hex) == nil
+        })
+        state.units[try XCTUnwrap(state.unitIndex(lantern.id))].position = beside
+        state.refreshSight()
+        func told(_ state: GameState) throws -> String {
+            let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
+            return try XCTUnwrap(MapAccessibility.items(for: session).first { $0.id == "find-\(hamlet.id)" }).label
+        }
+        let before = try told(state)
+        XCTAssertTrue(before.hasPrefix("The hamlet of \(hamlet.name), not yet sought"), before)
+        let pointed = HoverInfo.line(for: hamlet.position, in: state.view(for: me), explored: true, territory: []) ?? ""
+        XCTAssertTrue(pointed.contains("the hamlet of \(hamlet.name), for your Lanterns to seek"), pointed)
+        _ = try state.perform(.seek(unit: lantern.id, find: hamlet.id), as: me)
+        let sought = try told(state)
+        XCTAssertTrue(sought.hasPrefix("The hamlet of \(hamlet.name), sought"), sought)
+        let after = HoverInfo.line(for: hamlet.position, in: state.view(for: me), explored: true, territory: []) ?? ""
+        XCTAssertTrue(after.contains("the hamlet of \(hamlet.name), sought"), after)
     }
 
     /// A company of the keeper's lying in wait in the blackwood is told so

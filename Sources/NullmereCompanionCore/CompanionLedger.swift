@@ -1055,7 +1055,14 @@ public struct CompanionLedger: Equatable, Sendable {
                     .filter { world.refusal(of: .scout(unit: unit.id, hold: $0.id), as: player) == nil }
                     .map { Order(title: "Scout \($0.name)", command: .scout(unit: unit.id, hold: $0.id)) }
                 : []
-            let orders = offered.filter(\.2).map { Order(title: $0.0, command: $0.1) } + scouts
+            // Lanterns on or beside a hamlet or barrow the House has found
+            // seek it, as the Mac's panel offers it, where the rules would.
+            let seeks: [Order] = unit.kind == .lantern
+                ? world.findsKnown(by: player, near: unit.position)
+                    .filter { $0.position.distance(to: unit.position) <= GameState.seekReach && world.seekRefusal(unit.id, find: $0.id, as: player) == nil }
+                    .map { Order(title: $0.kind == .hamlet ? "Seek out \($0.named)" : "Go down into \($0.named)", command: .seek(unit: unit.id, find: $0.id)) }
+                : []
+            let orders = offered.filter(\.2).map { Order(title: $0.0, command: $0.1) } + scouts + seeks
             // Only where there is a way, as the realm would march it: a hold
             // across the water, or walled in by the Spine, is no march. A
             // company off the land (on a barge) is asked of every hold.

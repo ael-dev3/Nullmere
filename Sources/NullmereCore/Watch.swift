@@ -90,6 +90,7 @@ extension GameState {
         events += turnLyceum()
         events += workTheLand()
         raiseShrines()
+        raiseFinds()
         events += holdShrines()
         events += takeUpCrown()
         events += keepTitles()

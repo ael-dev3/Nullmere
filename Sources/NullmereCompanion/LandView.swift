@@ -459,6 +459,35 @@ struct ChartView: View {
             context.fill(site, with: .color(tint.opacity(0.85)))
         case .shrine:
             context.stroke(circle(size * 0.4), with: .color(Night.moon.opacity(0.9)), lineWidth: 1.5)
+        case .hamlet:
+            // A home of the free folk under its roof, its window lit while
+            // the House's Lanterns have yet to seek it.
+            let fade = mark.dark ? 0.5 : 1.0
+            let home = CGRect(x: x - size * 0.2, y: y - size * 0.04, width: size * 0.4, height: size * 0.26)
+            let roof = Path { path in
+                path.move(to: CGPoint(x: x - size * 0.28, y: y - size * 0.04))
+                path.addLine(to: CGPoint(x: x, y: y - size * 0.3))
+                path.addLine(to: CGPoint(x: x + size * 0.28, y: y - size * 0.04))
+                path.closeSubpath()
+            }
+            context.fill(Path(home), with: .color(tint.opacity(fade)))
+            context.fill(roof, with: .color(tint.opacity(fade)))
+            context.stroke(roof, with: .color(edge), lineWidth: 1)
+            if !mark.dark {
+                context.fill(Path(ellipseIn: CGRect(x: x - size * 0.06, y: y + size * 0.03, width: size * 0.12, height: size * 0.12)),
+                             with: .color(Self.flame))
+            }
+        case .barrow:
+            // An old barrow's mound, and the dark of its open mouth.
+            let fade = mark.dark ? 0.5 : 0.9
+            let mound = Path { path in
+                path.move(to: CGPoint(x: x - size * 0.34, y: y + size * 0.16))
+                path.addQuadCurve(to: CGPoint(x: x + size * 0.34, y: y + size * 0.16), control: CGPoint(x: x, y: y - size * 0.42))
+                path.closeSubpath()
+            }
+            context.fill(mound, with: .color(tint.opacity(fade)))
+            context.stroke(mound, with: .color(edge), lineWidth: 1)
+            context.fill(Path(CGRect(x: x - size * 0.06, y: y + size * 0.02, width: size * 0.12, height: size * 0.14)), with: .color(edge))
         case .watchfire:
             // A watchfire's flame in the light it keeps, ringed in its House's colour.
             context.fill(circle(size * 0.44), with: .color(Self.flame.opacity(0.16)))

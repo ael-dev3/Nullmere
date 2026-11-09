@@ -194,6 +194,12 @@ enum MapAccessibility {
             land.append(Item(id: "site-\(site.id)", label: "\(HoverInfo.named(site, in: state)), \(place(site.position))",
                              selection: .tile(site.position), hex: site.position))
         }
+        // The hamlets and barrows the House has found, and whether its Lanterns have sought each.
+        for find in state.findsKnown(by: player) {
+            let sought = state.hasSought(find.id, by: player) ? "sought" : "not yet sought"
+            land.append(Item(id: "find-\(find.id)", label: "\(find.named.prefix(1).uppercased() + find.named.dropFirst()), \(sought), \(place(find.position))",
+                             selection: .tile(find.position), hex: find.position))
+        }
         // The fields of battle in sight, or that the House fights in.
         for field in state.fieldsOfBattle {
             land.append(Item(id: "field-\(field.id)", label: "\(HoverInfo.named(field, in: state)), \(place(field.at))",

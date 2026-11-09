@@ -891,6 +891,20 @@ a vote on the realm's law to cast.
   torches or Stand down ends it. The order book reads WAIT <company>, and
   a commander in counsel may put an ambush to you. Stewards lie in wait
   for none. Rise of Kingdoms has no ambush.
+- **Hamlets and barrows.** Out in the mist lie hamlets of the free folk
+  and old barrows open to the sky, a barrow for each seat on the barrows'
+  ground and three hamlets for every two seats on the open land, each
+  known to your House once it has seen its ground: in the world a hamlet's
+  homes about its well, its field and its hearth's smoke, a barrow's great
+  grassed mound with the stones of its open mouth. Your Lanterns on or
+  beside one may seek it from their panel (Seek out the hamlet, Go down
+  into the barrow, or the phone's Army tab), for all their moves, once for
+  each House: a hamlet's folk give you of what their ground grows, the more
+  the further they live from every seat, and tell your Lanterns of the
+  land within 3 tiles about it; a barrow gives up one of the things laid
+  with its dead, an hourglass, a ward stone, a mending draught or a cache.
+  Only your House is told, and a hold raised over one takes it. Rise of
+  Kingdoms' scouts find its tribal villages and mysterious caves so.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own

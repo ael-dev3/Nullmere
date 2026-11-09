@@ -174,8 +174,13 @@ extension GameSession {
         let lairs = stage.lairs(found.filter { $0.gate == nil }.map { ($0.kind, $0.position) })
         // The Crown's gates, each held across its pass.
         let gates = stage.gates(found.filter { $0.gate != nil }.map(\.position))
-        let lairBatches: [ModelBatch] = lairs.batches + gates.batches
-        let lairHearths: [Hearth] = lairs.hearths + gates.hearths
+        // The hamlets and barrows the House has found in the mist, each
+        // but where a hold or a site stands over it.
+        let sitePlaces = Set(sites.map(\.position)), holdPlaces = holdsByPosition
+        let finds = state.findsInLand.filter { isExplored($0.position) && !sitePlaces.contains($0.position) && holdPlaces[$0.position] == nil }
+        let findSights = stage.finds(finds.filter { inView($0.position, within: 1) }.map { ($0.kind, $0.position) })
+        let lairBatches: [ModelBatch] = lairs.batches + gates.batches + findSights.batches
+        let lairHearths: [Hearth] = lairs.hearths + gates.hearths + findSights.hearths
         // The alliances' standards, each in its leader's colour.
         let flags = state.standardsStanding.filter { isExplored($0.position) }
         let standards = stage.animate(stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses), Float($0.progress)) }),
@@ -229,7 +234,7 @@ extension GameSession {
             (from: barge.pushOff, to: barge.landing, progress: GameSession.watchProgress(state))
         }, time: t)
         let standing = companyGround.union(sites.map(\.position) + found.map(\.position) + flags.map(\.position)
-                                           + state.watchfiresBurning.map(\.at))
+                                           + state.watchfiresBurning.map(\.at) + finds.map(\.position))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)),
                                       burnt: state.ash)

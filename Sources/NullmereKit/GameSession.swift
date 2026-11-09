@@ -1670,6 +1670,7 @@ public final class GameSession {
         case .torches(_, let lit): return lit ? .order : .stand
         case .lieInWait: return .stand
         case .watchfire: return .order
+        case .seek: return .ride
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage, .takeCrest, .bestow: return .banner
         case .prophesy: return .lore
@@ -1741,6 +1742,7 @@ public final class GameSession {
         case .woundedLost(_, let house, _) where house == player: return .dread
         case .holdScouted(let report) where report.by == player: return .lore
         case .itemsGiven(let house, _, _) where house == player: return .coin
+        case .findSought(_, let by, _, _) where by == player: return .coin
         case .heritageTaken(let house, _) where house == player: return .banner
         case .allianceStudied(let id, _, _) where state?.alliance(of: player)?.id == id: return .lore
         case .allianceGift(let house, _, _, _, _) where house == player: return .coin
@@ -1999,6 +2001,8 @@ public final class GameSession {
             return sighting.at
         case .ambushSprung(_, _, let at, _, _):
             return at
+        case .findSought(let find, _, _, _):
+            return state.findsInLand.first { $0.id == find }?.position
         case .fireSpread(let hexes, _, _), .firesDoused(let hexes, _):
             return hexes.first
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):

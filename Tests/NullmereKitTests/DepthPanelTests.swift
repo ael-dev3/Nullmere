@@ -3133,3 +3133,39 @@ extension DepthPanelTests {
         XCTAssertNotNil(Narration.line(for: .waitSet(unit: unit.id, waiting: true, owner: me), in: state, viewer: me))
     }
 }
+
+extension DepthPanelTests {
+    /// The keeper's Lanterns beside a hamlet their House has found are
+    /// offered to seek it out, which sends the order; once sought, it is
+    /// offered no more. A find sought is heard as coin, placed where it
+    /// lies, and told in the rules' own words.
+    func testTheLanternsPanelSeeksOutAHamletOnce() throws {
+        var state = world("a hamlet from the panel")
+        let me = state.player
+        let lantern = try XCTUnwrap(state.units(of: me).first { $0.kind == .lantern })
+        let hamlet = try XCTUnwrap(state.findsInLand.first { $0.kind == .hamlet })
+        let beside = try XCTUnwrap(hamlet.position.neighbors.first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && state.unit(at: hex) == nil
+        })
+        state.units[try XCTUnwrap(state.unitIndex(lantern.id))].position = beside
+        state.refreshSight()
+        func panel() throws -> DepthLink {
+            let (shown, link) = self.session(state)
+            draw(UnitPanel(session: shown, unit: try XCTUnwrap(shown.state.unit(lantern.id))), width: 330, height: 900)
+            return link
+        }
+        let offered = try panel()
+        XCTAssertTrue(PressableButtons.press("Seek out the hamlet"), "Among \(shown)")
+        XCTAssertEqual(offered.sent.last, .seek(unit: lantern.id, find: hamlet.id))
+        XCTAssertTrue(UnitPanel.seekHelp(hamlet).hasPrefix("Its folk give your Lanterns what they can spare"))
+        let events = try state.perform(.seek(unit: lantern.id, find: hamlet.id), as: me)
+        _ = try panel()
+        XCTAssertFalse(shown.contains("Seek out the hamlet"), "Sought already: \(shown)")
+        // Heard, and where.
+        XCTAssertEqual(GameSession.cue(forDepth: events[0], in: state, player: me), .coin)
+        let other = try XCTUnwrap(state.livingHouses.first { $0.id != me }).id
+        XCTAssertNil(GameSession.cue(forDepth: events[0], in: state, player: other))
+        XCTAssertEqual(GameSession.place(of: events[0], in: state), hamlet.position)
+        XCTAssertNotNil(Narration.line(for: events[0], in: state, viewer: me))
+    }
+}

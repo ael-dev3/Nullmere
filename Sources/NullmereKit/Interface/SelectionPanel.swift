@@ -731,6 +731,15 @@ struct UnitPanel: View {
                             session.perform(.scout(unit: unit.id, hold: target.id))
                         }
                     }
+                    // On or beside a hamlet or barrow the House knows of, its Lanterns may seek it, once.
+                    if unit.kind == .lantern, let find = UnitPanel.seekable(by: unit, in: state, player: session.player) {
+                        let refusal = state.seekRefusal(unit.id, find: find.id, as: session.player)
+                        QuietButton(title: find.kind == .hamlet ? "Seek out the hamlet" : "Go down into the barrow", prominent: refusal == nil,
+                                    enabled: refusal == nil, name: "Seek out \(find.named)", why: refusal?.description) {
+                            session.perform(.seek(unit: unit.id, find: find.id))
+                        }
+                        .help(UnitPanel.seekHelp(find))
+                    }
                     // Only on the Still's shore, and only for a company of war.
                     if unit.kind.isMilitary, state.isOnTheStill(unit.position) {
                         let refusal = state.mirrorRefusal(unit.id, as: session.player)
@@ -820,6 +829,26 @@ struct UnitPanel: View {
         }
         .padding(16)
         .panelBackground()
+    }
+
+    /// The nearest hamlet or barrow a Lantern stands on or beside that its
+    /// House knows of and hasn't sought, which it would seek.
+    static func seekable(by unit: Unit, in state: GameState, player: Int) -> Find? {
+        state.findsKnown(by: player, near: unit.position).first { find in
+            find.position.distance(to: unit.position) <= GameState.seekReach && !state.hasSought(find.id, by: player)
+        }
+    }
+
+    /// What seeking a hamlet or barrow brings, as its button's help says it.
+    static func seekHelp(_ find: Find) -> String {
+        switch find.kind {
+        case .hamlet:
+            return "Its folk give your Lanterns what they can spare, of what their ground grows, and tell them of the land about it. "
+                + "Each House's Lanterns may come to it once."
+        case .barrow:
+            return "Your Lanterns go down among the old bones and bring up one of the things laid with the dead. "
+                + "Each House's Lanterns may go down into it once."
+        }
     }
 
     /// The nearest hold of another House within a Lantern's reach, which it

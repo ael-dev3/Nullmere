@@ -56,6 +56,9 @@ public struct CompanionChart: Equatable, Sendable {
         /// The blackwood burning, and the ash it leaves (`Wildfire`), under
         /// all else on its ground.
         case fire, ash
+        /// A hamlet of the free folk, or an old barrow, the House has found
+        /// in the mist (`Find`); drawn dim once its Lanterns have sought it.
+        case hamlet, barrow
     }
 
     /// Something on the chart.
@@ -257,6 +260,12 @@ public struct CompanionChart: Equatable, Sendable {
         }
         for lair in world.lairsStanding where reached(lair.position) {
             marks.append(Mark(id: "lair \(lair.id)", hex: lair.position, thing: .lair, side: .wilds, name: CompanionChart.capitalized(lair.named)))
+        }
+        // The hamlets and barrows found in the mist, as the Mac's VoiceOver tells them.
+        for find in world.findsKnown(by: player) where reached(find.position) {
+            let sought = world.hasSought(find.id, by: player)
+            marks.append(Mark(id: "find \(find.id)", hex: find.position, thing: find.kind == .hamlet ? .hamlet : .barrow, side: .other,
+                              name: "\(CompanionChart.capitalized(find.named)), \(sought ? "sought" : "not yet sought")", dark: sought))
         }
         for wild in world.wildsStanding where reached(wild.position) {
             marks.append(Mark(id: "wild \(wild.id)", hex: wild.position, thing: .wild, side: .wilds,

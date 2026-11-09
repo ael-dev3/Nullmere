@@ -948,6 +948,52 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, near / 3 + 10, "and nothing else in the view changes")
     }
 
+    /// A hamlet the keeper's House has found and a barrow, each drawn close
+    /// in beside the same land without them: the hamlet's homes about their
+    /// well and its field, the barrow's great mound and the stones of its
+    /// mouth, the land's growth given way to each; nothing else in the view
+    /// changed. CI keeps them, hamlet then barrow, as world-finds.png.
+    @MainActor
+    func testAHamletAndABarrowStandWhereTheMistHidThem() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let state = WorldRenderTests.world.state
+        var bare = state
+        bare.finds = []
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let found = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("found")))
+        let without = GameSession(state: bare, store: LocalStore(directory: directory.appendingPathComponent("without")))
+        var pictures: [Drawn] = []
+        for kind in Find.Kind.allCases {
+            let find = try XCTUnwrap(state.findsInLand.first { find in
+                find.kind == kind && state.find(at: find.position) != nil && state.site(at: find.position) == nil
+                    && state.unit(at: find.position) == nil
+            }, "A \(kind.title) in the land")
+            let centre = Relief.centre(of: find.position)
+            let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 140, tilt: 0.9, heading: 0.5)
+            found.camera = camera
+            without.camera = camera
+            let drawn = try draw(renderer, kind.title, camera: camera, tiles: found.tileBytes, scene: found.sceneFrame(at: 20))
+            let plain = try draw(renderer, "no \(kind.title)", camera: camera, tiles: without.tileBytes, scene: without.sceneFrame(at: 20))
+            pictures.append(drawn)
+            let at = camera.viewPoint(of: find.position, height: Double(WorldRenderTests.world.relief.height(of: find.position)),
+                                      in: WorldRenderTests.size)
+            var near = 0, beyond = 0
+            for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+                for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                    guard abs(drawn.luminance(x, y) - plain.luminance(x, y)) > 4 else { continue }
+                    // Its own hex, and the shadows it casts on the ground beside it.
+                    if hypot(Double(x) - Double(at.x), Double(y) - Double(at.y)) < 260 { near += 1 } else { beyond += 1 }
+                }
+            }
+            print("RENDER \(kind.title): \(find.named), \(near) points changed where it stands, \(beyond) beyond")
+            XCTAssertGreaterThan(near, 150, "The \(kind.title) stands where the mist hid it")
+            XCTAssertLessThan(beyond, near / 3 + 10, "and nothing else in the view changes")
+        }
+        try keep(pictures, as: "world-finds")
+    }
+
     /// A stretch of blackwood the keeper knows, near their seat: its heart
     /// and the wood about it burning, and the ring beyond lying as ash; and
     /// the same world unburnt.

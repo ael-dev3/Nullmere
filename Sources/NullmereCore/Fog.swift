@@ -91,6 +91,10 @@ extension GameState {
         view.unlit = unlit.map { all in all.filter { view.unit($0) != nil } }.flatMap { $0.isEmpty ? nil : $0 }
         // Only its own House knows a company lies in wait.
         view.waiting = waiting.map { all in all.filter { view.unit($0)?.owner == house } }.flatMap { $0.isEmpty ? nil : $0 }
+        // The hamlets and barrows on ground the House has seen, and which
+        // of them its own Lanterns have sought.
+        view.finds = finds?.filter { isExplored($0.position, by: house) }
+        view.sought = sought?[house].map { [house: $0] }
         // A company in sight shows where it stands and how many it is, not
         // where it is bound, nor what it is about or carries, nor whether it
         // drills.
@@ -493,6 +497,9 @@ extension GameState {
             case .waitSet(_, _, let owner):
                 // Lying in wait, its own House alone is told.
                 return owner == house
+            case .findSought(_, let by, _, _):
+                // A hamlet or barrow sought, the House that sought it.
+                return by == house
             case .ambushSprung(_, let owner, _, _, let struckOwner):
                 // Sprung, the House that sprang it and the House it fell on.
                 return owner == house || struckOwner == house

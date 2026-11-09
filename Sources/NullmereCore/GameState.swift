@@ -228,6 +228,12 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The companies lying in wait in the blackwood, by id in order;
     /// absent while none does (`isWaiting`).
     var waiting: [Int]?
+    /// The land's hamlets and barrows (`Find`), found as the world is made;
+    /// nil in a world from before them, until its watch turns.
+    var finds: [Find]?
+    /// The hamlets and barrows each House's Lanterns have sought, by
+    /// House, each list in order; nil while none has.
+    var sought: [Int: [Int]]?
     /// The watchfires burning in the realm (`Watchfire`); none, nil.
     var watchfires: [Watchfire]?
     /// The wind of the watch as the realm found it (`wind`): the way it
@@ -393,6 +399,7 @@ public struct GameState: Codable, Equatable, Sendable {
         raiseFirstCommanders()
         raiseTheCrown(gates: world.gates)
         raiseShrines()
+        raiseFinds()
         refreshSight()
         keepTheWind()
         takeSnapshot()
