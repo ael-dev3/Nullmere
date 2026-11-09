@@ -2092,17 +2092,34 @@ struct RivalMind {
     }
 
     private func settle(with unit: Unit, in state: inout GameState) -> [GameEvent] {
-        if state.canFound(at: unit.position, for: house) == nil,
-           let best = bestSite(from: unit.position, in: state),
+        // The best site weighed once, whether to found here or march for it:
+        // nothing changes between.
+        let best = bestSite(from: unit.position, in: state)
+        if state.canFound(at: unit.position, for: house) == nil, let best,
            siteScore(unit.position, in: state) * 10 >= siteScore(best, in: state) * 8 {
             return perform(.found(unit: unit.id), in: &state)
         }
-        guard let site = bestSite(from: unit.position, in: state) else { return [] }
+        guard let site = best else { return [] }
         return perform(.move(unit: unit.id, to: site), in: &state)
     }
 
     /// The most promising place to found a hold that this House knows of.
     func bestSite(from origin: Hex, owners territory: [Int?]? = nil, in state: GameState) -> Hex? {
+        var best: (score: Int, hex: Hex)?
+        forEachSite(owners: territory, in: state) { hex in
+            let score = siteScore(hex, in: state) * 3 - hex.distance(to: origin)
+            if best == nil || (score, hex) > (best!.score, best!.hex) {
+                best = (score, hex)
+            }
+            return true
+        }
+        return best.map(\.hex)
+    }
+
+    /// Each place this House knows of where it could found a hold, until
+    /// `body` has seen enough (returns false): the same places wherever
+    /// it asks from, each weighed by `bestSite`.
+    private func forEachSite(owners territory: [Int?]?, in state: GameState, _ body: (Hex) -> Bool) {
         let explored = state.houses[house].explored
         let owners = territory ?? state.territory()
         let anchors = state.holds(of: house).map(\.position)
@@ -2127,12 +2144,12 @@ struct RivalMind {
             return anchors.contains { $0.distance(to: hex) <= far }
         }
         // With no hold of its own it weighs no tile.
-        guard !anchors.isEmpty else { return nil }
+        guard !anchors.isEmpty else { return }
         // What rules a tile out marked on a patch of the map about its holds
         // just wide enough for every tile it weighs, not on a mark for every
         // tile of the map laid out afresh for each look: a realm of many
-        // seats has a quarter of a million. The holds and companies read
-        // where they stand, not copied.
+        // seats has a quarter of a million. The holds and wilds read where
+        // they stand, not copied.
         let qMin = low.q - reach, rMin = low.r - reach
         let width = high.q - low.q + 2 * reach + 1, height = high.r - low.r + 2 * reach + 1
         var ruledOut = [Bool](repeating: false, count: width * height)
@@ -2146,9 +2163,6 @@ struct RivalMind {
                 if let spot = spot(hex) { ruledOut[spot] = true }
             }
         }
-        for index in state.units.indices where state.units[index].owner != house && near(state.units[index].position, within: 0) {
-            if let spot = spot(state.units[index].position) { ruledOut[spot] = true }
-        }
         for wild in state.wildsStanding where near(wild.position, within: 0) {
             if let spot = spot(wild.position) { ruledOut[spot] = true }
         }
@@ -2156,35 +2170,53 @@ struct RivalMind {
         // none known, is not to be weighed.
         var mine = Set<Int>()
         for index in state.holds.places(of: house) { mine.insert(state.holds[index].id) }
-        var best: (score: Int, hex: Hex)?
+        // A tile within reach of several of its holds weighed once, not once
+        // for each: the best of them is the best however often each is
+        // weighed.
+        var weighed = [Bool](repeating: false, count: width * height)
         for anchor in anchors {
             for hex in anchor.spiral(reach) {
+                guard let spot = spot(hex), !weighed[spot] else { continue }
+                weighed[spot] = true
                 guard let index = map.index(of: hex), explored[index] else { continue }
-                guard map[index].terrain.isSettleable, !(spot(hex).map { ruledOut[$0] } ?? false) else { continue }
+                guard map[index].terrain.isSettleable, !ruledOut[spot] else { continue }
                 if owners[index].map({ !mine.contains($0) }) ?? false { continue }
-                let score = siteScore(hex, in: state) * 3 - hex.distance(to: origin)
-                if best == nil || (score, hex) > (best!.score, best!.hex) {
-                    best = (score, hex)
+                // Another House's company on it, asked of the companies'
+                // board for the tiles that come this far, not of every
+                // company in the realm for each look.
+                if state.units.ids(at: hex).contains(where: { id in state.units.index(ofID: id).map { state.units[$0].owner != house } ?? false }) {
+                    continue
                 }
+                guard body(hex) else { return }
             }
         }
-        return best.map(\.hex)
     }
 
     /// Whether the House knows a site for a new hold, from wherever it is
     /// asked: found the first time, then known for the rest of the turn.
+    /// Whether there is one is asked of the first place it finds, not of
+    /// every place weighed for the best: the best is one of them, so there
+    /// is a best exactly where there is any.
     private func knowsSite(_ known: inout Bool?, from origin: Hex, owners: [Int?], in state: GameState) -> Bool {
         if let known { return known }
-        let found = bestSite(from: origin, owners: owners, in: state) != nil
+        var found = false
+        forEachSite(owners: owners, in: state) { _ in
+            found = true
+            return false
+        }
         known = found
         return found
     }
 
+    /// What the ground about a hex yields, weighed: each tile within one
+    /// walked where it lies, not gathered in a list first.
     private func siteScore(_ hex: Hex, in state: GameState) -> Int {
-        hex.spiral(1).reduce(0) { total, cell in
-            guard let tile = state.map[cell] else { return total }
-            return total + RivalMind.weight(tile.terrain.yield) + (tile.feature.map { RivalMind.weight($0.yield) } ?? 0)
+        var total = 0
+        hex.forEach(within: 1) { cell in
+            guard let tile = state.map[cell] else { return }
+            total += RivalMind.weight(tile.terrain.yield) + (tile.feature.map { RivalMind.weight($0.yield) } ?? 0)
         }
+        return total
     }
 
     /// What a yield weighs toward a site: moonsalt three times over.
