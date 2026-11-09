@@ -80,6 +80,37 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertEqual(counsel.report(on: " C99 "), "Your House has no company C99.")
     }
 
+    /// A hamlet or barrow the House has found is among what a commander
+    /// sees about their company, said sought or not as the House stands
+    /// with it; one the House hasn't found is not.
+    func testALookTellsTheHamletsAndBarrowsTheHouseHasFound() throws {
+        var (counsel, world) = try counsel()
+        let me = counsel.player
+        let company = try XCTUnwrap(counsel.company)
+        func open(_ hex: Hex) -> Bool {
+            world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && world.unit(at: hex) == nil
+                && world.hold(at: hex) == nil
+        }
+        let hamlet = try XCTUnwrap(world.findsInLand.first { $0.kind == .hamlet && $0.position.neighbors.filter(open).count >= 2 })
+        let spots = hamlet.position.neighbors.filter(open)
+        world.units[try XCTUnwrap(world.unitIndex(company.id))].position = spots[0]
+        let lantern = try XCTUnwrap(world.units(of: me).first { $0.kind == .lantern })
+        world.units[try XCTUnwrap(world.unitIndex(lantern.id))].position = spots[1]
+        world.refreshSight()
+        let way = GameState.waySaid(to: hamlet.position, from: spots[0])
+        counsel = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        let look = counsel.lookAround(within: 1)
+        XCTAssertTrue(look.contains("\(hamlet.named), which your Lanterns have yet to seek, \(way)"), look)
+        _ = try world.perform(.seek(unit: lantern.id, find: hamlet.id), as: me)
+        counsel = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        XCTAssertTrue(counsel.lookAround(within: 1).contains("\(hamlet.named), sought by your Lanterns, \(way)"), counsel.lookAround(within: 1))
+        // Nothing of a find the House has never seen the ground of.
+        let wide = counsel.lookAround(within: 8)
+        for unseen in world.findsInLand where !world.isExplored(unseen.position, by: me) {
+            XCTAssertFalse(wide.contains(unseen.named), "Not yet found: \(unseen.named)")
+        }
+    }
+
     /// A look about the commander's company tells what lies within reach,
     /// the nearest first, and only what the House sees: a company of
     /// another House out of its sight is none of the commander's knowing.

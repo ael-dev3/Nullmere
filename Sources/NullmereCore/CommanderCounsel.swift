@@ -168,9 +168,10 @@ public struct CommanderCounsel: Sendable {
     public static let mostSeen = 12
 
     /// What lies about the commander's company within some tiles, as their
-    /// House sees it: the companies of other Houses, the holds, and the
-    /// holy sites and lairs, the nearest first, each with which way and how
-    /// far as every line says it ("2 tiles north-east", "here").
+    /// House sees it: the companies of other Houses, the holds, the holy
+    /// sites and lairs, and the hamlets and barrows the House has found,
+    /// each said sought or not, the nearest first, each with which way and
+    /// how far as every line says it ("2 tiles north-east", "here").
     public func lookAround(within radius: Int) -> String {
         guard let unit = company else { return "You lead no company to look out from." }
         let reach = min(max(radius, 1), 8)
@@ -195,6 +196,11 @@ public struct CommanderCounsel: Sendable {
         }
         for lair in state.lairsStanding where lair.position.distance(to: here) <= reach {
             seen.append((lair.position.distance(to: here), "\(lair.title), a lair of the wilds, \(way(lair.position))"))
+        }
+        for find in state.findsKnown(by: player) where find.position.distance(to: here) <= reach {
+            let what = find.kind == .hamlet ? find.named : "\(find.named), an old barrow"
+            let sought = state.hasSought(find.id, by: player) ? "sought by your Lanterns" : "which your Lanterns have yet to seek"
+            seen.append((find.position.distance(to: here), "\(what), \(sought), \(way(find.position))"))
         }
         let place = state.placeName(of: here), within = reach == 1 ? "1 tile" : "\(reach) tiles"
         guard !seen.isEmpty else { return "Within \(within) of your company, \(place), your House sees nothing but the land." }

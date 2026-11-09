@@ -130,31 +130,26 @@ struct PlaceSections: View {
         } header: {
             Text(verbatim: place.title)
         }
-        // What may be raised here, as the Mac's ground panel offers it:
-        // what raising it does, and the orders the rules would take.
+        // What may be raised here, as the Mac's ground panel offers it: the
+        // orders the rules would take, and what raising it does folded
+        // beneath them until the keeper asks.
         if !place.raisings.isEmpty {
             Section("To raise here") {
                 ForEach(Array(place.raisings.enumerated()), id: \.offset) { raising in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(verbatim: raising.element.said)
-                            .font(Night.small)
-                            .foregroundStyle(Night.ink.opacity(0.75))
-                            .fixedSize(horizontal: false, vertical: true)
                         FlowOrders(session: session, orders: raising.element.orders)
+                        Explained(said: raising.element.said)
                     }
                 }
             }
         }
         // The alliance's mark here lifted, or the ground marked for it, as
-        // the Mac offers its leader.
+        // the Mac offers its leader, what a mark does folded away as there.
         if let marking = place.marking {
             Section("For the alliance") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: marking.said)
-                        .font(Night.small)
-                        .foregroundStyle(Night.ink.opacity(0.75))
-                        .fixedSize(horizontal: false, vertical: true)
                     FlowOrders(session: session, orders: marking.orders)
+                    Explained(said: marking.said, what: "What a mark does")
                 }
             }
         }
@@ -565,4 +560,26 @@ struct ChartView: View {
 
     /// A vigil's flame, as the world draws it.
     static let flame = Color(red: 1.0, green: 0.74, blue: 0.40)
+}
+
+/// What an offer on the chart does, folded away until the keeper asks, so
+/// a place's sheet leads with what may be done there, as the Mac's ground
+/// panel does.
+private struct Explained: View {
+    let said: String
+    var what = "What it does"
+    @State private var open = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $open) {
+            Text(verbatim: said)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+        } label: {
+            Text(verbatim: what)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.6))
+        }
+    }
 }
