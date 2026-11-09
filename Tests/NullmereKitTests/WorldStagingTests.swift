@@ -440,7 +440,7 @@ final class WorldStagingTests: XCTestCase {
         }
         XCTAssertFalse(drawn(unseen, in: session.sceneFrame(at: 20)), "Not while the mist hides it")
         // Every one found, once the House has seen the whole land.
-        let known = try session { state in
+        let known = try self.session { state in
             state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
         }
         let frame = known.sceneFrame(at: 20)
