@@ -799,6 +799,58 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, along / 3 + 10, "and nothing else in the view changes for it")
     }
 
+    /// A company of the keeper's out on the land carries its torches, two
+    /// warm flames at the front of its ranks in the night; and the same
+    /// company with its torches doused, marching dark, carries none, and
+    /// nothing else in the view changes. CI keeps both, lit then dark, as
+    /// world-torches.png.
+    func testACompanyCarriesItsTorchesAndMarchingDarkNone() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let explored = state.houses[me].explored
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear } ?? state.units(of: me).first { $0.kind.isMilitary })
+        // Out on the open land by the seat, clear of any hold's walls.
+        let ground = try XCTUnwrap(seat.spiral(3).filter { hex in
+            hex.distance(to: seat) >= 2 && state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false
+                && state.hold(at: hex) == nil && state.unit(at: hex) == nil && (state.map.index(of: hex).map { explored[$0] } ?? false)
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) })
+        state.units[try XCTUnwrap(state.unitIndex(company.id))].position = ground
+        XCTAssertEqual(state.problems(), [])
+        var doused = state
+        _ = try doused.perform(.torches(unit: company.id, lit: false), as: me)
+        XCTAssertTrue(doused.isUnlit(company.id))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let lit = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("lit")))
+        let dark = GameSession(state: doused, store: LocalStore(directory: directory.appendingPathComponent("dark")))
+        XCTAssertTrue(dark.state.isUnlit(company.id), "The keeper's view knows its own company marches dark")
+        let centre = Relief.centre(of: ground)
+        let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 110, tilt: 0.9, heading: 0.3)
+        let drawn = try draw(renderer, "torches lit", camera: camera, tiles: lit.tileBytes, scene: lit.sceneFrame(at: 20))
+        let unlit = try draw(renderer, "torches doused", camera: camera, tiles: dark.tileBytes, scene: dark.sceneFrame(at: 20))
+        try keep([drawn, unlit], as: "world-torches")
+        let at = camera.viewPoint(of: ground, height: Double(WorldRenderTests.world.relief.height(of: ground)), in: WorldRenderTests.size)
+        var warm = 0, near = 0, beyond = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let i = (y * WorldRenderTests.width + x) * 4
+                let close = hypot(Double(x) - Double(at.x), Double(y) - Double(at.y)) < 110
+                // Warmed, as the lanterns' light is judged: red risen well
+                // over what it was, and by half as much again as blue.
+                let red = Int(drawn.pixels[i + 2]) - Int(unlit.pixels[i + 2]), blue = Int(drawn.pixels[i]) - Int(unlit.pixels[i])
+                if close, red >= 24, Double(red) > 1.5 * Double(blue) { warm += 1 }
+                guard abs(drawn.luminance(x, y) - unlit.luminance(x, y)) > 4 else { continue }
+                if close { near += 1 } else { beyond += 1 }
+            }
+        }
+        print("RENDER torches: \(warm) points warmed by them at the company, \(near) changed there, \(beyond) beyond")
+        XCTAssertGreaterThan(warm, 6, "Its torches burning at its front")
+        XCTAssertLessThan(beyond, near / 3 + 10, "and nothing else in the view changes with them")
+    }
+
     /// A stretch of blackwood the keeper knows, near their seat: its heart
     /// and the wood about it burning, and the ring beyond lying as ash; and
     /// the same world unburnt.

@@ -844,13 +844,14 @@ a vote on the realm's law to cast.
   another's, dimmer toward the end with a glint running along them toward
   it, and a small ring where one of the keeper's own is bound.
 - **Marching dark.** Every company carries its torches through the night,
-  and is seen wherever another House's sight reaches it. From its panel
+  two flames at the front of its ranks (a warm spark on the land from
+  afar), and is seen wherever another House's sight reaches it. From its panel
   (Douse torches), or from the phone's Army tab, a keeper may have one
   douse them: it marches dark, a tile less each watch and never fewer
   than one, and another House sees it, and is told of its steps, only
   within a tile of a company or hold of that House's own or its allies'.
-  Its own House and its allies see it as ever, and its panel says it
-  marches dark. The dark hides it from eyes, not ears: a Beacon still
+  Its own House and its allies see it as ever, carrying no torches, and
+  its panel says it marches dark. The dark hides it from eyes, not ears: a Beacon still
   warns of it bound for its hold, and listening stones still hear it
   where eyes would see nothing. Light torches lights them again. Stewards
   march with their torches lit, and a steward's companies strike one

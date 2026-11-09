@@ -344,8 +344,12 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   the dark and seen again, torchless, by that keeper's seat), the phone's Army tab
   offering it (`CompanionTorchesTests`); the same scene in the realm job
   on SpacetimeDB, the Mac's panel button and line and the
-  Guide's line **Unverified** until a CI run builds them; no torches are
-  drawn on the march yet, so the dark is told, not seen.
+  Guide's line **Unverified** until a CI run builds them. In the world
+  every company carries two torches at the front of its ranks, flickering,
+  their glow a warm spark on the land from afar, and one marching dark
+  carries none (`WorldStage.torches`, TorchesStageTests on Linux);
+  WorldRenderTests draws a company of the keeper's lit and then dark
+  (`world-torches.png`), **Unverified** until a CI run draws it.
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

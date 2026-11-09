@@ -22,6 +22,17 @@ final class WorldStagingTests: XCTestCase {
         try? FileManager.default.removeItem(at: dir)
     }
 
+    /// A frame's motes but the companies' torches, which burn in every
+    /// frame, motion or none: what a test of what else is thrown up looks
+    /// at. A torch's light is the torch's flame, brighter or dimmer.
+    private func thrown(_ motes: [Mote]) -> [Mote] {
+        let flame = WorldStage.torchFlame
+        return motes.filter { mote in
+            !(mote.colour.w == 0 && mote.colour.x > 0 && abs(mote.colour.y / mote.colour.x - flame.y / flame.x) < 1e-4
+                && abs(mote.colour.z / mote.colour.x - flame.z / flame.x) < 1e-4)
+        }
+    }
+
     private func session(_ build: (inout GameState) throws -> Void = { _ in }) throws -> GameSession {
         var state = GameState(settings: GameSettings(seedText: "staged", houseCount: 3, radius: 14, keepers: 1))
         try build(&state)
@@ -123,7 +134,7 @@ final class WorldStagingTests: XCTestCase {
         let misty = try session { $0.omen = Omen(kind: .risingMist, began: 1, ends: 4) }
         XCTAssertEqual(misty.sceneFrame(at: 2).weather, .mist)
         misty.motion = .still
-        XCTAssertEqual(misty.sceneFrame(at: 2).motes.count, 0, "Still, no weather moves, though it is known")
+        XCTAssertEqual(thrown(misty.sceneFrame(at: 2).motes).count, 0, "Still, no weather moves, though it is known")
         XCTAssertEqual(misty.sceneFrame(at: 2).weather, .mist)
     }
 
@@ -353,8 +364,8 @@ final class WorldStagingTests: XCTestCase {
         // As it lands: sparks, a flash, and the ground lit round it.
         let landing = blow.start.addingTimeInterval(Double(Happenings.landing) + 0.05)
         let frame = session.sceneFrame(at: 50, now: landing)
-        XCTAssertFalse(frame.motes.isEmpty, "sparks and dust")
-        XCTAssertTrue(frame.motes.contains { $0.colour.w == 0 && $0.colour.x > 1 }, "bright sparks")
+        XCTAssertFalse(thrown(frame.motes).isEmpty, "sparks and dust")
+        XCTAssertTrue(thrown(frame.motes).contains { $0.colour.w == 0 && $0.colour.x > 1 }, "bright sparks")
         XCTAssertFalse(frame.lights.isEmpty, "the blow lights the ground")
         // The struck company reels back from the blow, and stands again.
         let centre = Relief.centre(of: struck.position), away = Relief.centre(of: from)
@@ -382,7 +393,7 @@ final class WorldStagingTests: XCTestCase {
         // Still, nothing is thrown up.
         session.motion = .still
         let quiet = session.sceneFrame(at: 50, now: landing)
-        XCTAssertTrue(quiet.motes.isEmpty)
+        XCTAssertTrue(thrown(quiet.motes).isEmpty, "but the companies' torches")
         XCTAssertTrue(quiet.lights.isEmpty)
     }
 
@@ -431,7 +442,7 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertGreaterThan(happenings.blazes[0].strength, 0.9)
         let frame = session.sceneFrame(at: 30, now: now)
         XCTAssertTrue(frame.lights.contains { $0.colour.x > $0.colour.z }, "firelight")
-        XCTAssertTrue(frame.motes.contains { $0.colour.w == 0 && $0.colour.x > $0.colour.z }, "embers")
+        XCTAssertTrue(thrown(frame.motes).contains { $0.colour.w == 0 && $0.colour.x > $0.colour.z }, "embers")
         // A work finished lately raises the dust of its last course, for a few seconds.
         session.completions.append(GameSession.Completion(hold: seatID, kind: .granary, level: 1, at: now))
         let stage = WorldStage(map: session.state.map, relief: session.relief)

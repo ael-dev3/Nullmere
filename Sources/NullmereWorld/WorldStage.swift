@@ -1230,6 +1230,75 @@ public final class WorldStage: @unchecked Sendable {
         return (Mote(at: hand, size: 0.022, light: flame * 1.3, cover: 0), Mote(at: hand, size: 0.11, light: flame * 0.1, cover: 0))
     }
 
+    /// A torch's flame, linear: an open fire's, redder than a lantern's.
+    public static let torchFlame = Vec3(1.0, 0.5, 0.17)
+    /// Where a torch is held, in a figure's own frame before it is scaled
+    /// to the hexes: in the outer hand, raised by the shoulder, a little
+    /// ahead; `x` is outward from the company.
+    static let torchHand = Vec3(0.075, 0.25, 0.045)
+    /// How wide a torch's flame is, and its glow at the least, in world
+    /// units: the glow keeps `torchGlowPoints` on the screen as the view
+    /// draws away.
+    public static let torchFlameSize: Float = 0.035
+    public static let torchGlowSize: Float = 0.2
+    public static let torchGlowPoints = 4.0
+    /// The most companies a frame draws bearing torches, the nearest to the view.
+    public static let mostTorchBearers = 128
+
+    /// The torches the companies in sight carry through the night, for the
+    /// nearest `mostTorchBearers` companies to `focus`: each borne by the
+    /// outermost of its front rank in the outer hand, a flame in a glow of
+    /// its own light that keeps a few points on the screen as the view
+    /// draws away, so that from afar a company on the land shows as a warm
+    /// spark; each flickering in its own time, and steady where motion is
+    /// reduced (`still`). None for a company marching dark (in `dark`), one
+    /// drawn up small within a hold's walls or aboard a barge (its `spread`
+    /// under 1), one in a field of battle (its throng) or one fallen; nor
+    /// for the wilds, creatures of the dark. Light only: they hide nothing
+    /// behind them.
+    public func torches(_ companies: [CompanyPose], dark: Set<Int>, near focus: Vec3, scale: Double, time: Float,
+                        still: Bool = false) -> [Mote] {
+        func wild(_ key: ModelKey) -> Bool {
+            if case .wild = key.canonical { return true }
+            return false
+        }
+        var bearing = companies.filter {
+            $0.unit >= 0 && $0.spread >= 1 && $0.throng == 0 && $0.opacity > 0 && !dark.contains($0.unit) && !wild($0.key)
+        }
+        guard !bearing.isEmpty else { return [] }
+        if bearing.count > WorldStage.mostTorchBearers {
+            func far(_ pose: CompanyPose) -> Float {
+                (pose.position.x - focus.x) * (pose.position.x - focus.x) + (pose.position.z - focus.z) * (pose.position.z - focus.z)
+            }
+            bearing = Array(bearing.sorted { (far($0), $0.unit) < (far($1), $1.unit) }.prefix(WorldStage.mostTorchBearers))
+        }
+        let glow = max(WorldStage.torchGlowSize, Float(WorldStage.torchGlowPoints / max(scale, 1)))
+        let hand = WorldStage.torchHand * WorldStage.figureScale
+        var motes: [Mote] = []
+        motes.reserveCapacity(bearing.count * 4)
+        for company in bearing {
+            let places = Formation.offsets(company.key, health: company.health, led: company.commander != nil, muster: company.muster)
+            guard let front = places.map(\.z).max() else { continue }
+            let rank = places.filter { $0.z > front - 0.001 }
+            guard let left = rank.min(by: { $0.x < $1.x }), let right = rank.max(by: { $0.x < $1.x }) else { continue }
+            let turn = Mat4.rotationY(company.heading)
+            var bearers: [(place: Vec3, outward: Float)] = [(place: right, outward: 1)]
+            if rank.count > 1 { bearers.insert((place: left, outward: -1), at: 0) }
+            for (index, bearer) in bearers.enumerated() {
+                let foot = company.position + turn.transformDirection(bearer.place * (company.spread * WorldStage.figureScale))
+                let held = turn.transformDirection(Vec3(hand.x * bearer.outward, 0, hand.z))
+                let own = Float((company.unit * 7 + index * 5) % 13) * 0.61
+                let flicker: Float = still ? 1 : 0.8 + 0.2 * Float(sin(Double(time * 11.3 + own)) * sin(Double(time * 6.9 + 2 * own)))
+                let lick: Float = still ? 0 : 0.006 * Float(sin(Double(time * 17 + own)))
+                let at = Vec3(foot.x + held.x, ground(atX: foot.x, z: foot.z) + hand.y + lick, foot.z + held.z)
+                let flame = WorldStage.torchFlame * (flicker * company.opacity)
+                motes.append(Mote(at: at, size: WorldStage.torchFlameSize, light: flame * 1.4, cover: 0))
+                motes.append(Mote(at: at, size: glow, light: flame * 0.09, cover: 0))
+            }
+        }
+        return motes
+    }
+
     /// Below this scale the holds begin to glow from afar, and below
     /// `glowFull` they glow at their brightest.
     public static let glowFrom: Double = 32

@@ -314,6 +314,10 @@ extension GameSession {
         // drawn, so close by too, steady.
         frame.motes += stage.fireGlows(state.burning.map(\.at).filter { isExplored($0) }, near: camera.focus, scale: camera.scale, time: t,
                                        still: !full)
+        // The torches the companies in sight carry through the night, all
+        // but those marching dark, which go with none.
+        frame.motes += stage.torches(poses, dark: Set(poses.map(\.unit).filter(state.isUnlit)), near: camera.focus, scale: camera.scale,
+                                     time: t, still: !full)
         // The ways of the marches the keeper knows of, lit on the land in
         // their sides' hues from where each company is drawn now.
         frame.motes += stage.marchLines(marchWays(poses: poses) { inView($0, within: 1) }, time: t)
