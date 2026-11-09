@@ -276,6 +276,19 @@ if [ -n "$TURNED_TO" ]; then
     done
 fi
 echo "The Mac sees the watch the phone came to: $TURNED (the phone's watch ${TURNED_TO:-unknown}, the Mac's ${MAC_WATCH:-unknown})"
+# The blackwood the phone set alight, seen burning on the Mac where it was
+# set; or why the phone could set none.
+FIRE_AT="$(sed -n 's/^Fire set at: //p' "$REPORT" | head -n 1)"
+ALIGHT=no
+if [ -n "$FIRE_AT" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qE "^burning: (.* )?$FIRE_AT( |$)" "$MAC_REPORT" 2>/dev/null; then ALIGHT=yes; break; fi
+        sleep 1
+    done
+    echo "The Mac sees the fire the phone set at $FIRE_AT: $ALIGHT ($(grep '^burning: ' "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+else
+    echo "The phone set no fire: $(sed -n 's/^No fire set: //p' "$REPORT" | head -n 1)"
+fi
 
 # The phone's line to the realm cut and mended: in again by its own key, it
 # says the realm is out of reach and keeps the House, says words to the realm
@@ -330,6 +343,9 @@ for tab in house market ventures land alliance realm counsel counsel-asked words
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     SIMCTL_CHILD_NULLMERE_COMPANION_TAB="$tab" xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
     if [ "$tab" = counsel-asked ]; then shot "$tab" 20; else shot "$tab" 8; fi
+    # The phone's chart beside the Mac's world: the House's land on both,
+    # and the fire the phone set burning in each.
+    if [ "$tab" = land ]; then beside land; fi
     # The Mac's own screen as the phone's House tab is taken, the two set
     # side by side: one House, its watch and its stores alike on both.
     if [ "$tab" = house ]; then
@@ -410,6 +426,10 @@ if [ -n "$RING_LINE" ] && [ "$IN_RING" != yes ]; then
 fi
 if [ "$TURNED" != yes ]; then
     echo "error: the Mac never came to the watch the phone came to" >&2
+    exit 1
+fi
+if [ -n "$FIRE_AT" ] && [ "$ALIGHT" != yes ]; then
+    echo "error: the Mac never saw the blackwood burning where the phone set it alight" >&2
     exit 1
 fi
 if [ "$CAME_BACK" != yes ]; then

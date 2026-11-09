@@ -588,8 +588,8 @@ public final class GameApp {
     /// it is sworn to, the caretaker's standing orders as the keeper is told
     /// them, the commanders of the line it stands in the Ring, whether the
     /// keeper's phone is in the realm with them as the realm last told this
-    /// Mac, and the last words said to the whole realm and to its alliance,
-    /// a line each.
+    /// Mac, where it sees the blackwood burning (each tile as `q,r`), and the
+    /// last words said to the whole realm and to its alliance, a line each.
     static func linkReport(of state: GameState, player: Int, keeper: Keeper? = nil) -> String {
         let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
         let working = state.holds(of: player).flatMap { hold in
@@ -604,8 +604,9 @@ public final class GameApp {
         let standing = ["standing: \(state.standingOrders(of: player).said)"]
         let ring = ["ring: " + (state.ringLine(of: player) ?? []).map(String.init).joined(separator: " ")]
         let phone = ["phone: " + (keeper?.companionsHere.map { "in, \($0)" } ?? (keeper?.companions == nil ? "none" : "away"))]
+        let burning = ["burning: " + state.burning.map { "\($0.at.q),\($0.at.r)" }.joined(separator: " ")]
         return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + sworn + standing
-                + ring + phone + said + allied).joined(separator: "\n") + "\n"
+                + ring + phone + burning + said + allied).joined(separator: "\n") + "\n"
     }
 
     func stopLinkReport() {

@@ -323,8 +323,8 @@ enum CompanionCheck {
         /// An order given from the phone, the realm's word on it heard and
         /// written under `what`: never a name the smoke test reads a line by
         /// (Fortified company, Said to the realm, Raised the banner of, Said
-        /// to the alliance, Standing orders, Watch, At work), or it reads the
-        /// realm's word for what was done.
+        /// to the alliance, Standing orders, Watch, Fire set at, At work), or
+        /// it reads the realm's word for what was done.
         func give(_ command: Command, told: String, as what: String) async {
             let asked = Date()
             session.give(command, told: told)
@@ -460,6 +460,19 @@ enum CompanionCheck {
                                 Self.watchTurnWait, left, session.status?.ready ?? 0, session.status?.online ?? 0))
         }
         lines.append("Watch: \(session.ledger?.watch ?? before)")
+        // The blackwood set alight from the phone by a company of the House
+        // standing in it, its moves back with the watch's turn, where the
+        // rules let it; the realm's word on it heard, and where it burns
+        // written for the smoke test to find on the Mac.
+        let alight = "Set the wood alight"
+        if let world = session.world,
+           let setter = (session.ledger ?? ledger).companies.first(where: { $0.orders.contains { $0.title == alight } }),
+           let kindle = setter.orders.first(where: { $0.title == alight }), let at = world.unit(setter.id)?.position {
+            await give(kindle.command, told: kindle.title, as: "Set alight by the \(setter.name)")
+            lines.append("Fire set at: \(at.q),\(at.r)")
+        } else {
+            lines.append("No fire set: no company of the House stands in blackwood it may set alight")
+        }
         // The silver key the watch's turn brought, spent at the Lantern Inn
         // from the phone, what the chest held in the realm's word: never the
         // gold chest bought with moonsalt, which the hold's work may need.

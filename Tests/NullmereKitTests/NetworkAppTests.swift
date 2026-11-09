@@ -518,6 +518,21 @@ final class NetworkAppTests: XCTestCase {
         app.leaveWorld()
     }
 
+    /// What the Mac tells the phone's smoke test of the blackwood burning:
+    /// each tile alight it sees, where it burns, for the test to find the
+    /// fire the phone set; nothing, where nothing burns.
+    func testTheLinkReportTellsWhereTheBlackwoodBurns() throws {
+        let state = GameState(settings: GameSettings(seedText: "linked fires", houseCount: 4, radius: 12, keepers: 1))
+        func burning(_ world: GameState) -> String? {
+            GameApp.linkReport(of: world, player: world.player).split(separator: "\n").map(String.init).first { $0.hasPrefix("burning:") }
+        }
+        XCTAssertEqual(burning(state), "burning: ", "Nothing burns as the age begins")
+        let world = state.catching(Array(state.map.hexes.filter { state.isBlackwood($0) }.prefix(3)), by: state.player)
+        let fires = world.burning.map(\.at)
+        XCTAssertFalse(fires.isEmpty, "The blackwood alight")
+        XCTAssertEqual(burning(world), "burning: " + fires.map { "\($0.q),\($0.r)" }.joined(separator: " "))
+    }
+
     /// A keeper links their phone from the realm's door: the Mac shows a
     /// code in three fours with the QR code carrying it and the realm, the
     /// realm keeping only its digest; a phone bringing it comes in as the
@@ -623,6 +638,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(report[2], "watch: \(mac.session?.state.watch ?? -1)")
         XCTAssertEqual(report[3], "alliance: \(banner.name)")
         XCTAssertEqual(report[4], "standing: \(StandingOrders(house: mac.session?.player ?? -1).said)", "The caretaker's orders, none given")
+        XCTAssertEqual(report[7], "burning: ", "No blackwood burning")
         XCTAssertEqual(Array(report.suffix(2)), ["said: Heard on the Mac", "alliance said: Heard by the accord"])
 
         // Out of reach: told so, both the offer and the letting go.

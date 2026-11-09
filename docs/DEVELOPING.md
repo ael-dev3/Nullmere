@@ -60,8 +60,10 @@ only, so tested on Linux too).
 - **Both apps at once:** `scripts/smoke-test-companion.sh`, with a realm
   raised on this Mac (`STEWARD=background scripts/raise-realm.sh local`),
   enters it with a debug build of the Mac app, which offers a link, and
-  runs the companion in a simulator, which takes it, gives an order, is
-  set aside and comes in again; the Mac must see the phone's order. Then
+  runs the companion in a simulator, which takes it, gives orders (a
+  company dug in, and a watch on, the blackwood set alight where it
+  stands), is set aside and comes in again; the Mac must see the phone's
+  orders, the fire burning where the phone set it. Then
   the phone takes counsel of a commander through its own on-device model,
   as the Mac's check does (unverified where the simulator's Mac can't run
   the model). CI builds the companion and runs both apps together on
