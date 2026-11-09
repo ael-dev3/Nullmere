@@ -22,16 +22,22 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     /// any realm) whenever one moves, is raised or falls: companies holding
     /// the same token stand where they stood.
     private(set) var stand: UInt64 = Tokens.next()
-    /// The latest moves, each from the token before it to the one it drew,
-    /// so a look that last saw the companies at one of those tokens need
-    /// bring up only those moved since (`SearchRoom`), not every company of
-    /// the realm. A company raised or fallen begins them afresh.
+    /// The latest changes to where they stand (a company moved, one fallen,
+    /// or ones raised at the list's end), each from the token before it to
+    /// the one it drew, so a look that last saw the companies at one of
+    /// those tokens need bring up only those changed since (`SearchRoom`),
+    /// not every company of the realm. Any other change begins them afresh.
     private var shifts: [Shift] = []
 
     struct Shift: Sendable {
+        enum Kind: Sendable {
+            case moved, fell, raised
+        }
+
         let from: UInt64
         let to: UInt64
         let id: Int
+        let kind: Kind
     }
 
     /// How many of the latest moves are kept.
@@ -106,40 +112,49 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     }
 
     public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with elements: C) where C.Element == Unit {
+        // One company fallen, or companies raised at the list's end, kept
+        // among the changes; anything else begins them afresh.
+        let fell = subrange.count == 1 && elements.isEmpty ? list[subrange.lowerBound].id : nil
+        let raised = subrange.isEmpty && subrange.lowerBound == list.count ? elements.map(\.id) : []
         for index in subrange { leave(list[index].id, at: list[index].position, of: list[index].owner) }
         list.replaceSubrange(subrange, with: elements)
         for unit in elements { enter(unit) }
-        restand()
+        if let fell {
+            shift(fell, .fell)
+        } else if !raised.isEmpty {
+            for id in raised { shift(id, .raised) }
+        } else {
+            restand()
+        }
     }
 
-    /// The ids of the companies moved since the companies stood at `token`,
-    /// in the order they moved: none if they stand there still, nil if what
-    /// changed since is not all kept (a company raised or fallen, more moves
-    /// than are kept, or a token these companies never stood at).
-    func moved(since token: UInt64) -> [Int]? {
+    /// What changed of where the companies stand since they stood at
+    /// `token`, in the order it changed: nothing if they stand there still,
+    /// nil if what changed since is not all kept (a company put among the
+    /// rest, more changes than are kept, or a token these companies never
+    /// stood at).
+    func moved(since token: UInt64) -> [Shift]? {
         if token == stand { return [] }
         guard let start = shifts.lastIndex(where: { $0.from == token }) else { return nil }
-        var ids: [Int] = []
         var at = token
         for shift in shifts[start...] {
             guard shift.from == at else { return nil }
-            ids.append(shift.id)
             at = shift.to
         }
-        return at == stand ? ids : nil
+        return at == stand ? Array(shifts[start...]) : nil
     }
 
-    /// One company moved: a token drawn for where they stand now, and the
-    /// move kept.
-    private mutating func shift(_ id: Int) {
+    /// One company moved, fallen or raised: a token drawn for where they
+    /// stand now, and the change kept.
+    private mutating func shift(_ id: Int, _ kind: Shift.Kind = .moved) {
         let to = Tokens.next()
         if shifts.count >= Companies.shiftsKept { shifts.removeFirst(shifts.count - Companies.shiftsKept + 1) }
-        shifts.append(Shift(from: stand, to: to, id: id))
+        shifts.append(Shift(from: stand, to: to, id: id, kind: kind))
         stand = to
     }
 
-    /// Companies raised or fallen: a token drawn afresh, and the moves kept
-    /// begun again.
+    /// Companies changed otherwise: a token drawn afresh, and the changes
+    /// kept begun again.
     private mutating func restand() {
         stand = Tokens.next()
         shifts.removeAll(keepingCapacity: true)

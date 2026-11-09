@@ -32,45 +32,61 @@ final class CompanyBoardTests: XCTestCase {
     }
 
     /// Where the companies stand is told by a token drawn anew whenever one
-    /// moves, is raised or falls, and the latest moves are kept: from a
-    /// token they stood at, which companies moved since, in order; from one
-    /// they never stood at, or across a company raised or fallen or more
-    /// moves than are kept, nothing claimed.
-    func testTheyTellWhichMovedSinceTheyStoodWhereTheyStood() {
+    /// moves, is raised or falls, and the latest changes are kept: from a
+    /// token they stood at, what changed since, in order (a company moved,
+    /// one fallen, ones raised at the list's end); from one they never stood
+    /// at, or across a company put among the rest, many fallen at once or
+    /// more changes than are kept, nothing claimed.
+    func testTheyTellWhatChangedSinceTheyStoodWhereTheyStood() {
         var units = Companies([company(1, 0, 0), company(2, 1, 0), company(3, 2, 0)])
         let first = units.stand
-        XCTAssertEqual(units.moved(since: first), [], "None moved yet")
+        XCTAssertEqual(units.moved(since: first)?.isEmpty, true, "Nothing changed yet")
         units[1].health -= 10
         units[2].owner = 1
         XCTAssertEqual(units.stand, first, "Hurt or given over, none moved")
         units[0].position = Hex(0, 1)
         units[2].position = Hex(2, 1)
         units[0].position = Hex(0, 2)
-        XCTAssertEqual(units.moved(since: first), [1, 3, 1], "Each move, in order")
+        XCTAssertEqual(units.moved(since: first)?.map(\.id), [1, 3, 1], "Each move, in order")
+        XCTAssertEqual(units.moved(since: first)?.map(\.kind), [.moved, .moved, .moved])
         // Two copies part ways: each tells its own moves, and neither knows
         // where the other stands.
         let parted = units.stand
         var other = units
         units[1].position = Hex(5, 5)
         other[2].position = Hex(7, 7)
-        XCTAssertEqual(units.moved(since: parted), [2])
-        XCTAssertEqual(other.moved(since: parted), [3])
+        XCTAssertEqual(units.moved(since: parted)?.map(\.id), [2])
+        XCTAssertEqual(other.moved(since: parted)?.map(\.id), [3])
         XCTAssertNil(units.moved(since: other.stand), "A stand these never stood at")
         XCTAssertNil(units.moved(since: 0))
-        // A company raised, or fallen, begins it afresh.
+        // Raised at the list's end, or fallen, it is kept among the changes.
         let beforeRaised = units.stand
         units.append(company(4, 3, 0))
-        XCTAssertNil(units.moved(since: beforeRaised), "Raised: not all kept")
-        let beforeFallen = units.stand
+        XCTAssertEqual(units.moved(since: beforeRaised)?.map(\.id), [4])
         units.remove(at: 0)
-        XCTAssertNil(units.moved(since: beforeFallen), "Fallen: not all kept")
-        // More moves than are kept: the oldest let go.
+        XCTAssertEqual(units.moved(since: beforeRaised)?.map(\.kind), [.raised, .fell])
+        XCTAssertEqual(units.moved(since: beforeRaised)?.map(\.id), [4, 1])
+        // Put among the rest, many fallen at once, or one put in another's
+        // place: begun afresh.
+        let beforePut = units.stand
+        units.insert(company(9, 6, 6), at: 0)
+        XCTAssertNil(units.moved(since: beforePut), "Put among the rest")
+        let beforeMany = units.stand
+        units.append(contentsOf: [company(10, 7, 7), company(11, 8, 8)])
+        XCTAssertEqual(units.moved(since: beforeMany)?.map(\.kind), [.raised, .raised])
+        let beforeFallen = units.stand
+        units.removeSubrange(3..<5)
+        XCTAssertNil(units.moved(since: beforeFallen), "Two fallen at once")
+        let beforeSwapped = units.stand
+        units.replaceSubrange(0..<1, with: [company(12, 9, 9)])
+        XCTAssertNil(units.moved(since: beforeSwapped), "One put in another's place")
+        // More changes than are kept: the oldest let go.
         let longAgo = units.stand
         for step in 0...Companies.shiftsKept { units[0].position = Hex(10 + step, 0) }
-        XCTAssertNil(units.moved(since: longAgo), "Too many moves ago")
+        XCTAssertNil(units.moved(since: longAgo), "Too many changes ago")
         let lately = units.stand
         units[1].position = Hex(-1, -1)
-        XCTAssertEqual(units.moved(since: lately), [units[1].id])
+        XCTAssertEqual(units.moved(since: lately)?.map(\.id), [units[1].id])
         // Written and read back, a list like any other, its token its own.
         let read = try? JSONDecoder().decode(Companies.self, from: JSONEncoder().encode(units))
         XCTAssertEqual(read, units)

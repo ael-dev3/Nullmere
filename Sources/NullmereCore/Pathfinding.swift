@@ -157,30 +157,67 @@ struct SearchRoom {
         companiesStood = units.stand
     }
 
-    /// Each company moved brought to where it stands now. False, the room
-    /// unchanged, where one has no mark of its own to bring.
-    private mutating func shift(_ moved: [Int], of units: Companies, on map: WorldMap) -> Bool {
-        var found: [(mark: Int, unit: Int)] = []
-        for id in moved {
-            guard let mark = SearchRoom.mark(of: id, in: companies), let unit = units.index(ofID: id) else { return false }
-            found.append((mark, unit))
+    /// Each company changed since brought up: moved to where it stands now,
+    /// fallen let go, raised marked at the end, as the companies' list has
+    /// them. All of it found before any of it is done: false, the room
+    /// unchanged, where what changed doesn't square with its marks.
+    private mutating func shift(_ shifts: [Companies.Shift], of units: Companies, on map: WorldMap) -> Bool {
+        guard !shifts.isEmpty else { return true }
+        var named: [Int] = [], seen = Set<Int>(), raised = Set<Int>()
+        for shift in shifts {
+            if seen.insert(shift.id).inserted { named.append(shift.id) }
+            if shift.kind == .raised { raised.insert(shift.id) }
         }
-        for (mark, unit) in found {
+        var moved: [(mark: Int, unit: Int)] = [], fallen: [Int] = [], added: [Int] = []
+        for id in named {
+            let mark = SearchRoom.mark(of: id, in: companies), unit = units.index(ofID: id)
+            if raised.contains(id) {
+                guard mark == nil else { return false }
+                if let unit { added.append(unit) }
+            } else {
+                guard let mark else { return false }
+                if let unit { moved.append((mark, unit)) } else { fallen.append(mark) }
+            }
+        }
+        // Those raised stand last in the list, one after another, after
+        // every company the room still marks.
+        added.sort()
+        let kept = companies.count - fallen.count
+        guard kept + added.count == units.count, added.first.map({ $0 == kept }) ?? true,
+              zip(added, added.dropFirst()).allSatisfy({ $1 == $0 + 1 }) else { return false }
+        for (mark, unit) in moved {
             let position = units[unit].position
             guard companies[mark].position != position else { continue }
-            let was = companies[mark].tile
-            if was >= 0 {
-                standing[Int(was)] -= 1
-                if standing[Int(was)] == 0 { blocked[Int(was)] = false }
-            }
+            stepOff(companies[mark].tile)
             let tile = map.index(of: position).map { Int32($0) } ?? -1
             companies[mark] = Mark(id: companies[mark].id, position: position, tile: tile)
-            if tile >= 0 {
-                standing[Int(tile)] += 1
-                blocked[Int(tile)] = true
-            }
+            standOn(tile)
+        }
+        for mark in fallen.sorted(by: >) {
+            stepOff(companies[mark].tile)
+            companies.remove(at: mark)
+        }
+        for unit in added {
+            let position = units[unit].position
+            let tile = map.index(of: position).map { Int32($0) } ?? -1
+            companies.append(Mark(id: units[unit].id, position: position, tile: tile))
+            standOn(tile)
         }
         return true
+    }
+
+    /// Something come to stand on a tile.
+    private mutating func standOn(_ tile: Int32) {
+        guard tile >= 0 else { return }
+        standing[Int(tile)] += 1
+        blocked[Int(tile)] = true
+    }
+
+    /// Something gone from a tile: open once nothing stands there.
+    private mutating func stepOff(_ tile: Int32) {
+        guard tile >= 0 else { return }
+        standing[Int(tile)] -= 1
+        if standing[Int(tile)] == 0 { blocked[Int(tile)] = false }
     }
 
     /// Where a company's mark lies among marks kept lowest id first, found
