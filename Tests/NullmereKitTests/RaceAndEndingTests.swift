@@ -84,14 +84,15 @@ final class EndingTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = LocalStore(directory: dir)
-        // A world that ends within 260 watches, found as the rules play it.
+        // A world that ends within 260 watches, found as the session below
+        // plays it: in a rehearsal realm, its keeper's House played by a
+        // steward and the watch turned by the realm (pleas at the gate and
+        // all, which the bare rules' own turn never brings).
         let seed = try XCTUnwrap((13..<33).map { "siege check \($0)" }.first { text in
-            var world = GameState(settings: GameSettings(seedText: text, keepers: 1))
-            while world.outcome == nil, world.watch < 260 {
-                _ = world.stewardTurn(for: world.player)
-                _ = world.endWatch()
-            }
-            return world.outcome != nil
+            let realm = LocalRealm(state: RealmState(name: "Rehearsal", world: GameState(settings: GameSettings(seedText: text, keepers: 1)),
+                                                     keeper: "rehearsal", now: Date().timeIntervalSince1970))
+            realm.autoplay("rehearsal", watches: 260)
+            return realm.state.world.outcome != nil
         })
         let session = GameSession(state: GameState(settings: GameSettings(seedText: seed, keepers: 1)), store: store)
         session.autoplay(watches: 100)
