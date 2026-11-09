@@ -2113,16 +2113,31 @@ struct RivalMind {
                   s >= low.s - far, s <= high.s + far else { return false }
             return anchors.contains { $0.distance(to: hex) <= far }
         }
-        // The holds and companies read where they stand, not copied.
-        var ruledOut = [Bool](repeating: false, count: map.count)
+        // With no hold of its own it weighs no tile.
+        guard !anchors.isEmpty else { return nil }
+        // What rules a tile out marked on a patch of the map about its holds
+        // just wide enough for every tile it weighs, not on a mark for every
+        // tile of the map laid out afresh for each look: a realm of many
+        // seats has a quarter of a million. The holds and companies read
+        // where they stand, not copied.
+        let qMin = low.q - reach, rMin = low.r - reach
+        let width = high.q - low.q + 2 * reach + 1, height = high.r - low.r + 2 * reach + 1
+        var ruledOut = [Bool](repeating: false, count: width * height)
+        func spot(_ hex: Hex) -> Int? {
+            let x = hex.q - qMin, y = hex.r - rMin
+            guard x >= 0, x < width, y >= 0, y < height, map.contains(hex) else { return nil }
+            return y * width + x
+        }
         for index in state.holds.indices where near(state.holds[index].position, within: 3) {
-            map.forEachIndex(within: 3, of: state.holds[index].position) { ruledOut[$0] = true }
+            state.holds[index].position.forEach(within: 3) { hex in
+                if let spot = spot(hex) { ruledOut[spot] = true }
+            }
         }
         for index in state.units.indices where state.units[index].owner != house && near(state.units[index].position, within: 0) {
-            if let tile = map.index(of: state.units[index].position) { ruledOut[tile] = true }
+            if let spot = spot(state.units[index].position) { ruledOut[spot] = true }
         }
         for wild in state.wildsStanding where near(wild.position, within: 0) {
-            if let index = map.index(of: wild.position) { ruledOut[index] = true }
+            if let spot = spot(wild.position) { ruledOut[spot] = true }
         }
         // Its own holds by id: land a hold of any other House holds, or of
         // none known, is not to be weighed.
@@ -2132,7 +2147,7 @@ struct RivalMind {
         for anchor in anchors {
             for hex in anchor.spiral(reach) {
                 guard let index = map.index(of: hex), explored[index] else { continue }
-                guard map[index].terrain.isSettleable, !ruledOut[index] else { continue }
+                guard map[index].terrain.isSettleable, !(spot(hex).map { ruledOut[$0] } ?? false) else { continue }
                 if owners[index].map({ !mine.contains($0) }) ?? false { continue }
                 let score = siteScore(hex, in: state) * 3 - hex.distance(to: origin)
                 if best == nil || (score, hex) > (best!.score, best!.hex) {
