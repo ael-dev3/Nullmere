@@ -469,6 +469,9 @@ final class SpacetimeIntegrationTests: XCTestCase {
         // And after it, for it parts the two Houses' sight.
         try await scene2.marchInTheDark(ama: houseA, bel: houseB)
         print("REALM one keeper's spears doused their torches from her own client: the other's client lost them in the dark while hers knew they marched dark; come by his seat, his client saw them, torchless; lit again, both saw it")
+        // Last, for it sets the two Houses at war.
+        try await scene2.lieInWait(ama: houseA, bel: houseB)
+        print("REALM one keeper's spears lay in wait in the blackwood from her own client, which knew it while the other's never did; his order on them refused, his company come beside the wood was sprung upon as the watch turned, and both clients saw the blow")
     }
 
     /// Two realms and the Frontier between them, each its own database on

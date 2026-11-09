@@ -1020,6 +1020,8 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.setTheWoodAlight(ama: ama, bel: bel)
         // And after it, for it parts the two Houses' sight.
         try await scene.marchInTheDark(ama: ama, bel: bel)
+        // Last, for it sets the two Houses at war.
+        try await scene.lieInWait(ama: ama, bel: bel)
     }
 
     func testAGreatBattleOfFourHundredThousandFromTwoClients() async throws {

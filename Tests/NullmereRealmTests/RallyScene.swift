@@ -1685,6 +1685,67 @@ extension RallyScene {
         }
     }
 
+    /// Lying in wait, between two clients at war: Ama's spears, marching
+    /// dark in the blackwood, lie in wait there from her own client, which
+    /// knows it while Bel's never does; Bel's company come beside the wood,
+    /// they spring upon it as the watch turns, if not before, and both
+    /// clients see the blow: Bel's company struck, Ama's spears waiting no
+    /// more.
+    func lieInWait(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk(), besideAt = StagedWalk()
+        await steward.reshape { realm in
+            realm.world.setStance(.war, between: ama, and: bel, by: ama)
+            let world = realm.world
+            func open(_ hex: Hex) -> Bool {
+                world.map[hex]?.terrain.isPassable == true && world.map[hex]?.terrain.isWater == false
+                    && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+            }
+            // Blackwood beside open ground, well away from any fire the scenes set.
+            let fires = world.firesAndAsh.map(\.at)
+            guard let wood = world.map.hexes.first(where: { hex in
+                world.isCover(hex) && open(hex) && fires.allSatisfy { $0.distance(to: hex) > 3 }
+                    && hex.neighbors.contains { open($0) && !world.isCover($0) }
+            }), let beside = wood.neighbors.first(where: { open($0) && !world.isCover($0) }) else { return }
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: ama, position: wood))
+            staged.unit = id
+            staged.at = wood
+            besideAt.at = beside
+        }
+        let unitID = try XCTUnwrap(staged.unit, "Blackwood beside open ground for Ama's spears")
+        let beside = try XCTUnwrap(besideAt.at)
+        try await until("Ama's spears in the blackwood in her client") { earA.world?.unit(unitID) != nil }
+        await MainActor.run { a.send(.torches(unit: unitID, lit: false)) }
+        try await until("Ama's client to know her spears march dark") { earA.world?.isUnlit(unitID) == true }
+        await MainActor.run { a.send(.lieInWait(unit: unitID, waiting: true)) }
+        try await until("Ama's client to know her spears lie in wait, and Bel's never") {
+            earA.world?.isWaiting(unitID) == true && earB.world != nil && earB.world?.isWaiting(unitID) == false
+        }
+        // Bel can't stand them down: the company is not his, nor one his
+        // client knows of, hidden in the dark.
+        let refused = await MainActor.run { earB.refusals.count }
+        await MainActor.run { b.send(.lieInWait(unit: unitID, waiting: false)) }
+        try await until("Bel refused: the company is not his") { earB.refusals.count > refused }
+        let refusal = await MainActor.run { earB.refusals.last }
+        XCTAssertTrue([RuleError.notYours.description, RuleError.unknownUnit.description].contains(refusal ?? ""), refusal ?? "")
+        // Bel's company comes beside the wood.
+        let walker = StagedWalk()
+        await steward.reshape { realm in
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: bel, position: beside))
+            walker.unit = id
+        }
+        let walkerID = try XCTUnwrap(walker.unit)
+        try await until("Bel's client to see his company beside the wood") { earB.world?.unit(walkerID) != nil }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        try await until("both clients to see the ambush sprung: Bel's company struck, Ama's spears waiting no more") {
+            guard let seenA = earA.world, let seenB = earB.world else { return false }
+            return (seenB.unit(walkerID).map { $0.health < 100 } ?? true) && !seenA.isWaiting(unitID)
+        }
+    }
+
     func markTheGround(ama: Int, bel: Int) async throws {
         let words = "Hold the ford"
         let staged = StagedWalk()

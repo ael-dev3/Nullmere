@@ -429,7 +429,13 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   so in its briefing (`SpokenOrdersTests`), and a commander in counsel
   told the same and putting the ambush to the keeper, weighed as the
   realm weighs it (`CommanderCounselTests`; the model's own choosing of
-  it **Unverified** where no eligible Mac or iPhone has run it); the Mac's panel
+  it **Unverified** where no eligible Mac or iPhone has run it), and a
+  two-client scene on the in-process realm (`NetworkRallyTests`: Ama's
+  spears lie in wait from her own client, which knows it while Bel's
+  never does, Bel's order on them refused, and as the watch turns they
+  spring upon his company come beside the wood, both clients seeing the
+  blow), the same scene in the realm job's play-through on SpacetimeDB
+  **Unverified** until a CI run plays it; the Mac's panel
   button, VoiceOver's "lying in wait"
   (`testVoiceOverTellsACompanyLyingInWait`) and the Guide's line
   **Unverified** until a CI run's Mac tests run, the phone's until a CI
