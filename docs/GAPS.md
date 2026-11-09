@@ -801,7 +801,18 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   (b8d79cb) compiled the Mac's panel order, notices, cues and barrows,
   and built the phone's chart for the simulator and an iPhone, the phone
   beside the Mac green; the Mac's tests of them, and its corpse-lights,
-  Unverified until a run's Mac Test step passes with them.
+  Unverified until a run's Mac Test step passes with them. A barrow keeps
+  whose dead lie in it (`Grave.dead`), and when the keeper's House raises
+  one the Mac's own model is asked for the words cut on its standing stone
+  (`Voicing.graveTask`), from who raised it and when, over how many, whose
+  dead they are and where they fell, and nothing else
+  (`GameState.voiced(_ grave:for:)`, BurialTests on Linux); the tile
+  panel shows them under what the barrow is, the model at work while it
+  speaks and why it gave no words where it can't, nothing in their place;
+  kept under the barrow's own key, a barrow raised before the keeper came
+  back not worded again, another House's none (GraveWordsTests on the Mac,
+  `game-barrow-words.png`), and asked of the runner's model by CI's voice
+  check. Its words on an eligible Mac Unverified, as every voice's are.
 
 ## The order of the work
 

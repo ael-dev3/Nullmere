@@ -907,7 +907,10 @@ a vote on the realm's law to cast.
   dark of the moon nears over a field that will rise, so you can see from
   afar which fields to bury first. The panel of a company standing on
   them, or of the tile, says how many lie there and whose, and what comes
-  of them, and when.
+  of them, and when. Over a barrow your House raises, your Mac's own
+  model gives the words cut on its standing stone, from whose dead lie
+  there, where they fell and who raised it; where it can't, the panel
+  says why and no words stand in their place.
   The Houses the stewards keep bury their own as they fall, and a keeper
   away has theirs buried by the caretaker where a company of the House
   stands idle on them, so a world the stewards play alone is the same

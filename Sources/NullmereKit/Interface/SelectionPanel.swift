@@ -1375,6 +1375,10 @@ struct TilePanel: View {
     let session: GameSession
     let hex: Hex
 
+    /// Who the model gives words to over a barrow the House raised, as its
+    /// line at work says it.
+    static let graveVoice = "the barrow's stone"
+
     /// What the record says of ground that yields nothing.
     static func bare(_ terrain: Terrain, river: Atlas.River?) -> String {
         switch terrain {
@@ -1435,6 +1439,19 @@ struct TilePanel: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.glowWords)
                         .fixedSize(horizontal: false, vertical: true)
+                    // The words cut on its stone, as this Mac's model gives
+                    // them, over a barrow the House raised.
+                    if grave.house == session.player {
+                        let key = GameSession.Spoken.grave(grave.key)
+                        VoicingLine(session: session, key: key, who: TilePanel.graveVoice)
+                        if let spoken = session.spoken[key] {
+                            Text(verbatim: "\"\(spoken)\"")
+                                .font(.nm(11.5, weight: .light).italic())
+                                .foregroundStyle(Palette.text(0.88))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .transition(.opacity)
+                        }
+                    }
                 }
                 // Letters of the age before that lie here, unread or found.
                 ForEach(state.lettersOfOld.filter { $0.at == hex }, id: \.id) { letter in

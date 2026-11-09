@@ -90,6 +90,13 @@ public enum VoiceCheck {
                 moments.append((kind == .hamlet ? "words of a hamlet's eldest" : "words at a barrow's mouth", moment))
             }
         }
+        // The words cut on the stone of a barrow the keeper's House raised
+        // beside its seat over its own dead and another House's.
+        if let seat = state.seat(of: state.player), let beside = seat.position.neighbors.first(where: { state.map[$0] != nil }),
+           let words = VoiceFacts.grave(Grave(at: beside, troops: 6_400, house: state.player, watch: state.watch, dead: [state.player, other]),
+                                        by: state.player, in: state) {
+            moments.append(("words on a barrow's stone", words))
+        }
         // A plea of each kind brought to the keeper's seat by its folk, as
         // the realm brings one: a mason's, a woodward's, a healer's for the
         // House's first company of war, the reeve's and a brewer's.

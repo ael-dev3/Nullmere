@@ -90,6 +90,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// A hamlet's eldest welcoming the House's Lanterns, or the words
         /// cut at a barrow's mouth, once the Lanterns have sought it.
         case find(Find.Kind)
+        /// The words cut on the stone of a barrow the House raised over a
+        /// field's dead.
+        case grave
     }
 
     public let kind: Kind
@@ -125,6 +128,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = Voicing.watchmanTask
         case .find(let kind):
             task = kind == .hamlet ? Voicing.hamletTask : Voicing.barrowTask
+        case .grave:
+            task = Voicing.graveTask
         }
         return Voicing.asking(task, facts: facts)
     }
@@ -301,6 +306,12 @@ enum VoiceFacts {
     /// before.
     static func find(_ find: Find, by house: Int, in state: GameState) -> VoiceMoment? {
         state.voiced(find, by: house).map { VoiceMoment(kind: .find(find.kind), facts: $0.facts) }
+    }
+
+    /// A barrow the House raised: who raised it and when, over how many,
+    /// whose dead and where they fell. Nil for another House's.
+    static func grave(_ grave: Grave, by house: Int, in state: GameState) -> VoiceMoment? {
+        state.voiced(grave, for: house).map { VoiceMoment(kind: .grave, facts: $0.facts) }
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {

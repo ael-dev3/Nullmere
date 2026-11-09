@@ -27,19 +27,30 @@ public struct FieldOfDead: Codable, Equatable, Sendable {
     }
 }
 
-/// A barrow raised over a field's dead: where, how many lie in it, and the
-/// House that buried them and when.
+/// A barrow raised over a field's dead: where, how many lie in it, the
+/// House that buried them and when, and the Houses whose dead they are.
 public struct Grave: Codable, Equatable, Sendable {
     public let at: Hex
     public let troops: Int
     public let house: Int
     public let watch: Int
+    /// The Houses whose dead lie in it, in the order they fell there; nil
+    /// for a barrow raised before this was kept.
+    public let dead: [Int]?
 
-    public init(at: Hex, troops: Int, house: Int, watch: Int) {
+    public init(at: Hex, troops: Int, house: Int, watch: Int, dead: [Int]? = nil) {
         self.at = at
         self.troops = troops
         self.house = house
         self.watch = watch
+        self.dead = dead
+    }
+
+    /// The barrow's own number, the same wherever it is told: from the
+    /// watch it was raised and where (no two are raised on one hex in one
+    /// watch), never below nought for a realm's ground.
+    public var key: Int {
+        watch * 4_000_000 + (at.q + 1_000) * 2_000 + (at.r + 1_000)
     }
 }
 
@@ -147,7 +158,7 @@ extension GameState {
         units[index].movesLeft = 0
         units[index].destination = nil
         unburied = fieldsOfDead.filter { $0.at != field.at }.nilIfEmpty
-        var kept = gravesRaised + [Grave(at: field.at, troops: field.troops, house: house, watch: watch)]
+        var kept = gravesRaised + [Grave(at: field.at, troops: field.troops, house: house, watch: watch, dead: field.houses)]
         if kept.count > GameState.gravesKept { kept.removeFirst(kept.count - GameState.gravesKept) }
         graves = kept
         houses[house].buried = (houses[house].buried ?? 0) + 1
@@ -178,6 +189,28 @@ extension GameState {
             events.append(.unquietRose(field, wild: risen.id, at: at, level: level))
         }
         return events
+    }
+}
+
+extension Voicing {
+    /// The words cut on the standing stone at the head of a barrow a
+    /// keeper's House raised over a field's dead.
+    public static let graveTask = "Give the words cut on the standing stone at the head of this barrow, raised over the dead of a battle: "
+        + "whose dead lie here, where they fell and who raised the barrow over them, old and plain, keeping every name and number as given. "
+        + "One or two lines, at most 30 words."
+}
+
+extension GameState {
+    /// A barrow the House raised, for the device's model to give the words
+    /// cut on its stone: who raised it and when, over how many, whose dead
+    /// they are and where they fell. Nil for one another House raised.
+    public func voiced(_ grave: Grave, for house: Int) -> Voicing.Moment? {
+        guard grave.house == house, houses.indices.contains(house) else { return nil }
+        let whose = (grave.dead ?? [grave.house]).filter { houses.indices.contains($0) }.map { houses[$0].title }
+        var facts = ["\(houses[house].title) raised this barrow in watch \(grave.watch) over \(GameState.counted(grave.troops)) troops."]
+        if !whose.isEmpty { facts.append("The dead are of \(listed(whose)).") }
+        facts.append("They fell \(placeName(of: grave.at)).")
+        return Voicing.Moment(task: Voicing.graveTask, facts: facts)
     }
 }
 

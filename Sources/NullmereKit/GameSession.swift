@@ -192,6 +192,9 @@ public final class GameSession {
         /// A hamlet's folk or a barrow's stones once the House's Lanterns
         /// sought it, by the find's id.
         case find(Int)
+        /// The words cut on the stone of a barrow the House raised over a
+        /// field's dead, by the barrow's key (`Grave.key`).
+        case grave(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -208,6 +211,7 @@ public final class GameSession {
             case .petition(let id): return "petition-\(id)"
             case .watchman(let key): return "watchman-\(key)"
             case .find(let id): return "find-\(id)"
+            case .grave(let key): return "grave-\(key)"
             }
         }
 
@@ -223,6 +227,7 @@ public final class GameSession {
             case "petition": self = .petition(number)
             case "watchman": self = .watchman(number)
             case "find": self = .find(number)
+            case "grave": self = .grave(number)
             default: return nil
             }
         }
@@ -614,6 +619,8 @@ public final class GameSession {
         // Hamlets and barrows sought before the keeper came back count as
         // told too: only those sought from here on are voiced.
         asked.formUnion(state.findsInLand.filter { state.hasSought($0.id, by: house) }.map { Spoken.find($0.id) })
+        // And the barrows raised before: only those raised from here on are given words.
+        asked.formUnion(state.gravesRaised.map { Spoken.grave($0.key) })
         for (key, words) in store.loadVoices() {
             if let spoken = Spoken(key: key) {
                 self.spoken[spoken] = words
@@ -2781,6 +2788,14 @@ public final class GameSession {
             asked.insert(.find(find.id))
             if let moment = VoiceFacts.find(find, by: player, in: state) {
                 voiceQueue.append((.find(find.id), moment))
+            }
+        }
+        // The words cut on the stone of a barrow the House raised over a
+        // field's dead.
+        for grave in state.gravesRaised where grave.house == player && !asked.contains(.grave(grave.key)) {
+            asked.insert(.grave(grave.key))
+            if let moment = VoiceFacts.grave(grave, by: player, in: state) {
+                voiceQueue.append((.grave(grave.key), moment))
             }
         }
         // The lake's riddle, set in the Still's voice.

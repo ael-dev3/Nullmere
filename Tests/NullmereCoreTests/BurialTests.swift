@@ -29,6 +29,43 @@ final class BurialTests: XCTestCase {
         return (state, me, foe, try XCTUnwrap(state.unit(mine.id)), try XCTUnwrap(state.unit(theirs.id)))
     }
 
+    /// A barrow keeps whose dead lie in it, and the House that raised it is
+    /// given the facts for the words cut on its stone: who raised it and
+    /// when, over how many, whose dead they are and where they fell; never
+    /// another House. Each barrow has its own key.
+    func testABarrowsStoneIsGivenItsDeadAndWhereTheyFell() throws {
+        var (state, me, foe, mine, _) = try field("the stone's words")
+        state.layTheFallen(3_000, of: me, at: mine.position)
+        state.houses[foe].isPlayer = true
+        state.layTheFallen(1_200, of: foe, at: mine.position)
+        _ = try state.perform(.bury(unit: mine.id), as: me)
+        let grave = try XCTUnwrap(state.grave(at: mine.position))
+        XCTAssertEqual(grave.dead, [me, foe], "whose dead lie in it, in the order they fell")
+        XCTAssertEqual(grave.troops, 4_200)
+        let moment = try XCTUnwrap(state.voiced(grave, for: me))
+        XCTAssertEqual(moment.task, Voicing.graveTask)
+        XCTAssertEqual(moment.facts, [
+            "\(state.houses[me].title) raised this barrow in watch \(state.watch) over \(GameState.counted(4_200)) troops.",
+            "The dead are of \(listed([state.houses[me].title, state.houses[foe].title])).",
+            "They fell \(state.placeName(of: mine.position)).",
+        ])
+        XCTAssertTrue(moment.prompt.hasPrefix(Voicing.graveTask))
+        XCTAssertNil(state.voiced(grave, for: foe), "another House's barrow is not theirs to word")
+        // A barrow from before whose dead were kept is the House's own.
+        let older = Grave(at: Hex(2, -3), troops: 500, house: me, watch: 4)
+        XCTAssertEqual(state.voiced(older, for: me)?.facts[1], "The dead are of \(state.houses[me].title).")
+        // Each its own key: by where and when, never below nought.
+        XCTAssertNotEqual(older.key, grave.key)
+        XCTAssertNotEqual(Grave(at: Hex(2, -3), troops: 500, house: me, watch: 5).key, older.key)
+        XCTAssertNotEqual(Grave(at: Hex(-2, 3), troops: 500, house: me, watch: 4).key, older.key)
+        XCTAssertGreaterThanOrEqual(Grave(at: Hex(-999, -999), troops: 1, house: me, watch: 0).key, 0)
+        // Kept through the realm as it is told.
+        let decoded = try JSONDecoder().decode(Grave.self, from: try JSONEncoder().encode(grave))
+        XCTAssertEqual(decoded, grave)
+        let bare = try JSONDecoder().decode(Grave.self, from: Data(#"{"at":{"q":1,"r":2},"troops":9,"house":0,"watch":3}"#.utf8))
+        XCTAssertNil(bare.dead, "a barrow kept before its dead were")
+    }
+
     /// The watch before the next dark of the moon after `watch`.
     private func eveOfTheDark(after watch: Int) -> Int {
         var at = watch + 1
@@ -125,7 +162,7 @@ final class BurialTests: XCTestCase {
         XCTAssertTrue(after.acted)
         XCTAssertEqual(after.movesLeft, 0)
         XCTAssertNil(state.fieldOfDead(at: mine.position))
-        XCTAssertEqual(state.gravesRaised, [Grave(at: mine.position, troops: field.troops, house: me, watch: state.watch)])
+        XCTAssertEqual(state.gravesRaised, [Grave(at: mine.position, troops: field.troops, house: me, watch: state.watch, dead: field.houses)])
         XCTAssertEqual(state.houses[me].buried, 1)
         XCTAssertEqual(state.burialsCounted(of: me), 1)
         XCTAssertTrue(state.chronicle.last?.text.hasSuffix("buries the dead \(state.placeName(of: mine.position)), \(GameState.counted(field.troops)) troops, under a barrow.") == true)
