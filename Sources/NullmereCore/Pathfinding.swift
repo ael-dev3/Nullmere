@@ -88,6 +88,12 @@ struct SearchRoom {
     /// The tiles lifted for the search under way, and its goal.
     private var lifted: [Int] = []
     private var goal = -1
+    /// Where the companies stood, and the holds' claims, when this room
+    /// last brought them up: companies that moved since are brought up
+    /// alone, where the companies can tell which moved, and holds whose
+    /// claims are unchanged stand where they stood.
+    private var companiesStood: UInt64?
+    private var holdsClaimed: UInt64?
 
     /// A thing in the way as it was marked: its id, where it stood and that
     /// hex's tile, or -1 off the map.
@@ -109,8 +115,11 @@ struct SearchRoom {
     /// it, and the goal left clear, as a march stops at what it goes for.
     mutating func ready(for unit: Unit, toward goal: Int, in state: GameState) {
         let map = state.map
-        SearchRoom.bring(&companies, to: state.units, on: map, standing: &standing, blocked: &blocked, spare: &spare)
-        SearchRoom.bring(&holds, to: state.holds, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        bringCompanies(state.units, on: map)
+        if holdsClaimed != state.holds.claims {
+            SearchRoom.bring(&holds, to: state.holds, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+            holdsClaimed = state.holds.claims
+        }
         SearchRoom.bring(&wilds, to: state.wildsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
         SearchRoom.bring(&lairs, to: state.lairsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
         SearchRoom.bring(&halls, to: state.hallsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
@@ -133,6 +142,57 @@ struct SearchRoom {
         lifted.removeAll(keepingCapacity: true)
         if goal >= 0 { blocked[goal] = standing[goal] > 0 }
         goal = -1
+    }
+
+    /// The companies brought up to the realm as it stands: only those that
+    /// moved since this room last saw them, where the companies can tell
+    /// which; otherwise each looked over. A realm of many seats has
+    /// thousands of companies, and between two searches a few move.
+    private mutating func bringCompanies(_ units: Companies, on map: WorldMap) {
+        if let stood = companiesStood, let moved = units.moved(since: stood), shift(moved, of: units, on: map) {
+            companiesStood = units.stand
+            return
+        }
+        SearchRoom.bring(&companies, to: units, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        companiesStood = units.stand
+    }
+
+    /// Each company moved brought to where it stands now. False, the room
+    /// unchanged, where one has no mark of its own to bring.
+    private mutating func shift(_ moved: [Int], of units: Companies, on map: WorldMap) -> Bool {
+        var found: [(mark: Int, unit: Int)] = []
+        for id in moved {
+            guard let mark = SearchRoom.mark(of: id, in: companies), let unit = units.index(ofID: id) else { return false }
+            found.append((mark, unit))
+        }
+        for (mark, unit) in found {
+            let position = units[unit].position
+            guard companies[mark].position != position else { continue }
+            let was = companies[mark].tile
+            if was >= 0 {
+                standing[Int(was)] -= 1
+                if standing[Int(was)] == 0 { blocked[Int(was)] = false }
+            }
+            let tile = map.index(of: position).map { Int32($0) } ?? -1
+            companies[mark] = Mark(id: companies[mark].id, position: position, tile: tile)
+            if tile >= 0 {
+                standing[Int(tile)] += 1
+                blocked[Int(tile)] = true
+            }
+        }
+        return true
+    }
+
+    /// Where a company's mark lies among marks kept lowest id first, found
+    /// by halving them; nil where it lies elsewhere or nowhere.
+    private static func mark(of id: Int, in marks: [Mark]) -> Int? {
+        var low = 0, high = marks.count
+        while low < high {
+            let middle = (low + high) / 2
+            if marks[middle].id == id { return middle }
+            if marks[middle].id < id { low = middle + 1 } else { high = middle }
+        }
+        return nil
     }
 
     private mutating func lift(_ hex: Hex, on map: WorldMap) {

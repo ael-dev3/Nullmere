@@ -18,6 +18,24 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     private var board: [Hex: [Int]]
     /// The ids of each House's companies, lowest first.
     private var owned: [Int: [Int]]
+    /// Where the companies stand, as a token drawn anew (unlike any drawn in
+    /// any realm) whenever one moves, is raised or falls: companies holding
+    /// the same token stand where they stood.
+    private(set) var stand: UInt64 = Tokens.next()
+    /// The latest moves, each from the token before it to the one it drew,
+    /// so a look that last saw the companies at one of those tokens need
+    /// bring up only those moved since (`SearchRoom`), not every company of
+    /// the realm. A company raised or fallen begins them afresh.
+    private var shifts: [Shift] = []
+
+    struct Shift: Sendable {
+        let from: UInt64
+        let to: UInt64
+        let id: Int
+    }
+
+    /// How many of the latest moves are kept.
+    static let shiftsKept = 64
 
     public init() {
         list = []
@@ -91,6 +109,40 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         for index in subrange { leave(list[index].id, at: list[index].position, of: list[index].owner) }
         list.replaceSubrange(subrange, with: elements)
         for unit in elements { enter(unit) }
+        restand()
+    }
+
+    /// The ids of the companies moved since the companies stood at `token`,
+    /// in the order they moved: none if they stand there still, nil if what
+    /// changed since is not all kept (a company raised or fallen, more moves
+    /// than are kept, or a token these companies never stood at).
+    func moved(since token: UInt64) -> [Int]? {
+        if token == stand { return [] }
+        guard let start = shifts.lastIndex(where: { $0.from == token }) else { return nil }
+        var ids: [Int] = []
+        var at = token
+        for shift in shifts[start...] {
+            guard shift.from == at else { return nil }
+            ids.append(shift.id)
+            at = shift.to
+        }
+        return at == stand ? ids : nil
+    }
+
+    /// One company moved: a token drawn for where they stand now, and the
+    /// move kept.
+    private mutating func shift(_ id: Int) {
+        let to = Tokens.next()
+        if shifts.count >= Companies.shiftsKept { shifts.removeFirst(shifts.count - Companies.shiftsKept + 1) }
+        shifts.append(Shift(from: stand, to: to, id: id))
+        stand = to
+    }
+
+    /// Companies raised or fallen: a token drawn afresh, and the moves kept
+    /// begun again.
+    private mutating func restand() {
+        stand = Tokens.next()
+        shifts.removeAll(keepingCapacity: true)
     }
 
     public mutating func reserveCapacity(_ minimumCapacity: Int) {
@@ -170,6 +222,7 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         if now.id != was.id || now.position != was.at {
             Companies.lift(was.id, from: &board, at: was.at)
             Companies.lay(now.id, into: &board[now.position, default: []])
+            if now.id == was.id { shift(now.id) } else { restand() }
         }
         if now.id != was.id || now.owner != was.owner {
             Companies.lift(was.id, from: &owned, at: was.owner)

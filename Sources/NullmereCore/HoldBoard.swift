@@ -117,22 +117,7 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
 
     /// A token for the holds' claims none drawn before it shares.
     private static func drawClaims() -> UInt64 {
-        drawn.next()
-    }
-
-    private static let drawn = Tokens()
-
-    /// The tokens drawn, for any realm on any thread to draw the next.
-    private final class Tokens: @unchecked Sendable {
-        private let lock = NSLock()
-        private var last: UInt64 = 0
-
-        func next() -> UInt64 {
-            lock.lock()
-            defer { lock.unlock() }
-            last += 1
-            return last
-        }
+        Tokens.next()
     }
 
     public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with elements: C) where C.Element == Hold {

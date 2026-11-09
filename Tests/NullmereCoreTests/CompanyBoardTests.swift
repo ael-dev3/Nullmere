@@ -31,6 +31,53 @@ final class CompanyBoardTests: XCTestCase {
         }
     }
 
+    /// Where the companies stand is told by a token drawn anew whenever one
+    /// moves, is raised or falls, and the latest moves are kept: from a
+    /// token they stood at, which companies moved since, in order; from one
+    /// they never stood at, or across a company raised or fallen or more
+    /// moves than are kept, nothing claimed.
+    func testTheyTellWhichMovedSinceTheyStoodWhereTheyStood() {
+        var units = Companies([company(1, 0, 0), company(2, 1, 0), company(3, 2, 0)])
+        let first = units.stand
+        XCTAssertEqual(units.moved(since: first), [], "None moved yet")
+        units[1].health -= 10
+        units[2].owner = 1
+        XCTAssertEqual(units.stand, first, "Hurt or given over, none moved")
+        units[0].position = Hex(0, 1)
+        units[2].position = Hex(2, 1)
+        units[0].position = Hex(0, 2)
+        XCTAssertEqual(units.moved(since: first), [1, 3, 1], "Each move, in order")
+        // Two copies part ways: each tells its own moves, and neither knows
+        // where the other stands.
+        let parted = units.stand
+        var other = units
+        units[1].position = Hex(5, 5)
+        other[2].position = Hex(7, 7)
+        XCTAssertEqual(units.moved(since: parted), [2])
+        XCTAssertEqual(other.moved(since: parted), [3])
+        XCTAssertNil(units.moved(since: other.stand), "A stand these never stood at")
+        XCTAssertNil(units.moved(since: 0))
+        // A company raised, or fallen, begins it afresh.
+        let beforeRaised = units.stand
+        units.append(company(4, 3, 0))
+        XCTAssertNil(units.moved(since: beforeRaised), "Raised: not all kept")
+        let beforeFallen = units.stand
+        units.remove(at: 0)
+        XCTAssertNil(units.moved(since: beforeFallen), "Fallen: not all kept")
+        // More moves than are kept: the oldest let go.
+        let longAgo = units.stand
+        for step in 0...Companies.shiftsKept { units[0].position = Hex(10 + step, 0) }
+        XCTAssertNil(units.moved(since: longAgo), "Too many moves ago")
+        let lately = units.stand
+        units[1].position = Hex(-1, -1)
+        XCTAssertEqual(units.moved(since: lately), [units[1].id])
+        // Written and read back, a list like any other, its token its own.
+        let read = try? JSONDecoder().decode(Companies.self, from: JSONEncoder().encode(units))
+        XCTAssertEqual(read, units)
+        XCTAssertNotEqual(read?.stand, units.stand)
+        assertBoard(units, "after all of it")
+    }
+
     func testTheBoardFollowsEveryChange() {
         var units: Companies = [company(1, 0, 0), company(2, 1, 0), company(4, 2, -1)]
         assertBoard(units, "laid out")
