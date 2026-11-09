@@ -2005,7 +2005,7 @@ final class DepthPanelTests: XCTestCase {
     /// A report's faces painted from the models the world draws them with: a
     /// company of its House's people at its tier, that people's keep for a
     /// hold, the wilds by their level's look, a lair as it stands.
-    func testAReportsFacesArePaintedFromTheWorldsOwnModels() {
+    func testAReportsFacesArePaintedFromTheWorldsOwnModels() throws {
         typealias Face = BattleReport.Face
         let state = GameState(settings: GameSettings(seedText: "report faces", houseCount: 3, radius: 14))
         let heritage = state.heritage(of: 1)
@@ -2015,6 +2015,13 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(ReportFaces.key(of: Face(.hold(seat: false), of: nil), in: state), .keep(seat: false))
         XCTAssertEqual(ReportFaces.key(of: Face(.wild(.reavers, level: 5), of: nil), in: state), .wild(tier: 2))
         XCTAssertEqual(ReportFaces.key(of: Face(.lair(.drowned), of: nil), in: state), .lair(.drowned))
+        // A field's sides as a window draws them, painted, kept with CI's screenshots.
+        Portraits.shared.prepareNow()
+        let faces = [[Face(.company(.spear, tier: 3), of: 1), Face(.company(.bow, tier: 2), of: 1), Face(.company(.mangonel, tier: 1), of: 1)],
+                     [Face(.company(.rider, tier: 2), of: 2), Face(.hold(seat: true), of: 2)]]
+        try CardShot.keep(ReportFaces(faces: faces, state: state).padding(24), as: "game-report-faces.png")
+        try CardShot.keep(ReportFaces(faces: [[Face(.company(.spear, tier: 1), of: 1)], [Face(.wild(.reavers, level: 8), of: nil)]], state: state)
+            .padding(24), as: "game-report-faces-wilds.png")
     }
 
     // MARK: City life

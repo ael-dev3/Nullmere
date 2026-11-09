@@ -94,6 +94,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// Another House's vigil honoured: renown to its keeper as the age
     /// ends, and no strike on its House while its light burns.
     case honourVigil(Int)
+    /// The keeper's answer to a plea their House's folk brought: granted,
+    /// paid for, or turned away.
+    case answerPetition(Int, grant: Bool)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -1098,6 +1101,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case vigilHonoured(vigil: Int, house: Int, by: Int)
     /// A vigil's light gone out, and how many Houses honoured it.
     case vigilOut(vigil: Int, house: Int, honours: Int)
+    /// The folk of a keeper's hold came to its gate with a plea.
+    case petitionBrought(Petition)
+    /// A plea answered: granted, or turned away by the keeper or by silence.
+    case petitionAnswered(Petition, granted: Bool, silently: Bool)
+    /// A plea whose need passed before it was answered, withdrawn.
+    case petitionWithdrawn(Petition)
     /// A letter sealed in a hold for the age to come.
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.

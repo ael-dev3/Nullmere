@@ -233,13 +233,11 @@ final class CounselSheetTests: XCTestCase {
     func testACommanderIsAskedOfABattleTheyLedFromItsReport() throws {
         let (session, link) = session()
         let commander = try XCTUnwrap(session.state.commanders(of: session.player).first)
-        // No report names one yet: CI's photograph shows the House's reports instead.
+        // No report names one yet: CI's photograph takes counsel as at the first watch.
         session.askOfABattleToBeSeen()
-        XCTAssertNil(session.commanderCounsel)
-        XCTAssertEqual(session.panel, .chronicle)
-        XCTAssertEqual(session.chronicleOpensOn, .reports)
-        draw(ChroniclePanel(session: session, shown: session.chronicleOpensOn))
-        session.panel = nil
+        XCTAssertEqual(session.commanderCounsel?.id, commander.id)
+        XCTAssertNil(session.panel, "Nothing opened beside it at the launch")
+        session.closeCounsel()
 
         let report = try battleLed(by: commander, in: session)
         XCTAssertEqual(report.led, [commander.name])
@@ -258,14 +256,10 @@ final class CounselSheetTests: XCTestCase {
         draw(CounselSheet(session: session, counsel: counsel))
         session.closeCounsel()
 
-        // The photograph after a while asks of that battle, as from its
-        // report, the House's reports open beside it.
+        // The photograph after a while asks of that battle, as from its report.
         session.askOfABattleToBeSeen()
         XCTAssertEqual(session.commanderCounsel?.counsel.battles.map(\.id), [report.id])
-        XCTAssertEqual(session.panel, .chronicle)
-        XCTAssertEqual(session.chronicleOpensOn, .reports)
         session.closeCounsel()
-        session.panel = nil
 
         // A report naming none of the House's commanders offers no one.
         var plain = report

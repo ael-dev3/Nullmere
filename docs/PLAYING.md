@@ -1499,6 +1499,27 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   mourning House's companies or holds, nor call a rally on them, until the
   light goes out: the realm refuses the order. A battle already joined goes
   on.
+- **Petitions at the gate.** From the sixth watch, the folk of a keeper's
+  holds come to the gate with a plea of their own, grounded in how the
+  hold stands, the most pressing first: its ward broken under half, a
+  mason asks stone (ten, and ten for each level of its walls) to mend it
+  whole; a company of your House lying hurt at its gates, a healer asks
+  30 grain to tend it by thirty; a work or a muster two watches or more
+  from done, the reeve asks 40 grain to bring it a watch nearer; at the
+  full moon, a brewer of the seat asks 60 grain for a feast, and the folk
+  give your House a Salt Hourglass in thanks. Its card stands beside the
+  world where envoys come, the petitioner painted from the hold's own
+  townsfolk, and your Mac's model gives them words of their own from the
+  plea's facts, the seconds counted as it does, or says why it can't; the
+  plea stands in the realm's words beneath. Grant it, paying what they
+  ask, or Turn it away; unanswered three watches, it is turned away by
+  silence. Turned away, the folk go back to their work grudging: what the
+  hold has under way is set back a watch. A plea whose need has passed is
+  withdrawn, owing nothing. One plea at a time, the next eight watches
+  after the last; only keepers' Houses are petitioned, and while you are
+  away your caretaker grants a plea your stores would hold twice over.
+  The phone shows the same plea on its House tab, voiced by its own
+  model, with the same answers.
 - **The Eclipse.** In an age with an age drowned beneath it, the moon is
   eaten at the full of the sixtieth watch, and of every ninetieth after,
   and the drowned age walks: from its greatest holds, six at most, rise

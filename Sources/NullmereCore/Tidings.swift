@@ -754,6 +754,27 @@ extension GameState {
             guard mourner == viewer else { return nil }
             let by = honours == 0 ? "no House" : honours == 1 ? "1 House" : "\(GameState.counted(honours)) Houses"
             return Tidings("Your vigil's light has gone out on the water, honoured by \(by).", .neutral)
+        case .petitionBrought(let petition):
+            guard petition.house == viewer else { return nil }
+            return Tidings("\(petitioner(of: petition)) comes to your gate with a plea. \(asked(by: petition))", .neutral)
+        case .petitionAnswered(let petition, let granted, let silently):
+            guard petition.house == viewer else { return nil }
+            let who = "\(petition.name) of \(hold(petition.hold)?.name ?? "the hold")"
+            if granted {
+                let done: String
+                switch petition.plea {
+                case .mend: done = "its masons mend the ward whole"
+                case .tend: done = "its healers tend your company"
+                case .hands: done = "its folk bring what it has under way a watch nearer"
+                case .feast: done = "its folk feast, and give your House a \(ItemKind.hourglass.title) in thanks"
+                }
+                return Tidings("You grant the plea of \(who): \(done).", .good)
+            }
+            let how = silently ? "No answer came to the plea of \(who)" : "You turn away the plea of \(who)"
+            return Tidings("\(how): the folk go back to their work grudging, and what the hold has under way is set back a watch.", .bad)
+        case .petitionWithdrawn(let petition):
+            guard petition.house == viewer else { return nil }
+            return Tidings("\(petition.name) of \(hold(petition.hold)?.name ?? "the hold") withdraws the plea: its need has passed.", .neutral)
         case .wordReported(_, let by):
             guard by == viewer else { return nil }
             return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)

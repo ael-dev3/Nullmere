@@ -82,4 +82,32 @@ final class PhoneVoicesTests: XCTestCase {
         XCTAssertEqual(ledger.dreams.first?.told, state.told(try XCTUnwrap(dreams.last)))
         XCTAssertEqual(ledger.dreams.first?.voice, "dream-\(try XCTUnwrap(dreams.last).watch)")
     }
+
+    /// A plea at the gate on the phone, in the Mac's words: who brings it,
+    /// what the folk ask, what turning it away costs, its answers (Grant
+    /// off while the House hasn't the price), and its voice's key.
+    func testThePhonesLedgerCarriesThePleaWithItsAnswersAndVoice() throws {
+        var state = GameState(settings: GameSettings(seedText: "a plea on the phone", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        state.watch = Petition.from
+        let seat = try XCTUnwrap(state.holdIndex(try XCTUnwrap(state.holds(of: me).first { $0.isSeat }).id))
+        state.holds[seat].ward = 1
+        state.houses[me].stock = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 10)
+        _ = state.bringPetitions()
+        let petition = try XCTUnwrap(state.petition(of: me))
+        let ledger = CompanionLedger(world: state.view(for: me), player: me)
+        let plea = try XCTUnwrap(ledger.plea)
+        XCTAssertEqual(plea.petitioner, state.petitioner(of: petition))
+        XCTAssertEqual(plea.asked, state.asked(by: petition))
+        XCTAssertEqual(plea.turnedAway, GameState.turnedAwaySaid)
+        XCTAssertEqual(plea.waits, "Waits \(Petition.patience) watches")
+        XCTAssertEqual(plea.grant, CompanionLedger.Order(title: "Grant, for \(petition.price)", command: .answerPetition(petition.id, grant: true)))
+        XCTAssertEqual(plea.turnAway.command, .answerPetition(petition.id, grant: false))
+        XCTAssertEqual(plea.voice, "petition-\(petition.id)")
+        XCTAssertTrue(ledger.voices.contains { $0.key == plea.voice })
+        var poor = state
+        poor.houses[me].stock = .zero
+        XCTAssertNil(CompanionLedger(world: poor.view(for: me), player: me).plea?.grant, "Off while the House hasn't the price")
+        XCTAssertNil(CompanionLedger(world: state.view(for: (me + 1) % state.houses.count), player: (me + 1) % state.houses.count).plea)
+    }
 }

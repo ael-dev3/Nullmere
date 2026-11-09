@@ -717,8 +717,12 @@ public struct RealmState: Codable, Equatable, Sendable {
         for index in keepers.indices where !keepers[index].isOnline {
             keepers[index].watchesAway = (keepers[index].watchesAway ?? 0) + 1
         }
-        // Those there as it turns keep the watch, and stand the higher in favour.
-        let events = world.endWatch(keptFor: caretaken) + keepFavour()
+        // Those there as it turns keep the watch, and stand the higher in
+        // favour; and the folk of keepers' holds come to their gates, a
+        // realm's keepers there to hear them, or their caretakers.
+        var events = world.endWatch(keptFor: caretaken)
+        events += world.bringPetitions()
+        events += keepFavour()
         tallyFrontier(events)
         scoreTheHeart()
         return events

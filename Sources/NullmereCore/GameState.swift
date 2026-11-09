@@ -219,6 +219,12 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Vigils' lights burning on the lake for the fallen; absent while none
     /// does.
     var vigils: [Vigil]?
+    /// The pleas keepers' Houses' folk have brought them, waiting on an
+    /// answer; absent while none does.
+    public internal(set) var petitions: [Petition]?
+    /// The watch each keeper's House was last brought a plea; absent
+    /// before the first.
+    var petitioned: [Int: Int]?
     /// Barges out on the water this watch; absent when none is.
     public internal(set) var barges: [Ferrying]?
     /// The edicts put to the realm this age, the latest last; absent

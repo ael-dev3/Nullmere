@@ -350,6 +350,22 @@ public struct CompanionLedger: Equatable, Sendable {
         public var voice: String?
     }
 
+    /// A plea the folk of one of the House's holds bring to the gate, in
+    /// the Mac's words: who brings it, what they ask and would do, what
+    /// turning it away costs, how long it waits, and its answers; the key
+    /// the phone's model keeps the petitioner's own words by.
+    public struct Plea: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let petitioner: String
+        public let asked: String
+        public let turnedAway: String
+        public let waits: String
+        /// Nil while the House hasn't what the folk ask, or their need has passed.
+        public let grant: Order?
+        public let turnAway: Order
+        public let voice: String
+    }
+
     /// An item of the House's satchel: how many it keeps, what one does, and
     /// the uses the rules would take now.
     public struct Item: Equatable, Identifiable, Sendable {
@@ -630,6 +646,8 @@ public struct CompanionLedger: Equatable, Sendable {
     public let watch: Int
     /// Envoys waiting on the keeper, the first come first.
     public let envoys: [Envoy]
+    /// The plea the House's folk bring it, while one waits.
+    public let plea: Plea?
     /// Companies of Houses at war gathered near the House's holds, as the
     /// walls' watchmen tell it.
     public let gatherings: [String]
@@ -984,6 +1002,15 @@ public struct CompanionLedger: Equatable, Sendable {
                          refuse: Order(title: "Refuse", command: .answer(envoy: envoy.id, accept: false)),
                          refusingIsWar: world.refusingIsWar(envoy),
                          voice: houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer ? "envoy-\(envoy.id)" : nil)
+        }
+        plea = world.petition(of: player).map { petition in
+            let left = max(Petition.patience - (world.watch - petition.arrived), 1)
+            return Plea(id: petition.id, petitioner: world.petitioner(of: petition), asked: world.asked(by: petition),
+                        turnedAway: GameState.turnedAwaySaid, waits: left == 1 ? "Waits this watch" : "Waits \(left) watches",
+                        grant: world.petitionRefusal(petition.id, grant: true, as: player) == nil
+                            ? Order(title: "Grant, for \(petition.price)", command: .answerPetition(petition.id, grant: true)) : nil,
+                        turnAway: Order(title: "Turn away", command: .answerPetition(petition.id, grant: false)),
+                        voice: "petition-\(petition.id)")
         }
         voices = world.voicedMoments(for: player)
         dreams = world.dreams(of: player).reversed().map { Dream(watch: $0.watch, told: world.told($0), voice: "dream-\($0.watch)") }

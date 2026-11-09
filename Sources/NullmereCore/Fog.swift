@@ -240,6 +240,9 @@ extension GameState {
         }
         // Every vigil's light for the fallen, the whole realm sees.
         view.vigils = vigils
+        // The pleas the House's own folk have brought it, none of another's.
+        view.petitions = petitions.map { $0.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
+        view.petitioned = nil
         // The holds of the ages before, where they have seen the ground.
         view.drowned = drowned.map { all in
             all.filter { hold in map.index(of: hold.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
@@ -457,6 +460,9 @@ extension GameState {
                 return true
             case .vigilOut(_, let mourner, _):
                 return mourner == house
+            case .petitionBrought(let petition), .petitionAnswered(let petition, _, _), .petitionWithdrawn(let petition):
+                // A House's folk speak to their own keeper alone.
+                return petition.house == house
             case .letterSealed(_, let by):
                 return by == house
             case .letterFound:

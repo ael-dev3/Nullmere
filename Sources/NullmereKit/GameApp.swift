@@ -929,6 +929,12 @@ public final class GameApp {
         guard environment["NULLMERE_KEEPER"] != nil else { return }
         if let watches = environment["NULLMERE_AUTOPLAY"].flatMap(Int.init), watches > 0 {
             session?.autoplay(watches: watches)
+            // Which plea waits at the gate, for CI's photograph and log.
+            if let session {
+                Reporting.say(session.state.petition(of: session.player).map {
+                    "A plea at the gate in watch \(session.state.watch): \(session.state.petitioner(of: $0)). \(session.state.asked(by: $0))"
+                } ?? "No plea at the gate in watch \(session.state.watch)")
+            }
         }
         // NULLMERE_SHOW=seat,houses selects the seat and opens a panel,
         // for screenshots of the interface; "briefing" keeps the card a

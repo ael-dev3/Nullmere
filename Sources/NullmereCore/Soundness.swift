@@ -293,6 +293,13 @@ extension GameState {
         for vigil in vigilsOnTheLake where map[vigil.position] == nil || !houseIDs.contains(vigil.house) {
             found.append("Vigil \(vigil.id) of House \(vigil.house) burns outside the world at \(vigil.position)")
         }
+        // A plea waits on a House's answer, from a hold that was its own when it came.
+        for petition in petitions ?? [] where !houseIDs.contains(petition.house) || hold(petition.hold) == nil {
+            found.append("Petition \(petition.id) of House \(petition.house) from no hold of the realm (\(petition.hold))")
+        }
+        if Set((petitions ?? []).map(\.house)).count != (petitions ?? []).count {
+            found.append("A House is brought more than one plea at once")
+        }
         // Each report and bar a House's.
         for report in wordReports where !houseIDs.contains(report.by) {
             found.append("A report of line \(report.word) by no House (\(report.by))")

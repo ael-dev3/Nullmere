@@ -96,9 +96,6 @@ public final class GameSession {
             emit(panel == nil ? .fold : .leaf)
         }
     }
-    /// Which of the Chronicle's pages it opens on, where something asked
-    /// for one; its history otherwise.
-    var chronicleOpensOn: ChroniclePanel.Shown?
     /// Page Up and Page Down, as heard: each panel that scrolls pages
     /// itself when one is meant for it.
     var pageRequest = PageRequest()
@@ -174,6 +171,8 @@ public final class GameSession {
         /// What a prisoner told: by `prisonerKey(of:)`, their commander, the
         /// watch they were taken and how many times they had been questioned.
         case prisoner(Int)
+        /// A plea the folk of a hold bring to the gate, by its id.
+        case petition(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -187,6 +186,7 @@ public final class GameSession {
             case .dream(let watch): return "dream-\(watch)"
             case .riddle(let watch): return "riddle-\(watch)"
             case .prisoner(let told): return "prisoner-\(told)"
+            case .petition(let id): return "petition-\(id)"
             }
         }
 
@@ -199,6 +199,7 @@ public final class GameSession {
             case "dream": self = .dream(number)
             case "riddle": self = .riddle(number)
             case "prisoner": self = .prisoner(number)
+            case "petition": self = .petition(number)
             default: return nil
             }
         }
@@ -635,21 +636,17 @@ public final class GameSession {
 
     /// Counsel asked of the latest battle a commander of the House led in,
     /// as from its report, for CI to photograph after the House has been
-    /// played a while (NULLMERE_SHOW=battlecounsel), the House's reports
-    /// open beside it as the Chronicle keeps them; with no such battle, the
-    /// reports alone, to say why. Which, said on the game's output at once
-    /// (`Reporting`), as the smoke test reads it.
+    /// played a while (NULLMERE_SHOW=battlecounsel); with no such battle,
+    /// counsel taken as at the first watch, to say why. Which, said on the
+    /// game's output at once (`Reporting`), as the smoke test reads it.
     func askOfABattleToBeSeen() {
-        // The House's reports open on the rail, where the keeper asks from,
-        // their sides painted, beside counsel where it is taken.
-        chronicleOpensOn = .reports
-        panel = .chronicle
         if let report = reports.first(where: { askable(of: $0) != nil }), let commander = askable(of: report) {
             Reporting.say("Counsel asked of a battle: \(commander.name), \(CommanderCounsel.askedOf(report))")
             ask(of: report)
         } else {
             Reporting.say("Counsel asked of no battle: none of the House's \(reports.count) reports names a commander free to speak; "
-                + "its reports shown instead")
+                + "counsel taken as at the first watch")
+            takeCounselToBeSeen()
         }
     }
     #endif
@@ -1255,7 +1252,12 @@ public final class GameSession {
         state = world
         rememberSeen()
         isReady = false
-        guard !isAutoplaying else { return }
+        guard !isAutoplaying else {
+            // A steward plays the watch for the keeper: no cards, sounds or
+            // notices, but the House's reports filed as ever, to be read.
+            fileReports(events)
+            return
+        }
         isEndingWatch = true
         quietPassed += 1
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
@@ -2574,6 +2576,11 @@ public final class GameSession {
             asked.insert(key)
             voiceQueue.append((key, VoiceFacts.prisoner(prisoner, told: word, in: state)))
         }
+        // A plea at the gate, in the petitioner's own voice.
+        if let petition = state.petition(of: player), !asked.contains(.petition(petition.id)) {
+            asked.insert(.petition(petition.id))
+            voiceQueue.append((.petition(petition.id), VoiceFacts.petition(petition, in: state)))
+        }
         // The lake's riddle, set in the Still's voice.
         if let riddle = state.riddle(of: player), riddle.answered == nil, !asked.contains(.riddle(riddle.set)) {
             asked.insert(.riddle(riddle.set))
@@ -2592,6 +2599,11 @@ public final class GameSession {
         guard !isSpeaking, let voice, !voiceQueue.isEmpty else { return }
         let (key, moment) = voiceQueue.removeFirst()
         if case .envoy(let id) = key, !state.envoys.contains(where: { $0.id == id }) {
+            speakNext()
+            return
+        }
+        // A plea answered or withdrawn before its turn is not voiced.
+        if case .petition(let id) = key, state.petition(of: player)?.id != id {
             speakNext()
             return
         }

@@ -247,7 +247,7 @@ struct PlayView: View {
                         case .houses?:
                             opened(HousesPanel(session: session), named: "Houses")
                         case .chronicle?:
-                            opened(ChroniclePanel(session: session, shown: session.chronicleOpensOn), named: "Chronicle")
+                            opened(ChroniclePanel(session: session), named: "Chronicle")
                         case .guide?:
                             opened(GuidePanel(session: session), named: "Guide")
                         case .archive?:
@@ -266,6 +266,8 @@ struct PlayView: View {
                         Spacer(minLength: 0)
                         EnvoyCards(session: session)
                             .chrome("envoys")
+                        PetitionCard(session: session)
+                            .chrome("petition")
                         // With a panel open, its keys and its close button
                         // serve, and the panel keeps the column's height.
                         if session.panel == nil {

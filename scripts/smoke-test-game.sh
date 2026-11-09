@@ -16,9 +16,8 @@
 # Apple's on-device model where this Mac's can be asked, or why none came
 # where it can't, as on CI's virtual Macs; and forty watches more on, the
 # commander who led in the House's latest battle asked of it, as from its
-# report, beside the House's reports with their two sides painted, or the
-# reports alone where none names one (which, kept in
-# build/game-counsel-battle.log).
+# report, or counsel taken as at the first watch where none names one
+# (which, kept in build/game-counsel-battle.log).
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -118,10 +117,15 @@ $LOG"
 NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch
 WORLD_LOG="$WORLD_LOG
 $LOG"
-# Forty watches more, played by the steward, then counsel of the commander
-# who led in the House's latest battle, asked of it as from its report; or,
-# where no report names one, the House's reports as the Chronicle keeps them.
-WAIT=30 run build/game-counsel-battle.png 40 battlecounsel
+# The plea waiting at the gate then, if one is, its card beside the world.
+grep -h "plea at the gate" build/game-stdout.log > build/game-plea.log 2>/dev/null || true
+cat build/game-plea.log
+# Forty watches more, played by the steward (the House's reports filed as
+# they go), then counsel of the commander who led in the House's latest
+# battle, asked of it as from its report; or, where no report names one,
+# counsel as at the first watch. Given longer to settle than the first, the
+# world forty watches deeper (run 825's was photographed before it drew).
+WAIT=40 run build/game-counsel-battle.png 40 battlecounsel
 grep -h "^Counsel asked of" build/game-stdout.log > build/game-counsel-battle.log 2>/dev/null || true
 cat build/game-counsel-battle.log
 

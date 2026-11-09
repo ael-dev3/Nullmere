@@ -422,6 +422,7 @@ jobs:
           ends build/counsel-report.txt
           # Counsel asked of a battle in the running game, as from its report.
           cat build/game-counsel-battle.log 2>/dev/null || true
+          cat build/game-plea.log 2>/dev/null || true
           # The ballad the runner's own model made, as a keeper's Mac makes one.
           grep -h "^ballad of " build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true

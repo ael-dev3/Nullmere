@@ -111,6 +111,11 @@ extension Voicing {
     /// A captured commander telling their captors a true thing of their House.
     public static let prisonerTask = "Speak as the captured commander, questioned by their captors and telling them, against their will, the one thing "
         + "about their own House that is told here, keeping every name and number as given. One or two sentences, at most 40 words."
+
+    /// What the model is asked for a plea the folk of a hold bring their
+    /// keeper (`GameState.voiced(_ petition:)`).
+    public static let petitionTask = "Speak as the petitioner, come to the keeper's gate with the plea told here: humbly but plainly, naming what the folk "
+        + "ask and what they would do for it, keeping every name and number as given. One or two sentences, at most 40 words."
 }
 
 extension GameState {
@@ -158,8 +163,8 @@ extension GameState {
     /// The moments a keeper's device gives words to, keyed as it keeps
     /// them, in their view of the world: envoys of stewards' Houses waiting
     /// on them (a keeper's envoy carries their own words), what the Still
-    /// showed the House, its riddle while unanswered, and what each
-    /// prisoner it holds last told.
+    /// showed the House, its riddle while unanswered, what each prisoner
+    /// it holds last told, and the plea its folk bring it.
     public func voicedMoments(for house: Int) -> [Voicing.Keyed] {
         var moments: [Voicing.Keyed] = []
         for envoy in envoys where envoy.to == house && houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer {
@@ -174,6 +179,9 @@ extension GameState {
         for prisoner in prisoners(heldBy: house) {
             guard let captive = prisoner.captive, let word = captive.told?.last else { continue }
             moments.append(Voicing.Keyed(key: GameState.voiceKey(of: prisoner, captive), moment: voiced(prisoner: prisoner, told: word)))
+        }
+        if let petition = petition(of: house) {
+            moments.append(Voicing.Keyed(key: "petition-\(petition.id)", moment: voiced(petition)))
         }
         return moments
     }

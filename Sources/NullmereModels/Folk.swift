@@ -14,7 +14,7 @@ public enum Folk {
     /// The townsfolk there are: the works' folk, then the homes'.
     static let variants = 9
     public static let farmhand = 0, timberCarter = 1, stoneCarter = 2, salter = 3, porter = 4
-    static let householder = 5, waterCarrier = 6, elder = 7, child = 8
+    public static let householder = 5, waterCarrier = 6, elder = 7, child = 8
     /// Each as their file names them, by their number.
     static let names = ["farmhand", "timber", "stone", "salter", "porter", "householder", "waterCarrier", "elder", "child"]
 

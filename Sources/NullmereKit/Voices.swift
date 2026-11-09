@@ -82,6 +82,8 @@ public struct VoiceMoment: Sendable, Equatable {
         /// A House's few words for its dead, set on the water with the
         /// light of its vigil.
         case vigil
+        /// One of the hold's folk at the keeper's gate with a plea.
+        case petition
     }
 
     public let kind: Kind
@@ -111,6 +113,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = Voicing.prisonerTask
         case .vigil:
             task = GameState.vigilWordsAsked
+        case .petition:
+            task = Voicing.petitionTask
         }
         return Voicing.asking(task, facts: facts)
     }
@@ -267,6 +271,12 @@ enum VoiceFacts {
     /// A dream, for the Still to tell: what it showed, plainly, and when.
     static func dream(_ dream: Dream, in state: GameState) -> VoiceMoment {
         VoiceMoment(kind: .dream, facts: state.voiced(dream).facts)
+    }
+
+    /// A plea at the gate: who brings it, what the folk ask and would do,
+    /// and what turning it away would cost.
+    static func petition(_ petition: Petition, in state: GameState) -> VoiceMoment {
+        VoiceMoment(kind: .petition, facts: state.voiced(petition).facts)
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {

@@ -269,6 +269,12 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    // The plea the House's folk bring to the gate, as the Mac shows it.
+                    if let plea = ledger.plea {
+                        Section("A plea at the gate") {
+                            PleaRow(session: session, plea: plea)
+                        }
+                    }
                     // The Lyceum, while it sits and a question is left: one at a time.
                     if let asked = ledger.lyceum {
                         Section("The Lyceum · \(asked.place)") {
@@ -1354,6 +1360,47 @@ struct AnswerRow: View {
 
 /// An envoy waiting on the keeper: its offer as the Mac words it, the words
 /// its House sent, and the keeper's answer, which the realm carries out.
+/// A plea at the gate on the phone: who brings it, their own words where
+/// the phone's model gave them, what the folk ask and would do, what
+/// turning it away costs, how long it waits, and Grant or Turn away.
+struct PleaRow: View {
+    let session: CompanionSession
+    let plea: CompanionLedger.Plea
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: plea.petitioner)
+                .font(Night.heading)
+            VoicedWords(key: plea.voice, who: "the petitioner")
+            Text(verbatim: plea.asked)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: plea.turnedAway)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.5))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: plea.waits)
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.5))
+            HStack(spacing: 10) {
+                if let grant = plea.grant {
+                    Button(grant.title) { session.give(grant.command, told: "Grant the plea of \(plea.petitioner)") }
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Text(verbatim: "You haven't what the folk ask.")
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.5))
+                }
+                Button(plea.turnAway.title) { session.give(plea.turnAway.command, told: "Turn away the plea of \(plea.petitioner)") }
+                    .buttonStyle(.bordered)
+            }
+            .font(Night.small)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 struct EnvoyRow: View {
     let session: CompanionSession
     let envoy: CompanionLedger.Envoy

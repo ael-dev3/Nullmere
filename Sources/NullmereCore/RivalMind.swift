@@ -78,6 +78,16 @@ struct RivalMind {
         }
     }
 
+    /// Keeping a keeper's House while they are away, the caretaker grants
+    /// the plea its folk bring where the House's stores would hold twice
+    /// what they ask, so the hold is not set back for want of an answer;
+    /// otherwise it leaves the plea for the keeper.
+    func hearThePetition(in state: inout GameState) -> [GameEvent] {
+        guard let petition = state.petition(of: house), state.houses[house].stock.covers(petition.price + petition.price),
+              state.petitionRefusal(petition.id, grant: true, as: house) == nil else { return [] }
+        return (try? state.answerPetition(petition.id, grant: true, as: house)) ?? []
+    }
+
     // MARK: A watch's decisions
 
     func takeTurn(in state: inout GameState) -> [GameEvent] {
@@ -86,6 +96,7 @@ struct RivalMind {
         var random = state.random()
 
         events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
+        if caretaking { events += hearThePetition(in: &state) }
         events += tendAlliance(in: &state, random: &random)
         if !caretaking {
             events += studyTogether(in: &state)
