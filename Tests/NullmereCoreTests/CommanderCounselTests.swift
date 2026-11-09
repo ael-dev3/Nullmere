@@ -165,8 +165,8 @@ final class CommanderCounselTests: XCTestCase {
         let burn = counsel.propose("burn", company: handle, place: place.name)
         XCTAssertNil(burn.command)
         XCTAssertEqual(burn.why, "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood alight), "
-                       + "douse (its torches, to march dark) or light (its torches again).")
-        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light"])
+                       + "douse (its torches, to march dark), light (its torches again) or wait (lie in wait in the blackwood, marching dark).")
+        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait"])
         // A company at the seat can set nothing alight: put forward as a
         // line, and told why in the realm's own words.
         let kindle = counsel.propose("kindle", company: handle, place: "")
@@ -234,6 +234,40 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertTrue(light.isGiven, light.why ?? "")
         XCTAssertEqual(light.command, .torches(unit: company.id, lit: true))
         XCTAssertFalse(dark.propose("douse", company: handle, place: "").isGiven, "Dark already")
+    }
+
+    /// A commander whose company marches dark in the blackwood is told it
+    /// may lie in wait there, and may put the ambush to the keeper as the
+    /// realm would take it; once it waits, they are told so.
+    func testACommanderMayPutAnAmbushForward() throws {
+        var (counsel, world) = try counsel()
+        let me = counsel.player
+        let company = try XCTUnwrap(counsel.company)
+        let handle = try XCTUnwrap(counsel.handle(of: company))
+        // Its torches lit, out of the wood: nothing to put forward but why not.
+        let early = counsel.propose("wait", company: handle, place: "")
+        XCTAssertEqual(early.line, "WAIT \(handle)")
+        XCTAssertFalse(early.isGiven)
+        XCTAssertEqual(early.why, counsel.state.waitRefusal(company.id, waiting: true, as: me)?.description)
+        // Marching dark in the blackwood the House knows, nearest its seat.
+        let seat = try XCTUnwrap(world.seat(of: me)).position
+        let seen = world.view(for: me)
+        let wood = try XCTUnwrap(world.map.hexes.filter { hex in
+            seen.isCover(hex) && world.hold(at: hex) == nil && world.unit(at: hex) == nil
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) })
+        world.units[try XCTUnwrap(world.unitIndex(company.id))].position = wood
+        try world.perform(.torches(unit: company.id, lit: false), as: me)
+        let dark = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        XCTAssertTrue(dark.briefing.contains(", in the blackwood where it may lie in wait, marching dark"), dark.briefing)
+        let ambush = dark.propose(" Wait", company: handle, place: "")
+        XCTAssertTrue(ambush.isGiven, ambush.why ?? "")
+        XCTAssertEqual(ambush.command, .lieInWait(unit: company.id, waiting: true))
+        XCTAssertEqual(ambush.told, "Your \(SpokenOrders.named(try XCTUnwrap(dark.company), in: dark.state)) lie in wait in the wood.")
+        // Waiting, it is told so, and waits already.
+        try world.perform(.lieInWait(unit: company.id, waiting: true), as: me)
+        let waiting = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        XCTAssertTrue(waiting.report(on: handle).contains("lying in wait in the wood"), waiting.report(on: handle))
+        XCTAssertEqual(waiting.propose("wait", company: handle, place: "").why, RuleError.waitingAlready(true).description)
     }
 
     /// A commander is told of the House's watchfires and of what their light

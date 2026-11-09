@@ -125,11 +125,12 @@ struct ProposeOrder: Tool {
     let name = "proposeAnOrder"
     let description = "Puts an order for a company of your House to your keeper, who decides whether to give it. "
         + "Only march, strike, fortify, halt, drill, kindle (set the blackwood where the company stands alight), "
-        + "douse (its torches, to march dark: a tile slower, seen by other Houses only close by) or light (its torches again)."
+        + "douse (its torches, to march dark: a tile slower, seen by other Houses only close by), light (its torches again) "
+        + "or wait (lie in wait in the blackwood, marching dark, and spring upon the first foe at war that comes within reach)."
 
     @Generable
     struct Arguments {
-        @Guide(description: "What the company is to do: march, strike, fortify, halt, drill, kindle, douse or light")
+        @Guide(description: "What the company is to do: march, strike, fortify, halt, drill, kindle, douse, light or wait")
         var action: String
         @Guide(description: "The company's handle, such as C1")
         var company: String

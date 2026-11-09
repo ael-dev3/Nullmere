@@ -108,6 +108,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// A company douses its torches to march dark, or lights them again
     /// (see `GameState.isUnlit`).
     case torches(unit: Int, lit: Bool)
+    /// A company marching dark in the blackwood lies in wait there, or
+    /// gives it up (see `GameState.isWaiting`).
+    case lieInWait(unit: Int, waiting: Bool)
     /// A watchfire lit on open ground of the House's own land
     /// (`Watchfire`), for timber: its House sees about it, and makes out
     /// companies marching dark there.
@@ -577,6 +580,15 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case keepersFire
     /// Torches lit that burn already, or doused that are out.
     case torchesAlready(lit: Bool)
+    /// Lying in wait asked of a company already waiting, or given up by
+    /// one that isn't.
+    case waitingAlready(Bool)
+    /// Only a company marching dark lies in wait.
+    case notMarchingDark
+    /// Only in the blackwood, not burnt, does a company lie in wait.
+    case notInTheWood
+    /// A company on the march can't lie in wait.
+    case onTheMarch
     case watchfireBurning
     case watchfiresLit(Int)
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -800,6 +812,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .burntGround: return "That wood is burning or lies burnt already."
         case .keepersFire: return "Only a keeper's companies set the wood alight."
         case .torchesAlready(let lit): return lit ? "Its torches burn already." : "It marches dark already."
+        case .waitingAlready(let waiting): return waiting ? "It lies in wait already." : "It isn't lying in wait."
+        case .notMarchingDark: return "Only a company marching dark may lie in wait: douse its torches first."
+        case .notInTheWood: return "It may lie in wait only in the blackwood, where the wood isn't burnt."
+        case .onTheMarch: return "It is on the march: halt it first."
         case .watchfireBurning: return "A watchfire burns there already."
         case .watchfiresLit(let most): return "Your House keeps \(most) watchfires burning already, as many as it may."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -1152,6 +1168,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case woodKindled(at: Hex, by: Int, unit: Int)
     /// A company doused its torches to march dark, or lit them again.
     case torchesSet(unit: Int, lit: Bool, owner: Int)
+    /// A company lay in wait in the blackwood, or gave it up.
+    case waitSet(unit: Int, waiting: Bool, owner: Int)
+    /// A company lying in wait sprang from the dark of the wood at `at`
+    /// upon a company of a House at war with its own.
+    case ambushSprung(unit: Int, owner: Int, at: Hex, struck: Int, struckOwner: Int)
     /// A House lit a watchfire on its own land.
     case watchfireLit(at: Hex, by: Int)
     /// A House's watchfire at `fire` made out a company of another House

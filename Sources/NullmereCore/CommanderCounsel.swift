@@ -139,6 +139,12 @@ public struct CommanderCounsel: Sendable {
         if state.isBlackwood(unit.position) && state.kindleRefusal(unit.id, as: player) == nil {
             told += ", standing in blackwood it may set alight (\(state.windSaid))"
         }
+        // Lying in wait in the wood, or where it may.
+        if state.isWaiting(unit.id) {
+            told += ", lying in wait in the wood"
+        } else if state.waitRefusal(unit.id, waiting: true, as: player) == nil {
+            told += ", in the blackwood where it may lie in wait"
+        }
         // Its torches doused: a tile slower, and seen by other Houses only close by.
         if state.isUnlit(unit.id) { told += ", marching dark, its torches doused" }
         return told
@@ -243,11 +249,11 @@ public struct CommanderCounsel: Sendable {
     public static let sightingsTold = 3
 
     /// What a commander may propose a company does.
-    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light"]
+    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait"]
 
     /// Why a commander can't put forward anything else.
     public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood "
-        + "alight), douse (its torches, to march dark) or light (its torches again)."
+        + "alight), douse (its torches, to march dark), light (its torches again) or wait (lie in wait in the blackwood, marching dark)."
 
     /// An order put to the keeper, read and weighed as the order book weighs
     /// a line: given if the realm would take it, or told why not.
@@ -259,7 +265,7 @@ public struct CommanderCounsel: Sendable {
         switch verb {
         case "march": line = "MARCH \(handle) TO \(place)"
         case "strike": line = "STRIKE \(place) WITH \(handle)"
-        case "fortify", "halt", "drill", "kindle", "douse", "light": line = "\(verb.uppercased()) \(handle)"
+        case "fortify", "halt", "drill", "kindle", "douse", "light", "wait": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,
                                    why: CommanderCounsel.onlyThese)

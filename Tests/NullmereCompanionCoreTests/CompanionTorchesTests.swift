@@ -38,4 +38,31 @@ final class CompanionTorchesTests: XCTestCase {
         XCTAssertFalse(try company().doing.contains("torches"))
         XCTAssertFalse(try mark().dark)
     }
+
+    /// Marching dark in the blackwood, a company is offered to lie in wait,
+    /// and once it waits, to stand down, as the Mac's panel offers it; out
+    /// of the wood or with its torches lit, neither.
+    func testThePhoneHasACompanyLieInWaitInTheWood() throws {
+        var state = GameState(settings: GameSettings(seedText: "waiting on the phone", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let unit = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear })
+        // Blackwood the House knows, as its keeper sees it on the phone.
+        let seen = state.view(for: me)
+        let wood = try XCTUnwrap(state.map.hexes.filter { hex in
+            seen.isCover(hex) && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        }.min { $0.distance(to: unit.position) < $1.distance(to: unit.position) })
+        state.units[try XCTUnwrap(state.unitIndex(unit.id))].position = wood
+        let wait = Command.lieInWait(unit: unit.id, waiting: true), standDown = Command.lieInWait(unit: unit.id, waiting: false)
+        func orders() throws -> [CompanionLedger.Order] {
+            try XCTUnwrap(CompanionLedger(world: state.view(for: me), player: me).companies.first { $0.id == unit.id }).orders
+        }
+        XCTAssertFalse(try orders().contains { $0.command == wait }, "Its torches lit")
+        _ = try state.perform(.torches(unit: unit.id, lit: false), as: me)
+        let offered = try orders()
+        XCTAssertTrue(offered.contains { $0.title == "Lie in wait" && $0.command == wait }, "\(offered.map(\.title))")
+        XCTAssertFalse(try orders().contains { $0.command == standDown })
+        _ = try state.perform(wait, as: me)
+        XCTAssertTrue(try orders().contains { $0.title == "Stand down" && $0.command == standDown })
+        XCTAssertFalse(try orders().contains { $0.command == wait }, "Waiting already")
+    }
 }

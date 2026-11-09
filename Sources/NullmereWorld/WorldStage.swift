@@ -1264,6 +1264,29 @@ public final class WorldStage: @unchecked Sendable {
         return (WorldStage.batches(placed), fires)
     }
 
+    /// How plainly a company of the keeper's lying in wait shows: half
+    /// seen, among the trees of the wood it hides in.
+    public static let waitingOpacity: Float = 0.55
+
+    /// The companies as a frame draws them, with the keeper's own lying in
+    /// wait (`waiting`) hidden in the wood: half seen while they stand at
+    /// rest, and seen whole the moment they spring; and the ground where
+    /// the land's growth gives way to a company's ranks, every company's
+    /// but theirs, so the wood's trees stand among the ranks of a company
+    /// lying in wait.
+    public static func lyingInWait(_ companies: [CompanyPose], waiting: Set<Int>) -> (companies: [CompanyPose], ground: Set<Hex>) {
+        var hidden = companies
+        var ground: Set<Hex> = []
+        for index in hidden.indices where hidden[index].unit >= 0 {
+            guard hidden[index].isOwn, waiting.contains(hidden[index].unit) else {
+                ground.insert(hidden[index].hex)
+                continue
+            }
+            if hidden[index].clip == .idle { hidden[index].opacity = min(hidden[index].opacity, waitingOpacity) }
+        }
+        return (hidden, ground)
+    }
+
     /// A torch's flame, linear: an open fire's, redder than a lantern's.
     public static let torchFlame = Vec3(1.0, 0.5, 0.17)
     /// Where a torch is held, in a figure's own frame before it is scaled

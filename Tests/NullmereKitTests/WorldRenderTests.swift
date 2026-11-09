@@ -899,6 +899,55 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, near / 3 + 10, "and nothing else in the view changes with them")
     }
 
+    /// A company of the keeper's marching dark in the blackwood by their
+    /// seat, standing in the clearing its ranks make among the trees; and
+    /// the same company lying in wait there, half seen among the trees,
+    /// which stand among its ranks while it waits, nothing else in the view
+    /// changed. CI keeps both, marching dark then lying in wait, as
+    /// world-ambush.png.
+    @MainActor
+    func testACompanyLyingInWaitHidesAmongTheTreesOfTheWood() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let explored = state.houses[me].explored
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear } ?? state.units(of: me).first { $0.kind.isMilitary })
+        // In the blackwood the keeper knows, nearest their seat.
+        let wood = try XCTUnwrap(state.map.hexes.filter { hex in
+            state.isCover(hex) && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && (state.map.index(of: hex).map { explored[$0] } ?? false)
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }, "Blackwood the keeper knows")
+        state.units[try XCTUnwrap(state.unitIndex(company.id))].position = wood
+        _ = try state.perform(.torches(unit: company.id, lit: false), as: me)
+        XCTAssertEqual(state.problems(), [])
+        var hidden = state
+        _ = try hidden.perform(.lieInWait(unit: company.id, waiting: true), as: me)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let dark = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("dark")))
+        let waiting = GameSession(state: hidden, store: LocalStore(directory: directory.appendingPathComponent("waiting")))
+        XCTAssertTrue(waiting.state.isWaiting(company.id), "The keeper's view knows its own company lies in wait")
+        let centre = Relief.centre(of: wood)
+        let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 110, tilt: 0.9, heading: 0.3)
+        let marching = try draw(renderer, "marching dark", camera: camera, tiles: dark.tileBytes, scene: dark.sceneFrame(at: 20))
+        let lying = try draw(renderer, "lying in wait", camera: camera, tiles: waiting.tileBytes, scene: waiting.sceneFrame(at: 20))
+        try keep([marching, lying], as: "world-ambush")
+        let at = camera.viewPoint(of: wood, height: Double(WorldRenderTests.world.relief.height(of: wood)), in: WorldRenderTests.size)
+        var near = 0, beyond = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                guard abs(marching.luminance(x, y) - lying.luminance(x, y)) > 4 else { continue }
+                // Its ground, and the edges of the hexes beside it that its ranks reach into.
+                if hypot(Double(x) - Double(at.x), Double(y) - Double(at.y)) < 280 { near += 1 } else { beyond += 1 }
+            }
+        }
+        print("RENDER ambush: \(near) points changed at the company as it lies in wait, \(beyond) beyond")
+        XCTAssertGreaterThan(near, 40, "Its ranks half seen among the trees standing on its ground")
+        XCTAssertLessThan(beyond, near / 3 + 10, "and nothing else in the view changes")
+    }
+
     /// A stretch of blackwood the keeper knows, near their seat: its heart
     /// and the wood about it burning, and the ring beyond lying as ash; and
     /// the same world unburnt.

@@ -225,6 +225,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The companies marching dark, their torches doused, by id in order;
     /// absent while every company carries its torches (`isUnlit`).
     var unlit: [Int]?
+    /// The companies lying in wait in the blackwood, by id in order;
+    /// absent while none does (`isWaiting`).
+    var waiting: [Int]?
     /// The watchfires burning in the realm (`Watchfire`); none, nil.
     var watchfires: [Watchfire]?
     /// The wind of the watch as the realm found it (`wind`): the way it

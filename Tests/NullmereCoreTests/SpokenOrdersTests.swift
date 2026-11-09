@@ -191,6 +191,39 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertTrue(["DOUSE <company>", "LIGHT <company>"].allSatisfy(SpokenOrders.forms.contains))
     }
 
+    /// An ambush from the book: WAIT has a company marching dark in the
+    /// blackwood lie in wait there, the briefing telling the model which
+    /// may and which wait; out of the wood or lit, told why not.
+    func testACompanyLiesInWaitFromTheBook() throws {
+        var state = world()
+        let me = state.player
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let unit = try XCTUnwrap(companies.first { $0.kind.isMilitary })
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == unit.id }) + 1)"
+        XCTAssertTrue(SpokenOrders.forms.contains("WAIT <company>"))
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("WAIT \(handle)", in: state, player: me).first).why,
+                       state.waitRefusal(unit.id, waiting: true, as: me)?.description, "Lit, or out of the wood")
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let seen = state.view(for: me)
+        let wood = try XCTUnwrap(state.map.hexes.filter { hex in
+            seen.isCover(hex) && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) })
+        state.units[try XCTUnwrap(state.unitIndex(unit.id))].position = wood
+        _ = try state.perform(.torches(unit: unit.id, lit: false), as: me)
+        var briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(handle): ") && $0.contains(", in the blackwood where it may lie in wait (WAIT), marching dark") },
+                      "\(briefing)")
+        let wait = try XCTUnwrap(SpokenOrders.read("wait \(handle)", in: state, player: me).first)
+        XCTAssertEqual(wait.command, .lieInWait(unit: unit.id, waiting: true))
+        XCTAssertNil(wait.why)
+        XCTAssertEqual(wait.told, "Your \(SpokenOrders.named(unit, in: state)) lie in wait in the wood.")
+        _ = try state.perform(.lieInWait(unit: unit.id, waiting: true), as: me)
+        briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(handle): ") && $0.contains(", lying in wait in the wood, marching dark") }, "\(briefing)")
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("WAIT \(handle)", in: state, player: me).first).why,
+                       RuleError.waitingAlready(true).description, "Waiting already")
+    }
+
     /// The House's dealings with the others: envoys of peace, of a pact or
     /// demanding tribute, war, gifts and offers of trade, each House named
     /// by its title or its name alone.

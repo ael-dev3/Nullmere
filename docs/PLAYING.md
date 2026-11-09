@@ -877,6 +877,19 @@ a vote on the realm's law to cast.
   facts alone; where the model can't give them (the device can't run it,
   Apple Intelligence is off, it isn't ready or fails), you are told why,
   and no words are made up in their place.
+- **Lying in wait.** Marching dark in the blackwood (not burnt to ash),
+  and not on the march, a company of war may lie in wait from its panel
+  (Lie in wait, or the phone's Army tab): the first company of a House at
+  war with yours that comes within its reach, at any pace of the watch or
+  as it turns, it springs upon at once, striking as an order to strike
+  would, and both Houses are told ("Your Spears I spring from the dark of
+  the wood by Wenholme upon House Arden's Archers II"). Only your House
+  knows it waits (VoiceOver says "lying in wait"), and in the world you
+  see it half seen among the trees, which stand among its ranks; a
+  watchfire's light makes it out like any company marching dark. Marching on, lighting its
+  torches or Stand down ends it. The order book reads WAIT <company>, and
+  a commander in counsel may put an ambush to you. Stewards lie in wait
+  for none. Rise of Kingdoms has no ambush.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own

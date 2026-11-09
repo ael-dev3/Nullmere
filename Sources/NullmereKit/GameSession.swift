@@ -1658,6 +1658,7 @@ public final class GameSession {
         case .unmarkGround: return .stand
         case .kindle: return .horn
         case .torches(_, let lit): return lit ? .order : .stand
+        case .lieInWait: return .stand
         case .watchfire: return .order
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage, .takeCrest, .bestow: return .banner
@@ -1745,6 +1746,10 @@ public final class GameSession {
         // Fire on the House's own land, or taking its companies, heard as dread.
         case .woodKindled(let at, let by, _) where by != player && state?.territoryOwner(of: at) == player: return .dread
         case .burnedInFire(_, let owner, _, _, _) where owner == player: return .dread
+        // An ambush sprung: a horn where the House's own spring from the
+        // wood, dread where a foe's spring upon its company.
+        case .ambushSprung(_, let owner, _, _, _) where owner == player: return .horn
+        case .ambushSprung(_, _, _, _, let struckOwner) where struckOwner == player: return .dread
         case .standardStruck(let standard, _, let by, _) where by != player
             && state?.standard(standard).map({ $0.alliance == state?.alliance(of: player)?.id }) == true: return .batter
         case .standardTorn(_, _, let by, _) where by == player: return .triumph
@@ -1982,6 +1987,8 @@ public final class GameSession {
             return at
         case .madeOutByWatchfire(let sighting, _, _):
             return sighting.at
+        case .ambushSprung(_, _, let at, _, _):
+            return at
         case .fireSpread(let hexes, _, _), .firesDoused(let hexes, _):
             return hexes.first
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):

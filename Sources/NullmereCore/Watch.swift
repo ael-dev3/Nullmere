@@ -85,6 +85,7 @@ extension GameState {
         // What marches dark past a watchfire as the watch turns, its light
         // makes out.
         events += keepWatchByFire()
+        events += springAmbushes()
         events += turnCalm()
         events += turnLyceum()
         events += workTheLand()

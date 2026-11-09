@@ -55,6 +55,8 @@ extension GameState {
             dark.sort()
         }
         unlit = dark.isEmpty ? nil : dark
+        // Its torches lit, it lies in wait no more.
+        if lit { stopWaiting(id) }
         if !lit { units[index].movesLeft = min(units[index].movesLeft, movement(of: units[index])) }
         return [.torchesSet(unit: id, lit: lit, owner: house)]
     }

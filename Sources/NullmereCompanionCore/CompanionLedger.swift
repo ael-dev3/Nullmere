@@ -1043,6 +1043,9 @@ public struct CompanionLedger: Equatable, Sendable {
                 // Its torches doused to march dark, or lit again, as the Mac's panel offers it.
                 ("Douse the torches", .torches(unit: unit.id, lit: false), world.torchRefusal(unit.id, lit: false, as: player) == nil),
                 ("Light the torches", .torches(unit: unit.id, lit: true), world.torchRefusal(unit.id, lit: true, as: player) == nil),
+                // Marching dark in the blackwood, it lies in wait there, or gives it up, as the Mac's panel offers it.
+                ("Lie in wait", .lieInWait(unit: unit.id, waiting: true), world.waitRefusal(unit.id, waiting: true, as: player) == nil),
+                ("Stand down", .lieInWait(unit: unit.id, waiting: false), world.waitRefusal(unit.id, waiting: false, as: player) == nil),
             ]
             // Lanterns within reach of another House's hold scout it, the
             // nearest first, as the Mac offers it, where the rules would.

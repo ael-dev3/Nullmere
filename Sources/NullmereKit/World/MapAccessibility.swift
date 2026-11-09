@@ -172,6 +172,7 @@ enum MapAccessibility {
             if unit.kind.hasTiers { parts.append("tier \(unit.tier)") }
             if state.field(of: unit.id) != nil { parts.append("in battle") }
             if state.isUnlit(unit.id) { parts.append("marching dark") }
+            if state.isWaiting(unit.id) { parts.append("lying in wait") }
             if unit.owner == player {
                 if unit.fortified { parts.append("fortified") }
                 else if unit.destination != nil { parts.append("marching") }

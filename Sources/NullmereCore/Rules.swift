@@ -96,6 +96,8 @@ extension GameState {
             return try kindle(unit, as: house)
         case let .torches(unit, lit):
             return try setTorches(unit, lit: lit, as: house)
+        case let .lieInWait(unit, waiting):
+            return try setWaiting(unit, waiting: waiting, as: house)
         case .watchfire(let hex):
             return try lightWatchfire(at: hex, as: house)
         case let .sealLetter(words, holdID):
@@ -269,6 +271,8 @@ extension GameState {
         }
         let unit = units[index]
         guard unit.position != target else { throw .alreadyThere }
+        // Ordered on, it lies in wait no more.
+        stopWaiting(unitID)
 
         // Marching onto an enemy within reach is an attack, and onto the wilds.
         if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,

@@ -758,6 +758,18 @@ struct UnitPanel: View {
                         session.perform(.torches(unit: unit.id, lit: !lit))
                     }
                     .help(lit ? UnitPanel.douseHelp : UnitPanel.lightHelp)
+                    // Marching dark in the blackwood, it may lie in wait there, or give it up.
+                    if !lit, unit.kind.isMilitary, state.isCover(unit.position) || state.isWaiting(unit.id) {
+                        let waiting = state.isWaiting(unit.id)
+                        let wait = state.waitRefusal(unit.id, waiting: !waiting, as: session.player)
+                        QuietButton(title: waiting ? "Stand down" : "Lie in wait", enabled: wait == nil,
+                                    name: waiting ? "Give up lying in wait with \(unit.kind.title)"
+                                        : "Lie in wait in the wood with \(unit.kind.title)",
+                                    why: wait?.description) {
+                            session.perform(.lieInWait(unit: unit.id, waiting: !waiting))
+                        }
+                        .help(UnitPanel.waitHelp)
+                    }
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
                     }
@@ -848,6 +860,8 @@ struct UnitPanel: View {
     static let marchingDark = "Marching dark, its torches doused: a tile less each watch, seen by other Houses only close by."
     static let douseHelp = "March dark: a tile less each watch, seen by other Houses only within a tile of what they see from"
     static let lightHelp = "Light the torches again: march at their pace, seen as far as any company"
+    /// What lying in wait does, as the button's help tells it.
+    static let waitHelp = "Lie in wait in the blackwood: spring at once upon the first company of a House at war with yours that comes within reach. Only your House knows; marching on or lighting the torches ends it."
 
     /// What a company has been sent to do beyond its march, and what it carries.
     static func errand(of unit: Unit, in state: GameState) -> String? {

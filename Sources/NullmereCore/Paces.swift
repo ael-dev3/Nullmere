@@ -70,6 +70,8 @@ extension GameState {
             stepped += walkRallies(by: now)
             // What marches dark past a watchfire, its light makes out.
             stepped += keepWatchByFire()
+            // And what lies in wait springs upon what comes within its reach.
+            stepped += springAmbushes()
             tally(stepped)
             noteDeeds(stepped)
             events += stepped

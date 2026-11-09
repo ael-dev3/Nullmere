@@ -528,6 +528,7 @@ final class GuideTests: XCTestCase {
         // Watchfires, as the rules light the ground about them.
         XCTAssertTrue(all.contains("burns 8 watches: your House sees within 2 tiles of it, and makes out there any company marching dark"), all)
         XCTAssertTrue(all.contains("Its watchman tells you of each company it makes out"), all)
+        XCTAssertTrue(all.contains("a company of war may lie in wait there: it springs upon the first company of a House at war with yours"), all)
         XCTAssertEqual(GameState.darkSight, 1)
         XCTAssertEqual(Happening.marks, [10, 25, 50])
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
@@ -736,6 +737,22 @@ final class MapAccessibilityTests: XCTestCase {
             let lit = try XCTUnwrap(items.first { $0.selection == .unit(unit.id) })
             XCTAssertFalse(lit.label.contains("marching dark"), lit.label)
         }
+    }
+
+    /// A company of the keeper's lying in wait in the blackwood is told so
+    /// by VoiceOver.
+    func testVoiceOverTellsACompanyLyingInWait() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "voiceover in the wood", houseCount: 3, radius: 16, keepers: 1))
+        let unit = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
+        let wood = try XCTUnwrap(state.map.hexes.first { state.isCover($0) && state.unit(at: $0) == nil && state.hold(at: $0) == nil })
+        state.units[try XCTUnwrap(state.unitIndex(unit.id))].position = wood
+        _ = try state.perform(.torches(unit: unit.id, lit: false), as: state.player)
+        _ = try state.perform(.lieInWait(unit: unit.id, waiting: true), as: state.player)
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let told = try XCTUnwrap(MapAccessibility.items(for: session).first { $0.selection == .unit(unit.id) })
+        XCTAssertTrue(told.label.contains("lying in wait"), told.label)
     }
 }
 

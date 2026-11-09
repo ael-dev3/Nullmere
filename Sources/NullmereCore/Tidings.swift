@@ -806,6 +806,23 @@ extension GameState {
             let foe = stance(by, sighting.owner) == .war
             return Tidings("Your watchfire \(placeName(of: fire)) makes out \(company), \(GameState.counted(sighting.troops)), "
                            + "marching dark \(placeName(of: sighting.at)).", foe ? .bad : .neutral)
+        case .waitSet(let id, let waiting, let owner):
+            guard owner == viewer, let unit = unit(id) else { return nil }
+            return waiting
+                ? Tidings("Your \(named(unit)) lie in wait in the wood \(placeName(of: unit.position)): they spring upon the first foe "
+                          + "that comes within their reach.", .neutral)
+                : Tidings("Your \(named(unit)) no longer lie in wait \(placeName(of: unit.position)).", .neutral)
+        case .ambushSprung(let id, let owner, let at, let struck, let struckOwner):
+            guard houses.indices.contains(owner), houses.indices.contains(struckOwner) else { return nil }
+            let springing = unit(id).map(named) ?? "company"
+            let fallenOn = unit(struck).map(named) ?? "company"
+            if owner == viewer {
+                return Tidings("Your \(springing) spring from the dark of the wood \(placeName(of: at)) upon "
+                               + "\(houses[struckOwner].title)'s \(fallenOn).", .good)
+            }
+            guard struckOwner == viewer else { return nil }
+            return Tidings("\(houses[owner].title)'s \(springing) spring upon your \(fallenOn) from the dark of the wood "
+                           + "\(placeName(of: at)).", .bad)
         case .torchesSet(let id, let lit, let owner):
             guard owner == viewer, let unit = unit(id) else { return nil }
             let who = "Your \(named(unit)) \(placeName(of: unit.position))"

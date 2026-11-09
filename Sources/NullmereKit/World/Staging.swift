@@ -148,8 +148,10 @@ extension GameSession {
         }
         let storehouses = stage.storehouses(storehouseSights.filter { inView($0.hex, within: GameSession.holdReach) }, time: t, into: &frame)
 
-        // The companies in sight, and the fallen.
-        let poses = companyPoses(at: now, animated: full, time: time)
+        // The companies in sight, and the fallen; the keeper's own lying in
+        // wait hidden in the wood, half seen among its trees.
+        let posed = companyPoses(at: now, animated: full, time: time)
+        let (poses, companyGround) = WorldStage.lyingInWait(posed, waiting: Set(posed.filter { $0.isOwn && state.isWaiting($0.unit) }.map(\.unit)))
         let companies = stage.companies(poses.filter { inView($0.hex, within: GameSession.companyReach) }, houses: houses, into: &frame)
 
         // The land's sites the keeper knows, its holy sites and the lairs of
@@ -226,8 +228,8 @@ extension GameSession {
         let barges = stage.barges(state.crossingsUnderWay.map { barge in
             (from: barge.pushOff, to: barge.landing, progress: GameSession.watchProgress(state))
         }, time: t)
-        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position)
-                           + state.watchfiresBurning.map(\.at))
+        let standing = companyGround.union(sites.map(\.position) + found.map(\.position) + flags.map(\.position)
+                                           + state.watchfiresBurning.map(\.at))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)),
                                       burnt: state.ash)

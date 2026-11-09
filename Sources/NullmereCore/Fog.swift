@@ -89,6 +89,8 @@ extension GameState {
             return !dark.contains(unit.id) || close[index]
         })
         view.unlit = unlit.map { all in all.filter { view.unit($0) != nil } }.flatMap { $0.isEmpty ? nil : $0 }
+        // Only its own House knows a company lies in wait.
+        view.waiting = waiting.map { all in all.filter { view.unit($0)?.owner == house } }.flatMap { $0.isEmpty ? nil : $0 }
         // A company in sight shows where it stands and how many it is, not
         // where it is bound, nor what it is about or carries, nor whether it
         // drills.
@@ -488,6 +490,12 @@ extension GameState {
             case .torchesSet(_, _, let owner):
                 // Torches doused or lit, its own House alone is told.
                 return owner == house
+            case .waitSet(_, _, let owner):
+                // Lying in wait, its own House alone is told.
+                return owner == house
+            case .ambushSprung(_, let owner, _, _, let struckOwner):
+                // Sprung, the House that sprang it and the House it fell on.
+                return owner == house || struckOwner == house
             case .watchfireLit:
                 // A watchfire, the whole realm sees.
                 return true
