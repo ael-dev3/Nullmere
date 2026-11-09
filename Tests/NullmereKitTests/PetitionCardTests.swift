@@ -37,7 +37,8 @@ final class PetitionCardTests: XCTestCase {
     private var shown: [String] { PressableButtons.actions.keys.sorted() }
 
     /// A keeper's House whose seat's ward is broken, its masons at the gate.
-    private func session(stock: Stock = Stock(grain: 500, timber: 500, stone: 500, moonsalt: 50)) throws -> (GameSession, PleaLink, Petition) {
+    private func session(stock: Stock = Stock(grain: 500, timber: 500, stone: 500, moonsalt: 50),
+                         voice: (any Voice)? = nil) throws -> (GameSession, PleaLink, Petition) {
         var state = GameState(settings: GameSettings(seedText: "a plea at the gate", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         state.watch = Petition.from
@@ -48,7 +49,7 @@ final class PetitionCardTests: XCTestCase {
         let petition = try XCTUnwrap(state.petition(of: me))
         let link = PleaLink()
         let session = GameSession(link: link, house: me, world: state.view(for: me),
-                                  store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
+                                  store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)), voice: voice)
         session.dismissSeatBriefing()
         return (session, link, petition)
     }
@@ -111,6 +112,58 @@ final class PetitionCardTests: XCTestCase {
         PressableButtons.forget("Turn away")
         draw(PetitionCard(session: quiet))
         XCTAssertFalse(PressableButtons.press("Turn away"))
+    }
+
+    /// The petitioner's words still being asked of the model when the plea
+    /// is answered are stopped there, the model free at once for what still
+    /// waits; and words a voice gives all the same once stopped are not kept.
+    func testThePetitionersWordsAreStoppedWhenThePleaIsAnswered() async throws {
+        let (session, link, petition) = try session(voice: Patient())
+        let key = GameSession.Spoken.petition(petition.id)
+        XCTAssertEqual(session.voicing?.key, key, "The model asked for the petitioner's words as the plea comes")
+        XCTAssertTrue(session.stillVoiced(key))
+        var answered = session.state
+        let events = try answered.perform(.answerPetition(petition.id, grant: false), as: session.player)
+        let turnedAway = Date()
+        link.onEvent?(.settled(answered, events))
+        XCTAssertFalse(session.stillVoiced(key), "Its plea gone from the gate")
+        XCTAssertTrue(session.stillVoiced(.chronicle(0)), "What the chronicle tells stays")
+        let deadline = Date().addingTimeInterval(5)
+        while session.voicing?.key == key, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertNotEqual(session.voicing?.key, key, "The asking stopped once the plea was answered")
+        XCTAssertLessThan(Date().timeIntervalSince(turnedAway), 2, "At once, not when the model would have answered")
+        XCTAssertNil(session.spoken[key])
+        XCTAssertNil(session.unvoiced[key], "A plea answered gives no reason the model was silent")
+
+        // A voice that answers all the same once stopped: nothing of it kept.
+        let (other, otherLink, plea) = try self.session(voice: Stubborn())
+        let asked = GameSession.Spoken.petition(plea.id)
+        XCTAssertEqual(other.voicing?.key, asked)
+        var gone = other.state
+        let granted = try gone.perform(.answerPetition(plea.id, grant: true), as: other.player)
+        otherLink.onEvent?(.settled(gone, granted))
+        let later = Date().addingTimeInterval(5)
+        while other.voicing?.key == asked, Date() < later { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertNotEqual(other.voicing?.key, asked)
+        XCTAssertNil(other.spoken[asked], "Words for a plea no longer at the gate are not kept")
+    }
+}
+
+/// Gives the petitioner words only after a long while, and none once stopped.
+private struct Patient: Voice {
+    func speak(_ moment: VoiceMoment) async -> String? {
+        try? await Task.sleep(for: .seconds(8))
+        return Task.isCancelled ? nil : "We would mend it, keeper, if you let us."
+    }
+}
+
+/// Gives the petitioner words a moment on, stopped or not.
+private struct Stubborn: Voice {
+    func speak(_ moment: VoiceMoment) async -> String? {
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { done.resume() }
+        }
+        return "We would mend it, keeper."
     }
 }
 

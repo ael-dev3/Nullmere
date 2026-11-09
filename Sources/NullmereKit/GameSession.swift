@@ -520,6 +520,9 @@ public final class GameSession {
     private var voiceQueue: [(Spoken, VoiceMoment)] = []
     private var asked: Set<Spoken> = []
     private var isSpeaking = false
+    /// The asking of the model now under way, to stop it once what it
+    /// speaks for has gone from before the keeper.
+    @ObservationIgnored private var speakingTask: Task<Void, Never>?
 
     /// Whether any character is still to speak, or speaking.
     /// Words still to be asked for or spoken: for tests to wait on.
@@ -1528,6 +1531,7 @@ public final class GameSession {
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
         refreshPathPreview()
+        stopVoiceGone()
         askVoices()
         noteStepsInWorld()
     }
@@ -2601,31 +2605,52 @@ public final class GameSession {
     private func speakNext() {
         guard !isSpeaking, let voice, !voiceQueue.isEmpty else { return }
         let (key, moment) = voiceQueue.removeFirst()
-        if case .envoy(let id) = key, !state.envoys.contains(where: { $0.id == id }) {
-            speakNext()
-            return
-        }
-        // A plea answered or withdrawn before its turn is not voiced.
-        if case .petition(let id) = key, state.petition(of: player)?.id != id {
+        // An envoy answered or gone, or a plea answered or withdrawn, before
+        // its turn is not voiced.
+        guard stillVoiced(key) else {
             speakNext()
             return
         }
         isSpeaking = true
         voicing = (key, Date())
-        Task { [weak self] in
+        speakingTask = Task { [weak self] in
             let heard = await voice.speaking(moment)
             guard let self else { return }
             self.voicing = nil
-            if let words = heard.words {
-                withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
-                self.unvoiced[key] = nil
-                self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
-            } else if let trouble = heard.trouble {
-                self.unvoiced[key] = trouble.unvoiced
+            self.speakingTask = nil
+            // Stopped because what it spoke for has gone: nothing of it kept.
+            if !Task.isCancelled {
+                if let words = heard.words {
+                    withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
+                    self.unvoiced[key] = nil
+                    self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
+                } else if let trouble = heard.trouble {
+                    self.unvoiced[key] = trouble.unvoiced
+                }
             }
             self.isSpeaking = false
             self.speakNext()
         }
+    }
+
+    /// Whether what a voice speaks for is still before the keeper: an
+    /// envoy still waiting on its answer, a plea still at the gate; the
+    /// rest (what the Still showed, a prisoner's word, the lake's riddle,
+    /// the chronicle) stays.
+    func stillVoiced(_ key: Spoken) -> Bool {
+        switch key {
+        case .envoy(let id): return state.envoys.contains { $0.id == id }
+        case .petition(let id): return state.petition(of: player)?.id == id
+        default: return true
+        }
+    }
+
+    /// The model asked for words for someone the realm has since taken from
+    /// before the keeper (an envoy answered or gone, a plea answered or
+    /// withdrawn) is stopped there, so its time goes to what still waits.
+    private func stopVoiceGone() {
+        guard let key = voicing?.key, !stillVoiced(key) else { return }
+        speakingTask?.cancel()
     }
 
     private func refreshReach() {
