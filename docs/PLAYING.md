@@ -1694,7 +1694,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   foremost, the charges kept, every deed, might and renown; and Words (7).
   The Chronicle switches to the House's battle reports: each battle and
   each blow on the wilds, how it came out, who struck whom, the blows and
-  the fallen. A small map of the whole lake, on the rail's Map; a click
+  the fallen, its two sides pictured above it, painted from the world's own
+  models as the panels' portraits are: your side first, against the foe's,
+  each by up to three of its companies (each kind of each House once, the
+  most troops first) in their Houses' colours and their peoples' ways, a
+  hold whose ward was struck by its keep, the wilds and their lairs as the
+  world draws them. A small map of the whole lake, on the rail's Map; a click
   there carries the view. Training chooses the tier; an enemy hold's panel
   calls a rally against it; a company says its tier, its commander and what
   it was sent to do;

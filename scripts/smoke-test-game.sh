@@ -16,7 +16,8 @@
 # Apple's on-device model where this Mac's can be asked, or why none came
 # where it can't, as on CI's virtual Macs; and forty watches more on, the
 # commander who led in the House's latest battle asked of it, as from its
-# report, or the House's reports where none names one (which, kept in
+# report, beside the House's reports with their two sides painted, or the
+# reports alone where none names one (which, kept in
 # build/game-counsel-battle.log).
 #
 #   swift build && scripts/smoke-test-game.sh

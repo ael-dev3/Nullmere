@@ -635,19 +635,21 @@ public final class GameSession {
 
     /// Counsel asked of the latest battle a commander of the House led in,
     /// as from its report, for CI to photograph after the House has been
-    /// played a while (NULLMERE_SHOW=battlecounsel); with no such battle,
-    /// the House's reports shown instead, as the Chronicle keeps them, to
-    /// say why. Which, said on the game's output at once (`Reporting`), as
-    /// the smoke test reads it.
+    /// played a while (NULLMERE_SHOW=battlecounsel), the House's reports
+    /// open beside it as the Chronicle keeps them; with no such battle, the
+    /// reports alone, to say why. Which, said on the game's output at once
+    /// (`Reporting`), as the smoke test reads it.
     func askOfABattleToBeSeen() {
+        // The House's reports open on the rail, where the keeper asks from,
+        // their sides painted, beside counsel where it is taken.
+        chronicleOpensOn = .reports
+        panel = .chronicle
         if let report = reports.first(where: { askable(of: $0) != nil }), let commander = askable(of: report) {
             Reporting.say("Counsel asked of a battle: \(commander.name), \(CommanderCounsel.askedOf(report))")
             ask(of: report)
         } else {
             Reporting.say("Counsel asked of no battle: none of the House's \(reports.count) reports names a commander free to speak; "
                 + "its reports shown instead")
-            chronicleOpensOn = .reports
-            panel = .chronicle
         }
     }
     #endif

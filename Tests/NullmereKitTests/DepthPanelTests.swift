@@ -1986,6 +1986,11 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(ReportList.side(report.sides[1]), "The foe: 1 company, 1,000 troops; 700 lost, 1 company fallen")
         XCTAssertEqual(ReportList.side(BattleReport.Side(title: "The foe", houses: 2, companies: 3, troops: 3_000, lost: 900, fallen: 2)),
                        "The foe: 3 companies of 2 Houses, 3,000 troops; 900 lost, 2 companies fallen")
+        // Its two sides pictured, the House's own first, each in its own colours.
+        XCTAssertEqual(report.faces, [[BattleReport.Face(.company(company.kind, tier: company.tier), of: me)],
+                                      [BattleReport.Face(.company(theirs.kind, tier: theirs.tier), of: foe)]])
+        XCTAssertEqual(ReportFaces.key(of: report.faces[0][0], in: session.state),
+                       .company(company.kind, tier: company.tier, heritage: session.state.heritage(of: me)))
         XCTAssertEqual(Narration.line(for: .fieldEnded(over), in: session.state, viewer: me)?.tone, .good)
         draw(ChroniclePanel(session: session, showingReports: true), width: 400)
 
@@ -1995,6 +2000,21 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.place(of: joined, in: state), company.position)
         XCTAssertEqual(GameSession.place(of: .fieldEnded(over), in: state), company.position)
         XCTAssertTrue(GameSession.isRealmsToTell(joined) && GameSession.isRealmsToTell(.fieldEnded(over)))
+    }
+
+    /// A report's faces painted from the models the world draws them with: a
+    /// company of its House's people at its tier, that people's keep for a
+    /// hold, the wilds by their level's look, a lair as it stands.
+    func testAReportsFacesArePaintedFromTheWorldsOwnModels() {
+        typealias Face = BattleReport.Face
+        let state = GameState(settings: GameSettings(seedText: "report faces", houseCount: 3, radius: 14))
+        let heritage = state.heritage(of: 1)
+        XCTAssertEqual(ReportFaces.key(of: Face(.company(.spear, tier: 2), of: 1), in: state), .company(.spear, tier: 2, heritage: heritage))
+        XCTAssertEqual(ReportFaces.key(of: Face(.company(.bow, tier: 1), of: nil), in: state), .figure(.bow, tier: 1))
+        XCTAssertEqual(ReportFaces.key(of: Face(.hold(seat: true), of: 1), in: state), .keepOf(heritage, seat: true))
+        XCTAssertEqual(ReportFaces.key(of: Face(.hold(seat: false), of: nil), in: state), .keep(seat: false))
+        XCTAssertEqual(ReportFaces.key(of: Face(.wild(.reavers, level: 5), of: nil), in: state), .wild(tier: 2))
+        XCTAssertEqual(ReportFaces.key(of: Face(.lair(.drowned), of: nil), in: state), .lair(.drowned))
     }
 
     // MARK: City life

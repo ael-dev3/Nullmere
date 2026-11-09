@@ -258,10 +258,14 @@ final class CounselSheetTests: XCTestCase {
         draw(CounselSheet(session: session, counsel: counsel))
         session.closeCounsel()
 
-        // The photograph after a while asks of that battle, as from its report.
+        // The photograph after a while asks of that battle, as from its
+        // report, the House's reports open beside it.
         session.askOfABattleToBeSeen()
         XCTAssertEqual(session.commanderCounsel?.counsel.battles.map(\.id), [report.id])
+        XCTAssertEqual(session.panel, .chronicle)
+        XCTAssertEqual(session.chronicleOpensOn, .reports)
         session.closeCounsel()
+        session.panel = nil
 
         // A report naming none of the House's commanders offers no one.
         var plain = report

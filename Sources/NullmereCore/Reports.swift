@@ -40,6 +40,34 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
     /// the report was filed: who may be asked of it in counsel, and whose
     /// counsel remembers it.
     public var led: [String] = []
+    /// Who stood on each side, as the report pictures them: the House's own
+    /// side first and the foe's second, a few faces each, the most troops
+    /// first; none for a scouting.
+    public var faces: [[Face]] = []
+
+    /// One face of a side in a report's picture: a company as it fought, in
+    /// its House's colours; a hold whose ward was struck; a company of the
+    /// wilds; or a lair of theirs.
+    public struct Face: Equatable, Sendable {
+        public enum Look: Equatable, Sendable {
+            case company(UnitKind, tier: Int)
+            case hold(seat: Bool)
+            case wild(WildKind, level: Int)
+            case lair(WildKind)
+        }
+
+        public let look: Look
+        /// The House whose colours and people it is of; nil for the wilds.
+        public let house: Int?
+
+        public init(_ look: Look, of house: Int?) {
+            self.look = look
+            self.house = house
+        }
+    }
+
+    /// The faces a side is pictured by, at most.
+    public static let facesShown = 3
 
     /// A side of a field of battle, as a report counts it.
     public struct Side: Equatable, Sendable {
@@ -68,6 +96,26 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
 
     /// The keeper's own companies told one by one in a field's report.
     public static let companiesTold = 6
+
+    /// A side's faces out of its companies' in the order given: each kind of
+    /// each House once, at most `facesShown`.
+    static func faces(_ all: [Face]) -> [Face] {
+        var shown: [Face] = []
+        for face in all where !shown.contains(where: { $0.isLike(face) }) {
+            shown.append(face)
+            if shown.count == facesShown { break }
+        }
+        return shown
+    }
+}
+
+extension BattleReport.Face {
+    /// The same kind of thing of the same House, whatever a company's tier.
+    func isLike(_ other: Self) -> Bool {
+        guard house == other.house else { return false }
+        if case .company(let kind, _) = look, case .company(let theirs, _) = other.look { return kind == theirs }
+        return look == other.look
+    }
 }
 
 extension GameState {
@@ -128,6 +176,10 @@ extension GameState {
         report.sides = [told(side, "Your side"), told(foe, "The foe")]
         var named = Set<String>()
         report.led = own.compactMap(\.leader).filter { named.insert($0).inserted }
+        report.faces = [side, foe].map { side in
+            BattleReport.faces(field.fighters(of: side).sorted { ($0.troops, $1.unit) > ($1.troops, $0.unit) }
+                .map { BattleReport.Face(.company($0.kind, tier: $0.tier), of: $0.owner) })
+        }
         return report
     }
 
@@ -158,6 +210,15 @@ extension GameState {
         var report = BattleReport(id: id, watch: watch, title: "\(striker) struck \(struck)", place: placeName(of: battle.at),
                                   outcome: outcome, lines: lines)
         report.led = leaders(of: attacking ? battle.attacker : battle.defender)
+        let striking = [face(of: battle.attacker, kind: battle.attackerKind, owner: battle.attackerOwner)]
+        let standing: [BattleReport.Face]
+        if let kind = battle.defenderKind {
+            standing = [face(of: battle.defender, kind: kind, owner: battle.defenderOwner)]
+        } else {
+            let seat = battle.hold.flatMap { hold($0) }.map { $0.isSeat && $0.owner == battle.defenderOwner } ?? false
+            standing = [BattleReport.Face(.hold(seat: seat), of: battle.defenderOwner)]
+        }
+        report.faces = attacking ? [striking, standing] : [standing, striking]
         return report
     }
 
@@ -175,6 +236,8 @@ extension GameState {
         var report = BattleReport(id: id, watch: watch, title: "Your \(hunt.attackerKind.title) struck \(hunt.wildKind.named(level: hunt.level))",
                                   place: placeName(of: hunt.at), outcome: outcome, lines: lines)
         report.led = leaders(of: hunt.attacker)
+        report.faces = [[face(of: hunt.attacker, kind: hunt.attackerKind, owner: hunt.attackerOwner)],
+                        [BattleReport.Face(.wild(hunt.wildKind, level: hunt.level), of: nil)]]
         return report
     }
 
@@ -244,7 +307,16 @@ extension GameState {
                                   place: placeName(of: assault.at), outcome: outcome, lines: lines)
         var named = Set<String>()
         report.led = assault.strikes.filter { $0.owner == viewer }.flatMap { leaders(of: $0.unit) }.filter { named.insert($0).inserted }
+        let host = assault.strikes.filter { $0.owner == viewer } + assault.strikes.filter { $0.owner != viewer }
+        report.faces = [BattleReport.faces(host.map { face(of: $0.unit, kind: $0.kind, owner: $0.owner) }),
+                        [BattleReport.Face(.lair(assault.kind), of: nil)]]
         return report
+    }
+
+    /// A company's face in a report: its kind and its tier as it now stands
+    /// (a company gone is pictured at the first), in its House's colours.
+    func face(of unit: Int?, kind: UnitKind, owner: Int) -> BattleReport.Face {
+        BattleReport.Face(.company(kind, tier: unit.flatMap { self.unit($0)?.tier } ?? 1), of: owner)
     }
 
     /// The commanders at the head of a company as the world now stands, by

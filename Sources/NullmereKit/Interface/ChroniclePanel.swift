@@ -1,4 +1,5 @@
 import NullmereCore
+import NullmereModels
 import SwiftUI
 
 /// The lake's history, newest first; the House's own battle reports; or
@@ -154,6 +155,11 @@ struct ReportList: View {
                                     .foregroundStyle(Palette.text(0.5))
                                     .lineLimit(1)
                             }
+                            // Its two sides in the world's own likenesses.
+                            if report.faces.count == 2 {
+                                ReportFaces(faces: report.faces, state: session.state)
+                                    .padding(.vertical, 2)
+                            }
                             Text(verbatim: report.title)
                                 .font(.nm(11.5, weight: .medium))
                                 .foregroundStyle(Palette.text(0.9))
@@ -292,5 +298,53 @@ struct Songbook: View {
         let entry = state.chronicle[ballad.entry]
         let deed = entry.text.count > 70 ? String(entry.text.prefix(70)) + "…" : entry.text
         return "\(who), of the \(SeatBriefing.ordinal(entry.watch)) watch: \(deed)"
+    }
+}
+
+/// A report's two sides painted from the world's own models, as Rise of
+/// Kingdoms' reports picture the armies: the House's own side first, then
+/// the foe's, each by a few of its companies in their Houses' colours, a
+/// hold whose ward was struck, or the wilds. For the eye alone: the report's
+/// words beneath say who fought.
+struct ReportFaces: View {
+    let faces: [[BattleReport.Face]]
+    let state: GameState
+
+    /// Each face's side in points.
+    static let size: CGFloat = 30
+
+    var body: some View {
+        HStack(spacing: 7) {
+            side(faces[0])
+            Caps("against", size: 7.5).foregroundStyle(Palette.text(0.4))
+            side(faces[1])
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func side(_ faces: [BattleReport.Face]) -> some View {
+        HStack(spacing: 3) {
+            ForEach(faces.indices, id: \.self) { index in
+                let face = faces[index]
+                Portrait(key: Self.key(of: face, in: state), colour: face.house.flatMap { Portrait.colour(of: $0, in: state) },
+                         size: Self.size)
+            }
+        }
+    }
+
+    /// The model a face is painted from: a company of its House's people at
+    /// its tier, its people's keep for a hold, the wilds as the world draws
+    /// them.
+    static func key(of face: BattleReport.Face, in state: GameState) -> ModelKey {
+        switch face.look {
+        case .company(let kind, let tier):
+            return face.house.map { .company(kind, tier: tier, heritage: state.heritage(of: $0)) } ?? .figure(kind, tier: tier)
+        case .hold(let seat):
+            return face.house.map { .keepOf(state.heritage(of: $0), seat: seat) } ?? .keep(seat: seat)
+        case .wild(_, let level):
+            return .wild(tier: GameSession.wildTier(of: level))
+        case .lair(let kind):
+            return .lair(kind)
+        }
     }
 }
