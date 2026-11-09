@@ -105,8 +105,8 @@ final class PetitionCardTests: XCTestCase {
                            session.state.tidings(of: event, for: session.player)?.text)
         }
         // None waiting, nothing drawn.
-        let state = GameState(settings: GameSettings(seedText: "no plea", houseCount: 4, radius: 18, keepers: 1))
-        let quiet = GameSession(link: PleaLink(), house: state.player, world: state.view(for: state.player),
+        let plain = GameState(settings: GameSettings(seedText: "no plea", houseCount: 4, radius: 18, keepers: 1))
+        let quiet = GameSession(link: PleaLink(), house: plain.player, world: plain.view(for: plain.player),
                                 store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
         PressableButtons.forget("Turn away")
         draw(PetitionCard(session: quiet))
