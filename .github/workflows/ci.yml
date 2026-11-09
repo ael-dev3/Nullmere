@@ -314,36 +314,15 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      # Every screenshot, the launcher's among them, is kept full size on the
+      # ci-shots branch (above); small copies of the game's are printed here
+      # too. No job is set apart to print them: jobs that test nothing, made
+      # once this one ends, decided the run's verdict all the same, and in
+      # run 877 GitHub never made four of the six, so a run whose every
+      # check passed was marked failed.
       - name: Print small screenshots
         if: always()
         run: |
-          # The launcher's screens, larger, are printed by the job after this
-          # one, in a log of their own that is never trimmed.
-          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png; do
-            if [ -s "$shot" ]; then
-              sips -s format jpeg -s formatOptions 65 -Z 900 "$shot" --out "${shot%.png}-print.jpg" >/dev/null
-            fi
-          done
-          # The realm's front door, small enough that the end of the next
-          # job's log, where it is printed last, can be read in one piece.
-          if [ -s build/launcher-play.png ]; then
-            sips -s format jpeg -s formatOptions 30 -Z 480 build/launcher-play.png --out build/door-small.jpg >/dev/null
-          fi
-          # The game's screens, small, each printed last in a log of its own
-          # by the job after this one, so the tail of that log holds it whole.
-          # Small enough, its colour profile dropped, that the tail of that
-          # log holds the whole of it.
-          for shot in build/game-plain.png build/game-world.png build/game-later.png build/game-network.png build/game-lakes.png; do
-            if [ -s "$shot" ]; then
-              # The world's own views large enough to judge its light and
-              # water by; the others small.
-              case "$shot" in
-                build/game-world.png|build/game-later.png|build/game-lakes.png) size=1200; quality=60 ;;
-                *) size=400; quality=28 ;;
-              esac
-              sips -s format jpeg -s formatOptions "$quality" -Z "$size" --deleteColorManagementProperties "$shot" --out "${shot%.png}-review.jpg" >/dev/null
-            fi
-          done
           for shot in build/game-world.png build/game-plain.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png build/game-lakes-no-land.png build/game-lakes-no-furniture.png build/game-lakes-no-models.png build/game-lakes-no-water.png build/game-lakes-no-motes.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
@@ -376,24 +355,6 @@ jobs:
             base64 -i build/icon-small.jpg | fold -w 120
             echo "::endgroup::"
           fi
-
-      - name: Keep the launcher's screens for printing
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: launcher-screens
-          path: |
-            build/*-print.jpg
-            build/door-small.jpg
-          if-no-files-found: warn
-
-      - name: Keep the game's screens for printing
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: game-screens
-          path: build/*-review.jpg
-          if-no-files-found: warn
 
       # The world's frames, small: a line each, before the summary so the
       # summary stays at the log's foot.
@@ -626,71 +587,6 @@ jobs:
       - name: Texts measured
         if: always()
         run: grep -hoE "UITEXT.*" build/ui-test.log 2>/dev/null | cut -c1-150 | sort -u | head -n 110 || true
-
-  # The launcher's screens, printed where the long macOS log can't trim
-  # them, for readers without access to the artifacts.
-  screens:
-    name: Launcher screens
-    needs: macos
-    # Only once the Mac job ran: when no macOS runner took it (GitHub's
-    # arm64 capacity, runs 551 and 553) there are no screens to print.
-    if: ${{ always() && (needs.macos.result == 'success' || needs.macos.result == 'failure') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/download-artifact@v6
-        with:
-          name: launcher-screens
-          path: screens
-        continue-on-error: true
-      - name: Print the launcher's screens
-        run: |
-          for shot in screens/*-print.jpg; do
-            [ -s "$shot" ] || continue
-            name="$(basename "$shot" -print.jpg)"
-            echo "::group::Screenshot build/$name.png, base64 JPEG"
-            base64 -w 120 "$shot"
-            echo "::endgroup::"
-          done
-          # The realm's front door once more, small and last of all, so the
-          # end of the log holds it whole.
-          if [ -s screens/door-small.jpg ]; then
-            echo "::group::Screenshot build/launcher-play.png, small, base64 JPEG"
-            base64 -w 120 screens/door-small.jpg
-            echo "::endgroup::"
-          fi
-
-  # The game's screens, one to a log and last in it, small enough that the
-  # log's tail holds the whole of it: for judging how much of the world the
-  # interface leaves in view, by readers without access to the artifacts.
-  game-screens:
-    name: Game screen ${{ matrix.screen }}
-    needs: macos
-    # Only once the Mac job ran: when no macOS runner took it (GitHub's
-    # arm64 capacity, runs 551 and 553) there are no screens to print.
-    if: ${{ always() && (needs.macos.result == 'success' || needs.macos.result == 'failure') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        screen: [game-plain, game-world, game-later, game-network, game-lakes]
-    steps:
-      - uses: actions/download-artifact@v6
-        with:
-          name: game-screens
-          path: screens
-        continue-on-error: true
-      - name: Print the screen
-        run: |
-          shot="screens/${{ matrix.screen }}-review.jpg"
-          if [ -s "$shot" ]; then
-            echo "::group::Screenshot build/${{ matrix.screen }}.png, small, base64 JPEG"
-            base64 -w 120 "$shot"
-            echo "::endgroup::"
-          else
-            echo "No ${{ matrix.screen }} screen this run."
-          fi
 
   # The rules and the realm on Linux, where the steward runs; then the realm
   # module published to a real SpacetimeDB server, the steward taking it up,
