@@ -240,25 +240,9 @@ public struct OnDeviceVoice: Voice {
         return GameState.sung(lines.prefix(GameState.balladLines.upperBound).joined(separator: "\n"))?.joined(separator: "\n")
     }
 
-    /// Trims what models like to add: quotes, a speaker's name, stray lines.
-    static func clean(_ text: String) -> String? {
-        var line = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let firstBreak = line.firstIndex(of: "\n") {
-            line = String(line[..<firstBreak])
-        }
-        // "Envoy: …" or "The Chronicler: …"
-        if let colon = line.firstIndex(of: ":"), line[..<colon].split(separator: " ").count <= 3 {
-            line = String(line[line.index(after: colon)...])
-        }
-        line = line.trimmingCharacters(in: CharacterSet(charactersIn: "\"“”'‘’ ").union(.whitespaces))
-        line = line.replacingOccurrences(of: "!", with: ".")
-        guard line.count >= 8 else { return nil }
-        if line.count > 280 {
-            let cut = line.prefix(280)
-            line = (cut.lastIndex(of: ".").map { String(cut[...$0]) }) ?? String(cut) + "…"
-        }
-        return line
-    }
+    /// Trims what models like to add: quotes, a speaker's name, stray
+    /// lines; as the phone holds its own model's words (`Voicing.cleaned`).
+    static func clean(_ text: String) -> String? { Voicing.cleaned(text) }
 }
 
 enum VoiceFacts {

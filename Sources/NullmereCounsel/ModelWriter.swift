@@ -65,20 +65,31 @@ public struct ModelWriter: Sendable {
 
     /// The words for a House's dead, from its count of its fallen and where
     /// and when its reports say they fell, in `world`, the keeper's view.
+    /// They go to the realm with the vigil, so they are held to the words
+    /// the realm carries (`Envoy.carried`).
     public func write(for house: Int, in world: GameState, reports: [BattleReport]) async -> Written {
-        await write(Voicing.Moment(task: GameState.vigilWordsAsked, facts: world.vigilFacts(of: house, reports: reports)))
+        await write(Voicing.Moment(task: GameState.vigilWordsAsked, facts: world.vigilFacts(of: house, reports: reports))) { answer in
+            Envoy.carried(answer.trimmingCharacters(in: CharacterSet(charactersIn: "\"“”'‘’*").union(.whitespacesAndNewlines)))
+        }
     }
 
-    /// The words of a moment: asked of the model as `moment.prompt`, timed,
-    /// held to the words the realm carries.
+    /// The words of one of the realm's characters: asked of the model as
+    /// `moment.prompt`, timed, held as the Mac holds its voices' words
+    /// (`Voicing.cleaned`); they stay on the device.
     public func write(_ moment: Voicing.Moment) async -> Written {
+        await write(moment, held: Voicing.cleaned)
+    }
+
+    /// The asking itself, the answer held as `held` holds it: nil for no
+    /// words worth the name.
+    private func write(_ moment: Voicing.Moment, held: (String) -> String?) async -> Written {
         if let trouble = trouble() { return Written(words: nil, trouble: trouble, seconds: nil) }
         let prompt = moment.prompt
         let began = Date()
         do {
             let answer = try await OrderClerk.within(patience) { [respond] in try await respond(prompt) }
             if Task.isCancelled { return .stopped }
-            let words = Envoy.carried(answer.trimmingCharacters(in: CharacterSet(charactersIn: "\"“”'‘’*").union(.whitespacesAndNewlines)))
+            let words = held(answer)
             return Written(words: words, trouble: words == nil ? .garbled : nil, seconds: Date().timeIntervalSince(began))
         } catch {
             if Task.isCancelled || error is CancellationError { return .stopped }

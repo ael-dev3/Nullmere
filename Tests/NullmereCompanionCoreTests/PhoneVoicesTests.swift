@@ -56,6 +56,19 @@ final class PhoneVoicesTests: XCTestCase {
         XCTAssertTrue(state.voicedMoments(for: envoy.from).isEmpty)
     }
 
+    /// A character's words held alike on the Mac and the phone: the first
+    /// line, no speaker's name or quotes, no exclamations, nothing too short
+    /// to be words, and a long answer cut at a full stop within 280.
+    func testACharactersWordsAreHeldAlikeOnBothDevices() {
+        XCTAssertEqual(Voicing.cleaned("Envoy: “We come in peace, keeper!”\nAnd more besides."), "We come in peace, keeper.")
+        XCTAssertNil(Voicing.cleaned("  “Yes.”  "), "Too short to be words")
+        let long = String(repeating: "The water keeps them all. ", count: 20)
+        let held = Voicing.cleaned(long)
+        XCTAssertLessThanOrEqual(held?.count ?? 0, 280)
+        XCTAssertEqual(held?.last, ".", "Cut at a full stop")
+        XCTAssertEqual(Voicing.cleaned("The Lake: the black water saw a host by Wenholme"), "the black water saw a host by Wenholme")
+    }
+
     func testThePhonesLedgerNamesEachByItsKeyAndShowsTheStillsDreams() throws {
         let (state, me, envoy, keepers, prisoner) = try world()
         let ledger = CompanionLedger(world: state.view(for: me), player: me)

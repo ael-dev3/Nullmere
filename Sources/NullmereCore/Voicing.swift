@@ -37,6 +37,29 @@ extension Voicing {
         public var prompt: String { Voicing.asking(task, facts: facts) }
     }
 
+    /// A character's words as a device's model gave them, held as the Mac
+    /// and the phone alike show them: the first line alone, a speaker's
+    /// name and quotes dropped, no exclamations, at most 280 characters cut
+    /// at a full stop; nil for what is too short to be words.
+    public static func cleaned(_ text: String) -> String? {
+        var line = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let firstBreak = line.firstIndex(of: "\n") {
+            line = String(line[..<firstBreak])
+        }
+        // "Envoy: …" or "The Chronicler: …"
+        if let colon = line.firstIndex(of: ":"), line[..<colon].split(separator: " ").count <= 3 {
+            line = String(line[line.index(after: colon)...])
+        }
+        line = line.trimmingCharacters(in: CharacterSet(charactersIn: "\"“”'‘’ ").union(.whitespaces))
+        line = line.replacingOccurrences(of: "!", with: ".")
+        guard line.count >= 8 else { return nil }
+        if line.count > 280 {
+            let cut = line.prefix(280)
+            line = (cut.lastIndex(of: ".").map { String(cut[...$0]) }) ?? String(cut) + "…"
+        }
+        return line
+    }
+
     /// While a device's model gives one of the realm's characters words, as
     /// the Mac and the phone tell it: "Apple's on-device model gives the
     /// envoy words… 1.4 s".
