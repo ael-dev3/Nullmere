@@ -969,8 +969,10 @@ a vote on the realm's law to cast.
   company of yours by its handle, about the company they lead (only what
   your House sees), or at your House's stores and wars, and each look is
   shown as they take it. They may put an order to you (a company to march,
-  strike, fortify, halt, drill or set the blackwood where it stands
-  alight, told when theirs may and which way the wind would carry it),
+  strike, fortify, halt, drill, set the blackwood where it stands
+  alight, told when theirs may and which way the wind would carry it, or
+  douse its torches and march dark, or light them again, told when it
+  marches dark),
   weighed as the order book weighs a line: only one the realm would take
   is put forward, and you give it or set it aside; the realm decides what
   comes of it, as of any order. Answers appear

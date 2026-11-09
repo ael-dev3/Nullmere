@@ -164,8 +164,9 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertEqual(counsel.propose("march", company: "C99", place: place.name).why, "Your House has no company C99.")
         let burn = counsel.propose("burn", company: handle, place: place.name)
         XCTAssertNil(burn.command)
-        XCTAssertEqual(burn.why, "A commander may propose only that a company march, strike, fortify, halt, drill or kindle (set the wood alight).")
-        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle"])
+        XCTAssertEqual(burn.why, "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood alight), "
+                       + "douse (its torches, to march dark) or light (its torches again).")
+        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light"])
         // A company at the seat can set nothing alight: put forward as a
         // line, and told why in the realm's own words.
         let kindle = counsel.propose("kindle", company: handle, place: "")
@@ -203,6 +204,36 @@ final class CommanderCounselTests: XCTestCase {
         try world.perform(.kindle(unit: company.id), as: me)
         let after = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
         XCTAssertFalse(after.briefing.contains("standing in blackwood it may set alight"), after.briefing)
+    }
+
+    /// A commander may put it to the keeper that its company douse its
+    /// torches and march dark, and once it does is told it marches dark and
+    /// may put it that the company light them again, each as the realm
+    /// would take it.
+    func testACommanderMayPutTheMarchInTheDarkForward() throws {
+        var (counsel, world) = try counsel()
+        let me = counsel.player
+        let company = try XCTUnwrap(counsel.company)
+        let handle = try XCTUnwrap(counsel.handle(of: company))
+        XCTAssertFalse(counsel.briefing.contains("marching dark"), counsel.briefing)
+        let douse = counsel.propose(" Douse ", company: handle, place: "")
+        XCTAssertEqual(douse.line, "DOUSE \(handle)")
+        XCTAssertTrue(douse.isGiven, douse.why ?? "")
+        XCTAssertEqual(douse.command, .torches(unit: company.id, lit: false))
+        XCTAssertEqual(douse.told, "Your \(SpokenOrders.named(company, in: counsel.state)) douse their torches and march dark.")
+        // Lit already: told why in the realm's own words.
+        let lit = counsel.propose("light", company: handle, place: "")
+        XCTAssertFalse(lit.isGiven)
+        XCTAssertEqual(lit.why, counsel.state.torchRefusal(company.id, lit: true, as: me)?.description)
+        // Doused, it is told it marches dark, and may be lit again.
+        try world.perform(.torches(unit: company.id, lit: false), as: me)
+        let dark = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        XCTAssertTrue(dark.briefing.contains(", marching dark, its torches doused"), dark.briefing)
+        XCTAssertTrue(dark.report(on: handle).contains("marching dark, its torches doused"))
+        let light = dark.propose("light", company: handle, place: "")
+        XCTAssertTrue(light.isGiven, light.why ?? "")
+        XCTAssertEqual(light.command, .torches(unit: company.id, lit: true))
+        XCTAssertFalse(dark.propose("douse", company: handle, place: "").isGiven, "Dark already")
     }
 
     /// The commander remembers the last few exchanges, the oldest let go,

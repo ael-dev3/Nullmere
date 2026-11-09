@@ -139,6 +139,8 @@ public struct CommanderCounsel: Sendable {
         if state.isBlackwood(unit.position) && state.kindleRefusal(unit.id, as: player) == nil {
             told += ", standing in blackwood it may set alight (\(state.windSaid))"
         }
+        // Its torches doused: a tile slower, and seen by other Houses only close by.
+        if state.isUnlit(unit.id) { told += ", marching dark, its torches doused" }
         return told
     }
 
@@ -223,7 +225,11 @@ public struct CommanderCounsel: Sendable {
     // MARK: What the commander may put to the keeper
 
     /// What a commander may propose a company does.
-    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle"]
+    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light"]
+
+    /// Why a commander can't put forward anything else.
+    public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood "
+        + "alight), douse (its torches, to march dark) or light (its torches again)."
 
     /// An order put to the keeper, read and weighed as the order book weighs
     /// a line: given if the realm would take it, or told why not.
@@ -235,10 +241,10 @@ public struct CommanderCounsel: Sendable {
         switch verb {
         case "march": line = "MARCH \(handle) TO \(place)"
         case "strike": line = "STRIKE \(place) WITH \(handle)"
-        case "fortify", "halt", "drill", "kindle": line = "\(verb.uppercased()) \(handle)"
+        case "fortify", "halt", "drill", "kindle", "douse", "light": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,
-                                   why: "A commander may propose only that a company march, strike, fortify, halt, drill or kindle (set the wood alight).")
+                                   why: CommanderCounsel.onlyThese)
         }
         if (verb == "march" || verb == "strike") && place.isEmpty {
             return CounselProposal(line: line, told: line, command: nil, why: "A march or a strike wants a place to go to.")

@@ -342,7 +342,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   (`SpokenOrdersTests`), a two-client scene on the in-process realm
   (`NetworkRallyTests`: one keeper's spears lost to the other's client in
   the dark and seen again, torchless, by that keeper's seat), the phone's Army tab
-  offering it (`CompanionTorchesTests`); the same scene in the realm job
+  offering it (`CompanionTorchesTests`), and a commander told in counsel
+  when its company marches dark and putting it to the keeper that a
+  company douse its torches or light them again, weighed as the realm
+  weighs it (`CommanderCounselTests`; the model's own choosing of it
+  **Unverified** where no eligible Mac has run it); the same scene in the realm job
   on SpacetimeDB, the Mac's panel button and line and the
   Guide's line **Unverified** until a CI run builds them. In the world
   every company carries two torches at the front of its ranks, flickering,
