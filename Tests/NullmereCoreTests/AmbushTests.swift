@@ -51,6 +51,14 @@ final class AmbushTests: XCTestCase {
         XCTAssertEqual(state.events(events, heardBy: foe), [])
         let told = try XCTUnwrap(state.tidings(of: events[0], for: me)).text
         XCTAssertTrue(told.hasPrefix("Your \(state.named(company)) lie in wait in the wood"), told)
+        // Stood down, it waits no more, told so.
+        let stood = try state.perform(.lieInWait(unit: company.id, waiting: false), as: me)
+        XCTAssertEqual(stood, [.waitSet(unit: company.id, waiting: false, owner: me)])
+        XCTAssertFalse(state.isWaiting(company.id))
+        XCTAssertNil(state.waiting)
+        let toldDown = try XCTUnwrap(state.tidings(of: stood[0], for: me)).text
+        XCTAssertTrue(toldDown.hasPrefix("Your \(state.named(company)) no longer lie in wait"), toldDown)
+        _ = try state.perform(.lieInWait(unit: company.id, waiting: true), as: me)
         // Its torches lit, it waits no more; nor once ordered on.
         _ = try state.perform(.torches(unit: company.id, lit: true), as: me)
         XCTAssertFalse(state.isWaiting(company.id))
@@ -75,6 +83,16 @@ final class AmbushTests: XCTestCase {
         walled.holds.append(Hold(id: walled.takeID(), name: "Thornhold", owner: foe, position: open, isSeat: false, foundedWatch: 0))
         XCTAssertEqual(walled.springAmbushes(), [])
         XCTAssertTrue(walled.isWaiting(company.id))
+        // Two foes within its reach: the nearest first, and of those as
+        // near, the first made.
+        var two = state
+        let second = try XCTUnwrap(company.position.neighbors.first { hex in
+            guard hex != open, let terrain = two.map[hex]?.terrain else { return false }
+            return terrain.isPassable && !terrain.isWater && two.unit(at: hex) == nil && two.hold(at: hex) == nil
+        }, "Ground for a second foe beside the wood")
+        let another = try XCTUnwrap(two.placeUnit(.spear, tier: 1, for: foe, near: second))
+        two.units[try XCTUnwrap(two.unitIndex(another.id))].position = second
+        XCTAssertEqual(two.foesInReach(of: try XCTUnwrap(two.unit(company.id))).map(\.id), [walker.id, another.id].sorted())
         // At peace, it is let pass.
         var peace = state
         peace.setStance(.peace, between: me, and: foe, by: me)
