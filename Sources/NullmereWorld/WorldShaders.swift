@@ -634,6 +634,11 @@ public enum WorldShaders {
                 // The wash is the faintest breath of the House's colour,
                 // broken by the ground's own grain, so the land reads as land.
                 float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
+                // From afar, as the eye draws back over the realm (the haze
+                // begins at nine tenths of its distance), it deepens, so
+                // whose land is whose reads at a glance across the lake as
+                // a map of war shows it; close in it stays a breath.
+                breath = mix(breath, 0.3, smoothstep(60.0, 120.0, frame.haze.x / 0.9));
                 albedo = mix(albedo, house * 0.5, breath);
                 // The neighbour is the hex just outside the nearest edge: a
                 // point pushed out past it, so a line falls only where the

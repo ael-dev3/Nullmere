@@ -90,7 +90,10 @@ void main() {
   vec3 lit = vec3(0.0);
   if (owner > 0.5 && vKnown > 0.5) {
     vec3 house = houses[min(int(owner), 127)].rgb;
-    albedo = mix(albedo, house * 0.5, 0.14);
+    // As the game's: a breath of the House's colour, deepening from afar.
+    float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
+    breath = mix(breath, 0.3, smoothstep(60.0, 120.0, haze.x / 0.9));
+    albedo = mix(albedo, house * 0.5, breath);
     ivec2 across = h + ivec2(int(edge.y), int(edge.z));
     vec4 other = nm_tileAt(across, radius);
     float otherOwner = nm_owner(other);
