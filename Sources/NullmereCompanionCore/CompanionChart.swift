@@ -41,7 +41,7 @@ public struct CompanionChart: Equatable, Sendable {
 
     /// What a mark stands for.
     public enum Thing: String, CaseIterable, Equatable, Sendable {
-        case seat, hold, company, wild, lair, site, shrine, vigil
+        case seat, hold, company, wild, lair, site, shrine, vigil, plea
     }
 
     /// Something on the chart.
@@ -190,6 +190,11 @@ public struct CompanionChart: Equatable, Sendable {
         for vigil in world.vigilsOnTheLake where reached(vigil.position) {
             marks.append(Mark(id: "vigil \(vigil.id)", hex: vigil.position, thing: .vigil, side: side(vigil.house),
                               name: world.vigilTitle(vigil, for: player)))
+        }
+        // The plea waiting at one of the House's holds, its petitioner at the gate.
+        if let petition = world.petition(of: player), let hold = world.hold(petition.hold), reached(hold.position) {
+            marks.append(Mark(id: "plea \(petition.id)", hex: hold.position, thing: .plea, side: .own,
+                              name: "A plea at the gate: \(world.petitioner(of: petition))"))
         }
         for lair in world.lairsStanding where reached(lair.position) {
             marks.append(Mark(id: "lair \(lair.id)", hex: lair.position, thing: .lair, side: .wilds, name: CompanionChart.capitalized(lair.named)))

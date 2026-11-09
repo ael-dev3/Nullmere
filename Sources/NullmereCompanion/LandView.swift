@@ -433,6 +433,11 @@ struct ChartView: View {
             // A small flame on the black water in its warm glow, whoever's it is.
             context.fill(circle(size * 0.34), with: .color(Self.flame.opacity(0.22)))
             context.fill(circle(size * 0.13), with: .color(Self.flame))
+        case .plea:
+            // The petitioner's lantern at the hold's gate, below and beside its keep.
+            let lantern = CGRect(x: x + size * 0.32, y: y + size * 0.22, width: size * 0.2, height: size * 0.2)
+            context.fill(Path(ellipseIn: lantern.insetBy(dx: -size * 0.08, dy: -size * 0.08)), with: .color(Self.flame.opacity(0.25)))
+            context.fill(Path(ellipseIn: lantern), with: .color(Self.flame))
         }
     }
 

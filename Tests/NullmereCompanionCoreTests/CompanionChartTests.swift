@@ -495,4 +495,22 @@ extension CompanionChartTests {
         XCTAssertEqual(mark.hex, water)
         XCTAssertEqual(mark.name, state.view(for: me).vigilTitle(state.vigils![0], for: me))
     }
+
+    /// The plea waiting at one of the House's holds is marked on the phone's
+    /// chart at that hold, who brings it named as the Mac names them.
+    func testAPleaAtTheGateIsMarkedAtItsHold() throws {
+        var state = GameState(settings: GameSettings(seedText: "companion chart plea", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        state.watch = Petition.from
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.holds[try XCTUnwrap(state.holdIndex(seat.id))].ward = 1
+        XCTAssertTrue(CompanionChart(world: state.view(for: me), player: me).marks.allSatisfy { $0.thing != .plea }, "None while no plea waits")
+        _ = state.bringPetitions()
+        let petition = try XCTUnwrap(state.petition(of: me))
+        let mark = try XCTUnwrap(CompanionChart(world: state.view(for: me), player: me).marks.first { $0.thing == .plea })
+        XCTAssertEqual(mark.id, "plea \(petition.id)")
+        XCTAssertEqual(mark.hex, seat.position)
+        XCTAssertEqual(mark.side, .own)
+        XCTAssertEqual(mark.name, "A plea at the gate: \(state.petitioner(of: petition))")
+    }
 }
