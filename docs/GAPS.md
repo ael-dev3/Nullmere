@@ -835,7 +835,12 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   dead lie unburied and whether they will rise, and when the dark of the
   moon comes, and may put a burial forward for the keeper to decide
   (`CommanderCounsel.actions`, SpokenOrdersTests and CommanderCounselTests
-  on Linux).
+  on Linux). A field buried releases its dead: the corpse-lights that hung
+  over it rise from it into the night as the keeper sees it buried,
+  drawing in toward the barrow's heart, slowing and fading, gone after six
+  seconds (`WorldStage.releasedLights`, CorpseLightsTests on Linux;
+  WorldStagingTests on the Mac, Unverified there until a CI run); where
+  motion is reduced the barrow simply stands.
 
 ## The order of the work
 

@@ -374,6 +374,14 @@ extension GameSession {
         }, near: camera.focus, scale: camera.scale, time: t, still: !full)
         frame.motes += risenLights.motes
         frame.lights += risenLights.lights
+        // The lights of a field just buried rising from it into the night
+        // (not where motion is reduced: the barrow simply stands).
+        if full {
+            for release in releases {
+                frame.motes += stage.releasedLights(at: release.at, troops: release.troops,
+                                                    age: Float(now.timeIntervalSince(release.start)), scale: camera.scale)
+            }
+        }
         // The sound of the fields in sight, and of the towns and the lake's
         // edge near the view, follows the picture of them.
         hearBattles()

@@ -916,7 +916,8 @@ a vote on the realm's law to cast.
   pale and cold, carrying the lights that hung over their field, and come
   up out of the dark as you first see them. You may order a burial in
   your own words (the clerk reads it as BURY), and your commanders know
-  where your dead lie unburied and may counsel burying them.
+  where your dead lie unburied and may counsel burying them. When a field
+  is buried its lights rise from it into the night and fade.
   The Houses the stewards keep bury their own as they fall, and a keeper
   away has theirs buried by the caretaker where a company of the House
   stands idle on them, so a world the stewards play alone is the same

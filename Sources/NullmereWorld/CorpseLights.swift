@@ -82,6 +82,44 @@ extension WorldStage {
         return sight.rises ? 0.35 + 0.65 * near : 0.15 + 0.15 * near
     }
 
+    /// Seconds a buried field's lights take to rise from it into the night
+    /// and fade.
+    public static let releaseSeconds: Float = 6
+    /// How high over the field they climb as they go.
+    public static let releaseHeight: Float = 1.4
+
+    /// The lights of a field just buried, `age` seconds after the keeper
+    /// saw it buried: each corpse-light that hung over it rising from its
+    /// place, drawing in toward the barrow's heart as it climbs, slowing
+    /// and fading, gone after `releaseSeconds`; as many as hung over the
+    /// field, as bright as on the eve of the dark. The dead released. Light
+    /// only: they hide nothing.
+    public func releasedLights(at hex: Hex, troops: Int, age: Float, scale: Double) -> [Mote] {
+        guard age >= 0, age < WorldStage.releaseSeconds else { return [] }
+        let count = WorldStage.corpseLightCount(troops: troops)
+        guard count > 0 else { return [] }
+        let t = age / WorldStage.releaseSeconds
+        let climbed = 1 - (1 - t) * (1 - t)
+        let fade = min(age * 4, 1) * (1 - t) * (1 - t)
+        let points = Float(max(scale, 1))
+        let centre = Relief.centre(of: hex)
+        let turned = WorldStage.phase(of: hex, salt: 101)
+        var motes: [Mote] = []
+        for index in 0..<count {
+            let off = WorldStage.phase(of: hex, salt: 107 + 7 * index) / 20 - 0.5
+            let bearing = turned + (Float(index) + 0.6 * off) * 2 * .pi / Float(count) + t * 1.2
+            let reach = (WorldStage.corpseNearest
+                + (WorldStage.corpseFarthest - WorldStage.corpseNearest) * (WorldStage.phase(of: hex, salt: 131 + index) / 20)) * (1 - 0.6 * t)
+            let height = WorldStage.corpseHeight + WorldStage.corpseHigher * (WorldStage.phase(of: hex, salt: 151 + index) / 20)
+            let x = centre.x + reach * Float(cos(Double(bearing))), z = centre.z + reach * Float(sin(Double(bearing)))
+            let at = Vec3(x, ground(atX: x, z: z) + height + WorldStage.releaseHeight * climbed, z)
+            let light = WorldStage.corpseLight * (1.5 * fade)
+            motes.append(Mote(at: at, size: max(0.03, WorldStage.corpseFlamePoints / points), light: light, cover: 0))
+            motes.append(Mote(at: at, size: max(0.14, WorldStage.corpseGlowPoints / points), light: light * 0.1, cover: 0))
+        }
+        return motes
+    }
+
     /// The corpse-lights over the fields where the dead lie unburied, the
     /// nearest `corpseFieldsMost` to `focus`: each a small cold flame hanging
     /// low over the field, spaced about its heart each at its own height so

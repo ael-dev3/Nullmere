@@ -112,6 +112,27 @@ final class CorpseLightsTests: XCTestCase {
         XCTAssertTrue(risen.allSatisfy { $0.colour == WorldStage.barrowkinColour }, "the risen dead pale and cold")
     }
 
+    /// A field buried releases its dead: its lights rise from it into the
+    /// night, drawing in and fading, and are gone a few seconds on.
+    func testABuriedFieldsLightsRiseAndFade() throws {
+        XCTAssertTrue(stage.releasedLights(at: field, troops: 9_000, age: -0.1, scale: 60).isEmpty, "not before it is buried")
+        XCTAssertTrue(stage.releasedLights(at: field, troops: 9_000, age: WorldStage.releaseSeconds, scale: 60).isEmpty, "gone after")
+        XCTAssertTrue(stage.releasedLights(at: field, troops: 0, age: 1, scale: 60).isEmpty, "none where none lay")
+        let early = stage.releasedLights(at: field, troops: 9_000, age: 0.5, scale: 60)
+        let later = stage.releasedLights(at: field, troops: 9_000, age: 3, scale: 60)
+        XCTAssertEqual(early.count, 2 * WorldStage.corpseLightCount(troops: 9_000), "as many as hung over it")
+        XCTAssertEqual(later.count, early.count)
+        let centre = Relief.centre(of: field)
+        for (a, b) in zip(early, later) {
+            XCTAssertGreaterThan(b.place.y, a.place.y + 0.3, "rising into the night")
+            XCTAssertLessThanOrEqual(flat(Vec3(b.place.x, 0, b.place.z), centre), flat(Vec3(a.place.x, 0, a.place.z), centre) + 0.001,
+                                     "drawing in toward the barrow's heart")
+            XCTAssertEqual(b.colour.w, 0, "light only")
+        }
+        XCTAssertLessThan(try XCTUnwrap(later.first).colour.y, try XCTUnwrap(early.first).colour.y, "fading as they climb")
+        XCTAssertGreaterThan(try XCTUnwrap(early.first).colour.y, try XCTUnwrap(early.first).colour.x * 1.8, "cold and pale")
+    }
+
     func testSeenFromAcrossTheRealmTheNearestFieldsFirst() throws {
         let sights = [UnburiedSight(at: field, troops: 9_000, darkIn: 1)]
         let near = stage.corpseLights(sights, near: Vec3(0, 0, 0), scale: 80, time: 1)

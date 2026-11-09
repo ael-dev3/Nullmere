@@ -710,6 +710,29 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(cold.count, 2 * WorldStage.corpseLightCount(troops: UnburiedSight.risen(at: at, level: 2).troops))
     }
 
+    /// A field the keeper buries releases its dead: their lights are drawn
+    /// rising from it into the night, and are gone a few seconds on.
+    func testABuriedFieldsLightsRiseFromIt() throws {
+        let session = try session()
+        let company = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })
+        let field = FieldOfDead(at: company.position, troops: 7_000, houses: [session.player], since: session.state.watch)
+        let heart = Relief.centre(of: company.position), foot = Float(session.groundHeight(of: company.position))
+        func climbing(_ frame: SceneFrame) -> Int {
+            frame.motes.filter { mote in
+                let x = mote.place.x - heart.x, z = mote.place.z - heart.z
+                return (x * x + z * z).squareRoot() < 0.6 && mote.colour.w == 0 && mote.colour.y > mote.colour.x * 1.8
+                    && mote.place.y > foot + 0.5
+            }.count
+        }
+        let now = Date()
+        XCTAssertEqual(climbing(session.sceneFrame(at: 40, now: now)), 0, "nothing rising before the burial")
+        session.showBlows([.buried(field, by: session.player)])
+        let rising = session.sceneFrame(at: 42, now: now.addingTimeInterval(2))
+        XCTAssertEqual(climbing(rising), 2 * WorldStage.corpseLightCount(troops: 7_000), "the dead's lights rising from the field")
+        let gone = session.sceneFrame(at: 50, now: now.addingTimeInterval(Double(WorldStage.releaseSeconds) + 1))
+        XCTAssertEqual(climbing(gone), 0, "gone a few seconds on")
+    }
+
     func testAFieldKeepsItsDeadAFewWatches() throws {
         let session = try session()
         let player = session.player, foe = (player + 1) % 3

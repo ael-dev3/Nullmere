@@ -159,6 +159,10 @@ public final class GameSession {
     /// When the keeper first saw each company of Barrowkin risen this
     /// watch, by the wild's id, so it comes up out of the dark from then.
     @ObservationIgnored var risenSeen: [Int: Date] = [:]
+    /// Fields the keeper saw buried lately, where, how many lay there and
+    /// when, so their lights are drawn rising into the night
+    /// (`WorldStage.releasedLights`).
+    @ObservationIgnored var releases: [(at: Hex, troops: Int, start: Date)] = []
     /// The road along each way the carts go, as laid, by way.
     @ObservationIgnored var roadsLaid: [WorldStage.Way: [ModelInstance]] = [:]
     /// The blows seen struck lately, for the dead they left lying on their
@@ -2433,6 +2437,12 @@ public final class GameSession {
                 }
             }
             shown = true
+        }
+        // A field buried in sight, or the keeper's own: its dead released,
+        // their lights rising from it.
+        releases.removeAll { now.timeIntervalSince($0.start) > Double(WorldStage.releaseSeconds) }
+        for case .buried(let field, let by) in events where by == player || isVisible(field.at) {
+            releases.append((at: field.at, troops: field.troops, start: now))
         }
         for case .skillFired(_, let house, let skill, let at) in events where house == player || isVisible(at) {
             blowCounter += 1
