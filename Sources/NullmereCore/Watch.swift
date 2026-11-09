@@ -82,6 +82,9 @@ extension GameState {
             units[index].way = nil
         }
         events += advanceRallies(marching: !isPaced)
+        // What marches dark past a watchfire as the watch turns, its light
+        // makes out.
+        events += keepWatchByFire()
         events += turnCalm()
         events += turnLyceum()
         events += workTheLand()

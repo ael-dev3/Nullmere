@@ -82,6 +82,16 @@ struct PlaceSections: View {
                     .font(Night.body)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // What the House's watchfire here made out, and its watchman's
+            // word, in this phone's model's words.
+            if let watchman = place.watchman {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: watchman.said)
+                        .font(Night.small)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VoicedWords(key: watchman.voice, who: "the watchman")
+                }
+            }
             ForEach(Array((place.strikes + place.calls).enumerated()), id: \.offset) { order in
                 Button(order.element.title) {
                     session.give(order.element.command, told: order.element.title)

@@ -68,6 +68,8 @@ extension GameState {
                 stepped += march(id, keeping: moves - GameState.allowance(of: moves, by: now))
             }
             stepped += walkRallies(by: now)
+            // What marches dark past a watchfire, its light makes out.
+            stepped += keepWatchByFire()
             tally(stepped)
             noteDeeds(stepped)
             events += stepped

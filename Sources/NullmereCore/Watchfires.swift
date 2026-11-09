@@ -16,6 +16,9 @@ public struct Watchfire: Codable, Equatable, Sendable {
     public let lit: Int
     /// The watch it burns out.
     public let out: Int
+    /// The companies of other Houses marching dark its light has made out
+    /// as it burns, each once, the first made out first; none, nil.
+    public var seen: [Sighting]? = nil
 
     /// What it costs to light.
     public static let cost = Stock(timber: 12)
@@ -35,6 +38,35 @@ public struct Watchfire: Codable, Equatable, Sendable {
         self.by = by
         self.lit = lit
         self.out = out
+    }
+
+    /// A company of another House marching dark that a watchfire's light
+    /// made out within its reach: which and whose, of what kind and tier
+    /// and how many, where it was made out and in which watch, as the
+    /// watchman at the fire tells it to the House that lit it.
+    public struct Sighting: Codable, Equatable, Sendable {
+        public let unit: Int
+        public let owner: Int
+        public let kind: UnitKind
+        public let tier: Int
+        public let troops: Int
+        public let at: Hex
+        public let watch: Int
+
+        public init(unit: Int, owner: Int, kind: UnitKind, tier: Int, troops: Int, at: Hex, watch: Int) {
+            self.unit = unit
+            self.owner = owner
+            self.kind = kind
+            self.tier = tier
+            self.troops = troops
+            self.at = at
+            self.watch = watch
+        }
+
+        /// What the watchman's word on it is kept by on the keeper's
+        /// device: a company made out in a watch, told once, whichever of
+        /// the House's watchfires made it out.
+        public var key: Int { watch * 1_000_000 + unit }
     }
 }
 
@@ -68,7 +100,57 @@ extension GameState {
         if let refusal = watchfireRefusal(at: hex, as: house) { throw refusal }
         houses[house].stock.debit(Watchfire.cost)
         watchfires = watchfiresBurning + [Watchfire(at: hex, by: house, lit: watch, out: watch + Watchfire.burns)]
-        return [.watchfireLit(at: hex, by: house)]
+        // Its light makes out at once what marches dark about it.
+        return [.watchfireLit(at: hex, by: house)] + keepWatchByFire()
+    }
+
+    /// Each watchfire makes out the companies of other Houses marching dark
+    /// within its reach that it hasn't made out already as it burns, at
+    /// each pace of the watch and as it turns: each kept on the fire, and
+    /// told to the House that lit it.
+    mutating func keepWatchByFire() -> [GameEvent] {
+        guard var fires = watchfires, !fires.isEmpty, let unlit, !unlit.isEmpty else { return [] }
+        var events: [GameEvent] = []
+        for index in fires.indices {
+            let fire = fires[index]
+            var seen = fire.seen ?? []
+            for hex in fire.at.spiral(Watchfire.reach) {
+                for id in units.ids(at: hex) where isUnlit(id) && !seen.contains(where: { $0.unit == id }) {
+                    guard let unit = unit(id), unit.owner != fire.by, houses.indices.contains(unit.owner) else { continue }
+                    let sighting = Watchfire.Sighting(unit: id, owner: unit.owner, kind: unit.kind, tier: unit.tier,
+                                                      troops: troops(of: unit), at: hex, watch: watch)
+                    seen.append(sighting)
+                    events.append(.madeOutByWatchfire(sighting, fire: fire.at, by: fire.by))
+                }
+            }
+            if !seen.isEmpty { fires[index].seen = seen }
+        }
+        if !events.isEmpty { watchfires = fires }
+        return events
+    }
+
+    /// What a watchfire made out marching dark, plainly, as the Mac's panel
+    /// and the phone's chart say it: "Made out in watch 12: House Arden's
+    /// Spears I, 1,200 troops, marching dark by the Hagstones." and, where
+    /// it has made out more than one as it burns, how many.
+    public func sightingSaid(_ sighting: Watchfire.Sighting, of fire: Watchfire) -> String {
+        let whose = houses.indices.contains(sighting.owner) ? houses[sighting.owner].title : "A fallen House"
+        let count = fire.seen?.count ?? 1
+        return "Made out in watch \(sighting.watch): \(whose)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner)), "
+            + "\(GameState.counted(sighting.troops)), marching dark \(placeName(of: sighting.at))."
+            + (count > 1 ? " \(count) made out as it burns." : "")
+    }
+
+    /// The latest company a House's watchfires have made out marching dark
+    /// that still burns, and the fire that made it out: what the watchman
+    /// at the fire tells the keeper.
+    public func latestSighting(by house: Int) -> (fire: Watchfire, sighting: Watchfire.Sighting)? {
+        var latest: (fire: Watchfire, sighting: Watchfire.Sighting)?
+        for fire in watchfiresBurning where fire.by == house {
+            guard let last = fire.seen?.last else { continue }
+            if latest.map({ ($0.sighting.watch, $0.sighting.unit) < (last.watch, last.unit) }) ?? true { latest = (fire, last) }
+        }
+        return latest
     }
 
     /// As the watch turns, the watchfires whose time is out burn out, and

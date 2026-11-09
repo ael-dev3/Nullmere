@@ -800,6 +800,12 @@ extension GameState {
                 ? Tidings("Your watchfire burns \(placeName(of: at)) for \(GameState.watches(Watchfire.burns)): your House sees about it, "
                           + "and makes out any company marching dark there.", .good)
                 : Tidings("\(houses[by].title) lights a watchfire \(placeName(of: at)): it keeps watch there.", .neutral)
+        case .madeOutByWatchfire(let sighting, let fire, let by):
+            guard by == viewer, houses.indices.contains(sighting.owner) else { return nil }
+            let company = "\(houses[sighting.owner].title)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner))"
+            let foe = stance(by, sighting.owner) == .war
+            return Tidings("Your watchfire \(placeName(of: fire)) makes out \(company), \(GameState.counted(sighting.troops)), "
+                           + "marching dark \(placeName(of: sighting.at)).", foe ? .bad : .neutral)
         case .torchesSet(let id, let lit, let owner):
             guard owner == viewer, let unit = unit(id) else { return nil }
             let who = "Your \(named(unit)) \(placeName(of: unit.position))"

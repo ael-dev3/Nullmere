@@ -250,8 +250,14 @@ extension GameState {
         // Every fire in the blackwood, by its smoke, and the ash it leaves,
         // the whole realm sees.
         view.wildfires = wildfires
-        // Every House sees a watchfire burn.
-        view.watchfires = watchfires
+        // Every House sees a watchfire burn; what its light made out, only
+        // the House that lit it.
+        view.watchfires = watchfires?.map { fire in
+            guard fire.by != house, fire.seen != nil else { return fire }
+            var told = fire
+            told.seen = nil
+            return told
+        }
         // The pleas the House's own folk have brought it, none of another's.
         view.petitions = petitions.map { $0.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         view.petitioned = nil
@@ -485,6 +491,10 @@ extension GameState {
             case .watchfireLit:
                 // A watchfire, the whole realm sees.
                 return true
+            case .madeOutByWatchfire(_, _, let by):
+                // What a watchfire's light made out, the House that lit it
+                // is told.
+                return by == house
             case .woodKindled, .firesDoused:
                 // Smoke rising from the blackwood, and the mist putting out
                 // the fires, the whole realm sees.

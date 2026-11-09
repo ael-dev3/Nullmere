@@ -107,6 +107,9 @@ public struct CompanionChart: Equatable, Sendable {
         /// The House's alliance's mark there lifted, or the ground marked
         /// for it, as the Mac's ground panel offers its leader.
         public var marking: Raising? = nil
+        /// What the House's watchfire there last made out marching dark, as
+        /// the Mac's panel says it, and its watchman's word on the phone.
+        public var watchman: Watchman? = nil
 
         /// Every order the rules would take there, each as offered.
         public var orders: [CompanionLedger.Order] {
@@ -118,6 +121,13 @@ public struct CompanionChart: Equatable, Sendable {
             all += marking?.orders ?? []
             return all
         }
+    }
+
+    /// What a House's watchfire last made out marching dark, plainly, and
+    /// the key its watchman's word is kept by among the phone's voices.
+    public struct Watchman: Equatable, Sendable {
+        public let said: String
+        public let voice: String
     }
 
     /// Something the House may raise at a hex: what raising it does, as the
@@ -338,7 +348,16 @@ public struct CompanionChart: Equatable, Sendable {
                      calls: CompanionLedger.calls(in: world, player: player, holds: world.holds(of: player), at: hex),
                      scouts: scouts, gathers: gathers, marches: Array(marches),
                      raisings: CompanionChart.raisings(at: hex, in: world, player: player),
-                     marking: CompanionChart.marking(at: hex, in: world, player: player))
+                     marking: CompanionChart.marking(at: hex, in: world, player: player),
+                     watchman: CompanionChart.watchman(at: hex, in: world, player: player))
+    }
+
+    /// What the House's watchfire at `hex` last made out marching dark, and
+    /// the key of its watchman's word; nil where none of its fires burns
+    /// there or it has made out nothing.
+    static func watchman(at hex: Hex, in world: GameState, player: Int) -> Watchman? {
+        guard let fire = world.watchfire(at: hex), fire.by == player, let sighting = fire.seen?.last else { return nil }
+        return Watchman(said: world.sightingSaid(sighting, of: fire), voice: "watchman-\(sighting.key)")
     }
 
     /// A mark of the House's alliance as the chart knows it.

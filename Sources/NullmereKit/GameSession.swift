@@ -178,6 +178,9 @@ public final class GameSession {
         case prisoner(Int)
         /// A plea the folk of a hold bring to the gate, by its id.
         case petition(Int)
+        /// What the House's watchfires made out marching dark, by its
+        /// sighting's key (`Watchfire.Sighting.key`).
+        case watchman(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -192,6 +195,7 @@ public final class GameSession {
             case .riddle(let watch): return "riddle-\(watch)"
             case .prisoner(let told): return "prisoner-\(told)"
             case .petition(let id): return "petition-\(id)"
+            case .watchman(let key): return "watchman-\(key)"
             }
         }
 
@@ -205,6 +209,7 @@ public final class GameSession {
             case "riddle": self = .riddle(number)
             case "prisoner": self = .prisoner(number)
             case "petition": self = .petition(number)
+            case "watchman": self = .watchman(number)
             default: return nil
             }
         }
@@ -1975,6 +1980,8 @@ public final class GameSession {
             return mark.at
         case .woodKindled(let at, _, _), .burnedInFire(_, _, let at, _, _), .watchfireLit(let at, _):
             return at
+        case .madeOutByWatchfire(let sighting, _, _):
+            return sighting.at
         case .fireSpread(let hexes, _, _), .firesDoused(let hexes, _):
             return hexes.first
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
@@ -2664,6 +2671,13 @@ public final class GameSession {
         if let petition = state.petition(of: player), !asked.contains(.petition(petition.id)) {
             asked.insert(.petition(petition.id))
             voiceQueue.append((.petition(petition.id), VoiceFacts.petition(petition, in: state)))
+        }
+        // What the House's watchfires last made out marching dark, in their
+        // watchman's voice.
+        if let latest = state.latestSighting(by: player), !asked.contains(.watchman(latest.sighting.key)) {
+            asked.insert(.watchman(latest.sighting.key))
+            voiceQueue.append((.watchman(latest.sighting.key),
+                               VoiceFacts.watchman(latest.sighting, fire: latest.fire.at, for: player, in: state)))
         }
         // The lake's riddle, set in the Still's voice.
         if let riddle = state.riddle(of: player), riddle.answered == nil, !asked.contains(.riddle(riddle.set)) {

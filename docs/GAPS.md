@@ -382,6 +382,19 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   there (`CompanionCheck`, the `watchfires:` line of the Mac's report,
   held by NetworkAppTests; the chart's offer where it looks held on Linux
   by `CompanionWatchfireTests`), **Unverified** until a CI run plays it.
+  The watchman: each company of another House a watchfire makes out
+  marching dark (at each pace, as the watch turns and the moment it is
+  lit) is kept on the fire, told once to its House, ill where they are
+  at war, and voiced by the device's own model as the watchman's word
+  from the realm's facts (`Voicing.watchmanTask`), on the fire's panel on
+  the Mac and its place on the phone's chart; held on Linux by
+  `WatchfireTests` (made out once each, the House's own and lit
+  companies never, told to no other House, the watchman's facts, kept
+  by the realm) and `CompanionWatchfireTests` (the chart's place and the
+  phone's voice key); the Mac's line, its key and its asking by
+  `WatchmanTests`, **Unverified** until a CI run's Mac tests run. The
+  model's own words for him are **Unverified** where no eligible Mac or
+  iPhone has run it.
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

@@ -1105,6 +1105,34 @@ struct WatchfireRow: View {
     }
 }
 
+/// What the keeper's watchfire last made out marching dark, plainly, and
+/// its watchman's word on it as this Mac's model gave it: the model at
+/// work, its words, or why it gave none.
+struct WatchmanLine: View {
+    let session: GameSession
+    let fire: Watchfire
+    let sighting: Watchfire.Sighting
+
+    var body: some View {
+        let key = GameSession.Spoken.watchman(sighting.key)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: session.state.sightingSaid(sighting, of: fire))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+            VoicingLine(session: session, key: key, who: "the watchman")
+            if let spoken = session.spoken[key] {
+                Text(verbatim: "\"\(spoken)\"")
+                    .font(.nm(11.5, weight: .light).italic())
+                    .foregroundStyle(Palette.text(0.88))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Lending a hand to the keeper's alliance's rising standard: a watch
 /// sooner, for timber and stone, once each House; or why it can't.
 struct StandardHelpRow: View {
@@ -1393,6 +1421,9 @@ struct TilePanel: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
+                    if fire.by == session.player, let sighting = fire.seen?.last {
+                        WatchmanLine(session: session, fire: fire, sighting: sighting)
+                    }
                 } else if WatchfireRow.offered(at: hex, to: session.player, in: state) {
                     Rule(opacity: 0.18)
                     WatchfireRow(session: session, hex: hex)

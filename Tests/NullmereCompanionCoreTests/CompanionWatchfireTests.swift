@@ -37,6 +37,42 @@ final class CompanionWatchfireTests: XCTestCase {
         }
     }
 
+    /// What the House's watchfire made out marching dark, on the place the
+    /// keeper opens on the chart: as the Mac's panel says it, and the key of
+    /// its watchman's word among the phone's voices; nothing for a fire of
+    /// another House's.
+    func testThePlaceOfAWatchfireTellsWhatItMadeOut() throws {
+        var state = GameState(settings: GameSettings(seedText: "the phone's watchman", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        state.houses[me].stock.timber = 100
+        let owners = state.territory()
+        let at = try XCTUnwrap(state.map.hexes.first { hex in
+            state.territoryOwner(of: hex, in: owners) == me && state.watchfireRefusal(at: hex, as: me) == nil
+        })
+        _ = try state.perform(.watchfire(at), as: me)
+        XCTAssertNil(CompanionChart(world: state.view(for: me), player: me).place(at: at, in: state.view(for: me), player: me).watchman,
+                     "Nothing made out yet")
+        let foe = try XCTUnwrap(state.livingHouses.first { $0.id != me }).id
+        let spot = try XCTUnwrap(at.spiral(Watchfire.reach).first { hex in
+            guard hex != at, let terrain = state.map[hex]?.terrain else { return false }
+            return terrain.isPassable && !terrain.isWater && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        let company = try XCTUnwrap(state.placeUnit(.spear, tier: 1, for: foe, near: spot))
+        state.units[try XCTUnwrap(state.unitIndex(company.id))].position = spot
+        _ = try state.perform(.torches(unit: company.id, lit: false), as: foe)
+        XCTAssertEqual(state.keepWatchByFire().count, 1)
+        let view = state.view(for: me)
+        let fire = try XCTUnwrap(view.watchfire(at: at))
+        let sighting = try XCTUnwrap(fire.seen?.last)
+        let place = CompanionChart(world: view, player: me).place(at: at, in: view, player: me)
+        XCTAssertEqual(place.watchman, CompanionChart.Watchman(said: view.sightingSaid(sighting, of: fire), voice: "watchman-\(sighting.key)"))
+        XCTAssertTrue(view.voicedMoments(for: me).contains { $0.key == place.watchman?.voice }, "The phone's model asked for his words")
+        // Another House's phone sees the fire burn, but not what it made out.
+        let theirs = state.view(for: foe)
+        let chart = CompanionChart(world: theirs, player: foe)
+        if chart.contains(at) { XCTAssertNil(chart.place(at: at, in: theirs, player: foe).watchman) }
+    }
+
     /// Where the phone's check on CI lights its watchfire: with the stores a
     /// keeper comes into the realm with, the chart offers one in the place
     /// the keeper taps on each tile of open ground of the House's own land

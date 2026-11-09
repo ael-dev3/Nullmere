@@ -866,6 +866,17 @@ a vote on the realm's law to cast.
   it tells a foe where you keep watch. You may keep 3 burning at once.
   Stewards light none. Rise of Kingdoms has nothing of the kind, having
   no dark to light.
+  Each company of another House its light makes out marching dark, at
+  each pace of the watch, as the watch turns and the moment it is lit,
+  is told to you once ("Your watchfire by Wenholme makes out House
+  Arden's Spears I, 1,200 troops, marching dark by the Hagstones"), ill
+  news where your Houses are at war. The fire's panel, and its place on
+  the phone's chart, say the latest it made out and how many as it
+  burns, and the watchman at the fire tells you of it in his own words,
+  given him by your Mac's or your phone's on-device model from those
+  facts alone; where the model can't give them (the device can't run it,
+  Apple Intelligence is off, it isn't ready or fails), you are told why,
+  and no words are made up in their place.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own

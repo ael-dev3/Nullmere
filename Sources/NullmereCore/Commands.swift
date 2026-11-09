@@ -1154,6 +1154,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case torchesSet(unit: Int, lit: Bool, owner: Int)
     /// A House lit a watchfire on its own land.
     case watchfireLit(at: Hex, by: Int)
+    /// A House's watchfire at `fire` made out a company of another House
+    /// marching dark within its reach.
+    case madeOutByWatchfire(Watchfire.Sighting, fire: Hex, by: Int)
     /// A House's fire caught the blackwood beside it, with the watch's wind
     /// (an index into `Hex.directions`, the way it blows).
     case fireSpread(to: [Hex], by: Int, wind: Int)

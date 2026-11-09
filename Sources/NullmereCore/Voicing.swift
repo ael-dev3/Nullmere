@@ -93,6 +93,12 @@ extension Voicing {
         return "Speak as the envoy, addressing the player's House directly, \(verb) \(offer). One or two sentences, at most 40 words."
     }
 
+    /// The watchman at a House's watchfire telling the keeper what its
+    /// light made out in the night.
+    public static let watchmanTask = "Speak as the watchman at the keeper's watchfire, reporting to the keeper what its light made out in "
+        + "the night: whose company passed marching dark, its torches doused, how many and where, keeping every name and number as given. "
+        + "One or two sentences, at most 40 words."
+
     /// The Still telling the dreamer what it showed them.
     public static let dreamTask = "Speak as the still black lake itself, to one who wakes from a dream at the dark of the moon: tell them what the water "
         + "showed them, keeping every name and number as given. Two sentences, at most 40 words."
@@ -154,6 +160,25 @@ extension GameState {
     /// taken out, and when. The name itself the model is never given.
     public func voiced(_ riddle: Riddle) -> Voicing.Moment { Voicing.riddle(riddle) }
 
+    /// What a watchfire's light made out, as its watchman tells it: where
+    /// the fire burns, whose company passed marching dark, how many and
+    /// where, and how its House stands with the keeper's.
+    public func voiced(_ sighting: Watchfire.Sighting, fire: Hex, for house: Int) -> Voicing.Moment {
+        var facts = ["The keeper's watchfire burns \(placeName(of: fire))."]
+        if houses.indices.contains(sighting.owner) {
+            facts.append("\(houses[sighting.owner].title)'s \(named(sighting.kind, tier: sighting.tier, of: sighting.owner)), "
+                         + "\(GameState.counted(sighting.troops)), passed \(placeName(of: sighting.at)) marching dark, its torches doused.")
+            let standing: String
+            switch stance(house, sighting.owner) {
+            case .war: standing = "is at war with the keeper's House"
+            case .pact: standing = "is in a pact with the keeper's House"
+            default: standing = "is at peace with the keeper's House"
+            }
+            facts.append("\(houses[sighting.owner].title) \(standing).")
+        }
+        return Voicing.Moment(task: Voicing.watchmanTask, facts: facts)
+    }
+
     /// A prisoner questioned: who they are, whose, and the true thing they tell.
     public func voiced(prisoner: Commander, told word: String) -> Voicing.Moment {
         let house = houses.indices.contains(prisoner.owner) ? houses[prisoner.owner].title : "a fallen House"
@@ -164,7 +189,8 @@ extension GameState {
     /// them, in their view of the world: envoys of stewards' Houses waiting
     /// on them (a keeper's envoy carries their own words), what the Still
     /// showed the House, its riddle while unanswered, what each prisoner
-    /// it holds last told, and the plea its folk bring it.
+    /// it holds last told, the plea its folk bring it, and what its
+    /// watchfires last made out marching dark.
     public func voicedMoments(for house: Int) -> [Voicing.Keyed] {
         var moments: [Voicing.Keyed] = []
         for envoy in envoys where envoy.to == house && houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer {
@@ -182,6 +208,10 @@ extension GameState {
         }
         if let petition = petition(of: house) {
             moments.append(Voicing.Keyed(key: "petition-\(petition.id)", moment: voiced(petition)))
+        }
+        if let latest = latestSighting(by: house) {
+            moments.append(Voicing.Keyed(key: "watchman-\(latest.sighting.key)",
+                                         moment: voiced(latest.sighting, fire: latest.fire.at, for: house)))
         }
         return moments
     }
