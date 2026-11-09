@@ -40,8 +40,10 @@ final class FindWordsTests: XCTestCase {
         return (state, try XCTUnwrap(state.unit(lantern.id)), find)
     }
 
-    private func opened(_ state: GameState, link: FolkLink = FolkLink(), voice: (any Voice)? = Eldest()) -> GameSession {
-        let session = GameSession(link: link, house: state.player, world: state.view(for: state.player),
+    /// A session over `link`, or a realm that hears nothing; built here on
+    /// the main actor, where a link is made, never as a default argument.
+    private func opened(_ state: GameState, link: FolkLink? = nil, voice: (any Voice)? = Eldest()) -> GameSession {
+        let session = GameSession(link: link ?? FolkLink(), house: state.player, world: state.view(for: state.player),
                                   store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)), voice: voice)
         session.dismissSeatBriefing()
         return session
