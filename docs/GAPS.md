@@ -397,7 +397,10 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   iPhone has run it. A commander in counsel, on the Mac or the phone, is
   briefed with the House's watchfires and the latest three companies they
   made out marching dark, whose, how many and where, so their counsel
-  can weigh a foe moving by night (`CommanderCounselTests`).
+  can weigh a foe moving by night (`CommanderCounselTests`). A watchfire
+  is heard where it burns as the view comes down to it, a tile of fire's
+  crackle from where it lies, fainter than the blackwood alight
+  (`FireHeardTests`, **Unverified** until a CI run's Mac tests run).
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

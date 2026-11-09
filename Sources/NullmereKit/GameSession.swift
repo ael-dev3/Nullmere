@@ -2197,13 +2197,14 @@ public final class GameSession {
         onShore?(level, pan)
     }
 
-    /// The blackwood burning near the view, as it is heard (`FireSound`):
-    /// only as the view comes down toward the land, the more of it alight
-    /// about the view's middle the louder, from where it burns across the
-    /// view; wood the House has not seen is not heard burning.
+    /// The blackwood burning near the view, and each watchfire as a tile of
+    /// fire, as they are heard (`FireSound`): only as the view comes down
+    /// toward the land, the more of it alight about the view's middle the
+    /// louder, from where it burns across the view; fire on ground the House
+    /// has not seen is not heard.
     func fireSound() -> (level: Float, pan: Float)? {
         guard camera.scale > FireSound.faintest else { return nil }
-        let burning = state.burning.map(\.at).filter { isExplored($0) }
+        let burning = (state.burning.map(\.at) + state.watchfiresBurning.map(\.at)).filter { isExplored($0) }
         guard !burning.isEmpty, let heard = FireSound.heard(burning, from: camera) else { return nil }
         return heard.level > 0.001 ? heard : nil
     }

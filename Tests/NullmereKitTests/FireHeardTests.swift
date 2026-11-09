@@ -9,6 +9,37 @@ import XCTest
 /// heard is held in NullmereWorldTests (`FireSoundTests`), how it sounds in
 /// NullmereSoundTests.
 final class FireHeardTests: XCTestCase {
+    /// A watchfire is heard as a tile of fire where it burns, from where it
+    /// lies: fainter than the blackwood alight about the view, and silent
+    /// once none burns.
+    @MainActor
+    func testAWatchfireIsHeardWhereItBurns() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "watchfire heard", keepers: 1))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let at = try XCTUnwrap(seat.spiral(2).first { hex in
+            hex != seat && state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.hold(at: hex) == nil
+        })
+        state.watchfires = [Watchfire(at: at, by: me, lit: state.watch, out: state.watch + Watchfire.burns)]
+        state.houses[me].explored = Explored(repeating: true, count: state.map.count)
+        var camera = Camera()
+        camera.focus(on: at)
+        camera.heading = 0
+        camera.scale = FireSound.fullest
+        let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("lit")))
+        session.camera = camera
+        let heard = try XCTUnwrap(session.fireSound(), "Heard where it burns")
+        XCTAssertGreaterThan(heard.level, 0.2)
+        XCTAssertLessThan(heard.level, 0.5, "One fire, fainter than the blackwood alight about the view")
+        XCTAssertEqual(heard.pan, 0, accuracy: 0.2)
+        state.watchfires = nil
+        let out = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("out")))
+        out.camera = camera
+        XCTAssertNil(out.fireSound(), "None burning, none heard")
+    }
+
     @MainActor
     func testTheSessionHearsTheWoodBurningThatTheHouseHasSeen() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
