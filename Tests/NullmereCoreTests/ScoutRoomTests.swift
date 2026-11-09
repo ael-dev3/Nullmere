@@ -2,11 +2,11 @@ import Foundation
 import XCTest
 @testable import NullmereCore
 
-/// A scout's room keeps what stands where from one look to the next,
-/// brought up to the realm as it stands: what it holds is always what a
-/// room laid out afresh would hold, however the realm changed between and
-/// whichever realm of its size it served last, and each look starts with no
-/// tile reached.
+/// A scout's room keeps the tiles each look has reached from one look to
+/// the next, each look starting with none reached whichever realm of its
+/// size it served last; what a scout won't stop on (a company, the wilds
+/// or a lair) is asked of the realm itself, and is always what a look laid
+/// out afresh would mark, however the realm changed between.
 final class ScoutRoomTests: XCTestCase {
     /// Each tile a company, the wilds or a lair stands on, marked afresh, as
     /// every look once marked them.
@@ -24,7 +24,7 @@ final class ScoutRoomTests: XCTestCase {
         return state
     }
 
-    func testAKeptRoomHoldsWhatAFreshOneWouldHoweverTheRealmChanges() throws {
+    func testWhatStandsWhereIsAskedOfTheRealmAndEachLookStartsWithNoTileReached() throws {
         var realms = [played("a scout's room"), played("another scout's realm")]
         XCTAssertEqual(realms[0].map.count, realms[1].map.count, "Two realms of one size, to share the rooms")
         var random = SeededRandom(seed: 17)
@@ -58,9 +58,9 @@ final class ScoutRoomTests: XCTestCase {
                 state.wilds = wilds
             }
             var room = ScoutRoom.take(count: state.map.count)
-            room.ready(in: state)
+            room.ready()
             let fresh = freshlyOccupied(state)
-            XCTAssertEqual(room.occupied, fresh, "Round \(round): what stands where")
+            XCTAssertEqual(state.map.hexes.map { state.somethingStands(on: $0) }, fresh, "Round \(round): what stands where")
             occupiedSeen += fresh.filter { $0 }.count
             // A new look reaches no tile until it reaches it, whatever the
             // look before it reached.
@@ -79,15 +79,15 @@ final class ScoutRoomTests: XCTestCase {
     func testALookStartsWithNoTileReachedWhenItsNumbersComeRound() {
         let state = played("numbers come round")
         var room = ScoutRoom(count: state.map.count, look: .max - 1)
-        room.ready(in: state)
+        room.ready()
         room.reach(7)
         XCTAssertTrue(room.hasReached(7))
-        room.ready(in: state)
+        room.ready()
         XCTAssertFalse(room.hasReached(7), "The last number before they come round")
         room.reach(9)
-        room.ready(in: state)
+        room.ready()
         XCTAssertFalse(room.hasReached(9) || room.hasReached(7), "Come round, every tile told afresh")
-        XCTAssertEqual(room.occupied, freshlyOccupied(state))
+        XCTAssertEqual(room.count, state.map.count)
     }
 
     /// A steward's scout still finds the edge of what its House knows: out

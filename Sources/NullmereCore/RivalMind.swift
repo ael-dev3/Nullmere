@@ -1310,14 +1310,23 @@ struct RivalMind {
     func walkTheMirror(in state: inout GameState) -> [GameEvent] {
         guard [.cunning, .ambitious].contains(state.houses[house].temperament), state.isAtWarWithAny(house),
               state.houses[house].stock.moonsalt >= MirrorWalk.price.moonsalt * 2 else { return [] }
-        let foes = state.holds.filter { $0.owner != house && state.isAtWar(house, $0.owner) }
+        // Where the foes' holds stand, found among each foe's own, and its
+        // own companies read where they lie: not every hold and company of
+        // the realm copied out to be passed over.
+        var foes: [Hex] = []
+        for owner in state.houses.indices where owner != house && state.isAtWar(house, owner) {
+            for index in state.holds.places(of: owner) { foes.append(state.holds[index].position) }
+        }
         guard !foes.isEmpty else { return [] }
         var best: (unit: Int, reach: Int)?
-        for unit in state.units where unit.owner == house && unit.kind.isMilitary
-            && state.mirrorRefusal(unit.id, as: house) == nil {
-            guard let landing = state.mirrorLanding(from: unit.position, for: unit.id),
-                  let reach = foes.map({ $0.position.distance(to: landing) }).min(), reach <= 3 else { continue }
-            if best == nil || (reach, unit.id) < (best!.reach, best!.unit) { best = (unit.id, reach) }
+        for index in state.units.places(of: house) where state.units[index].kind.isMilitary {
+            let id = state.units[index].id
+            guard state.mirrorRefusal(id, as: house) == nil,
+                  let landing = state.mirrorLanding(from: state.units[index].position, for: id) else { continue }
+            var reach = Int.max
+            for foe in foes { reach = min(reach, foe.distance(to: landing)) }
+            guard reach <= 3 else { continue }
+            if best == nil || (reach, id) < (best!.reach, best!.unit) { best = (id, reach) }
         }
         guard let chosen = best else { return [] }
         return perform(.walkTheMirror(unit: chosen.unit), in: &state)
@@ -1410,7 +1419,14 @@ struct RivalMind {
 
     /// Whether another House's hold stands within eight tiles of this one.
     private func bordersAnother(_ hold: Hold, in state: GameState) -> Bool {
-        state.holds.contains { $0.owner != house && $0.position.distance(to: hold.position) <= 8 }
+        // Each hold looked at where it lies, not copied out to be asked.
+        let at = hold.position
+        for index in state.holds.indices {
+            let position = state.holds[index].position
+            guard abs(position.q - at.q) <= 8, position.distance(to: at) <= 8 else { continue }
+            if state.holds[index].owner != house { return true }
+        }
+        return false
     }
 
     private func chooseTraining(for hold: Hold, owners: [Int?], atWar: Bool, siteKnown: inout Bool?, in state: GameState,
@@ -1605,12 +1621,13 @@ struct RivalMind {
     private func foeInReach(of unit: Unit, companiesOfWarOnly: Bool = false, in state: GameState) -> Hex? {
         guard unit.movesLeft > 0 else { return nil }
         let range = unit.kind.range
-        // What stands within its reach: the companies read off the realm's
-        // board hex by hex, the holds in one pass over them, not each sought
-        // for every hex; the first on a hex, as `unit(at:)` and `hold(at:)`
-        // find it, kept by its owner and kind alone, not copied out whole.
-        // Each in its place on a little board about the company, by its
-        // offset from it, not hashed.
+        // What stands within its reach: the companies and the holds read off
+        // the realm's boards hex by hex, not sought through all the realm's
+        // (a realm of many seats has thousands of holds, and a company's
+        // reach a few hexes); the first on a hex, as `unit(at:)` and
+        // `hold(at:)` find it, kept by its owner and kind alone, not copied
+        // out whole. Each in its place on a little board about the company,
+        // by its offset from it, not hashed.
         let side = 2 * range + 1
         var standing = [(owner: Int, military: Bool)?](repeating: nil, count: side * side)
         var holding = [Int?](repeating: nil, count: side * side)
@@ -1620,12 +1637,9 @@ struct RivalMind {
             if let index = state.units.first(at: hex) {
                 standing[place(hex)] = (state.units[index].owner, state.units[index].kind.isMilitary)
             }
-        }
-        for index in state.holds.indices {
-            let position = state.holds[index].position
-            guard abs(position.q - at.q) <= range, position.distance(to: at) <= range else { continue }
-            let slot = place(position)
-            if holding[slot] == nil { holding[slot] = state.holds[index].owner }
+            if let index = state.holds.first(at: hex) {
+                holding[place(hex)] = state.holds[index].owner
+            }
         }
         // A steward keeps the realm's edicts: what a strike would break them on, it leaves.
         let lawful = state.edictsInForce.isEmpty
@@ -2023,11 +2037,12 @@ struct RivalMind {
         let explored = state.houses[house].explored
         let map = state.map
         // Tiles by their index, not hexes in sets: a scout searches far.
-        // What stands on each and which it has reached, in a room kept from
-        // one scout's look to the next, not laid out anew for every scout.
+        // Which it has reached, in a room kept from one scout's look to the
+        // next, not laid out anew for every scout; what stands on a tile
+        // asked only of a tile it would go to.
         var room = ScoutRoom.take(count: map.count)
         defer { ScoutRoom.give(back: &room) }
-        room.ready(in: state)
+        room.ready()
         // Known ruins first, then the nearest edge of the unknown: tile by
         // tile through the map's neighbours, in the order of the directions.
         let neighbours = map.neighbours
@@ -2039,16 +2054,14 @@ struct RivalMind {
         while head < queue.count, head < 2_500 {
             let tile = queue[head]
             head += 1
-            if tile != start, !room.occupied[tile] {
-                if map[tile].feature == .drownedRuin {
-                    frontier = tile
-                    break
-                }
-                if frontier == nil, (0..<6).contains(where: { side in
+            if tile != start {
+                let ruin = map[tile].feature == .drownedRuin
+                if ruin || (frontier == nil && (0..<6).contains(where: { side in
                     let next = Int(neighbours[tile * 6 + side])
                     return next >= 0 && !explored[next]
-                }) {
+                })), !state.somethingStands(on: map.hexes[tile]) {
                     frontier = tile
+                    if ruin { break }
                 }
             }
             for side in 0..<6 {
@@ -2152,15 +2165,22 @@ struct RivalMind {
     }
 
     private func enemyMilitary(near hex: Hex, within distance: Int, in state: GameState) -> Bool {
-        // Each company looked at where it stands, those far along the map's
-        // columns passed over at a glance: not each copied out to be asked.
-        for index in state.units.indices {
-            let position = state.units[index].position
-            guard abs(position.q - hex.q) <= distance, position.distance(to: hex) <= distance else { continue }
-            let owner = state.units[index].owner
-            if owner != house, state.units[index].kind.isMilitary, state.isAtWar(house, owner) { return true }
+        // The companies within reach read off the realm's board hex by hex,
+        // not each of the realm's companies looked at: a realm of many
+        // seats has thousands, and every hold of a House at war asks.
+        var found = false
+        hex.forEach(within: distance) { place in
+            guard !found else { return }
+            for id in state.units.ids(at: place) {
+                guard let index = state.units.index(ofID: id) else { continue }
+                let owner = state.units[index].owner
+                if owner != house, state.units[index].kind.isMilitary, state.isAtWar(house, owner) {
+                    found = true
+                    return
+                }
+            }
         }
-        return false
+        return found
     }
 }
 
