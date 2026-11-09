@@ -140,6 +140,58 @@ final class FrontPressTests: XCTestCase {
             .isEmpty, "no field, no one pressed")
     }
 
+    /// Where the fronts zig-zag, each company fighting one foe while another
+    /// fights it, the companies press in pairs: none presses a foe that is
+    /// pressing another, so none drives into a flank turned away from it,
+    /// and the pairs that fight each other are kept.
+    func testCompaniesPressInPairsSoNoneDrivesIntoAFlankTurnedAway() throws {
+        var state = GameState(settings: GameSettings(seedText: "zig zag", houseCount: 4, radius: 12, keepers: 1))
+        let me = state.player, foe = (me + 1) % state.houses.count
+        _ = try state.declareWar(by: me, on: foe)
+        state.pacing = Pacing()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let east = Hex.directions[0], along = Hex.directions[5]
+        func open(_ hex: Hex) -> Bool {
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        }
+        let ground = try XCTUnwrap(seat.position.spiral(8).first { g in
+            g.distance(to: seat.position) >= 3 && [0, 1].allSatisfy { step in [0, 1].allSatisfy { open(g + along * step + east * $0) } }
+        }, "open ground for the field")
+        func raise(of house: Int, at hex: Hex) -> Int {
+            var unit = Unit(id: state.takeID(), kind: .spear, owner: house, position: hex, tier: 5)
+            unit.drilled = 25_000 - state.firstMuster(of: unit)
+            state.units.append(unit)
+            return unit.id
+        }
+        // Mine on one rank, theirs on the next; the second of mine stands
+        // beside both of theirs, the first of theirs beside both of mine.
+        let mineFirst = ground, mineSecond = ground + along, theirFirst = ground + east, theirSecond = ground + along + east
+        XCTAssertEqual(mineSecond.distance(to: theirFirst), 1, "a zig-zag")
+        XCTAssertEqual(mineFirst.distance(to: theirSecond), 2)
+        let m0 = raise(of: me, at: mineFirst), m1 = raise(of: me, at: mineSecond)
+        let t0 = raise(of: foe, at: theirFirst), t1 = raise(of: foe, at: theirSecond)
+        // The first of mine fights the first of theirs, which fights the
+        // second of mine, which fights the second of theirs, which fights it.
+        _ = try state.perform(.attack(unit: m0, target: theirFirst), as: me)
+        _ = try state.perform(.attack(unit: t0, target: mineSecond), as: foe)
+        _ = try state.perform(.attack(unit: m1, target: theirSecond), as: me)
+        _ = try state.perform(.attack(unit: t1, target: mineSecond), as: foe)
+        let field = try XCTUnwrap(state.fieldsOfBattle.first)
+        XCTAssertEqual(field.fighters.first { $0.unit == t0 }?.foe, m1, "the first of theirs fights the second of mine")
+        let atFoe = WorldStage.handToHand(in: state)
+        XCTAssertEqual(atFoe[m1], theirSecond, "the two that fight each other press each other")
+        XCTAssertEqual(atFoe[t1], mineSecond)
+        XCTAssertEqual(atFoe[m0], theirFirst, "the first of mine presses the first of theirs")
+        XCTAssertEqual(atFoe[t0], mineFirst, "which presses it back, not the flank of the second of mine")
+        for (unit, foeAt) in atFoe {
+            let presser = try XCTUnwrap(state.unit(unit))
+            let pressed = try XCTUnwrap(state.unit(at: foeAt))
+            if let back = atFoe[pressed.id] {
+                XCTAssertEqual(back, presser.position, "a company pressed presses back the one pressing it, or holds its ground")
+            }
+        }
+    }
+
     func testTheSteelFlashesAlongTheLineWhereTheFrontsMeet() {
         var happenings = Happenings()
         let from = Vec3(0, 0, 0), to = Vec3(1.732, 0, 0)

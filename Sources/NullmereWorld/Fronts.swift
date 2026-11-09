@@ -20,9 +20,10 @@ extension WorldStage {
     /// Seconds a company takes to press up to the foe, or to draw back.
     public static let pressTime: Float = 0.7
     /// How far toward the foe a company's blow carries it while it is
-    /// pressed up to the foe's front, against `blowReach` on open ground:
-    /// a shove into the foe's front ranks, not on through them.
-    public static let pressedBlowReach: Float = 0.3
+    /// pressed up to the foe's front, against `blowReach` on open ground,
+    /// as a share of the way between their hearts: a shove of about a rank
+    /// into the foe's front ranks, not on through them.
+    public static let pressedBlowReach: Float = 0.15
     public static let blowReach: Float = 0.6
 
     /// The whole way a company standing at the foe presses toward it from
@@ -46,11 +47,16 @@ extension WorldStage {
     }
 
     /// Where the foe stands that each company standing in a field of
-    /// battle fights hand to hand, by the company's id: the one it fights
-    /// (`Fighter.foe`) where that one still stands in the field beside it,
-    /// or else the foe beside it with the lowest id. A company that fights
-    /// at a distance, bows and engines, presses no foe; nor one with none
-    /// beside it.
+    /// battle presses hand to hand, by the company's id. Two companies that
+    /// fight hand to hand beside each other press each other, paired first
+    /// where each fights the other (`Fighter.foe`), then where one of them
+    /// fights the other, then any two beside each other, the lowest ids
+    /// first; each pressed by one foe at most, so no company presses into a
+    /// flank turned toward another. A company of them left unpaired presses
+    /// a foe beside it that holds its ground (one of the bows or engines, or
+    /// another left unpaired), the one it fights first; so the fronts meet
+    /// and never pass through each other. One that fights at a distance,
+    /// bows and engines, presses no foe; nor one with none beside it.
     public static func handToHand(in state: GameState) -> [Int: Hex] {
         var found: [Int: Hex] = [:]
         for field in state.fieldsOfBattle {
@@ -58,10 +64,30 @@ extension WorldStage {
                 state.unit(fighter.unit).map { (fighter: fighter, at: $0.position) }
             }
             guard standing.count > 1 else { continue }
-            for (fighter, at) in standing where fighter.kind.isMilitary && fighter.kind.range <= 1 {
-                let beside = standing.filter { $0.fighter.side != fighter.side && $0.at.distance(to: at) == 1 }
-                let foe = beside.first { $0.fighter.unit == fighter.foe }
-                    ?? beside.min { $0.fighter.unit < $1.fighter.unit }
+            func closeIn(_ fighter: Fighter) -> Bool { fighter.kind.isMilitary && fighter.kind.range <= 1 }
+            let hand = standing.filter { closeIn($0.fighter) }.sorted { $0.fighter.unit < $1.fighter.unit }
+            // Every two beside each other on opposite sides that both fight
+            // hand to hand, by how surely they fight each other.
+            var pairs: [(rank: Int, low: Int, high: Int, lowAt: Hex, highAt: Hex)] = []
+            for (index, one) in hand.enumerated() {
+                for other in hand.dropFirst(index + 1) where other.fighter.side != one.fighter.side && other.at.distance(to: one.at) == 1 {
+                    let named = (one.fighter.foe == other.fighter.unit ? 1 : 0) + (other.fighter.foe == one.fighter.unit ? 1 : 0)
+                    pairs.append((2 - named, one.fighter.unit, other.fighter.unit, one.at, other.at))
+                }
+            }
+            pairs.sort { ($0.rank, $0.low, $0.high) < ($1.rank, $1.low, $1.high) }
+            var paired = Set<Int>()
+            for pair in pairs where !paired.contains(pair.low) && !paired.contains(pair.high) {
+                paired.formUnion([pair.low, pair.high])
+                found[pair.low] = pair.highAt
+                found[pair.high] = pair.lowAt
+            }
+            // Those left unpaired press a foe beside them that holds its ground.
+            for (fighter, at) in hand where !paired.contains(fighter.unit) {
+                let still = standing.filter { other in
+                    other.fighter.side != fighter.side && other.at.distance(to: at) == 1 && !paired.contains(other.fighter.unit)
+                }
+                let foe = still.first { $0.fighter.unit == fighter.foe } ?? still.min { $0.fighter.unit < $1.fighter.unit }
                 if let foe { found[fighter.unit] = foe.at }
             }
         }
