@@ -405,7 +405,13 @@ a vote on the realm's law to cast.
   phone gives. What a commander remembers of counsel taken on the phone
   stays on the phone, for the age, and is forgotten when the phone is let
   go. A phone that can't run the model says so, and why, and everything
-  else plays as ever. The commanders of other Houses the House holds
+  else plays as ever. The realm's characters speak on the phone as they do
+  on the Mac, through the phone's own model: a steward's envoy, what the
+  Still showed your House at the dark of the moon (listed on the Army tab
+  as the Mac's Reports list it), its riddle at the half moon, and what a
+  prisoner told, each in their own words above the realm's plain ones,
+  the model shown at work with its seconds; where the phone can't run the
+  model, the plain words stand alone. The commanders of other Houses the House holds
   prisoner, as the Mac's Commanders list them: whose and of what level,
   how long until they slip away, and the last true thing each told of
   their House, plainly (the Mac's model gives it in the prisoner's

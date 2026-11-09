@@ -166,6 +166,17 @@ enum CompanionCheck {
         } else {
             lines.append("Words for the fallen: none. " + (written.trouble?.unwritten ?? "The writing was stopped."))
         }
+        // A steward's envoy in its own words, as the phone gives the realm's
+        // characters theirs, from the same facts as the Mac's.
+        let steward = world.houses.indices.first { $0 != player && !world.houses[$0].isPlayer } ?? player
+        let envoy = Envoy(id: 1, from: steward, to: player, proposal: .pact, arrived: world.watch)
+        let spoke = Date()
+        let voiced = await ModelWriter().write(world.view(for: player).voiced(envoy))
+        if let words = voiced.words {
+            lines.append(String(format: "An envoy's words (%.2f s): %@", Date().timeIntervalSince(spoke), words))
+        } else {
+            lines.append("An envoy's words: none. " + (voiced.trouble?.unvoiced ?? "The asking was stopped."))
+        }
         return lines.joined(separator: "\n")
     }
 

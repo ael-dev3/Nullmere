@@ -69,6 +69,30 @@ final class VigilWriterTests: XCTestCase {
         XCTAssertNil(unsayable.words)
     }
 
+    /// The realm's characters through the same writer, on the phone as the
+    /// Mac gives them theirs: asked as the moment's own prompt, in one
+    /// wording for both; where the model can't, why, the realm's plain
+    /// words standing alone.
+    func testACharactersMomentIsAskedFromItsOwnFacts() async throws {
+        let asked = Asked()
+        let writer = ModelWriter(trouble: { nil }) { prompt in
+            await asked.add(prompt)
+            return "  “I saw a great host by Wenholme, keeper.”  "
+        }
+        let moment = Voicing.Moment(task: Voicing.dreamTask, facts: ["The Still showed you a host of 9,000 by Wenholme.", "It is the dark of the moon."])
+        let written = await writer.write(moment)
+        XCTAssertEqual(written.words, "I saw a great host by Wenholme, keeper.")
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(written.seconds), 0)
+        let prompts = await asked.prompts
+        XCTAssertEqual(prompts, [moment.prompt])
+        XCTAssertTrue(prompts[0].hasPrefix(Voicing.dreamTask))
+        XCTAssertNil(writer.unvoiced)
+        let none = ModelWriter(trouble: { .unavailable(.deviceNotEligible) }) { _ in "Never asked" }
+        XCTAssertEqual(none.unvoiced, "This device can't run Apple's on-device model, so the realm's own words stand alone.")
+        let unwritten = await none.write(moment)
+        XCTAssertEqual(unwritten, ModelWriter.Written(words: nil, trouble: .unavailable(.deviceNotEligible), seconds: nil))
+    }
+
     func testStoppedNothingIsWritten() async {
         let (world, me) = world()
         let writer = VigilWriter(trouble: { nil }) { _ in

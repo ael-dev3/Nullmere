@@ -316,6 +316,18 @@ public struct CompanionLedger: Equatable, Sendable {
         public let question: Order?
         /// Let go home, for nothing.
         public let release: Order
+        /// The key the phone's model keeps their last telling's words by, in
+        /// their own voice; nil before they are questioned.
+        public var voice: String?
+    }
+
+    /// What the Still showed the House at the dark of a moon, plainly, as
+    /// the Mac's Reports tell it; and the key the phone's model keeps its
+    /// telling in the Still's own voice by.
+    public struct Dream: Equatable, Sendable {
+        public let watch: Int
+        public let told: String
+        public let voice: String
     }
 
     /// An envoy waiting on the keeper's answer: whose, what it offers in
@@ -333,6 +345,9 @@ public struct CompanionLedger: Equatable, Sendable {
         public let refuse: Order
         /// A steward's demand of tribute, refused, is war at once.
         public let refusingIsWar: Bool
+        /// Where the phone's model gives a steward's envoy words of its own,
+        /// the key it keeps them by; nil for a keeper's, who sent their own.
+        public var voice: String?
     }
 
     /// An item of the House's satchel: how many it keeps, what one does, and
@@ -564,6 +579,9 @@ public struct CompanionLedger: Equatable, Sendable {
         public let standing: String
         public let line: String
         public let answers: [Order]
+        /// The key the phone's model keeps the Still's setting of it by,
+        /// while it is unanswered; nil once answered.
+        public var voice: String?
     }
 
     /// The watch's labours and the happening, as the Mac's Realm panel
@@ -774,6 +792,12 @@ public struct CompanionLedger: Equatable, Sendable {
     public let lyceum: Asked?
     /// The riddle of the Remembering, while the House has one.
     public let remembering: Remembering?
+    /// What the Still showed the House, the latest first.
+    public let dreams: [Dream]
+    /// The moments the phone's model gives words to, keyed as it keeps
+    /// them, as the Mac's voices are given: stewards' envoys, the Still's
+    /// dreams and riddle, and prisoners' tellings.
+    public let voices: [Voicing.Keyed]
     /// The Augury's prophecies, the latest first.
     public let prophecies: [Foretold]
     /// Whether the House may foretell: a keeper's, with no prophecy of its
@@ -958,8 +982,11 @@ public struct CompanionLedger: Equatable, Sendable {
                          accept: world.canKeepTerms(of: envoy, for: player)
                             ? Order(title: "Accept", command: .answer(envoy: envoy.id, accept: true)) : nil,
                          refuse: Order(title: "Refuse", command: .answer(envoy: envoy.id, accept: false)),
-                         refusingIsWar: world.refusingIsWar(envoy))
+                         refusingIsWar: world.refusingIsWar(envoy),
+                         voice: houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer ? "envoy-\(envoy.id)" : nil)
         }
+        voices = world.voicedMoments(for: player)
+        dreams = world.dreams(of: player).reversed().map { Dream(watch: $0.watch, told: world.told($0), voice: "dream-\($0.watch)") }
         gatherings = world.gatherings(against: player).map(world.words(of:))
         veil = world.veilSaid(of: player)
         veiled = world.isVeiled(player)
@@ -1090,7 +1117,8 @@ public struct CompanionLedger: Equatable, Sendable {
                 ? Order(title: "Question \(prisoner.name)", command: .question(commander: prisoner.id)) : nil
             return Prisoner(id: prisoner.id, name: prisoner.name, of: world.prisonerOf(prisoner), held: captive.leftSaid(at: world.watch),
                             told: captive.told?.last, question: question,
-                            release: Order(title: "Let \(prisoner.name) go home", command: .release(commander: prisoner.id)))
+                            release: Order(title: "Let \(prisoner.name) go home", command: .release(commander: prisoner.id)),
+                            voice: captive.told?.last == nil ? nil : GameState.voiceKey(of: prisoner, captive))
         }
         self.holds = holds.map { hold in
             var work: [String] = []
@@ -1268,7 +1296,8 @@ public struct CompanionLedger: Equatable, Sendable {
             Remembering(standing: riddle.standingSaid, line: riddle.line,
                         answers: riddle.choices.filter { world.riddleRefusal($0, as: player) == nil }.map {
                             Order(title: $0, command: .answerRiddle($0))
-                        })
+                        },
+                        voice: riddle.answered == nil ? "riddle-\(riddle.set)" : nil)
         }
         let studied = CompanionLedger.studies(of: allied, in: world, player: player)
         allianceLore = studied.lore

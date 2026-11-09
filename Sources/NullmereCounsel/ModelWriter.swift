@@ -2,13 +2,17 @@ import Foundation
 import FoundationModels
 import NullmereCore
 
-/// A House's few words for its dead, for its vigil on the water, written by
-/// Apple's on-device model on this device, on the phone as on the Mac: from
-/// what the realm gives (`GameState.vigilFacts`), under the voices' rules,
-/// held to the words the realm carries. Where the model can't write them
-/// (the device can't run it, Apple Intelligence is off, it isn't ready, it
-/// fails or is slow), why, and no words made up in their place.
-public struct VigilWriter: Sendable {
+/// Words written by Apple's on-device model on this device, on the phone
+/// as on the Mac, from the realm's own facts and under the voices' rules,
+/// held to the words the realm carries: a House's few words for its dead,
+/// for its vigil on the water (`GameState.vigilFacts`), or the words of one
+/// of the realm's characters, an envoy, the Still or a prisoner
+/// (`Voicing.Moment`). Where the model can't write them (the device can't
+/// run it, Apple Intelligence is off, it isn't ready, it fails or is slow),
+/// why, and no words made up in their place.
+public typealias VigilWriter = ModelWriter
+
+public struct ModelWriter: Sendable {
     /// What came of the asking: the words and how long the model took, or
     /// why there were none; both nil where the writing was stopped.
     public struct Written: Sendable, Equatable {
@@ -32,11 +36,11 @@ public struct VigilWriter: Sendable {
     /// The writer of Apple's on-device model on this device.
     public init() {
         self.init(trouble: { CommanderCounselSession.trouble(for: SystemLanguageModel.default.availability) }) { prompt in
-            try await VigilWriter.askTheModel(prompt)
+            try await ModelWriter.askTheModel(prompt)
         }
     }
 
-    init(trouble: @escaping @Sendable () -> CounselTrouble?, patience: Double = VigilWriter.patience,
+    init(trouble: @escaping @Sendable () -> CounselTrouble?, patience: Double = ModelWriter.patience,
          respond: @escaping @Sendable (_ prompt: String) async throws -> String) {
         self.trouble = trouble
         self.respond = respond
@@ -55,11 +59,21 @@ public struct VigilWriter: Sendable {
     /// dead here; nil when it can.
     public var unavailable: String? { trouble()?.unwritten }
 
+    /// Why the model can give the realm's characters no words of their own
+    /// here, the realm's plain words standing alone; nil when it can.
+    public var unvoiced: String? { trouble()?.unvoiced }
+
     /// The words for a House's dead, from its count of its fallen and where
     /// and when its reports say they fell, in `world`, the keeper's view.
     public func write(for house: Int, in world: GameState, reports: [BattleReport]) async -> Written {
+        await write(Voicing.Moment(task: GameState.vigilWordsAsked, facts: world.vigilFacts(of: house, reports: reports)))
+    }
+
+    /// The words of a moment: asked of the model as `moment.prompt`, timed,
+    /// held to the words the realm carries.
+    public func write(_ moment: Voicing.Moment) async -> Written {
         if let trouble = trouble() { return Written(words: nil, trouble: trouble, seconds: nil) }
-        let prompt = Voicing.asking(GameState.vigilWordsAsked, facts: world.vigilFacts(of: house, reports: reports))
+        let prompt = moment.prompt
         let began = Date()
         do {
             let answer = try await OrderClerk.within(patience) { [respond] in try await respond(prompt) }

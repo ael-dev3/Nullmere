@@ -53,6 +53,16 @@ struct KeepingView: View {
             #if DEBUG
             if let shown = CompanionCheck.tabShown { tab = shown }
             #endif
+            PhoneVoices.shared.hear(session.ledger?.voices ?? [])
+        }
+        // The realm's characters given words by this phone's own model as
+        // they come, as the Mac gives them; forgotten when the phone is let
+        // go and links to no one.
+        .onChange(of: session.ledger?.voices) {
+            PhoneVoices.shared.hear(session.ledger?.voices ?? [])
+        }
+        .onChange(of: session.phase) {
+            if session.phase == .pairing { PhoneVoices.shared.forget() }
         }
     }
 }
@@ -283,6 +293,7 @@ struct HouseTab: View {
                                 .font(Night.small)
                                 .foregroundStyle(riddle.answers.isEmpty ? Night.ink.opacity(0.7) : Night.moon)
                                 .fixedSize(horizontal: false, vertical: true)
+                            VoicedWords(key: riddle.voice, who: "the Still")
                             Text(verbatim: riddle.line)
                                 .font(Night.body)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -864,6 +875,26 @@ struct ArmyTab: View {
                     }
                     // The House's reports, as the Mac files them: battles,
                     // hunts, fields of battle, scoutings and lairs assaulted.
+                    // What the Still showed the House at the dark of each moon,
+                    // as the Mac's Reports tell it, in the Still's own voice
+                    // where this phone's model gave it one.
+                    if !ledger.dreams.isEmpty {
+                        Section("What the Still showed") {
+                            ForEach(ledger.dreams, id: \.watch) { dream in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(verbatim: "Dream · watch \(dream.watch)")
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.moon)
+                                    VoicedWords(key: dream.voice, who: "the Still")
+                                    Text(verbatim: dream.told)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.8))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
                     if !session.reports.isEmpty {
                         Section("Reports") {
                             ForEach(session.reports.prefix(CompanionLedger.reportsOpen)) { report in
@@ -1336,6 +1367,7 @@ struct EnvoyRow: View {
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
+            VoicedWords(key: envoy.voice, who: "the envoy")
             if let words = envoy.words {
                 Text(verbatim: "\u{201C}\(words)\u{201D}")
                     .font(Night.small.italic())
@@ -2263,6 +2295,7 @@ struct PrisonerRows: View {
                 .foregroundStyle(Night.ink.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
             if let told = prisoner.told {
+                VoicedWords(key: prisoner.voice, who: "the prisoner")
                 Text(verbatim: told)
                     .font(Night.small)
                     .foregroundStyle(Night.moon)

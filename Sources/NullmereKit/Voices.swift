@@ -97,31 +97,18 @@ public struct VoiceMoment: Sendable, Equatable {
         let task: String
         switch kind {
         case .envoy(let proposal):
-            let offer: String
-            switch proposal {
-            case .peace: offer = "an end to the war between their House and the player's"
-            case .pact: offer = "a pact: shared sight and no war between the Houses"
-            case .fealty: offer = "their House's fealty: beaten, they would serve the player's House as its vassal"
-            case .tribute: offer = "tribute: a fifth of the player's stores, or their companies will march"
-            case .trade: offer = "a trade of stores, on the terms given"
-            }
-            let verb = proposal == .tribute ? "demanding" : "offering"
-            task = "Speak as the envoy, addressing the player's House directly, \(verb) \(offer). One or two sentences, at most 40 words."
+            task = Voicing.envoyTask(proposal)
         case .chronicle:
             task = "Write the chronicler's single line recording this, as it would stand in an old book of the lake. One sentence, at most 30 words."
         case .ballad:
             task = "Make a short ballad of this deed, as the halls around the lake would sing it: four lines, each of at most ten words. "
                 + "Reply with the four lines alone, one to a line, with no title."
         case .dream:
-            task = "Speak as the still black lake itself, to one who wakes from a dream at the dark of the moon: tell them what the water "
-                + "showed them, keeping every name and number as given. Two sentences, at most 40 words."
+            task = Voicing.dreamTask
         case .riddle:
-            task = "Speak as the still black lake itself, setting a riddle of the realm's past at the half moon: ask whose House did "
-                + "what is told, keeping every name and number as given and the blank ——— where the name was taken out. "
-                + "One or two sentences, at most 40 words."
+            task = Voicing.riddleTask
         case .prisoner:
-            task = "Speak as the captured commander, questioned by their captors and telling them, against their will, the one thing "
-                + "about their own House that is told here, keeping every name and number as given. One or two sentences, at most 40 words."
+            task = Voicing.prisonerTask
         case .vigil:
             task = GameState.vigilWordsAsked
         }
@@ -278,13 +265,12 @@ enum VoiceFacts {
     /// A riddle, for the Still to set: the line of the past with its name
     /// taken out, and when. The name itself the model is never given.
     static func riddle(_ riddle: Riddle) -> VoiceMoment {
-        VoiceMoment(kind: .riddle, facts: [riddle.line, "It is the half moon."])
+        VoiceMoment(kind: .riddle, facts: Voicing.riddle(riddle).facts)
     }
 
     /// A prisoner questioned: who they are, whose, and the true thing they tell.
     static func prisoner(_ prisoner: Commander, told word: String, in state: GameState) -> VoiceMoment {
-        let house = state.houses.indices.contains(prisoner.owner) ? state.houses[prisoner.owner].title : "a fallen House"
-        return VoiceMoment(kind: .prisoner, facts: ["\(prisoner.name), \(prisoner.archetype.named) of \(house), is held prisoner.", word])
+        VoiceMoment(kind: .prisoner, facts: state.voiced(prisoner: prisoner, told: word).facts)
     }
 
     /// Words for a House's dead, for its vigil: whose they were, how many
@@ -296,30 +282,11 @@ enum VoiceFacts {
 
     /// A dream, for the Still to tell: what it showed, plainly, and when.
     static func dream(_ dream: Dream, in state: GameState) -> VoiceMoment {
-        VoiceMoment(kind: .dream, facts: [state.told(dream), "It is the dark of the moon."])
+        VoiceMoment(kind: .dream, facts: state.voiced(dream).facts)
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {
-        let house = state.houses[envoy.from]
-        let player = state.houses[envoy.to]
-        var facts = [
-            "The envoy comes from \(house.title), whose temper is \(house.temperament.title.lowercased()).",
-            "They speak to \(player.title).",
-            "The two Houses stand at \(state.stance(envoy.from, envoy.to).title.lowercased()).",
-        ]
-        if let relation = state.relation(envoy.from, envoy.to) {
-            if relation.betrayals > 0 { facts.append("Pacts between them have been broken before.") }
-            if relation.aggressor == envoy.to { facts.append("It was \(player.title) that declared the war.") }
-            if relation.aggressor == envoy.from { facts.append("It was \(house.title) that declared the war.") }
-        }
-        let theirs = state.strength(of: envoy.from)
-        let ours = state.strength(of: envoy.to)
-        if theirs > ours * 3 / 2 { facts.append("\(house.title) is the stronger House.") }
-        if ours > theirs * 3 / 2 { facts.append("\(player.title) is the stronger House.") }
-        if let trade = envoy.trade {
-            facts.append("\(house.title) would give \(trade.given) for \(trade.taken).")
-        }
-        return VoiceMoment(kind: .envoy(proposal: envoy.proposal), facts: facts)
+        VoiceMoment(kind: .envoy(proposal: envoy.proposal), facts: state.voiced(envoy).facts)
     }
 
     /// A ballad of a Chronicle entry, as a House's keeper would have it

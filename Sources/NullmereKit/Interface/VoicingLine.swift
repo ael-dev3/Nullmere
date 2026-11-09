@@ -32,6 +32,6 @@ struct VoicingLine: View {
     /// While the model is at it: "Apple's on-device model gives the envoy
     /// words… 1.4 s".
     static func atWork(_ who: String, began: Date, now: Date) -> String {
-        "Apple's on-device model gives \(who) words… " + String(format: "%.1f s", max(0, now.timeIntervalSince(began)))
+        Voicing.atWork(who, seconds: now.timeIntervalSince(began))
     }
 }
