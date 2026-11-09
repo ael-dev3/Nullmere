@@ -92,7 +92,8 @@ final class PetitionTests: XCTestCase {
         _ = world.bringPetitions()
         let petition = try XCTUnwrap(world.petition(of: me))
         XCTAssertEqual(petition.plea, .tend)
-        XCTAssertTrue(world.asked(by: petition).contains("lies hurt at \(seat.name)'s gates, at \(Petition.hurt - 1) of its strength,"),
+        XCTAssertTrue(world.asked(by: petition).hasSuffix("lies hurt at \(seat.name)'s gates, at \(Petition.hurt - 1) of its strength in a hundred. "
+                                                          + "For \(petition.price), its healers will give it back \(GameState.draughtMending) of its strength."),
                       world.asked(by: petition))
         try world.perform(.answerPetition(petition.id, grant: true), as: me)
         XCTAssertEqual(world.unit(company.id)?.health, Petition.hurt - 1 + GameState.draughtMending)

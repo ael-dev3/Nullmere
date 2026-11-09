@@ -106,8 +106,8 @@ extension GameState {
             return "Fire burns in the blackwood on \(tiles) of \(place)'s land, and \(windSaid). \(price), its woodwards will beat it out."
         case .tend:
             let company = petition.unit.flatMap { unit($0) }.map { "your \(named($0.kind, tier: $0.tier, of: $0.owner))" } ?? "your company"
-            let strength = petition.unit.flatMap { unit($0) }.map { ", at \($0.health) of its strength," } ?? ""
-            return "\(company.lineBegun) lies hurt at \(place)'s gates\(strength). \(price), its healers will tend it by \(GameState.draughtMending)."
+            let strength = petition.unit.flatMap { unit($0) }.map { ", at \($0.health) of its strength in a hundred" } ?? ""
+            return "\(company.lineBegun) lies hurt at \(place)'s gates\(strength). \(price), its healers will give it back \(GameState.draughtMending) of its strength."
         case .hands:
             return "\(place)'s folk would lend their hands to what it has under way. \(price), it comes a watch nearer."
         case .feast:

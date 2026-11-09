@@ -1695,7 +1695,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   and five for each tile alight, sixty at most) to beat the fire out, and
   granted, every fire on the hold's land is out at once, the wood it has
   burnt lying as ash; a company of your House lying hurt at its gates, a
-  healer asks 30 grain to tend it by thirty; a work or a muster two
+  healer asks 30 grain to give it back thirty of its strength (of a
+  hundred); a work or a muster two
   watches or more from done, the reeve asks 40 grain to bring it a watch
   nearer; at the full moon, a brewer of the seat asks 60 grain for a
   feast, and the folk give your House a Salt Hourglass in thanks. The
