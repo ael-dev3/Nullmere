@@ -1787,6 +1787,9 @@ public final class GameSession {
         case .whisperUnmasked(_, let teller, _, _) where teller == player: return .dread
         case .whisperUnmasked(_, _, let belied, _) where belied == player: return .coin
         case .riddleSet(let house) where house == player: return .lore
+        // Folk at the gate: voices come to plead; granted, coin paid; turned away, a refusal.
+        case .petitionBrought(let petition) where petition.house == player: return .parley
+        case .petitionAnswered(let petition, let granted, _) where petition.house == player: return granted ? .coin : .refusal
         case .stillHour(let glimpses, let shown) where glimpses > 0 && shown.contains(player): return .dread
         // The whole lake stirring: dread to all but its breakers.
         case .calmBroken(let breakers, _): return breakers.contains(player) ? .clash : .dread

@@ -93,6 +93,12 @@ final class PetitionCardTests: XCTestCase {
         XCTAssertEqual(moment.kind, .petition)
         XCTAssertEqual(moment.facts, session.state.voiced(petition).facts)
         XCTAssertTrue(moment.prompt.hasPrefix(Voicing.petitionTask), moment.prompt)
+        // Heard as it comes and as it is answered, never by another House.
+        let me = session.player, state = session.state
+        XCTAssertEqual(GameSession.cue(forDepth: .petitionBrought(petition), in: state, player: me), .parley)
+        XCTAssertEqual(GameSession.cue(forDepth: .petitionAnswered(petition, granted: true, silently: false), in: state, player: me), .coin)
+        XCTAssertEqual(GameSession.cue(forDepth: .petitionAnswered(petition, granted: false, silently: true), in: state, player: me), .refusal)
+        XCTAssertNil(GameSession.cue(forDepth: .petitionBrought(petition), in: state, player: (me + 1) % state.houses.count))
         // Its coming, its answer and its withdrawal are told as the realm words them.
         for event: GameEvent in [.petitionBrought(petition), .petitionAnswered(petition, granted: false, silently: true), .petitionWithdrawn(petition)] {
             XCTAssertEqual(Narration.line(for: event, in: session.state, viewer: session.player)?.text,
