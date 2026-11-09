@@ -199,6 +199,20 @@ final class WorldRenderTests: XCTestCase {
                                           at: Date(), time: 20).impacts.count, 16 * WorldStage.struckSteps.count,
                        "and the blows land on each struck rank")
         XCTAssertGreaterThan(throngs.map(\.throng).reduce(0, +), 16 * 24, "the host in its hundreds of figures")
+        // Hand to hand, each spear company presses up to the foe's beside
+        // it, facing it, so the two fronts meet midway between them; the
+        // bows behind hold their ground.
+        for pose in throngs {
+            let unit = try XCTUnwrap(state.unit(pose.unit))
+            let heart = Relief.centre(of: unit.position)
+            let moved = Vec3(pose.position.x - heart.x, 0, pose.position.z - heart.z).length
+            if unit.kind == .spear {
+                XCTAssertGreaterThan(moved, 0.15, "a spear company presses up to the foe beside it")
+                XCTAssertLessThan(moved, Relief.hexSpacing / 2, "and no further than the line between them")
+            } else {
+                XCTAssertEqual(moved, 0, accuracy: 0.0001, "a bow company holds its ground")
+            }
+        }
         print("RENDER battle: \(scene.instanceCount) instances, \(scene.motes.count) motes, \(scene.lights.count) lights")
         XCTAssertGreaterThan(scene.motes.count, 40, "clash and dust over the field")
         var close = Camera(scale: 95, tilt: 0.9, heading: 0.35)

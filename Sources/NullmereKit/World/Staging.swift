@@ -456,7 +456,12 @@ extension GameSession {
         for field in state.fieldsOfBattle {
             for fighter in field.fighters where fighter.standing { fighting[fighter.unit] = (field, fighter) }
         }
+        let atFoe = WorldStage.handToHand(in: state)
         for unit in state.units where unit.owner == player || isVisible(unit.position) {
+            // Staged before: one coming to a fight eases up to the foe; one
+            // the keeper's eye first falls on in a fight stands at the front.
+            // Asked only of a company at the foe, before it is staged now.
+            let seen = atFoe.isEmpty || atFoe[unit.id] == nil || clipsShown[unit.id] != nil
             let key = ModelKey.company(unit.kind, tier: unit.tier, heritage: state.heritage(of: unit.owner))
             let centre = Relief.centre(of: unit.position)
             var position = Vec3(centre.x, Float(groundHeight(of: unit.position)), centre.z)
@@ -511,9 +516,11 @@ extension GameSession {
                     clipTime = Float(age)
                     heading = CompanyPose.heading(from: unit.position, to: blow.at)
                     if !blow.isRanged {
-                        // Into the foe's ground and back.
+                        // Into the foe's ground and back; pressed up to the
+                        // foe's front already, into its front ranks only.
                         let foe = Relief.centre(of: blow.at)
-                        let lean = Float(GameSession.Blow.lunge(at: age / GameSession.Blow.duration)) * 0.6
+                        let reach = atFoe[unit.id] != nil ? WorldStage.pressedBlowReach : WorldStage.blowReach
+                        let lean = Float(GameSession.Blow.lunge(at: age / GameSession.Blow.duration)) * reach
                         position.x += (foe.x - centre.x) * lean
                         position.z += (foe.z - centre.z) * lean
                     }
@@ -528,6 +535,7 @@ extension GameSession {
             if let led = unit.leader.flatMap(state.commander) { poses[poses.count - 1].stars = led.starCount }
             // Standing in a field of battle: its troops' whole throng, its
             // front ranks at it blow after blow, each a beat from the next.
+            var pressing: Hex?
             if let (field, fighter) = fighting[unit.id] {
                 let standing = max(fighter.troops - fighter.lost, 0)
                 poses[poses.count - 1].throng = Formation.throngCount(key, troops: standing, muster: state.musterPercent(of: unit))
@@ -539,16 +547,37 @@ extension GameSession {
                     poses[poses.count - 1].heading = heading + .pi
                     poses[poses.count - 1].spread = WorldStage.routSpread
                     poses[poses.count - 1].blend = nil
-                } else if clip == .idle {
-                    // At the foe blow after blow, and taking theirs: its ranks strike and reel by turns.
-                    let beat = Clip.attack.period
-                    poses[poses.count - 1].clip = .attack
-                    poses[poses.count - 1].clipTime = Float((time + Double(GameSession.attackBeat(of: unit.id))).truncatingRemainder(dividingBy: Double(beat)))
-                    poses[poses.count - 1].blend = nil
-                    poses[poses.count - 1].struck = true
-                    poses[poses.count - 1].falling = WorldStage.falling(count: WorldStage.fallingCount(lost: fighter.lost), unit: unit.id,
-                                                                        at: Float(time))
+                } else {
+                    if clip == .idle {
+                        // At the foe blow after blow, and taking theirs: its ranks strike and reel by turns.
+                        let beat = Clip.attack.period
+                        poses[poses.count - 1].clip = .attack
+                        poses[poses.count - 1].clipTime = Float((time + Double(GameSession.attackBeat(of: unit.id))).truncatingRemainder(dividingBy: Double(beat)))
+                        poses[poses.count - 1].blend = nil
+                        poses[poses.count - 1].struck = true
+                        poses[poses.count - 1].falling = WorldStage.falling(count: WorldStage.fallingCount(lost: fighter.lost), unit: unit.id,
+                                                                            at: Float(time))
+                    }
+                    pressing = atFoe[unit.id]
                 }
+            }
+            // Hand to hand in a field, pressed up to the foe beside it and
+            // facing it, so the two fronts meet midway between their hexes
+            // (`WorldStage.pressWay`); easing up to it as it comes to the
+            // fight and back to its own ground as it leaves, or runs.
+            var way: Vec3?
+            if let foe = pressing {
+                let ahead = WorldStage.frontReach(throng: poses[poses.count - 1].throng, unit: unit.id, spread: poses[poses.count - 1].spread)
+                let there = Relief.centre(of: foe)
+                way = WorldStage.pressWay(from: Vec3(centre.x, 0, centre.z), toward: Vec3(there.x, 0, there.z), front: ahead)
+                poses[poses.count - 1].heading = CompanyPose.heading(from: unit.position, to: foe)
+            }
+            if animated, way != nil || (!pressesShown.isEmpty && pressesShown[unit.id] != nil) {
+                let press = FrontPress.step(pressesShown[unit.id], toward: way, at: time, firstSeen: !seen)
+                pressesShown[unit.id] = press
+                if let press { poses[poses.count - 1].position += press.offset }
+            } else if !animated, let way {
+                poses[poses.count - 1].position += way
             }
             if let leading = unit.leader.flatMap(state.commander)?.leadingTree {
                 poses[poses.count - 1].talentTree = TalentTree.allCases.firstIndex(of: leading.tree) ?? -1
@@ -691,12 +720,14 @@ extension GameSession {
             let standing = field.fighters.filter(\.standing).count
             happenings.battles.append(Happenings.Spot(at: ground(field.at), strength: Float(min(standing, 12)),
                                                       seed: UInt32(truncatingIfNeeded: field.id)))
-            // Where each company meets the foe nearest it: a front of steel.
+            // Where each company meets the foe nearest it beside it, hand
+            // to hand: a front of steel, midway between them, where the two
+            // throngs press up to each other (`WorldStage.pressWay`).
             let fighters = field.fighters.filter(\.standing).compactMap { fighter in unitsByID[fighter.unit].map { (fighter, $0) } }
             for (fighter, unit) in fighters where fighter.side == 0 {
                 guard let (foe, foeUnit) = fighters.filter({ $0.0.side != 0 })
                     .min(by: { $0.1.position.distance(to: unit.position) < $1.1.position.distance(to: unit.position) }),
-                      foeUnit.position.distance(to: unit.position) <= max(unit.kind.range, 1) else { continue }
+                      foeUnit.position.distance(to: unit.position) == 1 else { continue }
                 let troops = max(fighter.troops - fighter.lost, 0) + max(foe.troops - foe.lost, 0)
                 happenings.fronts.append(Happenings.Front(from: ground(unit.position), to: ground(foeUnit.position),
                                                           strength: Float(troops) / 25_000,

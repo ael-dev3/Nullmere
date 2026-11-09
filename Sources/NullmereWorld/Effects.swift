@@ -496,6 +496,12 @@ public struct Happenings: Equatable, Sendable {
     }
     /// How often each front throws a clash of steel, in seconds.
     public static let clashEvery: Float = 0.22
+    /// How far before or behind the line where two throngs meet a clash
+    /// falls, as a share of the way between the two companies' hearts;
+    /// and how far along that line either side of its middle, in the
+    /// world's units: across most of a company's front.
+    public static let clashAlong: Float = 0.12
+    public static let clashAcross: Float = 0.45
     /// How strongly the watch's wind bears smoke off, a unit a second each
     /// second: a plume leaning well over, three tiles downwind before it is
     /// gone, against the night's own air, a third as strong.
@@ -606,8 +612,9 @@ public struct Happenings: Equatable, Sendable {
             emitters.append(Emitter(.dust, at: work.at, rate: 2, spread: 0.16, seed: work.seed, strength: 0.55))
         }
         for front in fronts {
-            // Clash on clash along the front, each at its own place on it
-            // and a little before or behind it; and the glint of steel.
+            // Clash on clash where the two throngs meet, midway between
+            // them (`WorldStage.pressWay`): each a little before or behind
+            // the line, at its own place along it; and the glint of steel.
             let beat = Int(time / Happenings.clashEvery)
             let along = front.to - front.from
             let side = Vec3(-along.z, 0, along.x).normalized
@@ -615,8 +622,9 @@ public struct Happenings: Equatable, Sendable {
             for back in 0...2 {
                 for clash in 0..<clashes {
                     let n = UInt32(truncatingIfNeeded: beat - back) &* 31 &+ UInt32(clash)
-                    let u = Effects.unit(front.seed &+ n, 1), v = Effects.unit(front.seed &+ n, 2) - 0.5
-                    let at = front.from + along * u + side * (v * 0.18) + Vec3(0, 0.12, 0)
+                    let u = Effects.unit(front.seed &+ n, 1) - 0.5, v = Effects.unit(front.seed &+ n, 2) - 0.5
+                    let at = front.from + along * (0.5 + u * 2 * Happenings.clashAlong) + side * (v * 2 * Happenings.clashAcross)
+                        + Vec3(0, 0.12, 0)
                     let start = Float(beat - back) * Happenings.clashEvery + Effects.unit(front.seed &+ n, 3) * Happenings.clashEvery
                     bursts.append(Burst(.flash, at: at, start: start, count: 1, seed: front.seed &+ n))
                     bursts.append(Burst(.sparks, at: at, start: start, count: 5, seed: front.seed &+ n &+ 5, scale: 0.7))

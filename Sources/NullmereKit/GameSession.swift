@@ -153,6 +153,9 @@ public final class GameSession {
     @ObservationIgnored var hallRisings: [Int: HallRising] = [:]
     /// Each company's clip as last drawn, and the one it is easing out of.
     @ObservationIgnored var clipsShown: [Int: ClipShown] = [:]
+    /// How far each company fighting hand to hand has pressed up to the
+    /// foe, as last drawn, so it eases up and back (`FrontPress`).
+    @ObservationIgnored var pressesShown: [Int: FrontPress] = [:]
     /// Works finished lately, for the dust of their last course.
     @ObservationIgnored var completions: [Completion] = []
     /// The blackwood seen burning when the world was last drawn, nil before
@@ -1563,6 +1566,7 @@ public final class GameSession {
             risings = [:]
             hallRisings = [:]
             clipsShown = [:]
+            pressesShown = [:]
             completions = []
             firesSeen = nil
             catchings = []
