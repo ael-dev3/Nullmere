@@ -551,6 +551,10 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   wind as the realm tells it, every burning hold's with them, so the
   smoke shows which way a fire will run, and rising straight on a Still
   Night (`Happenings.air`, `WorldStage.windward`; EffectsTests on Linux),
+  a tongue of flame leaping up and a flash of its light where it catches
+  new wood as the watch turns, seen catching and not before
+  (`Happenings.catching`; EffectsTests on Linux, the session's staging on
+  the Mac, **Unverified** until a CI run),
   the firelight on the wood, and from afar a warm
   glow over each tile alight that keeps its size on the screen and comes
   in as the holds' glows do, flickering (the nearest 96 tiles to the

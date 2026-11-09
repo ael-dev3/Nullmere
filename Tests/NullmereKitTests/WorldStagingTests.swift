@@ -386,6 +386,35 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(quiet.lights.isEmpty)
     }
 
+    /// Wood seen catching alight flares up where it catches, for a few
+    /// seconds; a fire already burning when the world is first drawn
+    /// doesn't.
+    func testWoodFlaresUpWhereTheFireCatches() throws {
+        var alight: Hex?
+        let session = try session { state in
+            let me = state.player
+            state.houses[me].explored = Explored(repeating: true, count: state.map.count)
+            let wood = try XCTUnwrap(state.map.hexes.first { state.isBlackwood($0) && state.hold(at: $0) == nil })
+            state.wildfires = [Wildfire(at: wood, by: me, caught: state.watch, out: state.watch + Wildfire.burns)]
+            alight = wood
+        }
+        XCTAssertNotNil(alight)
+        let stage = WorldStage(map: session.state.map, relief: session.relief)
+        let now = Date()
+        let first = session.happenings(poses: [], sights: [], stage: stage, at: now, time: 30)
+        XCTAssertEqual(first.woodFires.count, 3, "the wood burning")
+        XCTAssertTrue(first.catching.isEmpty, "burning when first drawn: no flare")
+        // Seen catching since the world was last drawn: it flares, a few seconds.
+        session.firesSeen = []
+        let caught = session.happenings(poses: [], sights: [], stage: stage, at: now, time: 30)
+        XCTAssertEqual(caught.catching.count, 1)
+        XCTAssertEqual(caught.catching.first?.start ?? 0, 30, accuracy: 0.001)
+        XCTAssertEqual(session.happenings(poses: [], sights: [], stage: stage, at: now.addingTimeInterval(1), time: 31).catching.count, 1,
+                       "still flaring")
+        XCTAssertTrue(session.happenings(poses: [], sights: [], stage: stage, at: now.addingTimeInterval(4), time: 34).catching.isEmpty,
+                      "and gone")
+    }
+
     func testBurningHoldsSmokeAndGiveFirelightAndFinishedWorksRaiseDust() throws {
         var seatID = 0
         let session = try session { state in

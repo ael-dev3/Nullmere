@@ -155,6 +155,11 @@ public final class GameSession {
     @ObservationIgnored var clipsShown: [Int: ClipShown] = [:]
     /// Works finished lately, for the dust of their last course.
     @ObservationIgnored var completions: [Completion] = []
+    /// The blackwood seen burning when the world was last drawn, nil before
+    /// it first is; and wood seen catching since, for the flame that leaps
+    /// up as it catches.
+    @ObservationIgnored var firesSeen: Set<Hex>?
+    @ObservationIgnored var catchings: [Catching] = []
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -1531,6 +1536,8 @@ public final class GameSession {
             hallRisings = [:]
             clipsShown = [:]
             completions = []
+            firesSeen = nil
+            catchings = []
         }
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1

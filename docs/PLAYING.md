@@ -621,13 +621,14 @@ a vote on the realm's law to cast.
   told so; in the world the wood burns with flames licking up among the
   trees under embers and rolling smoke, the smoke and embers borne off on
   the watch's wind (and every burning hold's with them), so you see which
-  way a fire will run, and rising straight on a Still Night; from afar
-  each tile alight glows warm over the dark, flickering; near, the fire is
-  heard roaring and crackling from where it burns, the more of it about
-  the view the louder (heard from further back than the lake's lapping,
-  and only wood the House has seen). The phone's chart draws it aflame
-  and, after, grey with ash. Stewards set no fires, and step their
-  companies out of one.
+  way a fire will run, and rising straight on a Still Night; where it
+  catches new wood as the watch turns a tongue of flame leaps up from it
+  and its light flashes over the trees; from afar each tile alight glows
+  warm over the dark, flickering; near, the fire is heard roaring and
+  crackling from where it burns, the more of it about the view the louder
+  (heard from further back than the lake's lapping, and only wood the
+  House has seen). The phone's chart draws it aflame and, after, grey with
+  ash. Stewards set no fires, and step their companies out of one.
 - **Holds** gather what their land yields and store it, up to a limit that
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at

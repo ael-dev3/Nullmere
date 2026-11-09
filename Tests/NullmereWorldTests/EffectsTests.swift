@@ -109,6 +109,31 @@ final class EffectsTests: XCTestCase {
         XCTAssertLessThan(abs(smoke(Vec3(0, 0, 0))), abs(smoke(nil)), "a still night's smoke rising straight")
     }
 
+    /// Wood catching alight as the watch turns flares up: a tongue of flame
+    /// leaping taller than the fire's own among the trees, embers flying,
+    /// its light flashing over the wood and dying, all gone in a few
+    /// seconds and nothing before it catches.
+    func testWoodFlaresUpAsTheFireCatchesIt() {
+        let at = Vec3(3, 0.2, -2)
+        var happenings = Happenings()
+        happenings.catching = [Happenings.Spot(at: at, start: 10, seed: 4)]
+        let before = happenings.effects(at: 9.9)
+        XCTAssertTrue(before.motes.isEmpty && before.lights.isEmpty, "nothing before it catches")
+        let flaring = happenings.effects(at: 10.15)
+        XCTAssertTrue(flaring.motes.contains { $0.colour.w == 0 && $0.place.y > at.y + 0.2 && $0.colour.x > 0.5 }, "fire leaping up")
+        XCTAssertEqual(flaring.lights.count, 1)
+        XCTAssertGreaterThan(flaring.lights[0].colour.x, flaring.lights[0].colour.z, "firelight")
+        let dying = happenings.effects(at: 10.9)
+        XCTAssertLessThan(dying.lights.first?.colour.x ?? 0, flaring.lights[0].colour.x, "its light dying")
+        let gone = happenings.effects(at: 14)
+        XCTAssertTrue(gone.motes.isEmpty && gone.lights.isEmpty, "gone in a few seconds")
+        // Its flames stand taller than a fire's own among the trees.
+        func tallest(_ motes: [Mote]) -> Float { motes.filter { $0.colour.w == 0 && $0.place.w > 0.03 }.map(\.place.y).max() ?? 0 }
+        var fire = Happenings()
+        fire.woodFires = [Happenings.Spot(at: at, strength: 1, seed: 4)]
+        XCTAssertGreaterThan(tallest(happenings.effects(at: 10.45).motes), tallest(fire.effects(at: 10.45).motes))
+    }
+
     func testAnEmitterKeepsAsteadyCountAndFirefliesStayByTheirReeds() {
         let smoke = Emitter(.smoke, at: .zero, rate: 5, seed: 11)
         let counts = stride(from: Float(30), to: 40, by: 0.7).map { Effects.motes(bursts: [], emitters: [smoke], at: $0).count }

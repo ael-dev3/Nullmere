@@ -71,6 +71,12 @@ extension GameSession {
         let at: Date
     }
 
+    /// Blackwood seen catching alight, and when.
+    struct Catching: Equatable {
+        let hex: Hex
+        let at: Date
+    }
+
     /// How far round a hold's heart its works and town can be seen, and a
     /// company's ranks, for leaving those out of view out of a frame.
     static let holdReach: Float = HoldLayout.reach + 1.5
@@ -721,6 +727,18 @@ extension GameSession {
         // knows the land.
         let burning = state.burning.map(\.at).filter { isExplored($0) }
         if !burning.isEmpty { happenings.woodFires = stage.woodFires(burning, near: camera.focus) }
+        // Wood seen catching since the world was last drawn flares up as it
+        // catches, for a few seconds; fires burning when it was first drawn
+        // don't.
+        if let seen = firesSeen {
+            for hex in burning where !seen.contains(hex) { catchings.append(Catching(hex: hex, at: now)) }
+        }
+        firesSeen = Set(burning)
+        catchings.removeAll { now.timeIntervalSince($0.at) > 3 }
+        happenings.catching = catchings.map { caught in
+            Happenings.Spot(at: ground(caught.hex), start: clock(caught.at),
+                            seed: UInt32(truncatingIfNeeded: caught.hex.q &* 7_919 &+ caught.hex.r &* 104_729))
+        }
         // Its smoke, and every burning hold's, borne on the watch's wind as
         // the realm tells it, rising straight on a still night.
         happenings.air = state.wind.map { WorldStage.windward($0) * Happenings.windCarries } ?? Vec3(0, 0, 0)

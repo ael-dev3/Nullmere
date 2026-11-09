@@ -416,6 +416,10 @@ public struct Happenings: Equatable, Sendable {
     /// The blackwood burning (`Wildfire`): a few spots to each tile
     /// alight, each its own fire among the trees.
     public var woodFires: [Spot] = []
+    /// Blackwood that has just caught alight, the fire leaping to it as the
+    /// watch turned: when, and where; a tongue of flame flares up from it,
+    /// embers flying, and its light flashes over the wood a moment.
+    public var catching: [Spot] = []
     /// How the air bears the smoke and embers of what burns: nil, the
     /// night's own slow air, where the watch's wind is not told; zero on a
     /// still night, the smoke rising straight; otherwise the wind's way on
@@ -467,6 +471,10 @@ public struct Happenings: Equatable, Sendable {
     /// second: a plume leaning well over, three tiles downwind before it is
     /// gone, against the night's own air, a third as strong.
     public static let windCarries: Float = 0.2
+    /// How tall the flame that leaps up from wood as it catches stands,
+    /// against a fire's own among the trees; and how long its light lasts.
+    public static let flare: Float = 2.2
+    public static let flareLight: Float = 1.2
     /// Where a struck throng's ranks take the foe's blows, beat on beat, in
     /// time with their figures reeling (`Clip.hit`): steel on shields and
     /// mail, dust kicked from the staggering feet, timber split from an
@@ -620,6 +628,19 @@ public struct Happenings: Equatable, Sendable {
                                     strength: 1.2, drift: air))
             let flicker = 0.7 + 0.3 * Float(sin(Double(time * 13 + Float(fire.seed % 89)))) * Float(sin(Double(time * 5.1 + 1)))
             lights.append(PointLight(at: fire.at + Vec3(0, 0.3, 0), reach: 2.0, colour: Vec3(2.4, 0.95, 0.28) * fire.strength * flicker))
+        }
+        for caught in catching {
+            bursts.append(Burst(.flames, at: caught.at + Vec3(0, 0.05, 0), start: caught.start, count: 48, seed: caught.seed,
+                                scale: Happenings.flare))
+            bursts.append(Burst(.embers, at: caught.at + Vec3(0, 0.25, 0), start: caught.start, count: 28, seed: caught.seed &+ 1,
+                                scale: 1.4))
+            bursts.append(Burst(.flash, at: caught.at + Vec3(0, 0.3, 0), start: caught.start, count: 1, seed: caught.seed &+ 2,
+                                scale: 1.8))
+            let age = time - caught.start
+            if age >= 0, age < Happenings.flareLight {
+                lights.append(PointLight(at: caught.at + Vec3(0, 0.4, 0), reach: 2.6,
+                                         colour: Vec3(2.8, 1.2, 0.35) * (1 - age / Happenings.flareLight)))
+            }
         }
         for spot in fireflies {
             emitters.append(Emitter(.fireflies, at: spot.at, rate: 0.6, spread: 0.3, seed: spot.seed, strength: 1))
