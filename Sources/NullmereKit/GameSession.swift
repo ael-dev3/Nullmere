@@ -2181,7 +2181,7 @@ public final class GameSession {
     /// about the view's middle the louder, from where it burns across the
     /// view; wood the House has not seen is not heard burning.
     func fireSound() -> (level: Float, pan: Float)? {
-        guard camera.scale > FireSound.faintest, state.wildfires != nil else { return nil }
+        guard camera.scale > FireSound.faintest else { return nil }
         let burning = state.burning.map(\.at).filter { isExplored($0) }
         guard !burning.isEmpty, let heard = FireSound.heard(burning, from: camera) else { return nil }
         return heard.level > 0.001 ? heard : nil
