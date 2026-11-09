@@ -610,6 +610,73 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertEqual(darker, 0, "darkening nothing")
     }
 
+    /// The unquiet dead as the session stages them: cold corpse-lights over
+    /// a field where the keeper's dead lie unburied, a barrow raised beside
+    /// it, and Barrowkin risen pale nearby, no House's. Drawn with them and
+    /// without, the lights brighten the ground about the field in their own
+    /// cold colour; kept with CI's screenshots.
+    @MainActor
+    func testTheUnquietDeadAreLitColdAndTheRisenStandPale() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        func free(_ hex: Hex) -> Bool {
+            state.map[hex]?.terrain == .greyfield && state.hold(at: hex) == nil && !state.isOccupied(hex)
+        }
+        // Open ground two tiles out from the seat, within its sight, with
+        // open ground beside it for the barrow and the risen; the nearest
+        // the seat first.
+        let open = state.map.hexes.filter { free($0) && (1...3).contains($0.distance(to: seat)) }
+            .sorted { ($0.distance(to: seat), $0) < ($1.distance(to: seat), $1) }
+        let field = try XCTUnwrap(open.first { hex in hex.distance(to: seat) == 2 && hex.neighbors.filter { open.contains($0) }.count >= 2 },
+                                  "open ground by the seat")
+        let around = field.neighbors.filter { open.contains($0) }.sorted { ($0.distance(to: seat), $0) < ($1.distance(to: seat), $1) }
+        let paleAt = around[0], barrowAt = around[1]
+        let quietState = state
+        state.layTheFallen(11_000, of: me, at: field)
+        state.graves = [Grave(at: barrowAt, troops: 6_000, house: me, watch: state.watch, dead: [me])]
+        state.wilds = (state.wilds ?? []) + [Wild(id: state.takeID(), kind: .barrowkin, level: 2, position: paleAt, raised: state.watch - 1)]
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let haunted = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("dead")))
+        let quiet = GameSession(state: quietState, store: LocalStore(directory: directory.appendingPathComponent("none")))
+        let scene = haunted.sceneFrame(at: 20), still = quiet.sceneFrame(at: 20)
+        func standing(_ key: ModelKey, on hex: Hex) -> [ModelInstance] {
+            scene.batches.filter { $0.key == key }.flatMap(\.instances).filter { $0.hex == SIMD2(Int32(hex.q), Int32(hex.r)) }
+        }
+        XCTAssertTrue(haunted.isVisible(paleAt), "beside the seat, in its sight")
+        let risen = standing(.wild(tier: GameSession.wildTier(of: 2)), on: paleAt)
+        XCTAssertFalse(risen.isEmpty, "the Barrowkin stand beside the field")
+        XCTAssertTrue(risen.allSatisfy { $0.colour == WorldStage.barrowkinColour }, "pale and cold, no House's")
+        XCTAssertFalse(standing(.furnishing(.barrowMound), on: barrowAt).isEmpty, "the barrow raised beside it")
+        var camera = Camera(scale: 110, tilt: 0.9, heading: 0.5)
+        camera.focus(on: field)
+        let lit = try draw(renderer, "unquiet", camera: camera, tiles: haunted.tileBytes, scene: scene)
+        let bare = try draw(renderer, "no dead", camera: camera, tiles: quiet.tileBytes, scene: still)
+        try keep([lit], as: "world-unquiet")
+        let heart = camera.viewPoint(of: field, height: Double(WorldRenderTests.world.relief.height(of: field)), in: WorldRenderTests.size)
+        var near = 0, cold = 0, beyond = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                guard lit.luminance(x, y) - bare.luminance(x, y) > 3 else { continue }
+                guard hypot(Double(x) - Double(heart.x), Double(y) - Double(heart.y)) < 90 else {
+                    beyond += 1
+                    continue
+                }
+                near += 1
+                // Its green against its red, the pixels being BGRA.
+                let i = (y * WorldRenderTests.width + x) * 4
+                if Double(lit.pixels[i + 1]) - Double(bare.pixels[i + 1]) > 1.3 * (Double(lit.pixels[i + 2]) - Double(bare.pixels[i + 2])) { cold += 1 }
+            }
+        }
+        print("RENDER unquiet: \(near) points brighter about the field, \(cold) of them cold; \(beyond) brighter beyond it; "
+            + "\(risen.count) Barrowkin standing pale")
+        XCTAssertGreaterThan(near, 30, "The corpse-lights brighten the field")
+        XCTAssertGreaterThan(Double(cold), 0.7 * Double(near), "in their own cold colour, no fire's")
+    }
+
     /// A plea at the gate stands in the world: the seat's ward broken, one
     /// of its folk waits just beyond its gate as the seat is drawn, facing
     /// in, a lantern in hand, in the House's colour, while the plea waits on

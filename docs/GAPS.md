@@ -840,7 +840,12 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   drawing in toward the barrow's heart, slowing and fading, gone after six
   seconds (`WorldStage.releasedLights`, CorpseLightsTests on Linux;
   WorldStagingTests on the Mac, Unverified there until a CI run); where
-  motion is reduced the barrow simply stands.
+  motion is reduced the barrow simply stands. CI's Mac draws the unquiet
+  dead as the session stages them, a field of 11,000 unburied under its
+  corpse-lights, a barrow beside it and Barrowkin risen pale, measures
+  that the lights brighten the field in their own cold colour, and keeps
+  the picture (`world-unquiet.png`, WorldRenderTests), Unverified until a
+  run draws it.
 
 ## The order of the work
 
