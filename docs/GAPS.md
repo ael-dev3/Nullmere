@@ -588,7 +588,12 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   RallyScene.setTheWoodAlight plays it between two clients (Ama sets it,
   both see it burn, Bel's order on her company refused, both see the fire
   alike as the watch turns) in NetworkRallyTests and in the realm job on a
-  real SpacetimeDB server, **Unverified** there until a run plays it.
+  real SpacetimeDB server, played there in run 846 (6e13d8a): "one keeper
+  set the blackwood alight from her own client and both clients saw it
+  burn; the other's order on her company was refused; as the watch turned
+  both saw the fire as the realm left it" (that run's Mac jobs failed to
+  build, the session reading the rules' own fires where it may only read
+  what is burning, mended in 7d1a30f).
 
 ## The order of the work
 
