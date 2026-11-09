@@ -369,11 +369,11 @@ extension GameSession {
         frame.lights += unquiet.lights
         // And the Barrowkin in sight carry the lights of the field they rose
         // from, as many and as bright as hung over it on the eve of the dark.
-        let risen = stage.corpseLights(state.wildsStanding.filter { $0.kind == .barrowkin && isVisible($0.position) }.map {
+        let risenLights = stage.corpseLights(state.wildsStanding.filter { $0.kind == .barrowkin && isVisible($0.position) }.map {
             UnburiedSight.risen(at: $0.position, level: $0.level)
         }, near: camera.focus, scale: camera.scale, time: t, still: !full)
-        frame.motes += risen.motes
-        frame.lights += risen.lights
+        frame.motes += risenLights.motes
+        frame.lights += risenLights.lights
         // The sound of the fields in sight, and of the towns and the lake's
         // edge near the view, follows the picture of them.
         hearBattles()
