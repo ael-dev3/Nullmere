@@ -1668,9 +1668,10 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   world where envoys come, the petitioner painted from the hold's own
   townsfolk, and your Mac's model gives them words of their own from the
   plea's facts, the seconds counted as it does, or says why it can't; the
-  plea stands in the realm's words beneath. Grant it, paying what they
-  ask, or Turn it away; unanswered three watches, it is turned away by
-  silence. Turned away, the folk go back to their work grudging: what the
+  plea stands in the realm's words beneath, how long it waits beside the
+  petitioner. Grant it, paying what they ask, or Turn it away (pointing at
+  Turn away says what that costs); unanswered three watches, it is turned
+  away by silence. Turned away, the folk go back to their work grudging: what the
   hold has under way is set back a watch. A plea whose need has passed is
   withdrawn, owing nothing. One plea at a time, the next eight watches
   after the last; only keepers' Houses are petitioned, and while you are

@@ -7,8 +7,9 @@ import SwiftUI
 /// the world where envoys come: the petitioner painted from the world's own
 /// townsfolk in the House's colours, their own words where this Mac's model
 /// gave them (the model shown at work with its seconds, or why it gave
-/// none), the plea in the realm's words, what turning it away costs, and
-/// Grant or Turn away. Nothing while no plea waits.
+/// none), the plea in the realm's words, how long it waits, and Grant or
+/// Turn away, what turning it away costs said on Turn away itself.
+/// Nothing while no plea waits.
 struct PetitionCard: View {
     let session: GameSession
 
@@ -28,6 +29,11 @@ struct PetitionCard: View {
                             .font(.nm(10.5))
                             .foregroundStyle(Palette.text(0.7))
                             .fixedSize(horizontal: false, vertical: true)
+                        // How long it waits, beside the petitioner rather than
+                        // on a line of its own under the plea.
+                        Text(verbatim: PetitionCard.waits(petition, at: state.watch))
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.4))
                     }
                 }
                 VoicingLine(session: session, key: .petition(petition.id), who: "the petitioner")
@@ -42,10 +48,8 @@ struct PetitionCard: View {
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.text(session.spoken[.petition(petition.id)] == nil ? 0.7 : 0.5))
                     .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: GameState.turnedAwaySaid)
-                    .font(.nm(10))
-                    .foregroundStyle(Palette.text(0.45))
-                    .fixedSize(horizontal: false, vertical: true)
+                // What turning it away costs is said on Turn away itself, as
+                // its help and to VoiceOver, not as a paragraph of its own.
                 // What came of the hold's last plea, as its folk remember it.
                 if let remembered = state.rememberedPlea(petition) {
                     Text(verbatim: remembered)
@@ -53,9 +57,6 @@ struct PetitionCard: View {
                         .foregroundStyle(Palette.text(0.45))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(verbatim: PetitionCard.waits(petition, at: state.watch))
-                    .font(.nm(10))
-                    .foregroundStyle(Palette.text(0.4))
                 // The answers on a row of their own, one above the other
                 // where the row can't hold both (larger type), so the price
                 // never runs into the refusal.
@@ -84,6 +85,8 @@ struct PetitionCard: View {
     @ViewBuilder
     private func answers(_ petition: Petition, refusal: RuleError?) -> some View {
         QuietButton(title: "Turn away", size: 8.5) { session.perform(.answerPetition(petition.id, grant: false)) }
+            .help(GameState.turnedAwaySaid)
+            .accessibilityHint(GameState.turnedAwaySaid)
         QuietButton(title: PetitionCard.grant(petition), size: 8.5, prominent: true, enabled: refusal == nil) {
             session.perform(.answerPetition(petition.id, grant: true))
         }
