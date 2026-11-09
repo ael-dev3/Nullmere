@@ -202,6 +202,73 @@ final class CounselSheetTests: XCTestCase {
         session.closeCounsel()
     }
 
+    /// A field of battle the House's commander led its company in, as its
+    /// report is filed on the Mac.
+    private func battleLed(by commander: Commander, in session: GameSession) throws -> BattleReport {
+        let me = session.player
+        let company = try XCTUnwrap(session.state.units(of: me).first { $0.kind.isMilitary })
+        let foe = try XCTUnwrap(session.state.houses.indices.first { $0 != me })
+        var field = Field(id: 70, at: company.position, joined: session.state.watch, first: me, second: foe)
+        var ours = Fighter(unit: company.id, owner: me, side: 0, kind: company.kind, tier: 1, leader: commander.name, troops: 1_200)
+        ours.slain = 700
+        ours.lost = 200
+        var theirs = Fighter(unit: 9_000, owner: foe, side: 1, kind: .spear, tier: 1, leader: nil, troops: 1_000)
+        theirs.lost = 700
+        theirs.fell = true
+        theirs.standing = false
+        field.fighters = [ours, theirs]
+        field.held = 0
+        session.showBlows([.fieldEnded(field)])
+        return try XCTUnwrap(session.reports.first)
+    }
+
+    /// A battle a commander led in, from its report: the report offers to
+    /// ask them of it, and counsel opens with them, briefed with the battle
+    /// as its report reads; where the model can't be asked, nothing is put
+    /// to them and the sheet says why (where it can, the question is put as
+    /// `CommanderCounsel.askedOf` words it, and answered on a real Mac). A
+    /// report naming none of the House's commanders offers no one, and
+    /// CI's photograph after the House has been played a while asks of the
+    /// latest battle, or takes counsel as it does at the first watch.
+    func testACommanderIsAskedOfABattleTheyLedFromItsReport() throws {
+        let (session, link) = session()
+        let commander = try XCTUnwrap(session.state.commanders(of: session.player).first)
+        // No report yet: CI's photograph takes counsel of the first commander free to speak.
+        session.askOfABattleToBeSeen()
+        XCTAssertEqual(session.commanderCounsel?.id, commander.id)
+        XCTAssertEqual(session.commanderCounsel?.counsel.battles.count, 0)
+        session.closeCounsel()
+
+        let report = try battleLed(by: commander, in: session)
+        XCTAssertEqual(report.led, [commander.name])
+        XCTAssertEqual(session.askable(of: report)?.id, commander.id)
+        PressableButtons.forget(ReportList.ask(commander))
+        draw(ReportList(session: session))
+        XCTAssertTrue(PressableButtons.press("Ask \(commander.name) of it"), "Among \(shown)")
+        let counsel = try XCTUnwrap(session.commanderCounsel)
+        XCTAssertEqual(counsel.id, commander.id)
+        XCTAssertEqual(counsel.counsel.battles.map(\.id), [report.id], "Briefed with the battle they led")
+        XCTAssertTrue(counsel.counsel.briefing.contains("In watch \(report.watch), \(report.place): \(report.title)."), counsel.counsel.briefing)
+        XCTAssertTrue(counsel.counsel.briefing.contains("led by \(commander.name)"), counsel.counsel.briefing)
+        XCTAssertTrue(counsel.lines.isEmpty, "Nothing is asked that can't be answered")
+        XCTAssertEqual(counsel.unavailable, .unavailable(.deviceNotEligible))
+        draw(CounselSheet(session: session, counsel: counsel))
+        session.closeCounsel()
+
+        // The photograph after a while asks of that battle, as from its report.
+        session.askOfABattleToBeSeen()
+        XCTAssertEqual(session.commanderCounsel?.counsel.battles.map(\.id), [report.id])
+        session.closeCounsel()
+
+        // A report naming none of the House's commanders offers no one.
+        var plain = report
+        plain.led = ["Nobody of Ours"]
+        XCTAssertNil(session.askable(of: plain))
+        session.ask(of: plain)
+        XCTAssertNil(session.commanderCounsel)
+        XCTAssertTrue(link.sent.isEmpty, "Counsel orders nothing of itself")
+    }
+
     /// Every kind of line and every state of an offer is drawn.
     func testEveryLineAndOfferIsDrawn() {
         for kind: CommanderCounselSession.Line.Kind in [.keeper, .commander, .look, .trouble] {

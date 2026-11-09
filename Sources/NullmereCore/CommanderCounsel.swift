@@ -12,15 +12,39 @@ public struct CommanderCounsel: Sendable {
     public let state: GameState
     public let player: Int
     public let commander: Commander
+    /// The battles the commander led the House's companies in lately, as
+    /// their reports read, the latest first: what they remember of them.
+    public let battles: [BattleReport]
 
     /// Counsel of one of the keeper's own commanders, or nil if the House
-    /// has no such commander.
-    public init?(state: GameState, player: Int, commander id: Int) {
+    /// has no such commander; `reports` the House's reports as the Mac or
+    /// the phone keeps them, the latest first, of which the commander
+    /// remembers the battles they led in.
+    public init?(state: GameState, player: Int, commander id: Int, reports: [BattleReport] = []) {
         guard let commander = state.commander(id), commander.owner == player else { return nil }
         self.state = state
         self.player = player
         self.commander = commander
+        self.battles = state.battles(ledBy: commander, in: reports)
     }
+
+    /// The keeper's question of a battle the commander led in, as put to
+    /// them from its report: "How went the fight at Wenholme in watch 12?"
+    public static func askedOf(_ report: BattleReport) -> String {
+        "How went the fight \(report.place) in watch \(report.watch)?"
+    }
+
+    /// A battle as the commander remembers it: when and where, how it came
+    /// out, each side as it came and left, and the report's own lines.
+    func remembered(_ report: BattleReport) -> String {
+        var told = "In watch \(report.watch), \(report.place): \(report.title)."
+        for side in report.sides { told += " \(side.said)." }
+        for line in report.lines.prefix(CommanderCounsel.linesRemembered) { told += " \(line)." }
+        return told
+    }
+
+    /// The most of a report's own lines a commander remembers of it.
+    static let linesRemembered = 4
 
     /// The company the commander leads, if any.
     public var company: Unit? {
@@ -82,6 +106,10 @@ public struct CommanderCounsel: Sendable {
             lines.append("You lead no company now.")
         }
         lines.append("Your skills: " + commander.skills.map(\.title).joined(separator: ", ") + ".")
+        if !battles.isEmpty {
+            lines.append("Battles you led your House's companies in lately, as their reports read to your keeper, the latest first:")
+            lines += battles.map(remembered)
+        }
         lines.append(affairs)
         return lines.joined(separator: "\n")
     }

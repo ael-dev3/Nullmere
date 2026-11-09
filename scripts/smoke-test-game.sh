@@ -14,7 +14,9 @@
 # counsel taken of the House's first free commander, a question put to
 # them as the keeper would put it, with what came of it: the answer of
 # Apple's on-device model where this Mac's can be asked, or why none came
-# where it can't, as on CI's virtual Macs.
+# where it can't, as on CI's virtual Macs; and forty watches more on, the
+# commander who led in the House's latest battle asked of it, as from its
+# report (which, kept in build/game-counsel-battle.log).
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -112,6 +114,14 @@ $LOG"
 # The same realm later on, the keeper returning by identity alone, with the
 # larger type a reader can choose.
 NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch
+WORLD_LOG="$WORLD_LOG
+$LOG"
+# Forty watches more, played by the steward, then counsel of the commander
+# who led in the House's latest battle, asked of it as from its report; or,
+# where no report names one, counsel taken as above.
+WAIT=36 run build/game-counsel-battle.png 40 battlecounsel
+grep -h "^Counsel asked of" build/game-stdout.log > build/game-counsel-battle.log 2>/dev/null || true
+cat build/game-counsel-battle.log
 
 LOG="$WORLD_LOG
 $LOG"

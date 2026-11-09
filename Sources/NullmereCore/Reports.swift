@@ -13,6 +13,16 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
         case held
         /// Not a battle: the House's Lanterns scouted a hold.
         case scouted
+
+        /// How it came out, in a word or two, on the Mac and the phone alike.
+        public var said: String {
+            switch self {
+            case .won: return "Won"
+            case .lost: return "Lost"
+            case .held: return "Both stood"
+            case .scouted: return "Scouted"
+            }
+        }
     }
 
     public let id: Int
@@ -26,6 +36,10 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
     /// Of a field of battle, each side as it came and as it left: the
     /// keeper's own first.
     public var sides: [Side] = []
+    /// The House's own commanders who led its companies there, by name, as
+    /// the report was filed: who may be asked of it in counsel, and whose
+    /// counsel remembers it.
+    public var led: [String] = []
 
     /// A side of a field of battle, as a report counts it.
     public struct Side: Equatable, Sendable {
@@ -40,6 +54,16 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
 
         /// Its troops still standing.
         public var standing: Int { max(troops - lost, 0) }
+
+        /// The side in a line, on the Mac and the phone alike: its companies
+        /// and Houses, its troops as they came, those lost, and its
+        /// companies fallen.
+        public var said: String {
+            let companies = companies == 1 ? "1 company" : "\(companies) companies"
+            let houses = houses > 1 ? " of \(houses) Houses" : ""
+            let fallen = fallen == 0 ? "" : fallen == 1 ? ", 1 company fallen" : ", \(fallen) companies fallen"
+            return "\(title): \(companies)\(houses), \(GameState.counted(troops)) troops; \(GameState.counted(lost)) lost\(fallen)"
+        }
     }
 
     /// The keeper's own companies told one by one in a field's report.
@@ -102,6 +126,8 @@ extension GameState {
         }
         var report = BattleReport(id: id, watch: watch, title: title, place: placeName(of: field.at), outcome: outcome, lines: lines)
         report.sides = [told(side, "Your side"), told(foe, "The foe")]
+        var named = Set<String>()
+        report.led = own.compactMap(\.leader).filter { named.insert($0).inserted }
         return report
     }
 
@@ -129,8 +155,10 @@ extension GameState {
         let ours = attacking ? battle.attackerFell : battle.defenderFell
         let theirs = attacking ? battle.defenderFell : battle.attackerFell
         let outcome: BattleReport.Outcome = ours ? .lost : (theirs ? .won : .held)
-        return BattleReport(id: id, watch: watch, title: "\(striker) struck \(struck)", place: placeName(of: battle.at),
-                            outcome: outcome, lines: lines)
+        var report = BattleReport(id: id, watch: watch, title: "\(striker) struck \(struck)", place: placeName(of: battle.at),
+                                  outcome: outcome, lines: lines)
+        report.led = leaders(of: attacking ? battle.attacker : battle.defender)
+        return report
     }
 
     /// A blow the viewer's House struck at a company of the wilds, as its
@@ -144,8 +172,10 @@ extension GameState {
         }
         if hunt.attackerFell { lines.append("Your \(hunt.attackerKind.title) fell") }
         let outcome: BattleReport.Outcome = hunt.attackerFell ? .lost : (hunt.wildFell ? .won : .held)
-        return BattleReport(id: id, watch: watch, title: "Your \(hunt.attackerKind.title) struck \(hunt.wildKind.named(level: hunt.level))",
-                            place: placeName(of: hunt.at), outcome: outcome, lines: lines)
+        var report = BattleReport(id: id, watch: watch, title: "Your \(hunt.attackerKind.title) struck \(hunt.wildKind.named(level: hunt.level))",
+                                  place: placeName(of: hunt.at), outcome: outcome, lines: lines)
+        report.led = leaders(of: hunt.attacker)
+        return report
     }
 
     /// A hold the viewer's House scouted, as its report tells it: the
@@ -210,8 +240,38 @@ extension GameState {
         }
         let lost = assault.strikes.contains { $0.owner == viewer && $0.fell }
         let outcome: BattleReport.Outcome = assault.broken ? .won : (lost ? .lost : .held)
-        return BattleReport(id: id, watch: watch, title: (assault.rally == 0 ? "Your company " : "Your host ") + (assault.broken ? "broke " : "struck ") + lair,
-                            place: placeName(of: assault.at), outcome: outcome, lines: lines)
+        var report = BattleReport(id: id, watch: watch, title: (assault.rally == 0 ? "Your company " : "Your host ") + (assault.broken ? "broke " : "struck ") + lair,
+                                  place: placeName(of: assault.at), outcome: outcome, lines: lines)
+        var named = Set<String>()
+        report.led = assault.strikes.filter { $0.owner == viewer }.flatMap { leaders(of: $0.unit) }.filter { named.insert($0).inserted }
+        return report
+    }
+
+    /// The commanders at the head of a company as the world now stands, by
+    /// name, its leader first and then its second; none for a company gone.
+    func leaders(of unit: Int?) -> [String] {
+        guard let unit = unit.flatMap({ self.unit($0) }) else { return [] }
+        return [unit.leader, unit.second].compactMap { $0.flatMap { commander($0)?.name } }
+    }
+
+    /// The House's reports of the battles a commander led its companies in,
+    /// out of `reports` (the latest first, as the Mac and the phone keep
+    /// them), the latest first and at most `battlesRecalled`: what their
+    /// counsel remembers.
+    public func battles(ledBy commander: Commander, in reports: [BattleReport]) -> [BattleReport] {
+        Array(reports.filter { $0.outcome != .scouted && $0.led.contains(commander.name) }.prefix(GameState.battlesRecalled))
+    }
+
+    /// The most battles a commander's counsel remembers.
+    public static let battlesRecalled = 3
+
+    /// The House's commander who led its companies in a battle and may be
+    /// asked of it in counsel, on the Mac and the phone alike: the first
+    /// its report names who is the House's own and not held prisoner; nil
+    /// for none.
+    public func askable(of report: BattleReport, by house: Int) -> Commander? {
+        guard report.outcome != .scouted else { return nil }
+        return commanders(of: house).first { report.led.contains($0.name) && $0.captive == nil }
     }
 }
 

@@ -144,36 +144,44 @@ struct ReportList: View {
                     .accessibilityElement(children: .combine)
                 }
                 ForEach(session.reports) { report in
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 8) {
-                            Caps(ReportList.outcome(report.outcome), size: 8.5, weight: .medium)
-                                .foregroundStyle(report.outcome == .won ? Palette.good : report.outcome == .lost ? Palette.bad : Palette.text(0.7))
-                            Text(verbatim: "Watch \(report.watch), \(report.place)")
-                                .font(.nm(10))
-                                .foregroundStyle(Palette.text(0.5))
-                                .lineLimit(1)
-                        }
-                        Text(verbatim: report.title)
-                            .font(.nm(11.5, weight: .medium))
-                            .foregroundStyle(Palette.text(0.9))
-                            .fixedSize(horizontal: false, vertical: true)
-                        // A field's two sides: each one's troops as they came, the bar what stands of them.
-                        ForEach(report.sides.indices, id: \.self) { index in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(verbatim: ReportList.side(report.sides[index]))
-                                    .font(.nm(10.5))
-                                    .foregroundStyle(Palette.text(0.75))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Meter(fraction: Double(report.sides[index].standing) / Double(max(report.sides[index].troops, 1)),
-                                      colour: index == 0 ? Palette.good : Palette.bad)
+                    VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 8) {
+                                Caps(ReportList.outcome(report.outcome), size: 8.5, weight: .medium)
+                                    .foregroundStyle(report.outcome == .won ? Palette.good : report.outcome == .lost ? Palette.bad : Palette.text(0.7))
+                                Text(verbatim: "Watch \(report.watch), \(report.place)")
+                                    .font(.nm(10))
+                                    .foregroundStyle(Palette.text(0.5))
+                                    .lineLimit(1)
                             }
-                            .padding(.vertical, 1)
+                            Text(verbatim: report.title)
+                                .font(.nm(11.5, weight: .medium))
+                                .foregroundStyle(Palette.text(0.9))
+                                .fixedSize(horizontal: false, vertical: true)
+                            // A field's two sides: each one's troops as they came, the bar what stands of them.
+                            ForEach(report.sides.indices, id: \.self) { index in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(verbatim: ReportList.side(report.sides[index]))
+                                        .font(.nm(10.5))
+                                        .foregroundStyle(Palette.text(0.75))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Meter(fraction: Double(report.sides[index].standing) / Double(max(report.sides[index].troops, 1)),
+                                          colour: index == 0 ? Palette.good : Palette.bad)
+                                }
+                                .padding(.vertical, 1)
+                            }
+                            ForEach(report.lines, id: \.self) { line in
+                                Text(verbatim: line).font(.nm(10.5)).foregroundStyle(Palette.text(0.65))
+                            }
                         }
-                        ForEach(report.lines, id: \.self) { line in
-                            Text(verbatim: line).font(.nm(10.5)).foregroundStyle(Palette.text(0.65))
+                        .accessibilityElement(children: .combine)
+                        // The commander who led there, asked of it in counsel.
+                        if let commander = session.askable(of: report) {
+                            QuietButton(title: ReportList.ask(commander), size: 8.5,
+                                        name: "Ask \(commander.name) of this battle in counsel") { session.ask(of: report) }
+                                .help("\(commander.name) led your companies there: ask them of it in counsel, spoken by your Mac's own model.")
                         }
                     }
-                    .accessibilityElement(children: .combine)
                 }
             }
             .accessibilityElement(children: .contain)
@@ -185,23 +193,14 @@ struct ReportList: View {
     }
 
     /// A side of a field of battle in a line: its companies and Houses, its
-    /// troops as they came, those lost, and its companies fallen.
-    static func side(_ side: BattleReport.Side) -> String {
-        let companies = side.companies == 1 ? "1 company" : "\(side.companies) companies"
-        let houses = side.houses > 1 ? " of \(side.houses) Houses" : ""
-        let fallen = side.fallen == 0 ? "" : side.fallen == 1 ? ", 1 company fallen" : ", \(side.fallen) companies fallen"
-        return "\(side.title): \(companies)\(houses), \(GameState.counted(side.troops)) troops; "
-            + "\(GameState.counted(side.lost)) lost\(fallen)"
-    }
+    /// troops as they came, those lost, and its companies fallen; as the
+    /// phone says it.
+    static func side(_ side: BattleReport.Side) -> String { side.said }
 
-    static func outcome(_ outcome: BattleReport.Outcome) -> String {
-        switch outcome {
-        case .won: return "Won"
-        case .lost: return "Lost"
-        case .held: return "Both stood"
-        case .scouted: return "Scouted"
-        }
-    }
+    static func outcome(_ outcome: BattleReport.Outcome) -> String { outcome.said }
+
+    /// The way to counsel from a report: "Ask Garrow the Unbent of it".
+    static func ask(_ commander: Commander) -> String { "Ask \(commander.name) of it" }
 }
 
 /// A ballad of a deed of the House's own, made by this Mac's model: asked

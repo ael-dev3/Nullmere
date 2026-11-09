@@ -867,12 +867,12 @@ struct ArmyTab: View {
                     if !session.reports.isEmpty {
                         Section("Reports") {
                             ForEach(session.reports.prefix(CompanionLedger.reportsOpen)) { report in
-                                ReportRow(report: report)
+                                ReportRow(report: report, asker: session.askable(of: report)) { ask(of: report) }
                             }
                             if session.reports.count > CompanionLedger.reportsOpen {
                                 DisclosureGroup("Earlier reports (\(session.reports.count - CompanionLedger.reportsOpen))") {
                                     ForEach(session.reports.dropFirst(CompanionLedger.reportsOpen)) { report in
-                                        ReportRow(report: report)
+                                        ReportRow(report: report, asker: session.askable(of: report)) { ask(of: report) }
                                     }
                                 }
                                 .font(Night.small)
@@ -970,13 +970,25 @@ struct ArmyTab: View {
     }
 
     /// Opens counsel with one of the House's commanders, who remembers what
-    /// was said in counsel on this phone this age.
-    private func openCounsel(with commander: Int) {
-        guard let taken = session.counsel(of: commander) else { return }
+    /// was said in counsel on this phone this age, and the battles they led
+    /// in that the phone has reports of.
+    @discardableResult
+    private func openCounsel(with commander: Int) -> CommanderCounselSession? {
+        guard let taken = session.counsel(of: commander) else { return nil }
         let opened = CommanderCounselSession(counsel: taken.counsel, memory: taken.memory)
         opened.onRemember = { [session] in session.remember($0) }
         opened.prewarm()
         counselling = Counselling(id: commander, counsel: opened)
+        return opened
+    }
+
+    /// Counsel of the commander who led in a battle, asked of it as the Mac
+    /// asks, where the phone's model can be asked; where it can't, nothing
+    /// is asked and the screen says why.
+    private func ask(of report: BattleReport) {
+        guard let commander = session.askable(of: report), let opened = openCounsel(with: commander.id),
+              opened.unavailable == nil else { return }
+        opened.ask(CommanderCounsel.askedOf(report))
     }
 }
 
@@ -1498,14 +1510,30 @@ struct CompanyRows: View {
 /// assaulted: how it went, where and when, and each side's part when opened.
 struct ReportRow: View {
     let report: BattleReport
+    /// The commander who led the House's companies there and may be asked
+    /// of it in counsel, as on the Mac; nil for none.
+    var asker: Commander?
+    var ask: () -> Void = {}
 
     var body: some View {
         DisclosureGroup {
+            // A field's two sides, in the Mac's words.
+            ForEach(Array(report.sides.enumerated()), id: \.offset) { side in
+                Text(verbatim: side.element.said)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             ForEach(Array(report.lines.enumerated()), id: \.offset) { line in
                 Text(verbatim: line.element)
                     .font(Night.small)
                     .foregroundStyle(Night.ink.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            if let asker {
+                Button("Ask \(asker.name) of it", action: ask)
+                    .font(Night.small)
+                    .accessibilityHint("\(asker.name) led your companies there; counsel spoken by Apple's on-device model on this phone")
             }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
@@ -1520,14 +1548,7 @@ struct ReportRow: View {
         }
     }
 
-    private var outcome: String {
-        switch report.outcome {
-        case .won: return "Won"
-        case .lost: return "Lost"
-        case .held: return "Both stood"
-        case .scouted: return "Scouted"
-        }
-    }
+    private var outcome: String { report.outcome.said }
 
     private var tint: Color {
         switch report.outcome {

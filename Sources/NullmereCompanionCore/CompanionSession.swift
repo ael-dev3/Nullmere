@@ -187,11 +187,18 @@ public final class CompanionSession {
     /// House's own and free to speak.
     public func counsel(of commander: Int) -> (counsel: CommanderCounsel, memory: CounselMemory)? {
         guard phase == .keeping, let world, let house = keeper?.house,
-              let grounded = CommanderCounsel(state: world, player: house, commander: commander),
+              let grounded = CommanderCounsel(state: world, player: house, commander: commander, reports: reports),
               grounded.commander.captive == nil else { return nil }
         let age = status?.age ?? 0
         let kept = memory.counsel[commander].flatMap { $0.age == age ? $0 : nil }
         return (grounded, kept ?? CounselMemory(commander: commander, age: age))
+    }
+
+    /// The House's commander who led in a battle of one of its reports and
+    /// may be asked of it in counsel here, as on the Mac; nil for none.
+    public func askable(of report: BattleReport) -> Commander? {
+        guard phase == .keeping, let world, let house = keeper?.house else { return nil }
+        return world.askable(of: report, by: house)
     }
 
     /// The report of what happened while away, put away.

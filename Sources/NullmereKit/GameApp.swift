@@ -954,6 +954,9 @@ public final class GameApp {
         // asks them a question as the keeper would, where the model can be
         // asked: what came of it is photographed, its answer or why none.
         if show.contains("counsel") { session?.takeCounselToBeSeen() }
+        // "battlecounsel", the House played a while first, asks the
+        // commander who led in its latest battle of it, as from its report.
+        if show.contains("battlecounsel") { session?.askOfABattleToBeSeen() }
         // "watch" makes the keeper ready a little before CI photographs the
         // screen, so the watch's card is on it.
         if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {

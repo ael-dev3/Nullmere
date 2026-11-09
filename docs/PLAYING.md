@@ -382,8 +382,11 @@ a vote on the realm's law to cast.
   companies, the House's reports, the latest first, as the Mac files them:
   each battle and hunt it had a part in, each field of battle as it ended,
   each hold its Lanterns scouted and each lair it assaulted, opened for
-  each side's part (kept while the phone stays linked), the latest three
-  open and the earlier folded beneath them. Then the
+  each side's part, its two sides counted as the Mac counts them (kept
+  while the phone stays linked), the latest three open and the earlier
+  folded beneath them; a report that names one of the House's commanders
+  free to speak offers Ask them of it, counsel on the phone opened with
+  them and the question put, as on the Mac. Then the
   House's commanders, each with how they stand and the
   orders the rules would take for them, as on the Mac's board: Lead a
   company of war standing at or beside one of the House's holds, Ride
@@ -910,7 +913,13 @@ a vote on the realm's law to cast.
   as they are spoken and can be stopped; one that doesn't begin within
   twenty-five seconds is given up. A commander remembers the last dozen
   exchanges of the age, kept on your Mac, and is told what you did with
-  what they put forward. Where the model can't be asked (a Mac that can't
+  what they put forward. They remember the battles they led your companies
+  in, too: the latest three of your House's reports that name them, as
+  each report reads (when and where, how it came out, each side as it came
+  and left, and their own company's part). Each such report in the
+  Chronicle's Reports offers Ask them of it, which opens counsel with that
+  commander and puts the question as you would ("How went the fight at
+  Wenholme in watch 12?"). Where the model can't be asked (a Mac that can't
   run it, Apple Intelligence turned off, the model still downloading), the
   conversation says exactly that and nothing is answered in its place;
   everything else plays as ever.

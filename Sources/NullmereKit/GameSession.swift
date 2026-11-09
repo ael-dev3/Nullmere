@@ -585,7 +585,7 @@ public final class GameSession {
     /// Opens counsel with one of the keeper's commanders, who remembers what
     /// was said in earlier counsel this age.
     public func openCounsel(with commander: Int) {
-        guard let grounded = CommanderCounsel(state: state, player: player, commander: commander) else { return }
+        guard let grounded = CommanderCounsel(state: state, player: player, commander: commander, reports: reports) else { return }
         commanderCounsel?.stop()
         let memory = store.loadCounsel(commander: commander) ?? CounselMemory(commander: commander, age: realmStatus?.age ?? 0)
         let opened = CommanderCounselSession(counsel: grounded, memory: memory, availability: counselAvailability)
@@ -600,6 +600,23 @@ public final class GameSession {
         commanderCounsel = nil
     }
 
+    /// The House's commander who led its companies in a battle and may be
+    /// asked of it: the first named in its report who is the House's own
+    /// and not held prisoner; nil for none.
+    public func askable(of report: BattleReport) -> Commander? {
+        state.askable(of: report, by: player)
+    }
+
+    /// Opens counsel with the commander who led in a battle, and asks them
+    /// of it as the keeper would, where Apple's on-device model can be
+    /// asked; where it can't, nothing is asked and the sheet says why.
+    public func ask(of report: BattleReport) {
+        guard let commander = askable(of: report) else { return }
+        openCounsel(with: commander.id)
+        guard let counsel = commanderCounsel, counsel.unavailable == nil else { return }
+        counsel.ask(CommanderCounsel.askedOf(report))
+    }
+
     #if DEBUG
     /// Counsel opened with the House's first commander free to speak, none
     /// held prisoner, and the question put to them as the keeper would put
@@ -612,6 +629,21 @@ public final class GameSession {
         guard let counsel = commanderCounsel, counsel.unavailable == nil else { return }
         counsel.ask(question)
     }
+
+    /// Counsel asked of the latest battle a commander of the House led in,
+    /// as from its report, for CI to photograph after the House has been
+    /// played a while (NULLMERE_SHOW=battlecounsel); with no such battle,
+    /// counsel taken as NULLMERE_SHOW=counsel takes it. Which, said on the
+    /// game's output.
+    func askOfABattleToBeSeen() {
+        if let report = reports.first(where: { askable(of: $0) != nil }), let commander = askable(of: report) {
+            print("Counsel asked of a battle: \(commander.name), \(CommanderCounsel.askedOf(report))")
+            ask(of: report)
+        } else {
+            print("Counsel asked of no battle: none of the House's \(reports.count) reports names a commander free to speak")
+            takeCounselToBeSeen()
+        }
+    }
     #endif
 
     /// The keeper gives an order their commander put forward: carried out
@@ -623,7 +655,8 @@ public final class GameSession {
 
     /// The commander's looks tell the world as it now stands.
     private func renewCounsel() {
-        guard let open = commanderCounsel, let grounded = CommanderCounsel(state: state, player: player, commander: open.id) else { return }
+        guard let open = commanderCounsel,
+              let grounded = CommanderCounsel(state: state, player: player, commander: open.id, reports: reports) else { return }
         open.renew(grounded)
     }
 

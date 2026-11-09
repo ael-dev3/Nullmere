@@ -291,8 +291,23 @@ final class CompanionSessionTests: XCTestCase {
         phone.hear(.watchTurned(world, [.battle(battle(foe, me, fell: true))]))
         XCTAssertEqual(phone.reports.map(\.id), [3, 2, 1], "The latest first")
         XCTAssertEqual(phone.reports.first?.outcome, .lost)
+
+        // A field of battle a commander of the House led in: the phone may
+        // ask them of it, as the Mac may, and their counsel remembers it.
+        let commander = try XCTUnwrap(world.commanders(of: me).first { $0.captive == nil })
+        var field = Field(id: 77, at: seat.position, joined: world.watch, first: me, second: foe)
+        field.fighters = [Fighter(unit: 90, owner: me, side: 0, kind: .spear, tier: 1, leader: commander.name, troops: 1_000),
+                          Fighter(unit: 91, owner: foe, side: 1, kind: .spear, tier: 1, leader: nil, troops: 900)]
+        field.held = 0
+        phone.hear(.heard([.fieldEnded(field)]))
+        let led = try XCTUnwrap(phone.reports.first)
+        XCTAssertEqual(led.led, [commander.name])
+        XCTAssertEqual(phone.askable(of: led)?.id, commander.id)
+        XCTAssertNil(phone.askable(of: phone.reports[1]), "A report naming none of its commanders offers no one")
+        XCTAssertEqual(phone.counsel(of: commander.id)?.counsel.battles.map(\.id), [led.id], "Briefed with the battle they led")
         phone.unlink()
         XCTAssertTrue(phone.reports.isEmpty, "Forgotten with the link")
+        XCTAssertNil(phone.askable(of: led), "Speaking for no one, it asks no one")
         mac.close()
     }
 
