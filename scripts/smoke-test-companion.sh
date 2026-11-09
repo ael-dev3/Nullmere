@@ -22,7 +22,8 @@
 # Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
-# unverified. Saves the companion's screens and the reports:
+# unverified. Saves the companion's screens, the Mac's beside its House tab
+# (build/companion-beside-mac.png, by scripts/beside.swift), and the reports:
 # build/companion-*.png, build/companion-report.txt,
 # build/companion-lost-report.txt, build/companion-mac-report.txt and
 # build/counsel-phone-report.txt.
@@ -311,6 +312,17 @@ for tab in house market ventures land alliance realm counsel counsel-asked words
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     SIMCTL_CHILD_NULLMERE_COMPANION_TAB="$tab" xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
     if [ "$tab" = counsel-asked ]; then shot "$tab" 20; else shot "$tab" 8; fi
+    # The Mac's own screen as the phone's House tab is taken, the two set
+    # side by side: one House, its watch and its stores alike on both.
+    if [ "$tab" = house ]; then
+        if screencapture -x build/companion-mac.png 2>/dev/null && [ -s build/companion-house.png ]; then
+            swift scripts/beside.swift build/companion-mac.png build/companion-house.png build/companion-beside-mac.png \
+                && echo "The Mac and the phone photographed together: build/companion-beside-mac.png" \
+                || echo "warning: the Mac and the phone weren't set side by side" >&2
+        else
+            echo "warning: no photograph of the Mac beside the phone" >&2
+        fi
+    fi
 done
 
 # Counsel through the phone's own model, as the keeper takes it there: the

@@ -568,7 +568,7 @@ jobs:
           ends() { awk '{ last = $0 } NR == 1 { print } END { if (NR > 1) print last }' "$1" 2>/dev/null || true; }
           awk 1 build/companion-report.txt 2>/dev/null || true
           awk 1 build/companion-lost-report.txt 2>/dev/null || true
-          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac said: \|^The phone hears\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log build/companion-device-build.log 2>/dev/null || true
+          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac and the phone photographed\|^The Mac said: \|^The phone hears\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log build/companion-device-build.log 2>/dev/null || true
           # Counsel taken on the phone, through its own model: whose, and its verdict.
           ends build/counsel-phone-report.txt
           grep -hE "^error|^warning" build/smoke-companion.log 2>/dev/null | head -20 || true
