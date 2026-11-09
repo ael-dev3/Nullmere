@@ -1117,6 +1117,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// An alliance's mark lifted by its leader, given way to another, or
     /// lapsed.
     case markLifted(AllianceMark, lapsed: Bool)
+    /// A steward sworn to the alliance answering its keeper leader's mark,
+    /// told once: its host making for the hold marked to strike, or its
+    /// companies for ground marked to gather at or to hold.
+    case markHeeded(AllianceMark, by: Int)
     /// A letter sealed in a hold for the age to come.
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.

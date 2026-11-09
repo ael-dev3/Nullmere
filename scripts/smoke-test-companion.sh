@@ -18,7 +18,9 @@
 # and that it tries again, and keeps the House, says words to the realm while
 # it is, and once the line is mended is in reach again by its own key, told
 # back in step after how long, its words carried out and heard on the Mac
-# (build/companion-lost.png and build/companion-mended.png).
+# (build/companion-lost.png and build/companion-mended.png), each with the
+# Mac's own screen beside it (build/companion-beside-lost.png and
+# build/companion-beside-mended.png).
 # Then the phone takes counsel of a commander through its
 # own on-device model, as the Mac's check does: heard and held to counsel's
 # rules, or, where the simulator's Mac can't run the model, said to be
@@ -95,6 +97,18 @@ trap cleanup EXIT
 shot() {
     sleep "${2:-6}"
     xcrun simctl io "$UDID" screenshot "build/companion-$1.png" >/dev/null 2>&1 || echo "warning: no screenshot of $1" >&2
+}
+
+# The Mac's own screen as the phone's screen `$1` was just taken, the two
+# set side by side in build/companion-beside-$1.png.
+beside() {
+    if screencapture -x "build/companion-mac-$1.png" 2>/dev/null && [ -s "build/companion-$1.png" ]; then
+        swift scripts/beside.swift "build/companion-mac-$1.png" "build/companion-$1.png" "build/companion-beside-$1.png" \
+            && echo "The Mac and the phone photographed together: build/companion-beside-$1.png" \
+            || echo "warning: the Mac and the phone weren't set side by side ($1)" >&2
+    else
+        echo "warning: no photograph of the Mac beside the phone ($1)" >&2
+    fi
 }
 
 # Before any link: the phone asks for the code its keeper's Mac shows.
@@ -284,6 +298,8 @@ for _ in $(seq 1 90); do
     sleep 1
 done
 shot lost 1
+# The Mac beside it: still in the realm while its phone is out of reach.
+beside lost
 echo "Mending it…"
 kill -USR2 "$relay" 2>/dev/null || echo "warning: the phone's line had already gone" >&2
 touch "$DATA/Documents/line-mended"
@@ -291,8 +307,10 @@ for _ in $(seq 1 150); do
     grep -qE "came back to the realm|^Broken" "$LOST" 2>/dev/null && break
     sleep 1
 done
-# Back in step: the House tab tells after how long out of touch.
+# Back in step: the House tab tells after how long out of touch, the Mac
+# beside it.
 shot mended 1
+beside mended
 cp "$LOST" "$LOST_REPORT" 2>/dev/null || echo "The companion wrote no report of its line cut." >"$LOST_REPORT"
 cat "$LOST_REPORT"; echo
 CUT_OFF="$(sed -n 's/^Said while cut off: //p' "$LOST_REPORT" | head -n 1)"

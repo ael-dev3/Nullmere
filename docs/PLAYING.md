@@ -1180,8 +1180,19 @@ a vote on the realm's law to cast.
   ground, a ring of light turning about it and light rising from it in
   the mark's hue (gold to gather, red to strike, blue to hold, pale violet
   to beware), and from afar a glow that keeps its size as the view draws
-  away; on the phone's chart, a pennant in the same hue. Stewards make
-  none.
+  away; on the phone's chart, a pennant in the same hue. The Alliance
+  panel lists the alliance's marks, each with Look to carry the view
+  there, and the phone's Alliance tab says each with the alliance's own,
+  wherever it lies; a mark's card paints the banner planted there.
+  Stewards make none, but a steward sworn to an alliance a keeper leads
+  heeds them: it lays siege to the hold marked to strike if it is at war
+  with its House (a rising Moonspire still first), sends its idle
+  companies to wait and dig in at ground marked to gather or to hold
+  within ten tiles, and hunts and gathers no nearer than two tiles to
+  ground marked to beware; and the first time each answers a mark, the
+  alliance hears it ("House Arden answers the alliance's mark at Farmere
+  (Strike here): its host makes for Farmere."). A caretaker keeping a
+  keeper's House heeds none.
 - **Keeping an ally's gates.** A company of war sent to an ally's hold
   stands at its gates; while it stands there, a company of a House at war
   with its own that strikes the hold is struck back from where it stands.

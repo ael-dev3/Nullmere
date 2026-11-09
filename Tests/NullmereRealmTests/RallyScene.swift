@@ -1160,8 +1160,15 @@ extension RallyScene {
             }
         }
         let seen = await MainActor.run { (earA.world!.fieldsOfBattle[0], earB.world!.fieldsOfBattle[0]) }
-        XCTAssertEqual(seen.0.troops(of: 0) + seen.0.troops(of: 1), all, "every troop of both armies in the one battle, as Ama sees it")
-        XCTAssertEqual(seen.1.troops(of: 0) + seen.1.troops(of: 1), all, "and as Bel does")
+        // Every troop of both armies in it. Another company of either House
+        // standing within its span may come into it too, as into any field
+        // (struck or striking there), so the staged armies are counted by
+        // their own companies, and the field told by its own count.
+        let drawnUp = Set(host.map(\.0) + garrison.map(\.0))
+        func armies(_ field: Field) -> Int { field.fighters.filter { drawnUp.contains($0.unit) }.reduce(0) { $0 + $1.troops } }
+        func total(_ field: Field) -> Int { field.troops(of: 0) + field.troops(of: 1) }
+        XCTAssertEqual(armies(seen.0), all, "every troop of both armies in the one battle, as Ama sees it")
+        XCTAssertEqual(armies(seen.1), all, "and as Bel does")
         XCTAssertEqual(seen.0.id, seen.1.id)
         // Fought out over the watches; both told how it ended, alike.
         let ended: @MainActor @Sendable (Listener) -> Field? = { ear in
@@ -1182,12 +1189,19 @@ extension RallyScene {
         }
         try await until("both told the battle is over") { ended(earA) != nil && ended(earB) != nil }
         let over = await MainActor.run { (ended(earA)!, ended(earB)!) }
-        XCTAssertEqual(over.0.troops(of: 0) + over.0.troops(of: 1), all)
+        XCTAssertEqual(armies(over.0), all)
+        XCTAssertEqual(total(over.0), total(over.1), "one battle, one count of its troops")
+        XCTAssertGreaterThanOrEqual(total(over.0), all)
+        let joined = over.0.fighters.filter { !drawnUp.contains($0.unit) }
+        if !joined.isEmpty {
+            print("REALM came into the great battle besides its armies: "
+                + joined.map { "a company of House \($0.owner) of \(GameState.counted($0.troops)) troops" }.joined(separator: ", "))
+        }
         XCTAssertEqual(over.0.lost(by: 0), over.1.lost(by: 0), "one battle, one count of the fallen")
         XCTAssertEqual(over.0.lost(by: 1), over.1.lost(by: 1))
         XCTAssertGreaterThan(over.0.lost(by: 0) + over.0.lost(by: 1), 0, "it was fought")
         let chronicle = await MainActor.run { earA.world?.chronicle.last { $0.kind == .battle }?.text }
-        XCTAssertTrue(chronicle?.contains("400,000 troops in all") == true, chronicle ?? "no telling")
+        XCTAssertTrue(chronicle?.contains("\(GameState.counted(total(over.0))) troops in all") == true, chronicle ?? "no telling")
     }
 }
 

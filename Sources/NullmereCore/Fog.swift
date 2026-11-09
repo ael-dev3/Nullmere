@@ -466,7 +466,7 @@ extension GameState {
             case .petitionBrought(let petition), .petitionAnswered(let petition, _, _), .petitionWithdrawn(let petition):
                 // A House's folk speak to their own keeper alone.
                 return petition.house == house
-            case .groundMarked(let mark), .markLifted(let mark, _):
+            case .groundMarked(let mark), .markLifted(let mark, _), .markHeeded(let mark, _):
                 // An alliance's marks are its own Houses' alone.
                 return alliance(of: house)?.id == mark.alliance
             case .letterSealed(_, let by):

@@ -156,7 +156,7 @@ enum Narration {
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .crownSurfaced, .crownTaken, .crownFell, .crownSank, .carriedAshore, .recalled, .marchHalted,
              .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound, .vigilKept, .vigilHonoured, .vigilOut, .setOnTheWater, .ferried,
-             .petitionBrought, .petitionAnswered, .petitionWithdrawn, .groundMarked, .markLifted,
+             .petitionBrought, .petitionAnswered, .petitionWithdrawn, .groundMarked, .markLifted, .markHeeded,
              .letterSealed, .letterFound, .standingOrdersGiven,
              .commanderTaken, .prisonerQuestioned, .prisonerFreed, .oathSworn, .oathRenounced, .oathEnded,
              .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken,

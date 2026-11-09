@@ -782,6 +782,17 @@ extension GameState {
         case .markLifted(let mark, let lapsed):
             guard alliance(of: viewer)?.id == mark.alliance else { return nil }
             return Tidings("The alliance's mark \(placeName(of: mark.at)) (\(mark.kind.title)) \(lapsed ? "lapses" : "is lifted").", .neutral)
+        case .markHeeded(let mark, let by):
+            guard alliance(of: viewer)?.id == mark.alliance else { return nil }
+            let who = houses.indices.contains(by) ? houses[by].title : "A House of the alliance"
+            let how: String
+            switch mark.kind {
+            case .strike: how = "its host makes for \(hold(at: mark.at)?.name ?? "the ground marked")"
+            case .gather: how = "its companies gather there"
+            case .hold: how = "its companies hold the ground"
+            case .beware: how = "it keeps clear of the ground"
+            }
+            return Tidings("\(who) answers the alliance's mark \(placeName(of: mark.at)) (\(mark.kind.title)): \(how).", .good)
         case .wordReported(_, let by):
             guard by == viewer else { return nil }
             return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)

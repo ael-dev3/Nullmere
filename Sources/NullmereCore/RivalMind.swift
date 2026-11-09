@@ -150,6 +150,25 @@ struct RivalMind {
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, home: home, in: &state)
         }
         events += drill(owners: owners, in: &state)
+        events += answerMarks(in: &state)
+        return events
+    }
+
+    /// The marks of its keeper leader a steward answered this watch, each
+    /// told to the alliance once: one to strike whose hold its siege goes
+    /// for, one to gather at or to hold that a company of its war is bound
+    /// for or stands by.
+    private func answerMarks(in state: inout GameState) -> [GameEvent] {
+        let marks = leadersMarks(in: state).filter { !($0.heededBy ?? []).contains(house) && $0.kind != .beware }
+        guard !marks.isEmpty else { return [] }
+        let siege = marks.contains { $0.kind == .strike } ? siegePlan(in: state)?.target : nil
+        var events: [GameEvent] = []
+        for mark in marks {
+            let answered = mark.kind == .strike ? siege == mark.at : state.units(of: house).contains { unit in
+                unit.kind.isMilitary && (unit.destination ?? unit.position).distance(to: mark.at) <= 1
+            }
+            if answered { events += state.heedMark(mark.id, by: house) }
+        }
         return events
     }
 
@@ -1710,6 +1729,22 @@ struct RivalMind {
         if let load = unit.load, !load.isZero, let home, home.position.distance(to: unit.position) > 1 {
             return perform(.move(unit: unit.id, to: home.position), in: &state)
         }
+        // Sworn to a keeper who has marked ground to gather at or to hold
+        // within its reach: there to wait, the nearest such mark, digging
+        // in once beside it.
+        if let mark = leadersMarks(in: state).filter({ ($0.kind == .gather || $0.kind == .hold)
+            && $0.at.distance(to: unit.position) <= RivalMind.markReach })
+            .min(by: { ($0.at.distance(to: unit.position), $0.id) < ($1.at.distance(to: unit.position), $1.id) }) {
+            if unit.position.distance(to: mark.at) <= 1 {
+                return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
+            }
+            let moved = perform(.move(unit: unit.id, to: mark.at), in: &state)
+            if !moved.isEmpty { return moved }
+            if let beside = mark.at.neighbors.sorted(by: { ($0.distance(to: unit.position), $0.q, $0.r) < ($1.distance(to: unit.position), $1.q, $1.r) })
+                .first(where: { state.refusal(of: .move(unit: unit.id, to: $0), as: house) == nil }) {
+                return perform(.move(unit: unit.id, to: beside), in: &state)
+            }
+        }
         // At peace: hunt the wilds near its land, if the odds are good.
         if let prey = prey(for: unit, in: state) {
             return perform(.move(unit: unit.id, to: prey), in: &state)
@@ -1767,11 +1802,13 @@ struct RivalMind {
         for index in state.holds.places(of: house) { holds.append(state.holds[index].position) }
         let explored = state.houses[house].explored
         let sworn = state.alliance(of: house)?.id
+        let beware = bewareGround(in: state)
         let near = state.sitesInLand.filter { site in
             site.position.distance(to: unit.position) <= RivalMind.huntingGround
                 && short.contains(site.store) && (site.alliance == nil || site.alliance == sworn)
                 && holds.contains { $0.distance(to: site.position) <= RivalMind.huntingGround }
                 && (state.map.index(of: site.position).map { explored[$0] } ?? false)
+                && !beware.contains { $0.distance(to: site.position) <= RivalMind.bewareBerth }
         }
         guard !near.isEmpty else { return nil }
         // Of these few, those a company works or is bound for, or stands
@@ -1801,8 +1838,10 @@ struct RivalMind {
         let ground = RivalMind.huntingGround + (eager ? 3 : 0) + (eager && hunt ? 3 : 0)
         var holds: [Hex] = []
         for index in state.holds.places(of: house) { holds.append(state.holds[index].position) }
+        let beware = bewareGround(in: state)
         let near = state.wildsStanding.filter { wild in
             wild.position.distance(to: unit.position) <= ground && holds.contains { $0.distance(to: wild.position) <= ground }
+                && !beware.contains { $0.distance(to: wild.position) <= RivalMind.bewareBerth }
         }
         let fit = near.filter { wild in
             let odds = state.forecast(unit, against: wild, fromReach: true)
@@ -1814,6 +1853,35 @@ struct RivalMind {
             return taken * blows * 10 < unit.health * 9
         }
         return fit.min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }?.position
+    }
+
+    /// How far a company goes to wait where its alliance's keeper has
+    /// marked to gather or to hold, and how wide of ground marked to
+    /// beware it keeps its hunting and its gathering.
+    static let markReach = 10
+    static let bewareBerth = 2
+
+    /// The marks a steward heeds: those of the alliance it is sworn to while
+    /// a keeper leads it, its leader's bidding, the oldest first. None for
+    /// the leader itself, none where a steward leads (stewards mark
+    /// nothing), and none for a caretaker, which begins nothing its own
+    /// keeper would have to undo.
+    func leadersMarks(in state: GameState) -> [AllianceMark] {
+        guard !caretaking, let sworn = state.alliance(of: house), sworn.leader != house,
+              state.houses.indices.contains(sworn.leader), state.houses[sworn.leader].isPlayer else { return [] }
+        return state.marks(of: sworn.id)
+    }
+
+    /// The ground its alliance's keeper has marked to beware, found once
+    /// for all a choice weighs.
+    func bewareGround(in state: GameState) -> [Hex] {
+        leadersMarks(in: state).filter { $0.kind == .beware }.map(\.at)
+    }
+
+    /// Whether ground lies within a berth of ground its alliance's keeper
+    /// has marked to beware.
+    func bewares(_ hex: Hex, in state: GameState) -> Bool {
+        bewareGround(in: state).contains { $0.distance(to: hex) <= RivalMind.bewareBerth }
     }
 
     struct Siege {
@@ -1849,8 +1917,15 @@ struct RivalMind {
             guard let aim = RivalMind(house: sworn.leader).siegePlan(in: state)?.target else { return nil }
             return enemyHolds.first { state.holds[$0].position == aim }
         }()
+        // Sworn to a keeper: the hold its leader has marked to strike, the
+        // newest such mark first, of a House this one is at war with,
+        // known to it by the mark.
+        let marked = leadersMarks(in: state).reversed().lazy.filter { $0.kind == .strike }
+            .compactMap { state.hold(at: $0.at) }.first { state.isAtWar(house, $0.owner) }
         if let rising = risingFoe(in: state), let spire = state.seat(of: rising) {
             target = spire
+        } else if let marked {
+            target = marked
         } else if let front {
             target = state.holds[front]
         } else {

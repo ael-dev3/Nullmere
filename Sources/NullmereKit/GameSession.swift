@@ -1716,6 +1716,8 @@ public final class GameSession {
         // The leader's mark heard by the alliance's other Houses: a horn
         // where it bids them strike.
         case .groundMarked(let mark) where mark.alliance == alliance && mark.by != player: return mark.kind == .strike ? .horn : .banner
+        // An ally answering the alliance's mark, heard as accord.
+        case .markHeeded(let mark, _) where mark.alliance == alliance: return .accord
         case .standardStruck(let standard, _, let by, _) where by != player
             && state?.standard(standard).map({ $0.alliance == state?.alliance(of: player)?.id }) == true: return .batter
         case .standardTorn(_, _, let by, _) where by == player: return .triumph
@@ -1947,7 +1949,7 @@ public final class GameSession {
         case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at),
              .standardHelped(_, _, let at), .standardRisen(_, _, let at):
             return at
-        case .groundMarked(let mark), .markLifted(let mark, _):
+        case .groundMarked(let mark), .markLifted(let mark, _), .markHeeded(let mark, _):
             return mark.at
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
             return at

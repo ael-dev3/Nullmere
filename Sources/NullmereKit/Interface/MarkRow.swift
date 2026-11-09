@@ -1,4 +1,5 @@
 import NullmereCore
+import NullmereModels
 import NullmereWorld
 import SwiftUI
 
@@ -27,6 +28,9 @@ struct MarkRow: View {
         state.marksSeen(by: player).contains { $0.at == hex } || state.markRefusal(at: hex, as: player) == nil
     }
 
+    /// How large the painted banner beside a mark is.
+    static let portrait: CGFloat = 34
+
     /// A mark's hue, as its light in the world.
     static func hue(_ kind: AllianceMark.Kind) -> Color {
         let hue = WorldStage.markHue(kind)
@@ -38,27 +42,33 @@ struct MarkRow: View {
         let mark = state.marksSeen(by: session.player).first { $0.at == hex }
         VStack(alignment: .leading, spacing: 6) {
             if let mark {
-                HStack(spacing: 6) {
-                    Circle().fill(MarkRow.hue(mark.kind)).frame(width: 7, height: 7)
-                        .accessibilityHidden(true)
-                    Caps(mark.kind.title, size: 9.5, weight: .medium).foregroundStyle(MarkRow.hue(mark.kind))
-                    Spacer()
-                    if state.unmarkRefusal(mark.id, as: session.player) == nil {
-                        QuietButton(title: "Lift", size: 8.5, name: "Lift the alliance's mark here") {
-                            session.perform(.unmarkGround(mark.id))
+                HStack(alignment: .top, spacing: 10) {
+                    // The banner the world plants there, painted from its own model.
+                    Portrait(key: .hostBanner, colour: Portrait.colour(of: mark.by, in: state), size: MarkRow.portrait)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Circle().fill(MarkRow.hue(mark.kind)).frame(width: 7, height: 7)
+                                .accessibilityHidden(true)
+                            Caps(mark.kind.title, size: 9.5, weight: .medium).foregroundStyle(MarkRow.hue(mark.kind))
+                            Spacer()
+                            if state.unmarkRefusal(mark.id, as: session.player) == nil {
+                                QuietButton(title: "Lift", size: 8.5, name: "Lift the alliance's mark here") {
+                                    session.perform(.unmarkGround(mark.id))
+                                }
+                            }
                         }
+                        if let said = mark.words {
+                            Text(verbatim: "“\(said)”")
+                                .font(.nm(11))
+                                .foregroundStyle(Palette.glowWords)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text(verbatim: state.markMaker(mark))
+                            .font(.nm(10.5))
+                            .foregroundStyle(Palette.text(0.6))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if let said = mark.words {
-                    Text(verbatim: "“\(said)”")
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.glowWords)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Text(verbatim: state.markMaker(mark))
-                    .font(.nm(10.5))
-                    .foregroundStyle(Palette.text(0.6))
-                    .fixedSize(horizontal: false, vertical: true)
             }
             if state.markRefusal(at: hex, as: session.player) == nil {
                 QuietButton(title: open ? "Mark for the alliance" : "Mark for the alliance…", size: 8.5,

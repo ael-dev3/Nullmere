@@ -56,6 +56,9 @@ public struct AllianceMark: Codable, Equatable, Identifiable, Sendable {
     public let made: Int
     /// The leader's own words on it, if any.
     public let words: String?
+    /// The steward Houses of the alliance that have answered it, each told
+    /// once.
+    public internal(set) var heededBy: [Int]?
 
     public init(id: Int, alliance: Int, kind: Kind, at: Hex, by: Int, made: Int, words: String? = nil) {
         self.id = id
@@ -167,6 +170,15 @@ extension GameState {
         allianceMarks?.removeAll { $0.id == id }
         if allianceMarks?.isEmpty == true { allianceMarks = nil }
         return [.markLifted(mark, lapsed: false)]
+    }
+
+    /// A steward House of the alliance answers one of its marks, told to
+    /// the alliance once.
+    mutating func heedMark(_ id: Int, by house: Int) -> [GameEvent] {
+        guard let index = allianceMarks?.firstIndex(where: { $0.id == id }),
+              !(allianceMarks![index].heededBy ?? []).contains(house) else { return [] }
+        allianceMarks![index].heededBy = (allianceMarks![index].heededBy ?? []) + [house]
+        return [.markHeeded(allianceMarks![index], by: house)]
     }
 
     /// As the watch turns: marks past their time lapse, told to their
