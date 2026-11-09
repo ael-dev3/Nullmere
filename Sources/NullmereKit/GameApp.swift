@@ -536,18 +536,34 @@ public final class GameApp {
         if let name = environment["NULLMERE_FOUND_ALLIANCE"], !name.isEmpty, let session, session.state.alliance(of: session.player) == nil {
             session.perform(.foundAlliance(name: name))
         }
-        if let path = environment["NULLMERE_OFFER_LINK"], !path.isEmpty, phoneLink == nil { linkPhone() }
+        let offers = environment["NULLMERE_OFFER_LINK"].map { !$0.isEmpty } ?? false
+        if offers, phoneLink == nil { linkPhone() }
         if let path = environment["NULLMERE_LINK_REPORT"], !path.isEmpty, linkReport == nil {
             let answers = environment["NULLMERE_ANSWER_PHONE"] != nil
             linkReport = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.writeLinkReport(to: path)
                     if answers { self?.answerPhone() }
+                    if offers { self?.offerLinkAgain() }
                 }
             }
         }
     }
 
+    /// For the same script: an offer of a link the realm refused or didn't
+    /// answer in time (a realm slow to answer as the Mac comes in) made
+    /// again, as its keeper would press for it again, three times at most;
+    /// nothing while a link is offered or asked for.
+    func offerLinkAgain() {
+        guard phoneLink == nil, !isAskingForLink, phoneProblem != nil, linkOffersAgain < Self.linkOffersAtMost else { return }
+        linkOffersAgain += 1
+        Self.logger.notice("Offering a phone link again (\(self.linkOffersAgain, privacy: .public) of \(Self.linkOffersAtMost, privacy: .public)).")
+        linkPhone()
+    }
+
+    /// How many times the script's offer is made again.
+    static let linkOffersAtMost = 3
+    @ObservationIgnored private(set) var linkOffersAgain = 0
     @ObservationIgnored private var linkReport: Timer?
     /// The House's companies dug in as this Mac first looked, and whether it
     /// has answered the phone.

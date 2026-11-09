@@ -123,16 +123,19 @@ NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$REALM"
     NULLMERE_KEEPER="$KEEPER" NULLMERE_OFFER_LINK="$LINK" NULLMERE_LINK_REPORT="$MAC_REPORT" NULLMERE_ANSWER_PHONE=1 \
     "$MAC" >build/companion-mac-stdout.log 2>&1 &
 mac=$!
-for _ in $(seq 1 90); do
+# An offer the realm doesn't answer in time (a realm slow to answer as the
+# Mac comes in, as in run 863) the Mac makes again, as its keeper would: up
+# to 90 seconds for one asking, and a few for the next.
+for _ in $(seq 1 180); do
     [ -s "$LINK" ] && break
     sleep 1
 done
 if [ ! -s "$LINK" ]; then
-    echo "error: the Mac offered no link within 90 seconds" >&2
+    echo "error: the Mac offered no link within 180 seconds" >&2
     # Why, in the game's own words: whether it entered, was refused or
     # couldn't reach the realm, or why no link was offered.
     settled_log "$started" online.nullmere.game "realm" \
-        | grep -E "Entered the realm|refused|unreachable|No phone link" \
+        | grep -E "Entered the realm|refused|unreachable|No phone link|phone link again" \
         | sed -E 's/^.*\[online\.nullmere\.game[^]]*\] /The Mac said: /' >&2 || true
     cat build/companion-mac-stdout.log >&2 || true
     exit 1

@@ -682,6 +682,17 @@ final class NetworkAppTests: XCTestCase {
         await db.setReachable(false)
         mac.linkPhone()
         try await until("the offer told out of reach", timeout: 40) { mac.phoneProblem != nil && !mac.isAskingForLink }
+        // For the smoke test: the offer the realm didn't answer made again
+        // once it answers, as its keeper would make it, three times at most.
+        await db.setReachable(true)
+        mac.offerLinkAgain()
+        try await until("the offer made again") { mac.phoneLink != nil }
+        XCTAssertNil(mac.phoneProblem)
+        XCTAssertEqual(mac.linkOffersAgain, 1)
+        mac.offerLinkAgain()
+        XCTAssertEqual(mac.linkOffersAgain, 1, "Nothing made again while a link is offered")
+        mac.putPhoneLinkAway()
+        await db.setReachable(false)
         draw(FrontDoor(app: mac))
         mac.unlinkPhones()
         XCTAssertFalse(mac.canLinkPhone, "Asking")
