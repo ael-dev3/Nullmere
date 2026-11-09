@@ -183,6 +183,12 @@ public final class Synth: @unchecked Sendable {
     private var shoreTarget: (level: Float, pan: Float) = (0, 0)
     private var pendingShore: (level: Float, pan: Float)?
     private var shores = Shore(sampleRate: 48_000)
+    /// The blackwood burning near the view as heard, easing toward what it
+    /// was last told, and what it sounds.
+    private var blaze: (level: Float, pan: Float) = (0, 0)
+    private var blazeTarget: (level: Float, pan: Float) = (0, 0)
+    private var pendingBlaze: (level: Float, pan: Float)?
+    private var blazes = Blaze(sampleRate: 48_000)
 
     /// The drone's partials.
     private static let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
@@ -236,6 +242,13 @@ public final class Synth: @unchecked Sendable {
     /// the right (1).
     public func setShore(level: Float, pan: Float) {
         lock.lock(); pendingShore = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
+    }
+
+    /// How near the blackwood burning is to the view (0 none, 1 the wood
+    /// alight all about its middle, close) and where across it, from the
+    /// left (-1) to the right (1).
+    public func setBlaze(level: Float, pan: Float) {
+        lock.lock(); pendingBlaze = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
     }
 
     /// How much of the towns heard is sawpits at work, 0 to 1.
@@ -305,6 +318,12 @@ public final class Synth: @unchecked Sendable {
         return shore
     }
 
+    /// The fire as it is heard, for tests.
+    var blazeHeard: (level: Float, pan: Float) {
+        lock.lock(); defer { lock.unlock() }
+        return blaze
+    }
+
     /// The din as it is heard, for tests.
     var dinHeard: (level: Float, pan: Float) {
         lock.lock(); defer { lock.unlock() }
@@ -316,6 +335,7 @@ public final class Synth: @unchecked Sendable {
         if hall.sampleRate != sampleRate { hall = Hall(sampleRate: sampleRate) }
         if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
         if shores.sampleRate != sampleRate { shores = Shore(sampleRate: sampleRate) }
+        if blazes.sampleRate != sampleRate { blazes = Blaze(sampleRate: sampleRate) }
         if dinHorns.sampleRate != sampleRate { dinHorns = Horns(sampleRate: sampleRate) }
         if cueHorns.sampleRate != sampleRate { cueHorns = Horns(sampleRate: sampleRate, voices: 8) }
         if cueReeds.sampleRate != sampleRate { cueReeds = Horns(sampleRate: sampleRate, voices: 4, notes: Recordings.clarinetNotes) }
@@ -706,6 +726,10 @@ public final class Synth: @unchecked Sendable {
             shoreTarget = next
             pendingShore = nil
         }
+        if let next = pendingBlaze {
+            blazeTarget = next
+            pendingBlaze = nil
+        }
         if let next = pendingSawing {
             towns.sawing = next
             pendingSawing = nil
@@ -907,6 +931,18 @@ public final class Synth: @unchecked Sendable {
                 shoreRight = lapping * sin(shoreAngle) * 1.414
             }
 
+            // The blackwood burning near the view: as near as the view
+            // comes to it, from where it burns across the view.
+            blaze.level += (blazeTarget.level - blaze.level) * min(dt * 1.5, 1)
+            blaze.pan += (blazeTarget.pan - blaze.pan) * min(dt * 1.5, 1)
+            var blazeLeft: Float = 0, blazeRight: Float = 0
+            if blaze.level > 0.0005 {
+                let fire = blazes.sample(dt: dt) * Self.blazeGain * blaze.level * heard.ambience * level
+                let blazeAngle = (0.75 * blaze.pan + 1) * .pi / 4
+                blazeLeft = fire * cos(blazeAngle) * 1.414
+                blazeRight = fire * sin(blazeAngle) * 1.414
+            }
+
             cueLeft *= heard.effects
             cueRight *= heard.effects
             drone *= heard.ambience
@@ -926,8 +962,8 @@ public final class Synth: @unchecked Sendable {
             if hallQuiet < hall.seconds * 3 {
                 (hallLeft, hallRight) = hall.process(left: sentLeft, right: sentRight)
             }
-            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft + townLeft + shoreLeft)
-            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight + townRight + shoreRight)
+            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft + townLeft + shoreLeft + blazeLeft)
+            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight + townRight + shoreRight + blazeRight)
         }
         notes.removeAll { $0.age > $0.end }
     }
@@ -953,6 +989,9 @@ public final class Synth: @unchecked Sendable {
     static let townGain: Float = 0.15
     /// How loud the shore is, at its nearest: about as loud as the night.
     static let shoreGain: Float = 0.2
+    /// How loud the blackwood burning is, at its nearest: louder than the
+    /// night beneath it, as fire is.
+    static let blazeGain: Float = 0.375
     /// How loud a cue's call on the recorded horn is: as loud as the horns
     /// of overtones the war horn's and the muster's cues were.
     static let hornCueGain: Float = 0.15

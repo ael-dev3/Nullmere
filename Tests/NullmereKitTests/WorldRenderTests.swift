@@ -827,9 +827,22 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertEqual(afire.state.ash, Set(ash))
         let centre = Relief.centre(of: heart)
         let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 64, tilt: 0.95, heading: 0.4)
+        afire.camera = camera
+        still.camera = camera
         let drawn = try draw(renderer, "wildfire", camera: camera, tiles: afire.tileBytes, scene: afire.sceneFrame(at: 20))
         let bare = try draw(renderer, "no wildfire", camera: camera, tiles: still.tileBytes, scene: still.sceneFrame(at: 20))
-        try keep([drawn], as: "world-wildfire")
+        // And from afar, where the fires among the trees are too small to
+        // see: a warm glow over each tile alight.
+        var afar = Camera(scale: Camera.minimumScale)
+        afar.focus(on: heart)
+        afire.camera = afar
+        still.camera = afar
+        let far = try draw(renderer, "wildfire afar", camera: afar, tiles: afire.tileBytes, scene: afire.sceneFrame(at: 20))
+        let farBare = try draw(renderer, "no wildfire afar", camera: afar, tiles: still.tileBytes, scene: still.sceneFrame(at: 20))
+        try keep([drawn, far], as: "world-wildfire")
+        func seen(_ hex: Hex) -> CGPoint { afar.viewPoint(of: hex, height: Double(WorldRenderTests.world.relief.height(of: hex)), in: WorldRenderTests.size) }
+        let alight = burning.map(seen), touched = (burning + ash).map(seen)
+        var glowing = 0, elsewhere = 0, warmAfar = 0, warmAfarBefore = 0
         let ground = (burning + ash).map { camera.viewPoint(of: $0, height: Double(WorldRenderTests.world.relief.height(of: $0)), in: WorldRenderTests.size) }
         var near = 0, beyond = 0, fiery = 0, fieryBefore = 0
         for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
@@ -842,10 +855,26 @@ final class WorldRenderTests: XCTestCase {
                 if ground.contains(where: { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 120 }) { near += 1 } else { beyond += 1 }
             }
         }
-        print("RENDER wildfire: \(burning.count) tiles burning, \(ash.count) as ash; \(near) points changed by it, \(beyond) beyond; \(fiery) points of firelight, \(fieryBefore) before")
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let i = (y * WorldRenderTests.width + x) * 4
+                func warm(_ pixels: [UInt8]) -> Bool { Int(pixels[i + 2]) > 60 && Int(pixels[i + 2]) > Int(pixels[i + 1]) * 3 / 2 && pixels[i + 2] > pixels[i] &* 2 }
+                let there = alight.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 12 }
+                let about = touched.contains { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 30 }
+                if there, warm(far.pixels) { warmAfar += 1 }
+                if there, warm(farBare.pixels) { warmAfarBefore += 1 }
+                guard abs(far.luminance(x, y) - farBare.luminance(x, y)) > 4 else { continue }
+                if there { glowing += 1 } else if !about { elsewhere += 1 }
+            }
+        }
+        print("RENDER wildfire: \(burning.count) tiles burning, \(ash.count) as ash; \(near) points changed by it, \(beyond) beyond; \(fiery) points of firelight, \(fieryBefore) before; "
+            + "afar \(glowing) points changed where it burns, \(elsewhere) beyond the wood it touched, \(warmAfar) warm where it burns, \(warmAfarBefore) before")
         XCTAssertGreaterThan(near, 150, "The wood burning and burnt")
         XCTAssertLessThan(beyond, near / 2 + 20, "and the world beyond it as it was, but for its smoke")
         XCTAssertGreaterThan(fiery, fieryBefore + 40, "Fire's own light, orange in the night")
+        XCTAssertGreaterThan(glowing, 12, "From afar the fire glows where it burns")
+        XCTAssertLessThan(elsewhere, glowing / 2 + 10, "and nowhere else")
+        XCTAssertGreaterThan(warmAfar, warmAfarBefore, "warm, as fire is")
     }
 
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {

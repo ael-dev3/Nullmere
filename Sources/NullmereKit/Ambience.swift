@@ -109,6 +109,13 @@ public final class Ambience {
         synth.setShore(level: level, pan: pan)
     }
 
+    /// The blackwood burning near the view: how near, from nothing (0) to
+    /// the wood alight all about the view's middle, close (1), and where
+    /// across the view, from the left (-1) to the right (1).
+    public func setBlaze(level: Float, pan: Float) {
+        synth.setBlaze(level: level, pan: pan)
+    }
+
     /// How much of the towns heard is sawpits at work, 0 to 1.
     public func setSawing(_ share: Float) {
         synth.setSawing(share)

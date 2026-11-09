@@ -8,7 +8,8 @@ import XCTest
 /// alight among its trees, on the ground, the nearest to the view first and
 /// so many at most; flames licking up from them under embers, smoke and
 /// firelight; and once burnt, its trees standing dead and its undergrowth
-/// gone, until it grows back.
+/// gone, until it grows back; and from afar a warm glow over each tile
+/// alight.
 final class WildfireStageTests: XCTestCase {
     private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
     private static let relief = Relief(map: state.map)
@@ -82,6 +83,51 @@ final class WildfireStageTests: XCTestCase {
         }
         XCTAssertEqual(Set(spots.map(\.seed)).count, spots.count, "each its own fire")
         XCTAssertEqual(stage.woodFires([], near: focus), [])
+    }
+
+    func testTheBlackwoodBurningGlowsFromAfar() throws {
+        let stage = stage()
+        let map = Self.state.map
+        let burning = Array(map.hexes.filter { map[$0]?.terrain == .blackwood }.prefix(5))
+        XCTAssertEqual(burning.count, 5)
+        let focus = Vec3(Relief.centre(of: burning[0]).x, 0, Relief.centre(of: burning[0]).z)
+        // From afar, a warm glow high over each tile alight, light only.
+        let far = stage.fireGlows(burning, near: focus, scale: Camera.minimumScale, time: 3)
+        XCTAssertEqual(far.count, burning.count)
+        for hex in burning {
+            let centre = Relief.centre(of: hex)
+            let glow = try XCTUnwrap(far.first { abs($0.place.x - centre.x) < 0.001 && abs($0.place.z - centre.z) < 0.001 }, "a glow over \(hex)")
+            XCTAssertGreaterThan(glow.place.y, stage.ground(atX: centre.x, z: centre.z) + 0.3, "over its trees")
+            XCTAssertEqual(glow.colour.w, 0, "light only, hiding nothing")
+            XCTAssertTrue(glow.colour.x > glow.colour.y && glow.colour.y > glow.colour.z && glow.colour.z > 0, "the fire's own orange")
+        }
+        // Holding its size on the screen as the view draws away, and coming
+        // in as the keeps' glows do: dimmer nearer, none where the fires
+        // among the trees are seen.
+        let nearer = stage.fireGlows(burning, near: focus, scale: 20, time: 3)
+        XCTAssertEqual(nearer.map(\.place.x), far.map(\.place.x))
+        XCTAssertEqual(far[0].place.w * Float(Camera.minimumScale), nearer[0].place.w * 20, accuracy: 0.001, "the same size on the screen")
+        XCTAssertLessThan(nearer[0].colour.x, far[0].colour.x, "dimmer as the view comes nearer")
+        XCTAssertTrue(stage.fireGlows(burning, near: focus, scale: WorldStage.glowFrom, time: 3).isEmpty)
+        XCTAssertTrue(stage.fireGlows(burning, near: focus, scale: Camera.maximumScale, time: 3).isEmpty)
+        // Flickering where it stands, never out.
+        let later = stage.fireGlows(burning, near: focus, scale: Camera.minimumScale, time: 3.05)
+        XCTAssertEqual(later.map(\.place), far.map(\.place))
+        XCTAssertNotEqual(later.map(\.colour), far.map(\.colour), "flickering")
+        for time in stride(from: Float(0), to: 2, by: 0.1) {
+            XCTAssertTrue(stage.fireGlows(burning, near: focus, scale: Camera.minimumScale, time: time).allSatisfy { $0.colour.x > 0.12 })
+        }
+        // The nearest so many tiles to the view at most.
+        let all = stage.fireGlows(map.hexes, near: focus, scale: Camera.minimumScale, time: 0)
+        XCTAssertEqual(all.count, WorldStage.mostFireGlows)
+        func away(_ hex: Hex) -> Float {
+            let c = Relief.centre(of: hex)
+            return (c.x - focus.x) * (c.x - focus.x) + (c.z - focus.z) * (c.z - focus.z)
+        }
+        let nearest = map.hexes.sorted { (away($0), $0.q, $0.r) < (away($1), $1.q, $1.r) }.prefix(WorldStage.mostFireGlows)
+        XCTAssertEqual(all.map(\.place.x), nearest.map { Relief.centre(of: $0).x })
+        XCTAssertEqual(all.map(\.place.z), nearest.map { Relief.centre(of: $0).z })
+        XCTAssertTrue(stage.fireGlows([], near: focus, scale: Camera.minimumScale, time: 0).isEmpty)
     }
 
     func testFlamesLickUpFromTheWoodUnderEmbersSmokeAndFirelight() {

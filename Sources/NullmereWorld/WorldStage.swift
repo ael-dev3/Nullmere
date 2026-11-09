@@ -362,6 +362,31 @@ public final class WorldStage: @unchecked Sendable {
         return spots
     }
 
+    /// The most tiles of blackwood alight a frame glows over from afar.
+    public static let mostFireGlows = 96
+
+    /// The blackwood burning as it is seen from afar: a warm glow over each
+    /// tile alight, holding its size on the screen as the view draws away,
+    /// coming in as the keeps' glows do and flickering, the nearest
+    /// `mostFireGlows` tiles to `focus`. Near, the fires among the trees
+    /// tell it (`woodFires`).
+    public func fireGlows(_ hexes: [Hex], near focus: Vec3, scale: Double, time: Float) -> [Mote] {
+        let fade = 1 - WorldStage.smoothstep(Float(WorldStage.glowFull), Float(WorldStage.glowFrom), Float(scale))
+        guard fade > 0, !hexes.isEmpty else { return [] }
+        func far(_ hex: Hex) -> Float {
+            let centre = Relief.centre(of: hex)
+            return (centre.x - focus.x) * (centre.x - focus.x) + (centre.z - focus.z) * (centre.z - focus.z)
+        }
+        let size = Float(6 / max(scale, 1))
+        return hexes.sorted { (far($0), $0.q, $0.r) < (far($1), $1.q, $1.r) }.prefix(WorldStage.mostFireGlows).map { hex in
+            let centre = Relief.centre(of: hex)
+            let salt = Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), 97)
+            let flicker = 0.75 + 0.25 * Float(sin(Double(time * 9 + salt * 6.28)))
+            return Mote(at: Vec3(centre.x, ground(atX: centre.x, z: centre.z) + 0.5, centre.z), size: size,
+                        light: Vec3(1.0, 0.42, 0.12) * (0.3 * flicker * fade), cover: 0)
+        }
+    }
+
     /// What a piece of the land's furniture is once the fire has gone
     /// through it: a tree standing dead, its leaves and needles burnt
     /// away; undergrowth gone to nothing; stone, salt and all else as it

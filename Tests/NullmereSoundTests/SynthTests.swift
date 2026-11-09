@@ -450,6 +450,57 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(rms(doubled), rms(sound), accuracy: rms(sound) * 0.35, "As loud at any rate")
     }
 
+    /// The blackwood burning near the view is heard roaring and crackling,
+    /// louder than the night beneath it, from where it burns across the
+    /// view: cracks coming thick and never on a beat, a few loud and most
+    /// soft, now and then a branch snapping; gone again once the view
+    /// draws back or the fire goes out. The night sounds as it did beneath.
+    func testTheFireNearTheViewCracklesFromWhereItBurns() {
+        let still = settled()
+        let quiet = rendered(still, seconds: 8)
+        let near = settled()
+        near.setBlaze(level: 1, pan: -0.8)
+        let heard = rendered(near, seconds: 8)
+        let held = (3 * 48_000)..<(8 * 48_000)
+        // The night the same beneath, so what differs is the fire's.
+        let left = zip(heard.left[held], quiet.left[held]).map { $0 - $1 }
+        let right = zip(heard.right[held], quiet.right[held]).map { $0 - $1 }
+        let night = rms(quiet.left[held])
+        // Crackling: its loudness by the two-hundredth of a second leaps
+        // well above its middle again and again, out of the roar.
+        let blocks = stride(from: 0, to: left.count - 240, by: 240).map { rms(left[$0..<($0 + 240)]) }.sorted()
+        let middle = blocks[blocks.count / 2], loudest = blocks[blocks.count * 99 / 100]
+        print("SOUND fire \(String(format: "%.1f", decibels(rms(left)))) dBFS rms beside a night of \(String(format: "%.1f", decibels(night))), "
+            + "its loudest two-hundredths \(String(format: "%.1f", loudest / middle)) times its middle")
+        XCTAssertGreaterThan(rms(left), night * 1.25, "Louder than the night, as fire is")
+        XCTAssertLessThan(rms(left), night * 3, "and no din")
+        XCTAssertGreaterThan(rms(left), rms(right) * 1.5, "from the left, where it burns")
+        XCTAssertGreaterThan(loudest / middle, 2.5, "Cracks leaping out of the roar")
+        XCTAssertLessThan(max(heard.left.map(abs).max() ?? 0, heard.right.map(abs).max() ?? 0), 0.95, "and never clips")
+        XCTAssertEqual(near.blazeHeard.level, 1, accuracy: 0.05)
+        near.setBlaze(level: 0, pan: 0)
+        _ = rendered(near, seconds: 6)
+        _ = rendered(still, seconds: 6)
+        XCTAssertEqual(near.blazeHeard.level, 0, accuracy: 0.01)
+        let after = rendered(near, seconds: 2), bed = rendered(still, seconds: 2)
+        let lingering = zip(after.left, bed.left).map { $0 - $1 }
+        XCTAssertLessThan(rms(lingering), rms(bed.left) * 0.05, "Gone again, the night as it was")
+
+        var blaze = Blaze(sampleRate: 48_000)
+        let sound = (0..<(48_000 * 20)).map { _ in blaze.sample(dt: 1 / 48_000) }
+        XCTAssertGreaterThan(blaze.cracks, 200, "Cracks coming thick")
+        XCTAssertGreaterThanOrEqual(blaze.snaps, 3, "now and then a branch snapping")
+        XCTAssertGreaterThan(blaze.gaps.longest, blaze.gaps.shortest * 20, "never on a beat")
+        XCTAssertFalse(sound.contains { $0.isNaN || $0.isInfinite })
+        XCTAssertLessThan(sound.map(abs).max() ?? 9, 2)
+        // The same at another rate: as loud, as many cracks.
+        var faster = Blaze(sampleRate: 96_000)
+        let doubled = (0..<(96_000 * 20)).map { _ in faster.sample(dt: 1 / 96_000) }
+        XCTAssertLessThanOrEqual(abs(faster.cracks - blaze.cracks), 2)
+        XCTAssertLessThanOrEqual(abs(faster.snaps - blaze.snaps), 1)
+        XCTAssertEqual(rms(doubled), rms(sound), accuracy: rms(sound) * 0.2, "As loud at any rate")
+    }
+
     /// The towns near the view are heard talking and at work, about as
     /// loud as the night beneath them, from where they lie across the view,
     /// talk rising and falling and now and then a hammer's blow; gone again

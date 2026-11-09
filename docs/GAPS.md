@@ -542,15 +542,28 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   and the watch's wind). Stewards set none, so worlds of stewards alone
   play as they did, and step their companies out of one. In the world,
   three fires to each tile alight, flames licking up among the trees under
-  embers and rolling smoke, the firelight on the wood; the phone's chart
+  embers and rolling smoke, the firelight on the wood, and from afar a warm
+  glow over each tile alight that keeps its size on the screen and comes
+  in as the holds' glows do, flickering (the nearest 96 tiles to the
+  view); near, the fire heard (`Blaze`): a low roar surging as it draws
+  breath, the hiss of sap and the wood crackling, cracks coming thick and
+  never on a beat, a few loud and most soft, now and then a branch
+  snapping, louder than the night beneath it and from where it burns
+  across the view, the more of it about the view's middle the louder,
+  from further back than the lake's lapping and only wood the House has
+  seen (`FireSound`); the phone's chart
   draws each tile alight with three tongues of flame and the ash grey with
   dead trunks, and offers the order with the Mac's words. WildfireTests
   (the order and its refusals, the wind's shares over 400 watches, the
   toll, the ash and the regrowth, the Still Night and the mist, a steward
-  stepping out, counsel told of it), WildfireStageTests and
-  CompanionWildfireTests on Linux; WorldRenderTests draws the blackwood
-  burning and burnt beside the same wood unburnt with the world's own
-  shaders (`world-wildfire.png`), **Unverified** until a CI run draws it;
+  stepping out, counsel told of it), WildfireStageTests (the glow from
+  afar too), FireSoundTests and CompanionWildfireTests on Linux, and
+  SynthTests there measuring the fire heard (on Linux, the fire close by at −29.5 dBFS beside a night of −33.0, its loudest two-hundredths of a second 3.2 times its middle, over 200 cracks in twenty seconds at any sample rate); the sound kept
+  with CI's sounds (`fire.wav`) and the session's hearing held on the Mac
+  (FireHeardTests), **Unverified** until a CI run; WorldRenderTests draws
+  the blackwood burning and burnt beside the same wood unburnt with the
+  world's own shaders, close and from afar (`world-wildfire.png`),
+  **Unverified** until a CI run draws it;
   RallyScene.setTheWoodAlight plays it between two clients (Ama sets it,
   both see it burn, Bel's order on her company refused, both see the fire
   alike as the watch turns) in NetworkRallyTests and in the realm job on a
