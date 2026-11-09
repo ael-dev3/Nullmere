@@ -665,6 +665,10 @@ extension GameSession {
             happenings.sightings.append(Happenings.Spot(at: ground(sighting.at), start: clock(sighting.start),
                                                         seed: UInt32(truncatingIfNeeded: sighting.id)))
         }
+        for spring in springs {
+            happenings.springs.append(Happenings.Spot(at: ground(spring.at), start: clock(spring.start),
+                                                      seed: UInt32(truncatingIfNeeded: spring.id)))
+        }
         for pose in poses where pose.clip == .march {
             var riders = false
             switch pose.key {

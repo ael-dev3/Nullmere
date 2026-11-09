@@ -885,8 +885,9 @@ a vote on the realm's law to cast.
   would, and both Houses are told ("Your Spears I spring from the dark of
   the wood by Wenholme upon House Arden's Archers II"). Only your House
   knows it waits (VoiceOver says "lying in wait"), and in the world you
-  see it half seen among the trees, which stand among its ranks; a
-  watchfire's light makes it out like any company marching dark. Marching on, lighting its
+  see it half seen among the trees, which stand among its ranks, and
+  leaves thrown up from the wood as it springs; a watchfire's light makes
+  it out like any company marching dark. Marching on, lighting its
   torches or Stand down ends it. The order book reads WAIT <company>, and
   a commander in counsel may put an ambush to you. Stewards lie in wait
   for none. Rise of Kingdoms has no ambush.

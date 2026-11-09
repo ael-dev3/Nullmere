@@ -397,6 +397,29 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(quiet.lights.isEmpty)
     }
 
+    /// An ambush sprung, the House's own or upon it, throws leaves up from
+    /// the wood where the company lay in wait, gone a while after; still,
+    /// nothing is thrown.
+    func testAnAmbushSprungThrowsLeavesUpFromTheWood() throws {
+        let session = try session()
+        let player = session.player
+        let company = try XCTUnwrap(session.state.units(of: player).first { $0.kind.isMilitary })
+        let foe = (player + 1) % session.state.houses.count
+        XCTAssertTrue(session.springs.isEmpty)
+        session.showBlows([.ambushSprung(unit: company.id, owner: player, at: company.position, struck: 9_000, struckOwner: foe)])
+        let spring = try XCTUnwrap(session.springs.last)
+        XCTAssertEqual(spring.at, company.position)
+        // Dark, small and green or brown: hiding what is behind them.
+        func leaves(_ motes: [Mote]) -> Int {
+            thrown(motes).filter { $0.colour.w > 0 && $0.colour.y > $0.colour.z && $0.place.w < 0.05 }.count
+        }
+        let flying = leaves(session.sceneFrame(at: 50, now: spring.start.addingTimeInterval(0.3)).motes)
+        let settled = leaves(session.sceneFrame(at: 50, now: spring.start.addingTimeInterval(3.0)).motes)
+        XCTAssertGreaterThan(flying, settled + 10, "leaves thrown up as it springs, gone after")
+        session.motion = .still
+        XCTAssertEqual(leaves(session.sceneFrame(at: 50, now: spring.start.addingTimeInterval(0.3)).motes), 0, "still, none")
+    }
+
     /// Wood seen catching alight flares up where it catches, for a few
     /// seconds; a fire already burning when the world is first drawn
     /// doesn't.

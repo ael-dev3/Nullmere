@@ -407,6 +407,15 @@ public final class GameSession {
         public let start: Date
     }
 
+    /// A company springing from the wood where it lay in wait, the
+    /// player's or upon the player's: leaves and twigs thrown up from among
+    /// the trees, briefly.
+    public struct Spring: Equatable, Identifiable {
+        public let id: Int
+        public let at: Hex
+        public let start: Date
+    }
+
     /// A blow the player saw land: a ring and the damage, briefly, where it fell.
     public struct Blow: Equatable, Identifiable {
         public let id: Int
@@ -519,6 +528,7 @@ public final class GameSession {
     public private(set) var expeditionFights: [ExpeditionFight] = []
     /// Holds scouted in sight, while their Lanterns' light is drawn.
     public private(set) var sightings: [Sighting] = []
+    public private(set) var springs: [Spring] = []
     /// What the House's Lanterns last saw of each hold they scouted, by hold.
     public private(set) var scoutings: [Int: ScoutReport] = [:]
     /// The House's battles and hunts as their reports tell them, the latest first.
@@ -2360,6 +2370,12 @@ public final class GameSession {
             sightings.append(Sighting(id: blowCounter, at: at, start: now))
             shown = true
         }
+        // An ambush sprung, told only to the two Houses it touched.
+        for case .ambushSprung(_, _, let at, _, _) in events {
+            blowCounter += 1
+            springs.append(Spring(id: blowCounter, at: at, start: now))
+            shown = true
+        }
         guard shown else { return }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
@@ -2367,6 +2383,7 @@ public final class GameSession {
             self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.sightings.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+            self.springs.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
         // An expedition's figures stand on the ridge a while longer.
         if !expeditionFights.isEmpty {

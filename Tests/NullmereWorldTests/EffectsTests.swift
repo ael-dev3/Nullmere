@@ -30,6 +30,40 @@ final class EffectsTests: XCTestCase {
         }
     }
 
+    /// A company springing from the wood where it lay in wait throws up
+    /// leaves and twigs from among the trees: up and out from the boughs,
+    /// dark leaves that hide what is behind them rather than shine, then
+    /// fluttering down, never through the ground, and gone in time; with
+    /// the dust of the rush beneath them.
+    func testACompanySpringingFromTheWoodThrowsUpLeaves() {
+        let wood = Vec3(3, 0.4, 1)
+        var happenings = Happenings()
+        happenings.springs = [Happenings.Spot(at: wood, start: 2, seed: 17)]
+        func leaves(at time: Float) -> [Mote] {
+            happenings.effects(at: time).motes.filter { $0.colour.w > 0 && $0.colour.y > $0.colour.z && $0.place.w < 0.05 }
+        }
+        XCTAssertTrue(leaves(at: 1.9).isEmpty, "nothing before it springs")
+        let thrown = leaves(at: 2.3)
+        XCTAssertGreaterThan(thrown.count, 20, "a burst of them")
+        let boughs = wood.y + Happenings.springLeaves
+        XCTAssertGreaterThan(thrown.map(\.place.y).max() ?? 0, boughs + 0.15, "thrown up from the boughs")
+        XCTAssertGreaterThan(thrown.map { (Vec3($0.place.x, 0, $0.place.z) - Vec3(wood.x, 0, wood.z)).length }.max() ?? 0, 0.1, "and out")
+        XCTAssertTrue(thrown.allSatisfy { max($0.colour.x, $0.colour.y, $0.colour.z) < 0.06 }, "dark leaves, giving no light")
+        // Up first, then fluttering down.
+        let heights = stride(from: Float(2.05), to: 3.4, by: 0.1).map { time in
+            let motes = Effects.motes(bursts: [Burst(.leaves, at: wood, start: 2, count: 40, seed: 17)], emitters: [], at: time)
+            return motes.map(\.place.y).reduce(0, +) / Float(max(motes.count, 1))
+        }
+        let top = heights.firstIndex(of: heights.max() ?? 0) ?? 0
+        XCTAssertGreaterThan(top, 0, "rising")
+        XCTAssertLessThan(heights.last ?? 0, heights[top], "then falling")
+        let late = Effects.motes(bursts: [Burst(.leaves, at: wood, start: 2, count: 40, seed: 17)], emitters: [], at: 3.6)
+        XCTAssertTrue(late.allSatisfy { $0.place.y >= wood.y - 0.301 }, "never through the ground beneath the wood")
+        // The dust of the rush beneath them; all gone a while after.
+        XCTAssertTrue(happenings.effects(at: 2.4).motes.contains { $0.place.w >= 0.05 && $0.colour.w > 0 }, "dust")
+        XCTAssertTrue(happenings.effects(at: 2 + Effect.leaves.lifetime * 1.36 + 0.1).motes.isEmpty, "gone in time")
+    }
+
     func testEachKindMovesAsItShould() {
         let origin = Vec3(1, 0.5, -2)
         // Sparks fly up and out, then fall.

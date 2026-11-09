@@ -444,7 +444,12 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   while it waits where they give way to any other company's, and whole
   the moment it springs (`WorldStage.lyingInWait`, `AmbushStageTests` on
   Linux); WorldRenderTests draws it beside the same company marching dark
-  (`world-ambush.png`), **Unverified** until a CI run draws it.
+  (`world-ambush.png`), **Unverified** until a CI run draws it. As it
+  springs, leaves and twigs are thrown up from among the trees where it
+  lay, dark green and brown, fluttering down, with the dust of its rush
+  (`Effect.leaves`, held on Linux by `EffectsTests`; the session drawing
+  them as it hears the ambush sprung by `WorldStagingTests`,
+  **Unverified** until a CI run's Mac tests run).
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

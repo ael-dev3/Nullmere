@@ -57,6 +57,10 @@ public enum Effect: String, CaseIterable, Sendable {
     /// rising fast and narrowing, deep orange at the root, yellow as they
     /// thin.
     case flames
+    /// A company springing from the wood where it lay in wait: leaves and
+    /// twigs thrown up from among the trees, dark green and brown,
+    /// fluttering down as the air slows them.
+    case leaves
 
     /// How long each mote lives, in seconds.
     public var lifetime: Float {
@@ -77,6 +81,7 @@ public enum Effect: String, CaseIterable, Sendable {
         case .sigil: return 2.2
         case .pillar: return 1.5
         case .flames: return 0.55
+        case .leaves: return 1.6
         }
     }
 }
@@ -238,6 +243,20 @@ public enum Effects {
             at.y = max(at.y, origin.y - 0.02)
             let show = 0.9 * (1 - t * t)
             return Mote(at: at, size: 0.03 * scale, light: Vec3(0.055, 0.052, 0.05) * show, cover: show)
+        case .leaves:
+            // Thrown up and out from among the trees, slowed by the air as
+            // they rise, then fluttering down, swaying as they fall; never
+            // through the ground beneath the wood.
+            let speed = (0.4 + 0.8 * b) * scale
+            let thrown = around * speed + Vec3(0, (1.0 + 0.9 * c) * scale, 0)
+            let slowed = (1 - Float(exp(-Double(age) * 2.4))) / 2.4
+            let sway = Vec3(Float(sin(Double(age * (6 + 5 * a)))), 0, Float(cos(Double(age * (5 + 4 * b))))) * (0.05 * scale * t)
+            var at = origin + thrown * slowed + Vec3(0, -0.5 * age * age, 0) + sway
+            at.y = max(at.y, origin.y - 0.3)
+            let show = 0.95 * (1 - t * t) * min(age * 12, 1)
+            // Dark green and brown by turns, as the wood's own leaves.
+            let leaf = c < 0.55 ? Vec3(0.020, 0.036, 0.016) : Vec3(0.036, 0.027, 0.014)
+            return Mote(at: at, size: (0.02 + 0.016 * b) * scale, light: leaf * show, cover: show)
         case .fireflies:
             // Wandering over the reeds in slow loops, blinking on and off.
             let east: Float = Float(sin(Double(age * (0.6 + 0.5 * a) + Float(index)))) * 0.35
@@ -437,6 +456,9 @@ public struct Happenings: Equatable, Sendable {
     public var fireflies: [Spot] = []
     /// Where commanders' skills fired, when, and how each looks.
     public var furies: [Fury] = []
+    /// Companies springing from the wood where they lay in wait: leaves
+    /// and twigs thrown up from among the trees, and the dust of the rush.
+    public var springs: [Spot] = []
 
     /// A commander's skill fired: where, when, and how it looks.
     public struct Fury: Equatable, Sendable {
@@ -515,6 +537,9 @@ public struct Happenings: Equatable, Sendable {
     public static let arrowFlight: Float = 0.38
     /// When a falling company meets the ground.
     public static let fallen: Float = 0.85
+    /// How high among the trees the leaves of a company springing from the
+    /// wood are thrown from: about the height of the boughs.
+    public static let springLeaves: Float = 0.3
     /// How long a commander's fury lights the ground.
     public static let furyGlow: Float = 0.9
     /// How far out a skill's sigil reaches about its company.
@@ -568,6 +593,11 @@ public struct Happenings: Equatable, Sendable {
         }
         for fall in falls {
             bursts.append(Burst(.dust, at: fall.at, start: fall.start + Happenings.fallen, count: 10, seed: fall.seed, scale: 0.9))
+        }
+        for spring in springs {
+            bursts.append(Burst(.leaves, at: spring.at + Vec3(0, Happenings.springLeaves, 0), start: spring.start, count: 40,
+                                seed: spring.seed, scale: 1.1))
+            bursts.append(Burst(.dust, at: spring.at, start: spring.start + 0.05, count: 10, seed: spring.seed &+ 1, scale: 1.1))
         }
         for march in marching {
             emitters.append(Emitter(.dust, at: march.at, rate: 9 * march.strength, spread: 0.22, seed: march.seed, strength: 0.6))
