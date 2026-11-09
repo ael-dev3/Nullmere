@@ -105,6 +105,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// A keeper's company of war sets the blackwood where it stands alight
     /// (see `Wildfire`).
     case kindle(unit: Int)
+    /// A company douses its torches to march dark, or lights them again
+    /// (see `GameState.isUnlit`).
+    case torches(unit: Int, lit: Bool)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -568,6 +571,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case burntGround
     /// Fire set by a company no keeper commands.
     case keepersFire
+    /// Torches lit that burn already, or doused that are out.
+    case torchesAlready(lit: Bool)
     /// Words that say nothing an envoy, or the realm, would carry.
     case nothingToSay
     /// As many words as a watch allows, said.
@@ -788,6 +793,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .onlyBlackwood: return "Only the blackwood burns, and never a hold's heart or a site's clearing in it."
         case .burntGround: return "That wood is burning or lies burnt already."
         case .keepersFire: return "Only a keeper's companies set the wood alight."
+        case .torchesAlready(let lit): return lit ? "Its torches burn already." : "It marches dark already."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
         case .saidEnough: return "You have said all a watch allows; say more as the watch turns."
         }
@@ -1136,6 +1142,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case markHeeded(AllianceMark, by: Int)
     /// A keeper's company set the blackwood alight where it stood.
     case woodKindled(at: Hex, by: Int, unit: Int)
+    /// A company doused its torches to march dark, or lit them again.
+    case torchesSet(unit: Int, lit: Bool, owner: Int)
     /// A House's fire caught the blackwood beside it, with the watch's wind
     /// (an index into `Hex.directions`, the way it blows).
     case fireSpread(to: [Hex], by: Int, wind: Int)

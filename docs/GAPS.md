@@ -329,6 +329,23 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   reads it into the order book, each line checked against the keeper's own
   view and given only when the keeper gives it. The model only reads; the
   realm judges.
+- [x] **Marching dark.** A keeper's company may douse its torches and march
+  dark: a tile less each watch, and seen by another House, and told to it
+  step by step, only within a tile of what that House or its allies see
+  from, while a Beacon still warns of it and listening stones still hear
+  it. Surprise on the march, which Rise of Kingdoms, where every march
+  shows to the whole kingdom, never allows. Built since run 854: the rules,
+  the views, the stones and a steward's companies striking one only once
+  they make it out close by held on Linux (`TorchesTests`, the stone's
+  test in `ListeningStoneTests`), the order book's DOUSE and LIGHT lines
+  read by the clerk, each company marching dark told so in its briefing
+  (`SpokenOrdersTests`), a two-client scene on the in-process realm
+  (`NetworkRallyTests`: one keeper's spears lost to the other's client in
+  the dark and seen again, torchless, by that keeper's seat), the phone's Army tab
+  offering it (`CompanionTorchesTests`); the same scene in the realm job
+  on SpacetimeDB, the Mac's panel button and line and the
+  Guide's line **Unverified** until a CI run builds them; no torches are
+  drawn on the march yet, so the dark is told, not seen.
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

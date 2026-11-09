@@ -95,6 +95,35 @@ final class ListeningStoneTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// A company marching dark, on ground the House sees but not close by,
+    /// is out of its sight: the stone hears it where eyes see nothing.
+    func testAStoneHearsACompanyMarchingDarkThatEyesDontSee() throws {
+        var (state, me, other, hold) = try world()
+        _ = try state.perform(.sinkStone(hold: hold.id), as: me)
+        let stone = try XCTUnwrap(state.stones(of: me).first)
+        let seen = state.visibility(for: me), close = state.closeSight(for: me)
+        func open(_ hex: Hex) -> Bool {
+            guard let index = state.map.index(of: hex), let tile = state.map[hex] else { return false }
+            return seen[index] && !close[index] && tile.terrain.isPassable && !tile.terrain.isWater && state.unit(at: hex) == nil
+                && state.hold(at: hex) == nil && hex.distance(to: stone.at) <= GameState.stoneReach
+        }
+        let from = try XCTUnwrap(stone.at.spiral(GameState.stoneReach).first { open($0) && $0.neighbors.contains(where: open) })
+        let to = try XCTUnwrap(from.neighbors.first(where: open))
+        let company = Unit(id: state.takeID(), kind: .spear, owner: other, position: from)
+        state.units.append(company)
+        _ = state.listenAtTheStones()
+        // Lit, its march is in plain sight: seen, not heard.
+        var lit = state
+        lit.units[lit.unitIndex(company.id)!].position = to
+        XCTAssertTrue(lit.listenAtTheStones().isEmpty, "Lit, in sight: seen, not heard")
+        // Dark, the House's eyes see nothing there, and the stone hears it.
+        _ = try state.perform(.torches(unit: company.id, lit: false), as: other)
+        state.units[state.unitIndex(company.id)!].position = to
+        XCTAssertNil(state.view(for: me).unit(company.id), "Unseen in the dark")
+        XCTAssertEqual(state.listenAtTheStones(), [.stoneHeard(stone: stone.id, house: me, marches: 1)])
+        XCTAssertEqual(state.problems(), [])
+    }
+
     func testAStoneIsLostWithItsHold() throws {
         var (state, me, other, hold) = try world()
         _ = try state.perform(.sinkStone(hold: hold.id), as: me)

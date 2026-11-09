@@ -1040,6 +1040,9 @@ public struct CompanionLedger: Equatable, Sendable {
                 ("Recall", .recall(unit: unit.id), gathering),
                 ("Drill", .drill(unit: unit.id), unit.kind.isMilitary && unit.drillAt == nil && world.drillRefusal(of: unit) == nil),
                 ("Set the wood alight", .kindle(unit: unit.id), world.isBlackwood(unit.position) && world.kindleRefusal(unit.id, as: player) == nil),
+                // Its torches doused to march dark, or lit again, as the Mac's panel offers it.
+                ("Douse the torches", .torches(unit: unit.id, lit: false), world.torchRefusal(unit.id, lit: false, as: player) == nil),
+                ("Light the torches", .torches(unit: unit.id, lit: true), world.torchRefusal(unit.id, lit: true, as: player) == nil),
             ]
             // Lanterns within reach of another House's hold scout it, the
             // nearest first, as the Mac offers it, where the rules would.
@@ -1728,6 +1731,13 @@ public struct CompanionLedger: Equatable, Sendable {
     /// as the Mac's panel tells it, which way and how far, for the phone has
     /// no map beside the list (`GameState.marchSaid`).
     static func doing(_ unit: Unit, in world: GameState, for player: Int) -> String {
+        let doing = about(unit, in: world, for: player)
+        // A company marching dark says so, as the Mac's panel does.
+        return world.isUnlit(unit.id) ? doing + ", its torches doused" : doing
+    }
+
+    /// What a company is about, its torches aside.
+    static func about(_ unit: Unit, in world: GameState, for player: Int) -> String {
         // Out at the land's work as the Mac's gatherers tell it: which site,
         // when full or home, and what it carries.
         if let gathering = world.gatheringSaid(of: unit) { return gathering.prefix(1).uppercased() + gathering.dropFirst() }

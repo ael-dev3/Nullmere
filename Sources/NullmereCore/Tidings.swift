@@ -794,6 +794,12 @@ extension GameState {
             case .beware: how = "it keeps clear of the ground"
             }
             return Tidings("\(who) answers the alliance's mark \(placeName(of: mark.at)) (\(mark.kind.title)): \(how).", .good)
+        case .torchesSet(let id, let lit, let owner):
+            guard owner == viewer, let unit = unit(id) else { return nil }
+            let who = "Your \(named(unit)) \(placeName(of: unit.position))"
+            return lit
+                ? Tidings("\(who) light their torches again: they march at their pace, and are seen as far as any company.", .neutral)
+                : Tidings("\(who) douse their torches: they march dark, a tile less each watch, seen by other Houses only close by.", .neutral)
         case .woodKindled(let at, let by, _):
             guard houses.indices.contains(by) else { return nil }
             if by == viewer {

@@ -1652,6 +1652,7 @@ public final class GameSession {
         case .markGround(_, let kind, _): return kind == .strike ? .horn : .banner
         case .unmarkGround: return .stand
         case .kindle: return .horn
+        case .torches(_, let lit): return lit ? .order : .stand
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage, .takeCrest, .bestow: return .banner
         case .prophesy: return .lore

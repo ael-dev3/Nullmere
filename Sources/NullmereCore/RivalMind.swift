@@ -137,6 +137,9 @@ struct RivalMind {
         events += state.armCommanders(for: house)
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
+        // The companies marching dark it sees only close by, as a keeper would.
+        let dark = state.darkTo(house)
+        let darkness = Darkness(ids: dark, close: dark.isEmpty ? [] : state.closeSight(for: house))
         // A keeper's standing orders keeping every company on its own land.
         let home = caretaking && state.standingOrders(of: house).home == true ? owners : nil
         // Its companies' orders don't change whom it is at war with.
@@ -148,7 +151,7 @@ struct RivalMind {
         events += fleeTheFire(in: &state)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
-            events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, home: home, in: &state)
+            events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, darkness: darkness, atWar: atWar, home: home, in: &state)
         }
         events += drill(owners: owners, in: &state)
         events += answerMarks(in: &state)
@@ -1531,8 +1534,8 @@ struct RivalMind {
 
     /// `home`, the land's territory where a keeper's standing orders keep
     /// every company on its House's own land.
-    private func command(_ unitID: Int, garrisonFor post: Hex?, seeing visible: [Bool], atWar: Bool, home: [Int?]? = nil,
-                         in state: inout GameState) -> [GameEvent] {
+    private func command(_ unitID: Int, garrisonFor post: Hex?, seeing visible: [Bool], darkness: Darkness = Darkness(), atWar: Bool,
+                         home: [Int?]? = nil, in state: inout GameState) -> [GameEvent] {
         guard let unit = state.unit(unitID) else { return [] }
         switch unit.kind {
         case .lantern:
@@ -1566,7 +1569,7 @@ struct RivalMind {
                 return perform(.move(unit: unitID, to: post), in: &state)
             }
             if let home { return keepHome(unit, territory: home, atWar: atWar, in: &state) }
-            return campaign(with: unit, seeing: visible, atWar: atWar, in: &state)
+            return campaign(with: unit, seeing: visible, darkness: darkness, atWar: atWar, in: &state)
         }
     }
 
@@ -1640,7 +1643,20 @@ struct RivalMind {
         }
     }
 
-    private func campaign(with unit: Unit, seeing visible: [Bool], atWar: Bool, in state: inout GameState) -> [GameEvent] {
+    /// The companies of other Houses marching dark, and where its House
+    /// sees close enough to make them out (`GameState.closeSight`).
+    struct Darkness {
+        var ids: Set<Int> = []
+        var close: [Bool] = []
+
+        /// Whether a company it would see on that tile is made out there.
+        func makesOut(_ id: Int, at tile: Int) -> Bool {
+            !ids.contains(id) || (close.indices.contains(tile) && close[tile])
+        }
+    }
+
+    private func campaign(with unit: Unit, seeing visible: [Bool], darkness: Darkness = Darkness(), atWar: Bool,
+                          in state: inout GameState) -> [GameEvent] {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }
@@ -1699,7 +1715,7 @@ struct RivalMind {
                        !gates.contains(where: { $0.distance(to: position) <= 3 }) {
                         continue
                     }
-                    guard let tile = state.map.index(of: position), visible[tile] else { continue }
+                    guard let tile = state.map.index(of: position), visible[tile], darkness.makesOut(id, at: tile) else { continue }
                     let key = (distance, id)
                     if skirmish.map({ key < $0.key }) ?? true { skirmish = (key, position) }
                 }

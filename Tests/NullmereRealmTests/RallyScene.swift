@@ -1631,6 +1631,60 @@ extension RallyScene {
         }
     }
 
+    /// Marching dark, between two clients: Ama's spears stand where Bel's
+    /// House sees them from afar, and both clients see them while their
+    /// torches burn; Ama douses them from her own client, and Bel's client
+    /// sees them no longer while hers still does, knowing they march dark;
+    /// come within a tile of Bel's seat, Bel's client sees them again,
+    /// carrying no torches; and Ama lights them again.
+    func marchInTheDark(ama: Int, bel: Int) async throws {
+        let afarAt = StagedWalk(), nearAt = StagedWalk()
+        await steward.reshape { realm in
+            // Houses sharing their sight see each other's dark marches: the
+            // two kept apart for this, the last of the scenes.
+            if realm.world.stance(ama, bel) == .pact { realm.world.setStance(.peace, between: ama, and: bel, by: ama) }
+            if let index = realm.world.alliances?.firstIndex(where: { $0.members.contains(ama) && $0.members.contains(bel) }) {
+                let leaving = realm.world.alliances![index].leader == bel ? ama : bel
+                realm.world.alliances![index].members.removeAll { $0 == leaving }
+            }
+            let world = realm.world
+            let seen = world.visibility(for: bel), close = world.closeSight(for: bel)
+            func open(_ hex: Hex) -> Bool {
+                world.map[hex]?.terrain.isPassable == true && world.map[hex]?.terrain.isWater == false
+                    && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+            }
+            guard let seat = world.seat(of: bel)?.position,
+                  let afar = seat.spiral(4).first(where: { hex in
+                      world.map.index(of: hex).map { seen[$0] && !close[$0] } == true && open(hex)
+                  }),
+                  let near = seat.neighbors.first(where: open) else { return }
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: ama, position: afar))
+            afarAt.unit = id
+            afarAt.at = afar
+            nearAt.at = near
+        }
+        let unitID = try XCTUnwrap(afarAt.unit, "Ground Bel's House sees from afar, for Ama's spears")
+        let near = try XCTUnwrap(nearAt.at)
+        try await until("both clients to see Ama's spears while their torches burn") {
+            earA.world?.unit(unitID) != nil && earB.world?.unit(unitID) != nil
+        }
+        await MainActor.run { a.send(.torches(unit: unitID, lit: false)) }
+        try await until("Bel's client to lose them in the dark, and Ama's to know they march dark") {
+            earB.world?.unit(unitID) == nil && earA.world?.unit(unitID) != nil && earA.world?.isUnlit(unitID) == true
+        }
+        await steward.reshape { realm in
+            if let index = realm.world.unitIndex(unitID) { realm.world.units[index].position = near }
+        }
+        try await until("Bel's client to see them close by its seat, carrying no torches") {
+            earB.world?.unit(unitID)?.position == near && earB.world?.isUnlit(unitID) == true
+        }
+        await MainActor.run { a.send(.torches(unit: unitID, lit: true)) }
+        try await until("their torches lit again, as both clients see it") {
+            earA.world?.isUnlit(unitID) == false && earB.world?.unit(unitID) != nil && earB.world?.isUnlit(unitID) == false
+        }
+    }
+
     func markTheGround(ama: Int, bel: Int) async throws {
         let words = "Hold the ford"
         let staged = StagedWalk()

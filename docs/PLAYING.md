@@ -840,6 +840,19 @@ a vote on the realm's law to cast.
   keeper's own, green for an ally's, red for a foe's and grey for
   another's, dimmer toward the end with a glint running along them toward
   it, and a small ring where one of the keeper's own is bound.
+- **Marching dark.** Every company carries its torches through the night,
+  and is seen wherever another House's sight reaches it. From its panel
+  (Douse torches), or from the phone's Army tab, a keeper may have one
+  douse them: it marches dark, a tile less each watch and never fewer
+  than one, and another House sees it, and is told of its steps, only
+  within a tile of a company or hold of that House's own or its allies'.
+  Its own House and its allies see it as ever, and its panel says it
+  marches dark. The dark hides it from eyes, not ears: a Beacon still
+  warns of it bound for its hold, and listening stones still hear it
+  where eyes would see nothing. Light torches lights them again. Stewards
+  march with their torches lit, and a steward's companies strike one
+  marching dark only once they make it out close by. In Rise of Kingdoms
+  every march is shown to the whole kingdom.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own
@@ -1627,16 +1640,17 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   model, as the House's clerk, reads it into at most six lines of the
   order book (MARCH C1 TO a place, STRIKE a place WITH C2, FORTIFY,
   HALT or DRILL a company, KINDLE one to set the blackwood where it
-  stands alight, BUILD a work AT a hold, TRAIN a kind AT a hold; and
-  with the other Houses, OFFER PEACE or A PACT TO a House,
-  DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an amount of a store
-  TO one, TRADE an amount of a store FOR another WITH one, and the oaths
-  below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO one, RENOUNCE THE
-  OATH TO one), given a briefing of the House's companies, numbered C1
+  stands alight, DOUSE or LIGHT its torches, BUILD a work AT a hold,
+  TRAIN a kind AT a hold; and with the other Houses, OFFER PEACE or A
+  PACT TO a House, DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an
+  amount of a store TO one, TRADE an amount of a store FOR another WITH
+  one, and the oaths below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO
+  one, RENOUNCE THE OATH TO one), given a briefing of the House's
+  companies, numbered C1
   and on (each that may set the blackwood where it stands alight told
-  so, and the watch's wind), its holds, the places it knows, the works,
-  the kinds of company, the other Houses standing and how it stands with
-  each, its oaths, and the stores.
+  so, and the watch's wind, and each marching dark), its holds, the
+  places it knows, the works, the kinds of company, the other Houses
+  standing and how it stands with each, its oaths, and the stores.
   Each line is read against the keeper's own view into the order the
   realm would take, or said not to be one, and shown with what it would
   do or why it can't be given; those that can are given together only

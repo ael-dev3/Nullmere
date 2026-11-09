@@ -43,6 +43,7 @@ extension GameState {
         mendAndHeal(territory: owners)
         events += drillCompanies(territory: owners)
 
+        forgetTheUnlitGone()
         for index in units.indices {
             units[index].movesLeft = movement(of: units[index])
             units[index].acted = false

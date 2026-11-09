@@ -466,6 +466,9 @@ final class SpacetimeIntegrationTests: XCTestCase {
         // Last, its turned watch and its company's id moving none of the scenes before.
         try await scene2.setTheWoodAlight(ama: houseA, bel: houseB)
         print("REALM one keeper set the blackwood alight from her own client and both clients saw it burn; the other's order on her company was refused; as the watch turned both saw the fire as the realm left it")
+        // And after it, for it parts the two Houses' sight.
+        try await scene2.marchInTheDark(ama: houseA, bel: houseB)
+        print("REALM one keeper's spears doused their torches from her own client: the other's client lost them in the dark while hers knew they marched dark; come by his seat, his client saw them, torchless; lit again, both saw it")
     }
 
     /// Two realms and the Frontier between them, each its own database on

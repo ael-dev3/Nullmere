@@ -21,7 +21,9 @@ extension GameState {
 
     /// Moves a company has in a watch.
     public func movement(of unit: Unit) -> Int {
-        unit.kind.movement + bonus(.moves(unit.kind), for: unit)
+        let moves = unit.kind.movement + bonus(.moves(unit.kind), for: unit)
+        // Marching dark, a tile less, never fewer than one.
+        return isUnlit(unit.id) ? max(moves - 1, 1) : moves
     }
 
     /// Grain a company eats each watch: its tier's, and an eighth as much

@@ -523,6 +523,9 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(all.contains("yielding nothing, for 30 watches"), all)
         XCTAssertTrue(all.contains("Rising Mist and a Lean Watch's cold rain put out every fire in the blackwood"), all)
         XCTAssertEqual([Wildfire.burns, Wildfire.ash], [3, 30])
+        // Torches doused, as the rules hide a company marching dark.
+        XCTAssertTrue(all.contains("march dark: a tile less each watch, never fewer than one, and another House sees it only within 1 tile of"), all)
+        XCTAssertEqual(GameState.darkSight, 1)
         XCTAssertEqual(Happening.marks, [10, 25, 50])
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
         XCTAssertEqual(GameState.captainsAt, [3, 5])

@@ -79,9 +79,16 @@ extension GameState {
         let explored = houses.indices.contains(house) ? houses[house].explored : []
         view.map = map.known(by: explored, from: commons.unexplored)
         let seen = visibility(for: house)
+        // A company marching dark is seen only close by, unless its House's
+        // sight is shared; whoever sees it sees it carries no torches.
+        let dark = darkTo(house)
+        let close = dark.isEmpty ? [] : closeSight(for: house)
         view.units = Companies(units.filter { unit in
-            unit.owner == house || (map.index(of: unit.position).map { seen[$0] } ?? false)
+            guard unit.owner != house else { return true }
+            guard let index = map.index(of: unit.position), seen[index] else { return false }
+            return !dark.contains(unit.id) || close[index]
         })
+        view.unlit = unlit.map { all in all.filter { view.unit($0) != nil } }.flatMap { $0.isEmpty ? nil : $0 }
         // A company in sight shows where it stands and how many it is, not
         // where it is bound, nor what it is about or carries, nor whether it
         // drills.
@@ -284,6 +291,10 @@ extension GameState {
     public func events(_ events: [GameEvent], heardBy house: Int) -> [GameEvent] {
         let seen = visibility(for: house)
         func visible(_ hex: Hex) -> Bool { map.index(of: hex).map { seen[$0] } ?? false }
+        // One marching dark, only where it is seen close by.
+        let dark = darkTo(house)
+        let close = dark.isEmpty ? [] : closeSight(for: house)
+        func closeBy(_ hex: Hex) -> Bool { map.index(of: hex).map { seen[$0] && close[$0] } ?? false }
         // Another House's march is heard only where it is seen.
         let cut = events.compactMap { event -> GameEvent? in
             // What a storehouse torn down gave up is told to its taker and its alliance alone.
@@ -292,7 +303,7 @@ extension GameState {
                 return .storehouseTorn(storehouse: id, alliance: alliance, by: by, at: at, carried: .zero)
             }
             guard case .moved(let id, let path) = event, unit(id)?.owner != house else { return event }
-            let shown = path.filter(visible)
+            let shown = dark.contains(id) ? path.filter(closeBy) : path.filter(visible)
             return shown.isEmpty ? nil : .moved(unit: id, path: shown)
         }
         return cut.filter { event in
@@ -466,6 +477,9 @@ extension GameState {
                 return true
             case .vigilOut(_, let mourner, _):
                 return mourner == house
+            case .torchesSet(_, _, let owner):
+                // Torches doused or lit, its own House alone is told.
+                return owner == house
             case .woodKindled, .firesDoused:
                 // Smoke rising from the blackwood, and the mist putting out
                 // the fires, the whole realm sees.

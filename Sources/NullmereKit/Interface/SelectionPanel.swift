@@ -702,6 +702,12 @@ struct UnitPanel: View {
                     .foregroundStyle(Palette.text(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if mine, state.isUnlit(unit.id) {
+                Text(verbatim: UnitPanel.marchingDark)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if mine {
                 if let hint = hint(for: unit) {
                     Text(verbatim: hint)
@@ -743,6 +749,15 @@ struct UnitPanel: View {
                         }
                         .help(UnitPanel.kindleHelp(in: state))
                     }
+                    // Its torches doused to march dark, or lit again.
+                    let lit = !state.isUnlit(unit.id)
+                    let torches = state.torchRefusal(unit.id, lit: !lit, as: session.player)
+                    QuietButton(title: lit ? "Douse torches" : "Light torches", enabled: torches == nil,
+                                name: lit ? "Douse the torches of \(unit.kind.title) to march dark" : "Light the torches of \(unit.kind.title) again",
+                                why: torches?.description) {
+                        session.perform(.torches(unit: unit.id, lit: !lit))
+                    }
+                    .help(lit ? UnitPanel.douseHelp : UnitPanel.lightHelp)
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
                     }
@@ -827,6 +842,12 @@ struct UnitPanel: View {
         guard let id = unit.leader, let commander = state.commander(id) else { return nil }
         return "Led by \(commander.name), \(commander.archetype.named) of level \(commander.level)"
     }
+
+    /// A company of the keeper's marching dark, as its panel says it, and
+    /// what dousing or lighting its torches does.
+    static let marchingDark = "Marching dark, its torches doused: a tile less each watch, seen by other Houses only close by."
+    static let douseHelp = "March dark: a tile less each watch, seen by other Houses only within a tile of what they see from"
+    static let lightHelp = "Light the torches again: march at their pace, seen as far as any company"
 
     /// What a company has been sent to do beyond its march, and what it carries.
     static func errand(of unit: Unit, in state: GameState) -> String? {

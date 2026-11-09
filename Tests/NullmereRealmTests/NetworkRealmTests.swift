@@ -1018,6 +1018,8 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.raiseAStandardTogether(ama: ama, bel: bel)
         // After all else, its turned watch and its company's id moving none of theirs.
         try await scene.setTheWoodAlight(ama: ama, bel: bel)
+        // And after it, for it parts the two Houses' sight.
+        try await scene.marchInTheDark(ama: ama, bel: bel)
     }
 
     func testAGreatBattleOfFourHundredThousandFromTwoClients() async throws {

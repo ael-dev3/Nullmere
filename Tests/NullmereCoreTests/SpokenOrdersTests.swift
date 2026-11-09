@@ -163,6 +163,34 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertTrue(SpokenOrders.forms.contains("KINDLE <company>"))
     }
 
+    /// Torches from the book: DOUSE has a company march dark, and the
+    /// briefing tells the model which march so; LIGHT lights them again;
+    /// each line once done is told why not, in the realm's own words.
+    func testTorchesAreDousedAndLitFromTheBook() throws {
+        var state = world()
+        let me = state.player
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let unit = try XCTUnwrap(companies.first { $0.kind.isMilitary })
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == unit.id }) + 1)"
+        let douse = try XCTUnwrap(SpokenOrders.read("DOUSE \(handle)", in: state, player: me).first)
+        XCTAssertEqual(douse.command, .torches(unit: unit.id, lit: false))
+        XCTAssertNil(douse.why)
+        XCTAssertEqual(douse.told, "Your \(SpokenOrders.named(unit, in: state)) douse their torches and march dark.")
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("light \(handle)", in: state, player: me).first).why,
+                       RuleError.torchesAlready(lit: true).description, "Lit already")
+        XCTAssertFalse(SpokenOrders.briefing(for: state, player: me).contains("marching dark"))
+        _ = try state.perform(.torches(unit: unit.id, lit: false), as: me)
+        let briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(handle): ") && $0.hasSuffix(", marching dark, its torches doused (LIGHT)") }, "\(briefing)")
+        let light = try XCTUnwrap(SpokenOrders.read("LIGHT \(handle)", in: state, player: me).first)
+        XCTAssertEqual(light.command, .torches(unit: unit.id, lit: true))
+        XCTAssertNil(light.why)
+        XCTAssertEqual(light.told, "Your \(SpokenOrders.named(unit, in: state)) light their torches again.")
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("DOUSE \(handle)", in: state, player: me).first).why,
+                       RuleError.torchesAlready(lit: false).description, "Dark already")
+        XCTAssertTrue(["DOUSE <company>", "LIGHT <company>"].allSatisfy(SpokenOrders.forms.contains))
+    }
+
     /// The House's dealings with the others: envoys of peace, of a pact or
     /// demanding tribute, war, gifts and offers of trade, each House named
     /// by its title or its name alone.

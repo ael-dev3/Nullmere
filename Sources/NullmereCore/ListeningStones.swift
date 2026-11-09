@@ -116,16 +116,25 @@ extension GameState {
         var now: [Int: Hex] = [:]
         var heard: [Sounding] = []
         var sight: [Int: [Bool]] = [:]
+        // A company marching dark is out of sight but close by, so the
+        // stones hear it where eyes would not see it.
+        var darkness: [Int: (dark: Set<Int>, close: [Bool])] = [:]
         for stone in stones.sorted(by: { $0.id < $1.id }) {
             let seen = sight[stone.owner] ?? visibility(for: stone.owner)
             sight[stone.owner] = seen
+            let unseen = darkness[stone.owner] ?? {
+                let dark = darkTo(stone.owner)
+                return (dark, dark.isEmpty ? [] : closeSight(for: stone.owner))
+            }()
+            darkness[stone.owner] = unseen
             var count = 0
             for unit in units.sorted(by: { $0.id < $1.id }) where unit.owner != stone.owner && unit.kind.isMilitary {
                 let distance = unit.position.distance(to: stone.at)
                 guard distance <= GameState.stoneReach else { continue }
                 now[unit.id] = unit.position
                 guard stone.listening, before[unit.id] != unit.position else { continue }
-                if let index = map.index(of: unit.position), seen.indices.contains(index), seen[index] { continue }
+                if let index = map.index(of: unit.position), seen.indices.contains(index), seen[index],
+                   !unseen.dark.contains(unit.id) || unseen.close[index] { continue }
                 heard.append(Sounding(stone: stone.id, quarter: GameState.quarter(of: unit.position, from: stone.at),
                                       near: distance <= GameState.stoneReach / 2, watch: watch))
                 count += 1
