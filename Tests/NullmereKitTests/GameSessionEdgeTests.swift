@@ -84,6 +84,23 @@ final class GameSessionEdgeTests: XCTestCase {
         XCTAssertTrue(cues.contains(.select))
     }
 
+    /// What rises over a blow: the troops it felled, counted as armies are,
+    /// and over the striker what the blow struck back cost it; a ward's
+    /// strength struck where no troops fell.
+    func testABlowShowsTheTroopsItFelledAndWhatItCostTheStriker() {
+        let blow = GameSession.Blow(id: 1, at: Hex(1, 0), damage: 37, againstPlayer: false, start: Date(), from: Hex(0, 0),
+                                    attacker: 4, defender: 5, fallen: [], slain: 1_240, lost: 310)
+        XCTAssertEqual(blow.felled, "1,240", "the troops it felled, not its hurt")
+        XCTAssertEqual(blow.strikersLost, "310")
+        let unanswered = GameSession.Blow(id: 2, at: Hex(1, 0), damage: 37, againstPlayer: false, start: Date(), from: Hex(0, 0),
+                                          attacker: 4, defender: 5, fallen: [], slain: 2_000, lost: 0)
+        XCTAssertNil(unanswered.strikersLost, "nothing over a striker the blow cost nothing")
+        let ward = GameSession.Blow(id: 3, at: Hex(1, 0), damage: 12, againstPlayer: false, start: Date(), from: Hex(0, 0),
+                                    attacker: 4, defender: nil, fallen: [])
+        XCTAssertEqual(ward.felled, "12", "a ward's strength struck, where no troops fell")
+        XCTAssertNil(ward.strikersLost)
+    }
+
     /// A strike is told, and its blow drawn, as the realm struck it: never as
     /// the keeper's own copy guessed, whose dice aren't the realm's.
     func testAStrikeIsToldAsTheRealmStruckIt() throws {

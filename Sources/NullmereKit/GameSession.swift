@@ -440,6 +440,21 @@ public final class GameSession {
         public let fallen: [Fallen]
         /// Whether a Mangonel struck it, hurling a stone rather than loosing arrows.
         public var hurled = false
+        /// The struck company's troops it felled, and the striker's own lost
+        /// to the blow struck back; none where a hold's ward was struck.
+        public var slain: Int?
+        public var lost: Int?
+
+        /// What rises over where it fell: the troops it felled, counted as
+        /// armies are, or, where a ward was struck and no troops fell, the
+        /// ward's strength it took.
+        public var felled: String {
+            slain.flatMap { $0 > 0 ? GameState.counted($0) : nil } ?? "\(damage)"
+        }
+        /// What rises over the striker, if the blow struck back cost it troops.
+        public var strikersLost: String? {
+            lost.flatMap { $0 > 0 ? GameState.counted($0) : nil }
+        }
 
         public struct Fallen: Equatable {
             public let kind: UnitKind
@@ -2330,7 +2345,7 @@ public final class GameSession {
             blows.append(Blow(id: blowCounter, at: battle.at, damage: battle.damageDealt,
                               againstPlayer: battle.defenderOwner == player, start: now,
                               from: from, attacker: battle.attacker, defender: battle.defender, fallen: fallen,
-                              hurled: battle.attackerKind == .mangonel))
+                              hurled: battle.attackerKind == .mangonel, slain: battle.slain, lost: battle.lost))
             // Each turns to face the other.
             if from != battle.at {
                 headings[battle.attacker] = CompanyPose.heading(from: from, to: battle.at)

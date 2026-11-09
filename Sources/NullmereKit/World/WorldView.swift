@@ -387,12 +387,25 @@ struct WorldMarks: View {
                     let ring = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
                     context.stroke(ring, with: .color(colour.opacity(0.75 * fade)), lineWidth: 1.6)
                 }
+                // The troops it felled, as armies are counted, rising over
+                // where it fell; and, beside the striker, its own it lost to
+                // the blow struck back.
                 context.draw(
-                    Text(verbatim: "−\(blow.damage)")
+                    Text(verbatim: "−\(blow.felled)")
                         .font(.nm(12, weight: .semibold).monospacedDigit())
                         .foregroundStyle(colour.opacity(fade)),
                     at: CGPoint(x: point.x, y: point.y - scale * 0.6 - 18 * age)
                 )
+                if let lost = blow.strikersLost, !blow.isRanged {
+                    let origin = session.viewPoint(of: blow.from, in: size)
+                    let theirs = state.unit(blow.attacker)?.owner == session.player ? Palette.bad : Color(red: 0.95, green: 0.93, blue: 0.86)
+                    context.draw(
+                        Text(verbatim: "−\(lost)")
+                            .font(.nm(11, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(theirs.opacity(fade * 0.9)),
+                        at: CGPoint(x: origin.x, y: origin.y - scale * 0.6 - 18 * age)
+                    )
+                }
             }
 
             // Holds the player knows of; their names drawn after them, over
