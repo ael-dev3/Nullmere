@@ -323,7 +323,8 @@ enum CompanionCheck {
         /// An order given from the phone, the realm's word on it heard and
         /// written under `what`: never a name the smoke test reads a line by
         /// (Fortified company, Said to the realm, Raised the banner of, Said
-        /// to the alliance, Standing orders, Watch, Fire set at, At work), or
+        /// to the alliance, Standing orders, Watch, Fire set at, Torches
+        /// doused, At work), or
         /// it reads the realm's word for what was done.
         func give(_ command: Command, told: String, as what: String) async {
             let asked = Date()
@@ -472,6 +473,17 @@ enum CompanionCheck {
             lines.append("Fire set at: \(at.q),\(at.r)")
         } else {
             lines.append("No fire set: no company of the House stands in blackwood it may set alight")
+        }
+        // A company's torches doused from the phone, the realm's word on it
+        // heard, and which company marches dark written for the smoke test
+        // to find on the Mac.
+        let douse = "Douse the torches"
+        if let bearer = (session.ledger ?? ledger).companies.first(where: { $0.orders.contains { $0.title == douse } }),
+           let order = bearer.orders.first(where: { $0.title == douse }) {
+            await give(order.command, told: order.title, as: "Doused by the \(bearer.name)")
+            lines.append("Torches doused: \(bearer.id)")
+        } else {
+            lines.append("No torches doused: no company of the House carries them lit")
         }
         // The silver key the watch's turn brought, spent at the Lantern Inn
         // from the phone, what the chest held in the realm's word: never the

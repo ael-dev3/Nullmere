@@ -289,6 +289,19 @@ if [ -n "$FIRE_AT" ]; then
 else
     echo "The phone set no fire: $(sed -n 's/^No fire set: //p' "$REPORT" | head -n 1)"
 fi
+# The company whose torches the phone doused, seen marching dark on the Mac;
+# or why the phone could douse none.
+DOUSED="$(sed -n 's/^Torches doused: //p' "$REPORT" | head -n 1)"
+DARK=no
+if [ -n "$DOUSED" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qE "^dark: (.* )?$DOUSED( |$)" "$MAC_REPORT" 2>/dev/null; then DARK=yes; break; fi
+        sleep 1
+    done
+    echo "The Mac sees the company the phone doused marching dark: $DARK (company $DOUSED; $(grep '^dark: ' "$MAC_REPORT" 2>/dev/null || echo "no report"))"
+else
+    echo "The phone doused no torches: $(sed -n 's/^No torches doused: //p' "$REPORT" | head -n 1)"
+fi
 
 # The phone's line to the realm cut and mended: in again by its own key, it
 # says the realm is out of reach and keeps the House, says words to the realm
@@ -430,6 +443,10 @@ if [ "$TURNED" != yes ]; then
 fi
 if [ -n "$FIRE_AT" ] && [ "$ALIGHT" != yes ]; then
     echo "error: the Mac never saw the blackwood burning where the phone set it alight" >&2
+    exit 1
+fi
+if [ -n "$DOUSED" ] && [ "$DARK" != yes ]; then
+    echo "error: the Mac never saw the company the phone doused marching dark" >&2
     exit 1
 fi
 if [ "$CAME_BACK" != yes ]; then

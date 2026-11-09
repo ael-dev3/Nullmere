@@ -533,6 +533,22 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(burning(world), "burning: " + fires.map { "\($0.q),\($0.r)" }.joined(separator: " "))
     }
 
+    /// What the Mac tells the phone's smoke test of the House's companies
+    /// marching dark: each that has doused its torches, by its number, for
+    /// the test to find the company the phone doused; none, where all are lit.
+    func testTheLinkReportTellsWhichCompaniesMarchDark() throws {
+        var state = GameState(settings: GameSettings(seedText: "linked dark", houseCount: 4, radius: 12, keepers: 1))
+        func dark(_ world: GameState) -> String? {
+            GameApp.linkReport(of: world, player: world.player).split(separator: "\n").map(String.init).first { $0.hasPrefix("dark:") }
+        }
+        XCTAssertEqual(dark(state), "dark: ", "Every company's torches lit as the age begins")
+        let company = try XCTUnwrap(state.units(of: state.player).first)
+        _ = try state.perform(.torches(unit: company.id, lit: false), as: state.player)
+        XCTAssertEqual(dark(state), "dark: \(company.id)")
+        _ = try state.perform(.torches(unit: company.id, lit: true), as: state.player)
+        XCTAssertEqual(dark(state), "dark: ", "Lit again")
+    }
+
     /// A keeper links their phone from the realm's door: the Mac shows a
     /// code in three fours with the QR code carrying it and the realm, the
     /// realm keeping only its digest; a phone bringing it comes in as the
@@ -639,6 +655,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(report[3], "alliance: \(banner.name)")
         XCTAssertEqual(report[4], "standing: \(StandingOrders(house: mac.session?.player ?? -1).said)", "The caretaker's orders, none given")
         XCTAssertEqual(report[7], "burning: ", "No blackwood burning")
+        XCTAssertEqual(report[8], "dark: ", "No company marching dark")
         XCTAssertEqual(Array(report.suffix(2)), ["said: Heard on the Mac", "alliance said: Heard by the accord"])
 
         // Out of reach: told so, both the offer and the letting go.

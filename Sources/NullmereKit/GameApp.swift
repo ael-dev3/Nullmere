@@ -605,8 +605,9 @@ public final class GameApp {
         let ring = ["ring: " + (state.ringLine(of: player) ?? []).map(String.init).joined(separator: " ")]
         let phone = ["phone: " + (keeper?.companionsHere.map { "in, \($0)" } ?? (keeper?.companions == nil ? "none" : "away"))]
         let burning = ["burning: " + state.burning.map { "\($0.at.q),\($0.at.r)" }.joined(separator: " ")]
+        let dark = ["dark: " + state.units(of: player).filter { state.isUnlit($0.id) }.map { String($0.id) }.joined(separator: " ")]
         return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + sworn + standing
-                + ring + phone + burning + said + allied).joined(separator: "\n") + "\n"
+                + ring + phone + burning + dark + said + allied).joined(separator: "\n") + "\n"
     }
 
     func stopLinkReport() {

@@ -349,7 +349,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   their glow a warm spark on the land from afar, and one marching dark
   carries none (`WorldStage.torches`, TorchesStageTests on Linux);
   WorldRenderTests draws a company of the keeper's lit and then dark
-  (`world-torches.png`), **Unverified** until a CI run draws it.
+  (`world-torches.png`), **Unverified** until a CI run draws it. The
+  phone's smoke test douses a company's torches and fails unless the Mac
+  sees that company marching dark (`CompanionCheck`, the `dark:` line of
+  the Mac's report, held by NetworkAppTests), **Unverified** until a CI
+  run plays it.
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.
