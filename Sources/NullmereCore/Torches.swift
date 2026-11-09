@@ -69,7 +69,7 @@ extension GameState {
 
     /// Each tile a House sees close enough to make out a company marching
     /// dark, by its index: within `darkSight` of a company or hold of its
-    /// own or its allies'.
+    /// own or its allies', or lit by one of their watchfires.
     func closeSight(for house: Int) -> [Bool] {
         var close = [Bool](repeating: false, count: map.count)
         for watcher in watchers(for: house) {
@@ -79,6 +79,10 @@ extension GameState {
             for index in holds.places(of: watcher) {
                 map.forEachIndex(within: GameState.darkSight, of: holds[index].position) { close[$0] = true }
             }
+        }
+        // And all the ground each of their watchfires lights.
+        for fire in watchfiresLighting(for: house) {
+            map.forEachIndex(within: Watchfire.reach, of: fire.at) { close[$0] = true }
         }
         return close
     }

@@ -362,6 +362,19 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   sees that company marching dark (`CompanionCheck`, the `dark:` line of
   the Mac's report, held by NetworkAppTests), **Unverified** until a CI
   run plays it.
+- [x] **Watchfires.** The answer to the march in the dark: a keeper's
+  House lights a watchfire on open ground of its own land for 12 timber,
+  and for 8 watches it and those whose sight it shares see within 2 tiles
+  of it and make out there any company marching dark; every House sees it
+  burn, so it tells a foe where the House keeps watch; three at most, and
+  stewards light none. Built since run 859: the rules, sight, the dark
+  made out by its light, its burning out and the realm keeping it held on
+  Linux (`WatchfireTests`), the world's brazier, flame and light on the
+  ground (`WatchfireStageTests`), the phone's chart offering it and
+  charting every watchfire (`CompanionWatchfireTests`); the Mac's ground
+  panel row, the Guide's line and the world drawing it
+  (`world-watchfire.png`) **Unverified** until a CI run builds and draws
+  them.
 - [x] **Letters to the age to come.** Sealed under a hold's stones, found in
   its drowned ruin in the next age and read to every House: the realm's past
   speaking to its present in its own keepers' words.

@@ -1653,6 +1653,7 @@ public final class GameSession {
         case .unmarkGround: return .stand
         case .kindle: return .horn
         case .torches(_, let lit): return lit ? .order : .stand
+        case .watchfire: return .order
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage, .takeCrest, .bestow: return .banner
         case .prophesy: return .lore
@@ -1972,7 +1973,7 @@ public final class GameSession {
             return at
         case .groundMarked(let mark), .markLifted(let mark, _), .markHeeded(let mark, _):
             return mark.at
-        case .woodKindled(let at, _, _), .burnedInFire(_, _, let at, _, _):
+        case .woodKindled(let at, _, _), .burnedInFire(_, _, let at, _, _), .watchfireLit(let at, _):
             return at
         case .fireSpread(let hexes, _, _), .firesDoused(let hexes, _):
             return hexes.first

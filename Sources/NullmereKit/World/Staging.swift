@@ -226,7 +226,8 @@ extension GameSession {
         let barges = stage.barges(state.crossingsUnderWay.map { barge in
             (from: barge.pushOff, to: barge.landing, progress: GameSession.watchProgress(state))
         }, time: t)
-        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
+        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position)
+                           + state.watchfiresBurning.map(\.at))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)),
                                       burnt: state.ash)
@@ -271,7 +272,10 @@ extension GameSession {
             guard glimpse.owner != state.player, !isVisible(glimpse.at), state.houses.indices.contains(glimpse.owner) else { return nil }
             return (kind: glimpse.kind, hex: glimpse.at, colour: WorldStage.colour(houses, sigil: state.houses[glimpse.owner].sigil))
         } + walking), time: t, into: &frame)
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + flights
+        // The watchfires burning on land the keeper knows, every House's,
+        // each in its brazier.
+        let watchfires = stage.watchfires(state.watchfiresBurning.map(\.at).filter { isExplored($0) }).batches
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + watchfires + flights
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.
@@ -312,8 +316,8 @@ extension GameSession {
         // And the blackwood burning, glowing from afar where the keeper knows
         // the land; where motion is reduced its fires among the trees aren't
         // drawn, so close by too, steady.
-        frame.motes += stage.fireGlows(state.burning.map(\.at).filter { isExplored($0) }, near: camera.focus, scale: camera.scale, time: t,
-                                       still: !full)
+        frame.motes += stage.fireGlows((state.burning.map(\.at) + state.watchfiresBurning.map(\.at)).filter { isExplored($0) },
+                                       near: camera.focus, scale: camera.scale, time: t, still: !full)
         // The torches the companies in sight carry through the night, all
         // but those marching dark, which go with none.
         frame.motes += stage.torches(poses, dark: Set(poses.map(\.unit).filter(state.isUnlit)), near: camera.focus, scale: camera.scale,
@@ -735,6 +739,9 @@ extension GameSession {
         // knows the land.
         let burning = state.burning.map(\.at).filter { isExplored($0) }
         if !burning.isEmpty { happenings.woodFires = stage.woodFires(burning, near: camera.focus) }
+        // The watchfires' flames in their braziers, and their light on the ground they watch.
+        let watched = state.watchfiresBurning.map(\.at).filter { isExplored($0) }
+        if !watched.isEmpty { happenings.watchfires = stage.watchfires(watched).fires }
         // Wood seen catching since the world was last drawn flares up as it
         // catches, for a few seconds; fires burning when it was first drawn
         // don't.

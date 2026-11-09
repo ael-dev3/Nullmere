@@ -140,3 +140,46 @@ final class TorchesStageTests: XCTestCase {
         XCTAssertEqual(motes, stage.torches(Array(nearest), dark: [], near: focus, scale: 60, time: 3), "The nearest to the view")
     }
 }
+
+/// Watchfires as the world draws them: a brazier on each hex's heart, on
+/// the ground, larger than life, and its fire at the brazier's top: a tall
+/// flame, embers and smoke, and its light reaching over the ground the
+/// watch keeps.
+final class WatchfireStageTests: XCTestCase {
+    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let relief = Relief(map: state.map)
+
+    func testAWatchfireBurnsInItsBrazierAndLightsTheGroundAboutIt() throws {
+        let stage = WorldStage(map: Self.state.map, relief: Self.relief)
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true && Self.state.map[$0]?.terrain.isWater == false }
+            .prefix(2))
+        let (batches, fires) = stage.watchfires(hexes)
+        XCTAssertEqual(batches.map(\.key), [.prop(.brazier)])
+        let braziers = try XCTUnwrap(batches.first).instances
+        XCTAssertEqual(braziers.count, 2)
+        for (hex, (brazier, fire)) in zip(hexes, zip(braziers, fires)) {
+            let centre = Relief.centre(of: hex), ground = stage.ground(atX: centre.x, z: centre.z)
+            XCTAssertEqual(brazier.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(brazier.model.c3.y, ground, accuracy: 1e-4, "On the ground")
+            XCTAssertEqual(brazier.model.c3.z, centre.z, accuracy: 1e-4)
+            XCTAssertEqual(Vec3(brazier.model.c0.x, brazier.model.c0.y, brazier.model.c0.z).length, WorldStage.watchfireBrazierScale, accuracy: 1e-3,
+                           "Larger than life")
+            XCTAssertEqual(brazier.hex, SIMD2(Int32(hex.q), Int32(hex.r)))
+            XCTAssertEqual(fire.at, Vec3(centre.x, ground + WorldStage.watchfireHeight, centre.z), "At the brazier's top")
+        }
+        XCTAssertNotEqual(fires[0].seed, fires[1].seed, "Each its own fire")
+        XCTAssertTrue(stage.watchfires([]).batches.isEmpty)
+        // Its flame, embers and smoke, and its light on the ground about it.
+        var happenings = Happenings()
+        happenings.watchfires = [fires[0]]
+        let (motes, lights) = happenings.effects(at: 4)
+        XCTAssertTrue(motes.contains { $0.colour.w == 0 && $0.colour.x > 0.5 && $0.place.y >= fires[0].at.y - 0.01 }, "Its flame")
+        XCTAssertTrue(motes.contains { $0.colour.w > 0 && $0.place.y > fires[0].at.y + 0.2 }, "A thread of smoke going up")
+        XCTAssertEqual(lights.count, 1)
+        XCTAssertEqual(lights[0].reach, Happenings.watchfireReach)
+        XCTAssertGreaterThan(lights[0].colour.x, lights[0].colour.z, "Firelight")
+        XCTAssertGreaterThanOrEqual(Happenings.watchfireReach, Float(Watchfire.reach) * Relief.hexSpacing * 0.9,
+                                    "Its light reaching about as far as the ground its House sees by it")
+        XCTAssertTrue(happenings.effects(at: 4, leaving: [.flames, .embers, .smoke]).motes.isEmpty, "All of it the fire's")
+    }
+}

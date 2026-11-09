@@ -267,7 +267,8 @@ final class CompanionChartTests: XCTestCase {
 
     /// What may be raised at a hex is offered from the chart as the Mac's
     /// ground panel offers it, each said in its words and taken by the
-    /// rules: the seat raised anew on the House's own open ground; a
+    /// rules: the seat raised anew, and a watchfire, on the House's own
+    /// open ground; a
     /// standard of its alliance near its seat; a hand lent by an ally to
     /// the standard as it rises; and once it stands, the leader's
     /// storehouse and yards on the alliance's land, which the ally may not
@@ -280,8 +281,10 @@ final class CompanionChartTests: XCTestCase {
         let ground = try XCTUnwrap(seat.position.spiral(3).first { state.seatMoveRefusal(to: $0, as: me) == nil })
         let view = state.view(for: me)
         let place = CompanionChart(world: view, player: me).place(at: ground, in: view, player: me)
-        XCTAssertEqual(place.raisings.map(\.said), [GameState.seatMoveSaid])
-        XCTAssertEqual(place.raisings.first?.orders.map(\.title), ["Raise the seat here, for \(GameState.seatMoveCost)"])
+        // And a watchfire, on the House's own open ground as the seat is.
+        XCTAssertEqual(place.raisings.map(\.said), [Watchfire.explained, GameState.seatMoveSaid])
+        XCTAssertEqual(place.raisings.first?.orders.map(\.title), ["Light a watchfire, for \(Watchfire.cost)"])
+        XCTAssertEqual(place.raisings.last?.orders.map(\.title), ["Raise the seat here, for \(GameState.seatMoveCost)"])
         assertTaken(place.orders, in: view, as: me)
 
         // Leading an alliance with an ally: a standard near its seat.

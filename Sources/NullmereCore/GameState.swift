@@ -225,6 +225,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The companies marching dark, their torches doused, by id in order;
     /// absent while every company carries its torches (`isUnlit`).
     var unlit: [Int]?
+    /// The watchfires burning in the realm (`Watchfire`); none, nil.
+    var watchfires: [Watchfire]?
     /// The wind of the watch as the realm found it (`wind`): the way it
     /// blows, as an index into `Hex.directions`, or -1 while none blows;
     /// absent in a world from before the wind. It changes with the watch,
@@ -787,6 +789,10 @@ public struct GameState: Codable, Equatable, Sendable {
             for index in holds.places(of: watcher) {
                 map.forEachIndex(within: sight(of: holds[index], house: holdSight), of: holds[index].position, seen)
             }
+        }
+        // And the ground each watchfire of theirs lights.
+        for fire in watchfiresLighting(for: house) {
+            map.forEachIndex(within: Watchfire.reach, of: fire.at, seen)
         }
     }
 

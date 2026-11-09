@@ -96,6 +96,8 @@ extension GameState {
             return try kindle(unit, as: house)
         case let .torches(unit, lit):
             return try setTorches(unit, lit: lit, as: house)
+        case .watchfire(let hex):
+            return try lightWatchfire(at: hex, as: house)
         case let .sealLetter(words, holdID):
             return try sealLetter(words, in: holdID, as: house)
         case .stand(let order):

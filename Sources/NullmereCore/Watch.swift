@@ -59,6 +59,7 @@ extension GameState {
         events += tendVigils()
         events += lapseMarks()
         events += turnWildfires()
+        letWatchfiresBurnOut()
         events += landCrossings()
         events += turnEdicts()
         forgetOldGifts()

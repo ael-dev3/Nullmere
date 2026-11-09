@@ -1230,6 +1230,31 @@ public final class WorldStage: @unchecked Sendable {
         return (Mote(at: hand, size: 0.022, light: flame * 1.3, cover: 0), Mote(at: hand, size: 0.11, light: flame * 0.1, cover: 0))
     }
 
+    /// How much larger than the Lyceum's braziers a watchfire's stands, so
+    /// it reads on the land from the view's height.
+    public static let watchfireBrazierScale: Float = 2.5
+    /// How high over the ground a watchfire's brazier holds its fire.
+    public static let watchfireHeight: Float = 0.45
+
+    /// The watchfires burning on the land the keeper knows: each a brazier
+    /// on its hex's heart, and where its fire burns at the brazier's top,
+    /// for its flames and light (`Happenings.watchfires`).
+    public func watchfires(_ hexes: [Hex]) -> (batches: [ModelBatch], fires: [Happenings.Spot]) {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var fires: [Happenings.Spot] = []
+        for hex in hexes {
+            let centre = Relief.centre(of: hex)
+            let ground = ground(atX: centre.x, z: centre.z)
+            let turn = WorldStage.phase(of: hex, salt: 23) * .pi * 2
+            placed.append((.prop(.brazier), ModelInstance(model: .translation(Vec3(centre.x, ground, centre.z)) * .rotationY(turn)
+                                                              * .scale(WorldStage.watchfireBrazierScale),
+                                                          phase: WorldStage.phase(of: hex, salt: 29), hex: SIMD2(Int32(hex.q), Int32(hex.r)))))
+            fires.append(Happenings.Spot(at: Vec3(centre.x, ground + WorldStage.watchfireHeight, centre.z), strength: 1,
+                                         seed: UInt32(truncatingIfNeeded: hex.q &* 7919 &+ hex.r &* 104_729)))
+        }
+        return (WorldStage.batches(placed), fires)
+    }
+
     /// A torch's flame, linear: an open fire's, redder than a lantern's.
     public static let torchFlame = Vec3(1.0, 0.5, 0.17)
     /// Where a torch is held, in a figure's own frame before it is scaled

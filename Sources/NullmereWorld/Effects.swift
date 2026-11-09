@@ -420,6 +420,13 @@ public struct Happenings: Equatable, Sendable {
     /// watch turned: when, and where; a tongue of flame flares up from it,
     /// embers flying, and its light flashes over the wood a moment.
     public var catching: [Spot] = []
+    /// Watchfires burning (`Watchfire`), each at the top of its brazier: a
+    /// tall flame, embers and a thread of smoke, and its light on the
+    /// ground about it.
+    public var watchfires: [Spot] = []
+    /// How far a watchfire's light reaches on the ground: about the two
+    /// tiles its House sees by it.
+    public static let watchfireReach: Float = 3.2
     /// How the air bears the smoke and embers of what burns: nil, the
     /// night's own slow air, where the watch's wind is not told; zero on a
     /// still night, the smoke rising straight; otherwise the wind's way on
@@ -628,6 +635,18 @@ public struct Happenings: Equatable, Sendable {
                                     strength: 1.2, drift: air))
             let flicker = 0.7 + 0.3 * Float(sin(Double(time * 13 + Float(fire.seed % 89)))) * Float(sin(Double(time * 5.1 + 1)))
             lights.append(PointLight(at: fire.at + Vec3(0, 0.3, 0), reach: 2.0, colour: Vec3(2.4, 0.95, 0.28) * fire.strength * flicker))
+        }
+        for fire in watchfires {
+            // A tall flame in the brazier, embers and a thread of smoke going
+            // up, and its light over the ground the watch keeps.
+            emitters.append(Emitter(.flames, at: fire.at, rate: 22 * fire.strength, spread: 0.06, seed: fire.seed, strength: 1))
+            emitters.append(Emitter(.embers, at: fire.at + Vec3(0, 0.2, 0), rate: 6 * fire.strength, spread: 0.08, seed: fire.seed &+ 3,
+                                    strength: 1, drift: air))
+            emitters.append(Emitter(.smoke, at: fire.at + Vec3(0, 0.32, 0), rate: 2 * fire.strength, spread: 0.08, seed: fire.seed &+ 7,
+                                    strength: 0.8, drift: air))
+            let flicker = 0.8 + 0.2 * Float(sin(Double(time * 12 + Float(fire.seed % 83)))) * Float(sin(Double(time * 4.7 + 2)))
+            lights.append(PointLight(at: fire.at + Vec3(0, 0.2, 0), reach: Happenings.watchfireReach,
+                                     colour: Vec3(2.3, 1.05, 0.34) * fire.strength * flicker))
         }
         for caught in catching {
             bursts.append(Burst(.flames, at: caught.at + Vec3(0, 0.05, 0), start: caught.start, count: 48, seed: caught.seed,

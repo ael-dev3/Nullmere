@@ -858,6 +858,14 @@ a vote on the realm's law to cast.
   march with their torches lit, and a steward's companies strike one
   marching dark only once they make it out close by. In Rise of Kingdoms
   every march is shown to the whole kingdom.
+- **Watchfires.** The answer to the march in the dark. From a tile's
+  panel on open ground of your own land (or the phone's chart), light a
+  watchfire for 12 timber: it burns 8 watches in its brazier, and your
+  House, and those whose sight it shares, see within 2 tiles of it and
+  make out there any company marching dark. Every House sees it burn, so
+  it tells a foe where you keep watch. You may keep 3 burning at once.
+  Stewards light none. Rise of Kingdoms has nothing of the kind, having
+  no dark to light.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own

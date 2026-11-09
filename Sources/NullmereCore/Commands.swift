@@ -108,6 +108,10 @@ public enum Command: Codable, Equatable, Sendable {
     /// A company douses its torches to march dark, or lights them again
     /// (see `GameState.isUnlit`).
     case torches(unit: Int, lit: Bool)
+    /// A watchfire lit on open ground of the House's own land
+    /// (`Watchfire`), for timber: its House sees about it, and makes out
+    /// companies marching dark there.
+    case watchfire(Hex)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -573,6 +577,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case keepersFire
     /// Torches lit that burn already, or doused that are out.
     case torchesAlready(lit: Bool)
+    case watchfireBurning
+    case watchfiresLit(Int)
     /// Words that say nothing an envoy, or the realm, would carry.
     case nothingToSay
     /// As many words as a watch allows, said.
@@ -794,6 +800,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .burntGround: return "That wood is burning or lies burnt already."
         case .keepersFire: return "Only a keeper's companies set the wood alight."
         case .torchesAlready(let lit): return lit ? "Its torches burn already." : "It marches dark already."
+        case .watchfireBurning: return "A watchfire burns there already."
+        case .watchfiresLit(let most): return "Your House keeps \(most) watchfires burning already, as many as it may."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
         case .saidEnough: return "You have said all a watch allows; say more as the watch turns."
         }
@@ -1144,6 +1152,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case woodKindled(at: Hex, by: Int, unit: Int)
     /// A company doused its torches to march dark, or lit them again.
     case torchesSet(unit: Int, lit: Bool, owner: Int)
+    /// A House lit a watchfire on its own land.
+    case watchfireLit(at: Hex, by: Int)
     /// A House's fire caught the blackwood beside it, with the watch's wind
     /// (an index into `Hex.directions`, the way it blows).
     case fireSpread(to: [Hex], by: Int, wind: Int)

@@ -525,6 +525,8 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual([Wildfire.burns, Wildfire.ash], [3, 30])
         // Torches doused, as the rules hide a company marching dark.
         XCTAssertTrue(all.contains("march dark: a tile less each watch, never fewer than one, and another House sees it only within 1 tile of"), all)
+        // Watchfires, as the rules light the ground about them.
+        XCTAssertTrue(all.contains("burns 8 watches: your House sees within 2 tiles of it, and makes out there any company marching dark"), all)
         XCTAssertEqual(GameState.darkSight, 1)
         XCTAssertEqual(Happening.marks, [10, 25, 50])
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")

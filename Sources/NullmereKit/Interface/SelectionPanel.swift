@@ -1066,6 +1066,45 @@ struct StandardRow: View {
     }
 }
 
+/// Lighting a watchfire on open ground of the keeper's own land, for its
+/// timber, or why it can't be lit there.
+struct WatchfireRow: View {
+    let session: GameSession
+    let hex: Hex
+
+    /// Offered on open ground of the House's own land, where none burns:
+    /// told why not where the rules would refuse it now.
+    static func offered(at hex: Hex, to player: Int, in state: GameState) -> Bool {
+        guard let terrain = state.map[hex]?.terrain, terrain.isPassable, !terrain.isWater else { return false }
+        return state.hold(at: hex) == nil && state.watchfire(at: hex) == nil && state.territoryOwner(of: hex) == player
+    }
+
+    /// A watchfire burning, as its panel says it.
+    static func said(_ fire: Watchfire, in state: GameState) -> String {
+        "It burns \(GameState.watches(max(fire.out - state.watch, 1))) more: its House, and those whose sight it shares, see within "
+            + "\(Watchfire.reach) tiles of it, and make out any company marching dark there."
+    }
+
+    var body: some View {
+        let state = session.state
+        let refusal = state.watchfireRefusal(at: hex, as: session.player)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(verbatim: Watchfire.explained)
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                CostLine(cost: Watchfire.cost, available: state.houses[session.player].stock)
+                Spacer()
+                QuietButton(title: "Light a watchfire", size: 8.5, enabled: refusal == nil, name: "Light a watchfire here",
+                            why: refusal?.description) {
+                    session.perform(.watchfire(hex))
+                }
+            }
+        }
+    }
+}
+
 /// Lending a hand to the keeper's alliance's rising standard: a watch
 /// sooner, for timber and stone, once each House; or why it can't.
 struct StandardHelpRow: View {
@@ -1342,6 +1381,21 @@ struct TilePanel: View {
                 if MarkRow.offered(at: hex, in: state, player: session.player) {
                     Rule(opacity: 0.18)
                     MarkRow(session: session, hex: hex)
+                }
+                // A watchfire burning here, or the House's means to light one.
+                if let fire = state.watchfire(at: hex) {
+                    Rule(opacity: 0.18)
+                    Caps(fire.by == session.player ? "Your watchfire"
+                         : "A watchfire of \(state.houses.indices.contains(fire.by) ? state.houses[fire.by].title : "a fallen House")",
+                         size: 9.5, weight: .medium)
+                        .foregroundStyle(Palette.glowWords)
+                    Text(verbatim: WatchfireRow.said(fire, in: state))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if WatchfireRow.offered(at: hex, to: session.player, in: state) {
+                    Rule(opacity: 0.18)
+                    WatchfireRow(session: session, hex: hex)
                 }
                 // The House's own land: its seat may be raised anew here.
                 if SeatMoveRow.offered(at: hex, in: state, player: session.player) {

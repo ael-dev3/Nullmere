@@ -449,6 +449,11 @@ struct ChartView: View {
             context.fill(site, with: .color(tint.opacity(0.85)))
         case .shrine:
             context.stroke(circle(size * 0.4), with: .color(Night.moon.opacity(0.9)), lineWidth: 1.5)
+        case .watchfire:
+            // A watchfire's flame in the light it keeps, ringed in its House's colour.
+            context.fill(circle(size * 0.44), with: .color(Self.flame.opacity(0.16)))
+            context.fill(circle(size * 0.15), with: .color(Self.flame))
+            context.stroke(circle(size * 0.2), with: .color(tint), lineWidth: 1.5)
         case .vigil:
             // A small flame on the black water in its warm glow, whoever's it is.
             context.fill(circle(size * 0.34), with: .color(Self.flame.opacity(0.22)))

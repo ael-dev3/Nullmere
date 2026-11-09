@@ -51,6 +51,8 @@ public struct CompanionChart: Equatable, Sendable {
     /// What a mark stands for.
     public enum Thing: String, CaseIterable, Equatable, Sendable {
         case seat, hold, company, wild, lair, site, shrine, vigil, plea, allianceMark
+        /// A watchfire burning (`Watchfire`), whoever's.
+        case watchfire
         /// The blackwood burning, and the ash it leaves (`Wildfire`), under
         /// all else on its ground.
         case fire, ash
@@ -212,6 +214,11 @@ public struct CompanionChart: Equatable, Sendable {
             marks.append(Mark(id: "fire \(fire.at.q),\(fire.at.r)", hex: fire.at, thing: fire.isBurning(at: world.watch) ? .fire : .ash,
                               side: side(fire.by), name: "Blackwood \(world.fireSaid(at: fire.at) ?? "burnt")"))
         }
+        // The watchfires burning, every House seeing them, as the Mac names them.
+        for fire in world.watchfiresBurning where reached(fire.at) {
+            marks.append(Mark(id: "watchfire \(fire.at.q),\(fire.at.r)", hex: fire.at, thing: .watchfire, side: side(fire.by),
+                              name: "\(CompanionChart.capitalized(whose(fire.by))) watchfire, \(GameState.watches(max(fire.out - world.watch, 1))) more"))
+        }
         for hold in world.holds where reached(hold.position) {
             marks.append(Mark(id: "hold \(hold.id)", hex: hold.position, thing: hold.isSeat ? .seat : .hold, side: side(hold.owner),
                               name: "\(hold.name), \(whose(hold.owner)) \(hold.isSeat ? "seat" : "hold")", label: hold.name))
@@ -358,6 +365,11 @@ public struct CompanionChart: Equatable, Sendable {
     static func raisings(at hex: Hex, in world: GameState, player: Int) -> [Raising] {
         typealias Order = CompanionLedger.Order
         var raisings: [Raising] = []
+        // A watchfire on open ground of the House's own land.
+        if world.watchfireRefusal(at: hex, as: player) == nil {
+            raisings.append(Raising(said: Watchfire.explained,
+                                    orders: [Order(title: "Light a watchfire, for \(Watchfire.cost)", command: .watchfire(hex))]))
+        }
         if world.standardRefusal(at: hex, by: player) == nil {
             raisings.append(Raising(said: Standard.raiseSaid,
                                     orders: [Order(title: "Raise a standard, for \(Standard.cost)", command: .raiseStandard(at: hex))]))

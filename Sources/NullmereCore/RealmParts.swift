@@ -576,6 +576,7 @@ extension GameState {
         var vigils: [Vigil]?
         var wildfires: [Wildfire]?
         var unlit: [Int]?
+        var watchfires: [Watchfire]?
         var petitions: [Petition]?
         var allianceMarks: [AllianceMark]?
         var barges: [Ferrying]?
@@ -616,6 +617,7 @@ extension GameState {
             vigils = world.vigils
             wildfires = world.wildfires
             unlit = world.unlit
+            watchfires = world.watchfires
             petitions = world.petitions
             allianceMarks = world.allianceMarks
             barges = world.barges
@@ -658,6 +660,7 @@ extension GameState {
             world.vigils = vigils
             world.wildfires = wildfires
             world.unlit = unlit
+            world.watchfires = watchfires
             world.petitions = petitions
             world.allianceMarks = allianceMarks
             world.barges = barges

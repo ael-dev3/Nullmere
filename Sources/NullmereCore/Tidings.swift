@@ -794,6 +794,12 @@ extension GameState {
             case .beware: how = "it keeps clear of the ground"
             }
             return Tidings("\(who) answers the alliance's mark \(placeName(of: mark.at)) (\(mark.kind.title)): \(how).", .good)
+        case .watchfireLit(let at, let by):
+            guard houses.indices.contains(by) else { return nil }
+            return by == viewer
+                ? Tidings("Your watchfire burns \(placeName(of: at)) for \(GameState.watches(Watchfire.burns)): your House sees about it, "
+                          + "and makes out any company marching dark there.", .good)
+                : Tidings("\(houses[by].title) lights a watchfire \(placeName(of: at)): it keeps watch there.", .neutral)
         case .torchesSet(let id, let lit, let owner):
             guard owner == viewer, let unit = unit(id) else { return nil }
             let who = "Your \(named(unit)) \(placeName(of: unit.position))"

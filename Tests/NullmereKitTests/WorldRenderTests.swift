@@ -799,6 +799,53 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, along / 3 + 10, "and nothing else in the view changes for it")
     }
 
+    /// A watchfire on the keeper's land by their seat: a brazier, its flame,
+    /// and its light over the ground it watches; and the same land without
+    /// it, nothing else in the view changed but the ground its light and
+    /// sight reach. CI keeps both, lit then not, as world-watchfire.png.
+    @MainActor
+    func testAWatchfireBurnsAndLightsTheGroundItWatches() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        state.houses[me].stock.timber = 100
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        let owners = state.territory()
+        let at = try XCTUnwrap(seat.spiral(3).filter { hex in
+            guard let terrain = state.map[hex]?.terrain else { return false }
+            return hex.distance(to: seat) >= 2 && terrain.isPassable && !terrain.isWater && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && state.territoryOwner(of: hex, in: owners) == me
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }, "Open ground of the keeper's land by the seat")
+        let unwatched = state
+        _ = try state.perform(.watchfire(at), as: me)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let watched = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("lit")))
+        let plain = GameSession(state: unwatched, store: LocalStore(directory: directory.appendingPathComponent("plain")))
+        XCTAssertNotNil(watched.state.watchfire(at: at))
+        let centre = Relief.centre(of: at)
+        let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 90, tilt: 0.9, heading: 0.3)
+        let drawn = try draw(renderer, "watchfire", camera: camera, tiles: watched.tileBytes, scene: watched.sceneFrame(at: 20))
+        let bare = try draw(renderer, "no watchfire", camera: camera, tiles: plain.tileBytes, scene: plain.sceneFrame(at: 20))
+        try keep([drawn, bare], as: "world-watchfire")
+        let fire = camera.viewPoint(of: at, height: Double(WorldRenderTests.world.relief.height(of: at)), in: WorldRenderTests.size)
+        var warm = 0, near = 0, beyond = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let i = (y * WorldRenderTests.width + x) * 4
+                let away = hypot(Double(x) - Double(fire.x), Double(y) - Double(fire.y))
+                let red = Int(drawn.pixels[i + 2]) - Int(bare.pixels[i + 2]), blue = Int(drawn.pixels[i]) - Int(bare.pixels[i])
+                if away < 320, red >= 12, Double(red) > 1.5 * Double(blue) { warm += 1 }
+                guard abs(drawn.luminance(x, y) - bare.luminance(x, y)) > 4 else { continue }
+                if away < 340 { near += 1 } else { beyond += 1 }
+            }
+        }
+        print("RENDER watchfire: \(warm) points warmed by it, \(near) changed about it, \(beyond) beyond")
+        XCTAssertGreaterThan(warm, 60, "Its flame and its light on the ground about it")
+        XCTAssertLessThan(beyond, near / 4 + 20, "and nothing beyond the ground it watches changes")
+    }
+
     /// A company of the keeper's out on the land carries its torches, two
     /// warm flames at the front of its ranks in the night; and the same
     /// company with its torches doused, marching dark, carries none, and
