@@ -134,6 +134,14 @@ extension GameSession {
         // carts on the ways between them.
         let townsfolk = full ? stage.townsfolk(shown.filter { isVisible($0.hold.position) }, time: t, crowds: frame.fine, into: &frame)
             + stage.traffic(ways, time: t, into: &frame) : []
+        // The roads those carts wear along the ways in view, each way's laid
+        // once and kept.
+        var roadLengths: [ModelInstance] = []
+        for way in ways where way.hexes.contains(where: { inView($0, within: 1) }) {
+            if roadsLaid[way] == nil { roadsLaid[way] = stage.roads([way]).flatMap(\.instances) }
+            roadLengths += roadsLaid[way] ?? []
+        }
+        let roads = roadLengths.isEmpty ? [] : [ModelBatch(key: .town(.lane), instances: roadLengths)]
         // The alliances' halls the keeper knows of, each in its leader's
         // colour, one rising easing up a watch's height as the watch turns.
         let hallSights = state.hallsStanding.filter { isExplored($0.position) }.map { hall in
@@ -282,7 +290,7 @@ extension GameSession {
         // The watchfires burning on land the keeper knows, every House's,
         // each in its brazier.
         let watchfires = stage.watchfires(state.watchfiresBurning.map(\.at).filter { isExplored($0) }).batches
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + watchfires + flights
+        frame.batches = holds + roads + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + watchfires + flights
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.

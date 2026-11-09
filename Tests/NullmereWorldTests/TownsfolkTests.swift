@@ -307,6 +307,45 @@ final class TownsfolkTests: XCTestCase {
         XCTAssertTrue(hexes.contains(at))
     }
 
+    /// The carts wear a road along their way: lengths of a town's lane,
+    /// end to end, from beyond one hold's walls to beyond the other's
+    /// through the hearts between, each lying on the ground under it; none
+    /// between holds side by side.
+    func testTheCartsWearARoadAlongTheirWay() throws {
+        let relief = Relief(map: state.map)
+        let stage = WorldStage(map: state.map, relief: relief)
+        let hexes = [Hex(2, -6), Hex(3, -6), Hex(4, -6), Hex(5, -6)]
+        let way = WorldStage.Way(hexes: hexes, colour: Vec4(0, 1, 0, 1), salt: 4)
+        let errand = try XCTUnwrap(WorldStage.errand(along: way))
+        let batches = stage.roads([way, WorldStage.Way(hexes: Array(hexes.prefix(2)), colour: .zero, salt: 1)])
+        XCTAssertEqual(batches.map(\.key), [.town(.lane)], "lengths of lane, as a town's")
+        let lengths = batches.flatMap(\.instances)
+        // Each length's two ends: the lane runs a unit along its own x.
+        let ends = lengths.map { length -> (Vec3, Vec3) in
+            (length.model.transformPoint(Vec3(-0.5, 0, 0)), length.model.transformPoint(Vec3(0.5, 0, 0)))
+        }
+        let along = zip(errand.path, errand.path.dropFirst()).map { flat($0, $1) }.reduce(0, +)
+        XCTAssertGreaterThanOrEqual(lengths.count, Int((along / WorldStage.roadStep).rounded(.up)), "in lengths no longer than a step")
+        XCTAssertTrue(ends.allSatisfy { flat($0.0, $0.1) <= WorldStage.roadStep + 1e-3 })
+        // Unbroken, from beyond one hold's walls to beyond the other's.
+        XCTAssertEqual(flat(ends.first!.0, errand.path.first!), 0, accuracy: 1e-3)
+        XCTAssertEqual(flat(ends.last!.1, errand.path.last!), 0, accuracy: 1e-3)
+        for (one, next) in zip(ends, ends.dropFirst()) {
+            XCTAssertEqual(flat(one.1, next.0), 0, accuracy: 1e-3, "each length meets the next")
+        }
+        // Each end on the ground under it, and each length kept by the hex it lies in.
+        for (a, b) in ends {
+            XCTAssertEqual(a.y, max(relief.height(atX: a.x, z: a.z), Relief.waterline), accuracy: 0.02)
+            XCTAssertEqual(b.y, max(relief.height(atX: b.x, z: b.z), Relief.waterline), accuracy: 0.02)
+        }
+        for length in lengths {
+            let at = HexLayout(size: 1).hex(atX: Double(length.model.c3.x), y: Double(length.model.c3.z))
+            XCTAssertEqual(length.hex, SIMD2(Int32(at.q), Int32(at.r)))
+        }
+        XCTAssertTrue(stage.roads([WorldStage.Way(hexes: Array(hexes.prefix(2)), colour: .zero, salt: 1)]).isEmpty,
+                      "none between holds side by side, whose towns meet")
+    }
+
     func testTheyAreStagedPosedAndKeepWithinABurningHold() throws {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         let hold = try seat([.granary: 1, .sawpit: 1, .quarry: 1])

@@ -1457,7 +1457,7 @@ public final class WorldStage: @unchecked Sendable {
 
     /// A way between two of a House's holds, as its carts go: the hexes it
     /// runs through, end to end, and the House's colour.
-    public struct Way: Equatable, Sendable {
+    public struct Way: Hashable, Sendable {
         public var hexes: [Hex]
         public var colour: Vec4
         public var salt: Int
@@ -1489,6 +1489,41 @@ public final class WorldStage: @unchecked Sendable {
         path[0] = off(path[0], toward: path[1])
         path[path.count - 1] = off(path[path.count - 1], toward: path[path.count - 2])
         return Errand(key: way.salt % 2 == 0 ? .folk(of: .sawpit) : .folk(of: .quarry), path: path, salt: way.salt)
+    }
+
+    /// The longest length of road laid as one, as a town's lanes are.
+    public static let roadStep: Float = 0.3
+
+    /// The roads the carts wear between a House's holds: lengths of lane,
+    /// trodden earth with flat stones set in it as a town's own, laid along
+    /// each way the carts go, from beyond one hold's walls through the heart
+    /// of every hex between to beyond the other's, each length lying on the
+    /// ground under it. None between holds side by side, whose towns meet.
+    public func roads(_ ways: [Way]) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        let layout = HexLayout(size: 1)
+        for way in ways {
+            guard let errand = WorldStage.errand(along: way) else { continue }
+            for (a, b) in zip(errand.path, errand.path.dropFirst()) {
+                let flat = b - a
+                let count = max(Int((flat.length / WorldStage.roadStep).rounded(.up)), 1)
+                for part in 0..<count {
+                    var from = a + flat * (Float(part) / Float(count)), to = a + flat * (Float(part + 1) / Float(count))
+                    from.y = ground(atX: from.x, z: from.z)
+                    to.y = ground(atX: to.x, z: to.z)
+                    let run = Vec3(to.x - from.x, 0, to.z - from.z).length
+                    let mid = (from + to) * 0.5
+                    let heading = Float(atan2(Double(-(to.z - from.z)), Double(to.x - from.x)))
+                    let pitch = Float(atan2(Double(to.y - from.y), Double(run)))
+                    let hex = layout.hex(atX: Double(mid.x), y: Double(mid.z))
+                    placed.append((.town(.lane), ModelInstance(model: .translation(mid) * .rotationY(heading) * .rotationZ(pitch)
+                                                                   * .scale(Vec3((to - from).length, 1, 1)),
+                                                               phase: WorldStage.phase(of: hex, salt: 59),
+                                                               hex: SIMD2(Int32(hex.q), Int32(hex.r)))))
+                }
+            }
+        }
+        return WorldStage.batches(placed)
     }
 
     /// The carts on the ways between holds, as a frame at `time` sees them:
