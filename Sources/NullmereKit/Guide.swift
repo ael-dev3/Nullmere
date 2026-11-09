@@ -33,6 +33,7 @@ enum Guide {
             "Groves, seams, loam and moonsalt beds yield more. Drowned ruins hide something for the first to search them.",
             "The Still, the lake's deep water, yields nothing and can't be crossed; the shallows can. The Spine walls the world.",
             "Point at any tile to see what it is, what it yields, whose it is and what it costs to cross.",
+            "A company of war of yours standing in the blackwood may set it alight, on your own land, land no hold's or a foe's, for one of its moves. The fire burns \(Wildfire.burns) watches and catches the wood beside it as each turns, most of all downwind, its smoke borne the way the watch's wind blows; a company standing in fire as the watch turns loses a sixth of its strength, and the wood burnt lies as ash, yielding nothing, for \(Wildfire.ash) watches. Where it burns on a hold of yours, its woodwards may plead to beat it out.",
         ]),
         Section(title: "Holds", picture: .keep(seat: false), housed: true, lines: [
             "Holds gather what their land yields and store it, up to a limit that grows with every hold.",
@@ -129,7 +130,7 @@ enum Guide {
             "Charges, a happening's marks and lairs broken fill your satchel, shown in the Realm (6). A Salt Hourglass brings a hold's work and muster a watch nearer, from the hold's panel, or your study; caches open into your stores; a Ward Stone makes a hold's ward whole; a Mending Draught mends every hurt company of yours by 30.",
         ]),
         Section(title: "Omens", picture: .shrine(.moonwell), lines: [
-            "Now and then the lake turns, for every House at once, for three to five watches: Moonsalt Bloom doubles moonsalt, Rising Mist shortens every sight by a tile, a Lean Watch takes a third of the grain, and a Still Night mends wards twice as fast.",
+            "Now and then the lake turns, for every House at once, for three to five watches: Moonsalt Bloom doubles moonsalt, Rising Mist shortens every sight by a tile, a Lean Watch takes a third of the grain, and a Still Night mends wards twice as fast. Rising Mist and a Lean Watch's cold rain put out every fire in the blackwood, and on a Still Night no wind blows to carry one.",
             "The omen on the realm is shown under the top bar, with the watches it has left.",
         ]),
         Section(title: "Winning", picture: .work(.moonspire, level: 5), housed: true, lines: [

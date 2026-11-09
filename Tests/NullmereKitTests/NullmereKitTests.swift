@@ -518,6 +518,11 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(all.contains("From the tenth watch, a happening comes round every thirty, for ten watches"), all)
         XCTAssertTrue(all.contains("comes the Still Hour: the lake lies still as glass and every House sees every company of war standing on its shore"), all)
         XCTAssertEqual([Happening.first, Happening.every, Happening.lasts], [10, 30, 10])
+        // Fire in the blackwood, as the rules burn it.
+        XCTAssertTrue(all.contains("The fire burns 3 watches and catches the wood beside it as each turns, most of all downwind"), all)
+        XCTAssertTrue(all.contains("yielding nothing, for 30 watches"), all)
+        XCTAssertTrue(all.contains("Rising Mist and a Lean Watch's cold rain put out every fire in the blackwood"), all)
+        XCTAssertEqual([Wildfire.burns, Wildfire.ash], [3, 30])
         XCTAssertEqual(Happening.marks, [10, 25, 50])
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
         XCTAssertEqual(GameState.captainsAt, [3, 5])
