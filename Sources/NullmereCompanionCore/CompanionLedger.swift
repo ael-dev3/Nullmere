@@ -1039,6 +1039,7 @@ public struct CompanionLedger: Equatable, Sendable {
                 ("Halt", .halt(unit: unit.id), unit.destination != nil),
                 ("Recall", .recall(unit: unit.id), gathering),
                 ("Drill", .drill(unit: unit.id), unit.kind.isMilitary && unit.drillAt == nil && world.drillRefusal(of: unit) == nil),
+                ("Set the wood alight", .kindle(unit: unit.id), world.isBlackwood(unit.position) && world.kindleRefusal(unit.id, as: player) == nil),
             ]
             // Lanterns within reach of another House's hold scout it, the
             // nearest first, as the Mac offers it, where the rules would.

@@ -102,6 +102,9 @@ public enum Command: Codable, Equatable, Sendable {
     case markGround(Hex, AllianceMark.Kind, words: String?)
     /// An alliance's leader lifts one of its marks.
     case unmarkGround(Int)
+    /// A keeper's company of war sets the blackwood where it stands alight
+    /// (see `Wildfire`).
+    case kindle(unit: Int)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
     /// A standing order for the caretaker that keeps the House while its
@@ -558,6 +561,13 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case openGroundOnly
     /// Words from a House no keeper holds.
     case notAKeeper
+    /// Fire set in anything but the blackwood, or in a hold's heart or a
+    /// site's clearing there.
+    case onlyBlackwood
+    /// Fire set where the wood is burning or lies burnt already.
+    case burntGround
+    /// Fire set by a company no keeper commands.
+    case keepersFire
     /// Words that say nothing an envoy, or the realm, would carry.
     case nothingToSay
     /// As many words as a watch allows, said.
@@ -775,6 +785,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .openGroundOnly: return "It stands only on open land, with nothing on it."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
+        case .onlyBlackwood: return "Only the blackwood burns, and never a hold's heart or a site's clearing in it."
+        case .burntGround: return "That wood is burning or lies burnt already."
+        case .keepersFire: return "Only a keeper's companies set the wood alight."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
         case .saidEnough: return "You have said all a watch allows; say more as the watch turns."
         }
@@ -1121,6 +1134,16 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// told once: its host making for the hold marked to strike, or its
     /// companies for ground marked to gather at or to hold.
     case markHeeded(AllianceMark, by: Int)
+    /// A keeper's company set the blackwood alight where it stood.
+    case woodKindled(at: Hex, by: Int, unit: Int)
+    /// A House's fire caught the blackwood beside it, with the watch's wind
+    /// (an index into `Hex.directions`, the way it blows).
+    case fireSpread(to: [Hex], by: Int, wind: Int)
+    /// A company stood in fire as the watch turned: so many of its troops
+    /// lost to it, and whether it was lost whole.
+    case burnedInFire(unit: Int, owner: Int, at: Hex, troops: Int, lost: Bool)
+    /// Rising Mist lay on every shore and put out the fires burning there.
+    case firesDoused([Hex])
     /// A letter sealed in a hold for the age to come.
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.

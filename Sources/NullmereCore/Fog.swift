@@ -240,6 +240,9 @@ extension GameState {
         }
         // Every vigil's light for the fallen, the whole realm sees.
         view.vigils = vigils
+        // Every fire in the blackwood, by its smoke, and the ash it leaves,
+        // the whole realm sees.
+        view.wildfires = wildfires
         // The pleas the House's own folk have brought it, none of another's.
         view.petitions = petitions.map { $0.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         view.petitioned = nil
@@ -463,6 +466,16 @@ extension GameState {
                 return true
             case .vigilOut(_, let mourner, _):
                 return mourner == house
+            case .woodKindled, .firesDoused:
+                // Smoke rising from the blackwood, and the mist putting out
+                // the fires, the whole realm sees.
+                return true
+            case .fireSpread(let hexes, let by, _):
+                // Told to the House whose fire it is, and wherever it is seen
+                // spreading (a House sees its own land).
+                return by == house || hexes.contains(where: visible)
+            case .burnedInFire(_, let owner, let at, _, _):
+                return owner == house || visible(at)
             case .petitionBrought(let petition), .petitionAnswered(let petition, _, _), .petitionWithdrawn(let petition):
                 // A House's folk speak to their own keeper alone.
                 return petition.house == house

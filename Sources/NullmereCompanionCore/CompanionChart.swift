@@ -42,6 +42,9 @@ public struct CompanionChart: Equatable, Sendable {
     /// What a mark stands for.
     public enum Thing: String, CaseIterable, Equatable, Sendable {
         case seat, hold, company, wild, lair, site, shrine, vigil, plea, allianceMark
+        /// The blackwood burning, and the ash it leaves (`Wildfire`), under
+        /// all else on its ground.
+        case fire, ash
     }
 
     /// Something on the chart.
@@ -188,6 +191,12 @@ public struct CompanionChart: Equatable, Sendable {
             house == player ? "your" : houses.indices.contains(house) ? "\(houses[house].title)'s" : "a fallen House's"
         }
         var marks: [Mark] = []
+        // The blackwood burning and the ash it left, every House seeing them,
+        // first, so all else on its ground is drawn over them.
+        for fire in world.firesAndAsh where reached(fire.at) {
+            marks.append(Mark(id: "fire \(fire.at.q),\(fire.at.r)", hex: fire.at, thing: fire.isBurning(at: world.watch) ? .fire : .ash,
+                              side: side(fire.by), name: "Blackwood \(world.fireSaid(at: fire.at) ?? "burnt")"))
+        }
         for hold in world.holds where reached(hold.position) {
             marks.append(Mark(id: "hold \(hold.id)", hex: hold.position, thing: hold.isSeat ? .seat : .hold, side: side(hold.owner),
                               name: "\(hold.name), \(whose(hold.owner)) \(hold.isSeat ? "seat" : "hold")", label: hold.name))

@@ -234,7 +234,7 @@ public final class WorldStage: @unchecked Sendable {
     /// where companies stand for `furnitureByHex`.
     private var openByHex: [Hex: [Piece]] = [:]
     private var openHolds: Set<Hex>?
-    private var furnished: (occupied: Set<Hex>, holds: Set<Hex>)?
+    private var furnished: (occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex>)?
     private var furniture: [ModelBatch] = []
     /// Moves each time the furniture is laid out again.
     public private(set) var furnitureVersion = 0
@@ -282,10 +282,12 @@ public final class WorldStage: @unchecked Sendable {
 
     /// The land's furniture, with whatever would rise among a company's
     /// ranks given way where `occupied` hexes are held and the ground round
-    /// `holds` bare; only the hexes whose lot changed, and those beside a
-    /// company come or gone, are laid out again.
-    public func furnish(occupied: Set<Hex>, holds: Set<Hex>) -> [ModelBatch] {
-        if let furnished, furnished.occupied == occupied, furnished.holds == holds { return furniture }
+    /// `holds` bare; on `burnt` ground, ash after a fire in the blackwood,
+    /// its trees standing dead and its undergrowth gone (`burnt(_:)`). Only
+    /// the hexes whose lot changed, and those beside a company come or
+    /// gone, are laid out again.
+    public func furnish(occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex> = []) -> [ModelBatch] {
+        if let furnished, furnished.occupied == occupied, furnished.holds == holds, furnished.burnt == burnt { return furniture }
         // The open ground, laid out again only round a hold come or gone.
         var reopened: Set<Hex> = []
         if let openHolds {
@@ -314,20 +316,63 @@ public final class WorldStage: @unchecked Sendable {
             // Each piece thinned by its place on open ground, so one given
             // way to a company never changes which others are kept.
             let open = openByHex[hex] ?? [], kept = furnitureByHex[hex] ?? []
+            let ash = burnt.contains(hex)
             for (index, piece) in open.enumerated()
             where (share >= 1 || WorldStage.isLandmark(piece.key)
                 || Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), UInt32(41 + index)) < share)
                 && (kept.count == open.count || kept.contains(piece)) {
-                placed.append((piece.key, ModelInstance(model: piece.transform, phase: WorldStage.phase(of: piece.hex, salt: 3),
-                                                        hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
+                guard let key = ash ? WorldStage.burnt(piece.key) : piece.key else { continue }
+                placed.append((key, ModelInstance(model: piece.transform, phase: WorldStage.phase(of: piece.hex, salt: 3),
+                                                  hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
             }
         }
         let gathered = Regions.gather(placed, radius: map.radius)
         furniture = gathered.batches
         furnitureRegions = gathered.regions
-        furnished = (occupied, holds)
+        furnished = (occupied, holds, burnt)
         furnitureVersion += 1
         return furniture
+    }
+
+    /// The most tiles of blackwood alight a frame draws burning, nearest
+    /// the view first.
+    public static let mostWoodFires = 24
+
+    /// Where the blackwood burns, as the world draws it: three fires to each
+    /// tile alight, each at its own place among its trees on the ground, the
+    /// nearest `mostWoodFires` tiles to `focus`.
+    public func woodFires(_ hexes: [Hex], near focus: Vec3) -> [Happenings.Spot] {
+        func far(_ hex: Hex) -> Float {
+            let centre = Relief.centre(of: hex)
+            return (centre.x - focus.x) * (centre.x - focus.x) + (centre.z - focus.z) * (centre.z - focus.z)
+        }
+        let nearest = hexes.sorted { (far($0), $0.q, $0.r) < (far($1), $1.q, $1.r) }.prefix(WorldStage.mostWoodFires)
+        var spots: [Happenings.Spot] = []
+        for hex in nearest {
+            let centre = Relief.centre(of: hex)
+            let q = Int32(truncatingIfNeeded: hex.q), r = Int32(truncatingIfNeeded: hex.r)
+            for index in 0..<3 {
+                let turn = (Float(index) + Noise.unit(q, r, UInt32(71 + index))) / 3 * 2 * .pi
+                let reach = 0.18 + 0.26 * Noise.unit(q, r, UInt32(81 + index))
+                let x = centre.x + reach * Float(cos(Double(turn))), z = centre.z + reach * Float(sin(Double(turn)))
+                spots.append(Happenings.Spot(at: Vec3(x, ground(atX: x, z: z), z), strength: 0.75 + 0.25 * Noise.unit(q, r, UInt32(91 + index)),
+                                             seed: UInt32(bitPattern: q &* 7_919 &+ r &* 104_729 &+ Int32(index))))
+            }
+        }
+        return spots
+    }
+
+    /// What a piece of the land's furniture is once the fire has gone
+    /// through it: a tree standing dead, its leaves and needles burnt
+    /// away; undergrowth gone to nothing; stone, salt and all else as it
+    /// was.
+    public static func burnt(_ key: ModelKey) -> ModelKey? {
+        guard case .furnishing(let furnishing) = key else { return key }
+        switch furnishing {
+        case .fir, .birch, .elderTree, .deadTree: return .furnishing(.deadTree)
+        case .grass, .fern, .heather, .reeds, .driftwood: return nil
+        default: return key
+        }
     }
 
     // MARK: Sites

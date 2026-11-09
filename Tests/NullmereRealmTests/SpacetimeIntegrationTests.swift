@@ -462,6 +462,10 @@ final class SpacetimeIntegrationTests: XCTestCase {
             XCTAssertTrue((1...key.budget).contains(Library.model(key).mesh.triangleCount), "\(key) drawn within its budget")
         }
         print("REALM a keeper's client saw its sawpit rise in its 3D models, its rig at work, from the realm on SpacetimeDB")
+
+        // Last, its turned watch and its company's id moving none of the scenes before.
+        try await scene2.setTheWoodAlight(ama: houseA, bel: houseB)
+        print("REALM one keeper set the blackwood alight from her own client and both clients saw it burn; the other's order on her company was refused; as the watch turned both saw the fire as the realm left it")
     }
 
     /// Two realms and the Frontier between them, each its own database on

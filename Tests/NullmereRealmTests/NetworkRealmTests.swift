@@ -1016,6 +1016,8 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.upTheSpine(ama: ama, bel: bel)
         // Last: its watches turned would move the pedlar's and others' staged watches.
         try await scene.raiseAStandardTogether(ama: ama, bel: bel)
+        // After all else, its turned watch and its company's id moving none of theirs.
+        try await scene.setTheWoodAlight(ama: ama, bel: bel)
     }
 
     func testAGreatBattleOfFourHundredThousandFromTwoClients() async throws {

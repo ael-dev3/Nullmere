@@ -793,6 +793,35 @@ extension GameState {
             case .beware: how = "it keeps clear of the ground"
             }
             return Tidings("\(who) answers the alliance's mark \(placeName(of: mark.at)) (\(mark.kind.title)): \(how).", .good)
+        case .woodKindled(let at, let by, _):
+            guard houses.indices.contains(by) else { return nil }
+            if by == viewer {
+                return Tidings("Your company sets the blackwood alight \(placeName(of: at)); \(windSaid). Walk it out of the fire, or it pays the fire's toll as the watch turns.",
+                               .neutral)
+            }
+            let theirs = territoryOwner(of: at) == viewer
+            return Tidings("\(houses[by].title) sets the blackwood alight \(placeName(of: at))\(theirs ? ", on your House's land" : ""): smoke rises over the lake.",
+                           theirs ? .bad : .neutral)
+        case .fireSpread(let hexes, let by, let wind):
+            guard let first = hexes.first, houses.indices.contains(by) else { return nil }
+            let whose = by == viewer ? "Your House's fire" : "\(houses[by].title)'s fire"
+            let reach = hexes.count == 1 ? "a tile more of the blackwood" : "\(GameState.counted(hexes.count)) tiles more of the blackwood"
+            let ours = hexes.contains { territoryOwner(of: $0) == viewer } && by != viewer
+            return Tidings("\(whose) takes \(reach) \(placeName(of: first)), on the wind \(GameState.windFrom(wind))\(ours ? ", burning your House's land" : "").",
+                           ours ? .bad : .neutral)
+        case .burnedInFire(_, let owner, let at, let troops, let lost):
+            guard houses.indices.contains(owner) else { return nil }
+            if owner == viewer {
+                return lost
+                    ? Tidings("Your company is lost to the fire \(placeName(of: at)).", .bad)
+                    : Tidings("The fire takes \(GameState.counted(troops)) troops of your company \(placeName(of: at)).", .bad)
+            }
+            return lost
+                ? Tidings("A company of \(houses[owner].title)'s is lost to the fire \(placeName(of: at)).", .neutral)
+                : Tidings("The fire takes \(GameState.counted(troops)) troops of \(houses[owner].title)'s company \(placeName(of: at)).", .neutral)
+        case .firesDoused(let hexes):
+            guard !hexes.isEmpty else { return nil }
+            return Tidings("The mist lies on the blackwood and puts out its fires.", .neutral)
         case .wordReported(_, let by):
             guard by == viewer else { return nil }
             return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)

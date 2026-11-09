@@ -53,6 +53,10 @@ public enum Effect: String, CaseIterable, Sendable {
     /// A shaft of a skill's light rising over the company into the sky,
     /// thinning as it climbs.
     case pillar
+    /// The blackwood burning: tongues of fire licking up from the wood,
+    /// rising fast and narrowing, deep orange at the root, yellow as they
+    /// thin.
+    case flames
 
     /// How long each mote lives, in seconds.
     public var lifetime: Float {
@@ -72,6 +76,7 @@ public enum Effect: String, CaseIterable, Sendable {
         case .sighting: return 1.8
         case .sigil: return 2.2
         case .pillar: return 1.5
+        case .flames: return 0.55
         }
     }
 }
@@ -247,6 +252,14 @@ public enum Effects {
             let shell = Vec3(Float(cos(rise)) * around.x, Float(sin(rise)), Float(cos(rise)) * around.z) * (0.52 + 0.1 * t) * scale
             let show = Float(sin(Double(t) * .pi)) * (0.6 + 0.4 * c)
             return Mote(at: origin + shell + Vec3(0, 0.02, 0), size: 0.02 * scale, light: Vec3(0.9, 1.3, 2.1) * show, cover: 0)
+        case .flames:
+            // Licking up fast from the wood and narrowing as it climbs, deep
+            // orange at the root and yellow as it thins, swaying as it goes.
+            let rise = (0.16 + 0.34 * b) * t * scale
+            let sway = around * (0.03 * Float(sin(Double(age * (9 + 7 * c))))) * scale
+            let heat = min(age * 24, 1) * (1 - t)
+            return Mote(at: origin + Vec3(0, rise, 0) + sway, size: (0.055 - 0.035 * t) * scale,
+                        light: Vec3(2.6, 0.85 + 0.75 * t, 0.22) * heat, cover: 0)
         case .blaze:
             // Fire thrown out low from the company, slowing, rising a little, burning out.
             let reach = (0.3 + 0.7 * b) * scale * (1 - Float(exp(-Double(age) * 4)))
@@ -390,6 +403,9 @@ public struct Happenings: Equatable, Sendable {
     public var finished: [Spot] = []
     /// Holds burning, as strongly as their wards are broken.
     public var blazes: [Spot] = []
+    /// The blackwood burning (`Wildfire`): a few spots to each tile
+    /// alight, each its own fire among the trees.
+    public var woodFires: [Spot] = []
     /// Where the night's fireflies wander.
     public var fireflies: [Spot] = []
     /// Where commanders' skills fired, when, and how each looks.
@@ -572,6 +588,18 @@ public struct Happenings: Equatable, Sendable {
             // Firelight, flickering.
             let flicker = 0.75 + 0.25 * Float(sin(Double(time * 11 + Float(blaze.seed % 97)))) * Float(sin(Double(time * 7.3)))
             lights.append(PointLight(at: top, reach: 2.6, colour: Vec3(2.2, 1.0, 0.35) * blaze.strength * flicker))
+        }
+        for fire in woodFires {
+            // Flames licking up among the trees, embers flying from them and
+            // smoke rolling up over all, the firelight flickering on the wood.
+            emitters.append(Emitter(.flames, at: fire.at + Vec3(0, 0.03, 0), rate: 30 * fire.strength, spread: 0.2, seed: fire.seed,
+                                    strength: 1))
+            emitters.append(Emitter(.embers, at: fire.at + Vec3(0, 0.3, 0), rate: 9 * fire.strength, spread: 0.22, seed: fire.seed &+ 3,
+                                    strength: 1))
+            emitters.append(Emitter(.smoke, at: fire.at + Vec3(0, 0.42, 0), rate: 4 * fire.strength, spread: 0.26, seed: fire.seed &+ 7,
+                                    strength: 1.2))
+            let flicker = 0.7 + 0.3 * Float(sin(Double(time * 13 + Float(fire.seed % 89)))) * Float(sin(Double(time * 5.1 + 1)))
+            lights.append(PointLight(at: fire.at + Vec3(0, 0.3, 0), reach: 2.0, colour: Vec3(2.4, 0.95, 0.28) * fire.strength * flicker))
         }
         for spot in fireflies {
             emitters.append(Emitter(.fireflies, at: spot.at, rate: 0.6, spread: 0.3, seed: spot.seed, strength: 1))

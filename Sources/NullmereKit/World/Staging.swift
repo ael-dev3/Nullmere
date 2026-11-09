@@ -222,7 +222,8 @@ extension GameSession {
         }, time: t)
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing,
-                                      holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
+                                      holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)),
+                                      burnt: state.ash)
 
         // Arrows in flight, birds over the water, smoke from the hearths in
         // sight, and the veil of the Still's mist about the veiled holds.
@@ -713,6 +714,10 @@ extension GameSession {
             happenings.blazes.append(Happenings.Spot(at: ground(storehouse.position), strength: 0.35 + 0.65 * broken,
                                                      seed: UInt32(truncatingIfNeeded: storehouse.id)))
         }
+        // The blackwood burning, every House seeing its smoke wherever it
+        // knows the land.
+        let burning = state.burning.map(\.at).filter { isExplored($0) }
+        if !burning.isEmpty { happenings.woodFires = stage.woodFires(burning, near: camera.focus) }
         if camera.scale >= 40 {
             happenings.fireflies = stage.fireflySpots(near: camera.focus).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0) &+ 17) }
         }

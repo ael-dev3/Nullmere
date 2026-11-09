@@ -24,6 +24,8 @@ enum HoverInfo {
         if let vigil = state.vigilsOnTheLake.first(where: { $0.position == hex }) {
             parts.append(state.houses.indices.contains(vigil.house) ? "a vigil of \(state.houses[vigil.house].title)'s" : "a vigil's light")
         }
+        // The blackwood burning here, or its ash.
+        if let fire = state.fireSaid(at: hex) { parts.append(fire) }
         // A hold of an age before: drowned here, or, searched, remembered.
         if let drowned = state.drowned(at: hex) {
             parts.append(tile.feature == .drownedRuin ? "the drowned hold of \(drowned.title)" : "where \(drowned.title) stood")

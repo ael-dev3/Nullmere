@@ -799,6 +799,55 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, along / 3 + 10, "and nothing else in the view changes for it")
     }
 
+    func testTheBlackwoodBurnsAndLiesAsAsh() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        // A stretch of blackwood the keeper knows, near their seat: its heart
+        // and the wood about it burning, and the ring beyond lying as ash.
+        let explored = state.houses[me].explored
+        func known(_ hex: Hex) -> Bool { state.map.index(of: hex).map { explored[$0] } ?? false }
+        let heart = try XCTUnwrap(state.map.hexes.filter { hex in
+            state.isBlackwood(hex) && state.hold(at: hex) == nil && hex.neighbors.filter(state.isBlackwood).count >= 5
+                && hex.ring(2).filter(state.isBlackwood).count >= 8 && hex.spiral(2).allSatisfy(known)
+        }.min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) })
+        let burning = [heart] + heart.neighbors.filter { state.isBlackwood($0) && state.hold(at: $0) == nil }
+        let ash = heart.ring(2).filter { state.isBlackwood($0) && state.hold(at: $0) == nil }
+        let unburnt = state
+        state.wildfires = burning.map { Wildfire(at: $0, by: me, caught: state.watch, out: state.watch + Wildfire.burns) }
+            + ash.map { Wildfire(at: $0, by: me, caught: state.watch - 4, out: state.watch - 1) }
+        XCTAssertEqual(state.problems(), [])
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let afire = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("afire")))
+        let still = GameSession(state: unburnt, store: LocalStore(directory: directory.appendingPathComponent("still")))
+        XCTAssertEqual(afire.state.burning.count, burning.count, "The keeper sees the fire")
+        XCTAssertEqual(afire.state.ash, Set(ash))
+        let centre = Relief.centre(of: heart)
+        let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 64, tilt: 0.95, heading: 0.4)
+        let drawn = try draw(renderer, "wildfire", camera: camera, tiles: afire.tileBytes, scene: afire.sceneFrame(at: 20))
+        let bare = try draw(renderer, "no wildfire", camera: camera, tiles: still.tileBytes, scene: still.sceneFrame(at: 20))
+        try keep([drawn], as: "world-wildfire")
+        let ground = (burning + ash).map { camera.viewPoint(of: $0, height: Double(WorldRenderTests.world.relief.height(of: $0)), in: WorldRenderTests.size) }
+        var near = 0, beyond = 0, fiery = 0, fieryBefore = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) {
+                let i = (y * WorldRenderTests.width + x) * 4
+                func warm(_ pixels: [UInt8]) -> Bool { Int(pixels[i + 2]) > 90 && Int(pixels[i + 2]) > Int(pixels[i + 1]) * 3 / 2 && pixels[i + 2] > pixels[i] &* 2 }
+                if warm(drawn.pixels) { fiery += 1 }
+                if warm(bare.pixels) { fieryBefore += 1 }
+                guard abs(drawn.luminance(x, y) - bare.luminance(x, y)) > 4 else { continue }
+                if ground.contains(where: { hypot(Double(x) - Double($0.x), Double(y) - Double($0.y)) < 120 }) { near += 1 } else { beyond += 1 }
+            }
+        }
+        print("RENDER wildfire: \(burning.count) tiles burning, \(ash.count) as ash; \(near) points changed by it, \(beyond) beyond; \(fiery) points of firelight, \(fieryBefore) before")
+        XCTAssertGreaterThan(near, 150, "The wood burning and burnt")
+        XCTAssertLessThan(beyond, near / 2 + 20, "and the world beyond it as it was, but for its smoke")
+        XCTAssertGreaterThan(fiery, fieryBefore + 40, "Fire's own light, orange in the night")
+    }
+
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world

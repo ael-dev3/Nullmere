@@ -203,6 +203,16 @@ public struct CommanderCounsel: Sendable {
         let pacts = others.filter { state.stance(player, $0.id) == .pact }.map(\.title)
         lines.append(wars.isEmpty ? "It is at war with no House." : "It is at war with " + wars.prefix(8).joined(separator: ", ") + ".")
         if !pacts.isEmpty { lines.append("It has pacts with " + pacts.prefix(8).joined(separator: ", ") + ".") }
+        // The blackwood burning on its land, or lying there as ash.
+        let fires = state.firesAndAsh
+        if !fires.isEmpty {
+            let owners = state.territory()
+            let ours = fires.filter { state.territoryOwner(of: $0.at, in: owners) == player }
+            func tiles(_ count: Int) -> String { count == 1 ? "1 tile" : "\(GameState.counted(count)) tiles" }
+            let burning = ours.filter { $0.isBurning(at: state.watch) }.count
+            if burning > 0 { lines.append("Fire burns in the blackwood on \(tiles(burning)) of its land; \(state.windSaid).") }
+            if ours.count > burning { lines.append("Ash lies on \(tiles(ours.count - burning)) of its land, yielding nothing.") }
+        }
         return lines.joined(separator: " ")
     }
 

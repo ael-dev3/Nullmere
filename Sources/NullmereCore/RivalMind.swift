@@ -145,12 +145,31 @@ struct RivalMind {
         if !atWar || state.heartstone != nil { events += seekHolySite(garrisons: garrisons, in: &state) }
         events += breakTheCrown(garrisons: garrisons, in: &state)
         if home == nil { events += seekDrownedCrown(garrisons: garrisons, in: &state) }
+        events += fleeTheFire(in: &state)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, home: home, in: &state)
         }
         events += drill(owners: owners, in: &state)
         events += answerMarks(in: &state)
+        return events
+    }
+
+    /// Its companies standing in the blackwood alight step out of the fire
+    /// before they are given their orders, onto the open ground beside them
+    /// first in order where no fire burns. Where no fire burns it does
+    /// nothing, so a world with none plays as it would.
+    private func fleeTheFire(in state: inout GameState) -> [GameEvent] {
+        let burning = Set(state.burning.map(\.at))
+        guard !burning.isEmpty else { return [] }
+        var events: [GameEvent] = []
+        for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) where burning.contains(unit.position) && unit.movesLeft > 0 {
+            let out = unit.position.neighbors.filter { hex in
+                !burning.contains(hex) && state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+            }.min { ($0.q, $0.r) < ($1.q, $1.r) }
+            guard let out else { continue }
+            events += perform(.move(unit: unit.id, to: out), in: &state)
+        }
         return events
     }
 

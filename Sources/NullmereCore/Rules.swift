@@ -92,6 +92,8 @@ extension GameState {
             return try markGround(hex, kind, words: words, as: house)
         case .unmarkGround(let id):
             return try unmarkGround(id, as: house)
+        case .kindle(let unit):
+            return try kindle(unit, as: house)
         case let .sealLetter(words, holdID):
             return try sealLetter(words, in: holdID, as: house)
         case .stand(let order):

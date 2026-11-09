@@ -547,8 +547,8 @@ extension GameState {
     /// alliances, their reports and bars on words, the drowned holds,
     /// bottles, barges, rallies, fields of battle, shrines, lairs,
     /// standards, halls and storehouses they know of, the vigils burning
-    /// for the fallen, the pleas their folk have brought them, their
-    /// satchel and their makings.
+    /// for the fallen, the fires in the blackwood and their ash, the pleas
+    /// their folk have brought them, their satchel and their makings.
     struct Keeps: Codable, Equatable {
         var dreams: [Dream]?
         var whispers: [Whisper]?
@@ -574,6 +574,7 @@ extension GameState {
         var drowned: [DrownedHold]?
         var bottles: [Bottle]?
         var vigils: [Vigil]?
+        var wildfires: [Wildfire]?
         var petitions: [Petition]?
         var allianceMarks: [AllianceMark]?
         var barges: [Ferrying]?
@@ -612,6 +613,7 @@ extension GameState {
             drowned = world.drowned
             bottles = world.bottles
             vigils = world.vigils
+            wildfires = world.wildfires
             petitions = world.petitions
             allianceMarks = world.allianceMarks
             barges = world.barges
@@ -652,6 +654,7 @@ extension GameState {
             world.drowned = drowned
             world.bottles = bottles
             world.vigils = vigils
+            world.wildfires = wildfires
             world.petitions = petitions
             world.allianceMarks = allianceMarks
             world.barges = barges

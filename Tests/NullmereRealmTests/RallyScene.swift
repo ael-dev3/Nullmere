@@ -1592,6 +1592,45 @@ extension RallyScene {
     /// client, with words of her own, and Bel, sworn to it, sees it in his
     /// where it lies; his own mark is refused by the realm, for he does not
     /// lead; and Ama lifts hers, gone from both.
+    /// One keeper's spears set the blackwood alight from her own client:
+    /// both clients see it burning; the other keeper's order on her company
+    /// is refused; and as the watch turns, both see the fire as the realm
+    /// left it, alike.
+    func setTheWoodAlight(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            let sites = Set(world.sitesInLand.map(\.position))
+            let owners = world.territory()
+            guard let wood = world.map.hexes.first(where: { hex in
+                world.isBlackwood(hex) && world.unit(at: hex) == nil && world.hold(at: hex) == nil && !sites.contains(hex)
+                    && world.wildfire(at: hex) == nil && (world.territoryOwner(of: hex, in: owners) ?? ama) == ama
+            }) else { return }
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: ama, position: wood))
+            staged.unit = id
+            staged.at = wood
+        }
+        let unitID = try XCTUnwrap(staged.unit, "Blackwood for Ama's spears to stand in")
+        let wood = try XCTUnwrap(staged.at)
+        try await until("Ama's spears in the blackwood in her client") { earA.world?.unit(unitID)?.position == wood }
+        await MainActor.run { a.send(.kindle(unit: unitID)) }
+        try await until("both to see the blackwood burning where she set it") {
+            earA.world?.isBurning(wood) == true && earB.world?.isBurning(wood) == true
+        }
+        let set = await MainActor.run { earB.world?.wildfire(at: wood) }
+        XCTAssertEqual(set?.by, ama, "Bel's client knows whose fire it is")
+        await MainActor.run { b.send(.kindle(unit: unitID)) }
+        try await until("Bel refused: the company is not his") { earB.refusals.contains(RuleError.notYours.description) }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        try await until("both to see the fire as the realm left it, alike") {
+            guard let seenA = earA.world?.firesAndAsh, let seenB = earB.world?.firesAndAsh else { return false }
+            return !seenA.isEmpty && Set(seenA.map(\.at)) == Set(seenB.map(\.at)) && seenA.contains { $0.at == wood }
+        }
+    }
+
     func markTheGround(ama: Int, bel: Int) async throws {
         let words = "Hold the ford"
         let staged = StagedWalk()

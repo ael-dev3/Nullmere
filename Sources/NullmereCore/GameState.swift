@@ -219,6 +219,14 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Vigils' lights burning on the lake for the fallen; absent while none
     /// does.
     var vigils: [Vigil]?
+    /// Fires burning in the blackwood and the ash they left; absent while
+    /// none burns or lies.
+    var wildfires: [Wildfire]?
+    /// The wind of the watch as the realm found it (`wind`): the way it
+    /// blows, as an index into `Hex.directions`, or -1 while none blows;
+    /// absent in a world from before the wind. It changes with the watch,
+    /// so every keeper is told it in the head of their view.
+    var windOfWatch: Int?
     /// The pleas keepers' Houses' folk have brought them, waiting on an
     /// answer; absent while none does.
     public internal(set) var petitions: [Petition]?
@@ -378,6 +386,7 @@ public struct GameState: Codable, Equatable, Sendable {
         raiseTheCrown(gates: world.gates)
         raiseShrines()
         refreshSight()
+        keepTheWind()
         takeSnapshot()
     }
 
@@ -595,8 +604,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public func income(of hold: Hold, territory: [Int?]? = nil) -> Stock {
         let owners = territory ?? self.territory()
         var total = hold.isSeat ? Stock(grain: 3, timber: 2, stone: 2, moonsalt: 1) : Stock(grain: 2, timber: 1, stone: 1)
+        // Blackwood burning, or lying as ash, yields nothing (`Wildfire`).
+        let scorched = wildfires.map { Set($0.map(\.at)) }
         for hex in hold.position.spiral(hold.territoryRadius) {
-            guard let index = map.index(of: hex), owners[index] == hold.id else { continue }
+            guard let index = map.index(of: hex), owners[index] == hold.id, scorched?.contains(hex) != true else { continue }
             total = total + map[index].yield
         }
         for kind in BuildingKind.allCases {

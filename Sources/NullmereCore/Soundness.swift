@@ -293,6 +293,13 @@ extension GameState {
         for vigil in vigilsOnTheLake where map[vigil.position] == nil || !houseIDs.contains(vigil.house) {
             found.append("Vigil \(vigil.id) of House \(vigil.house) burns outside the world at \(vigil.position)")
         }
+        // A fire burns, and its ash lies, in the blackwood, once to a tile, set by a House of the realm.
+        var burnt: Set<Hex> = []
+        for fire in wildfires ?? [] {
+            if map[fire.at]?.terrain != .blackwood || !houseIDs.contains(fire.by) || !burnt.insert(fire.at).inserted || fire.out < fire.caught {
+                found.append("A fire of House \(fire.by) at \(fire.at) where none could burn")
+            }
+        }
         // A plea waits on a House's answer, from a hold that was its own when it came.
         for petition in petitions ?? [] where !houseIDs.contains(petition.house) || hold(petition.hold) == nil {
             found.append("Petition \(petition.id) of House \(petition.house) from no hold of the realm (\(petition.hold))")

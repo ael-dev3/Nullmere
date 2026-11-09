@@ -1635,6 +1635,7 @@ public final class GameSession {
         case .raiseStandard, .helpStandard: return .banner
         case .markGround(_, let kind, _): return kind == .strike ? .horn : .banner
         case .unmarkGround: return .stand
+        case .kindle: return .horn
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage, .takeCrest, .bestow: return .banner
         case .prophesy: return .lore
@@ -1718,6 +1719,9 @@ public final class GameSession {
         case .groundMarked(let mark) where mark.alliance == alliance && mark.by != player: return mark.kind == .strike ? .horn : .banner
         // An ally answering the alliance's mark, heard as accord.
         case .markHeeded(let mark, _) where mark.alliance == alliance: return .accord
+        // Fire on the House's own land, or taking its companies, heard as dread.
+        case .woodKindled(let at, let by, _) where by != player && state?.territoryOwner(of: at) == player: return .dread
+        case .burnedInFire(_, let owner, _, _, _) where owner == player: return .dread
         case .standardStruck(let standard, _, let by, _) where by != player
             && state?.standard(standard).map({ $0.alliance == state?.alliance(of: player)?.id }) == true: return .batter
         case .standardTorn(_, _, let by, _) where by == player: return .triumph
@@ -1951,6 +1955,10 @@ public final class GameSession {
             return at
         case .groundMarked(let mark), .markLifted(let mark, _), .markHeeded(let mark, _):
             return mark.at
+        case .woodKindled(let at, _, _), .burnedInFire(_, _, let at, _, _):
+            return at
+        case .fireSpread(let hexes, _, _), .firesDoused(let hexes):
+            return hexes.first
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
             return at
         case .storehouseRaised(_, _, _, let at), .storehouseRisen(_, _, let at), .storehouseStruck(_, _, _, _, let at),

@@ -451,6 +451,28 @@ struct ChartView: View {
             let lantern = CGRect(x: x + size * 0.32, y: y + size * 0.22, width: size * 0.2, height: size * 0.2)
             context.fill(Path(ellipseIn: lantern.insetBy(dx: -size * 0.08, dy: -size * 0.08)), with: .color(Self.flame.opacity(0.25)))
             context.fill(Path(ellipseIn: lantern), with: .color(Self.flame))
+        case .fire:
+            // The blackwood burning: three tongues of flame in their glow.
+            context.fill(circle(size * 0.46), with: .color(Self.flame.opacity(0.2)))
+            for (offset, height) in [(-0.2, 0.34), (0.0, 0.46), (0.2, 0.3)] {
+                let base = CGPoint(x: x + size * offset, y: y + size * 0.22)
+                let flame = Path { path in
+                    path.move(to: CGPoint(x: base.x - size * 0.09, y: base.y))
+                    path.addQuadCurve(to: CGPoint(x: base.x, y: base.y - size * height),
+                                      control: CGPoint(x: base.x - size * 0.11, y: base.y - size * height * 0.5))
+                    path.addQuadCurve(to: CGPoint(x: base.x + size * 0.09, y: base.y),
+                                      control: CGPoint(x: base.x + size * 0.11, y: base.y - size * height * 0.5))
+                    path.closeSubpath()
+                }
+                context.fill(flame, with: .color(Self.flame))
+            }
+        case .ash:
+            // Burnt ground: grey ash, and the dead trees standing in it.
+            context.fill(circle(size * 0.42), with: .color(Color.gray.opacity(0.3)))
+            for (offset, rise) in [(-0.18, 0.05), (0.12, -0.1), (0.05, 0.16)] {
+                let trunk = CGRect(x: x + size * offset - 1, y: y + size * rise - size * 0.14, width: 2, height: size * 0.18)
+                context.fill(Path(trunk), with: .color(edge))
+            }
         case .allianceMark:
             // The alliance's pennant at the hex's upper left, clear of a
             // keep, in its mark's hue as the world lights it.

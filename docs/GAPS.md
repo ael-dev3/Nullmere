@@ -521,6 +521,40 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   any steward where a steward leads, so worlds of stewards alone play as
   they did. MarkHeedingTests on Linux hold each, against the steward's
   choice unbidden.
+- [x] **Fire in the blackwood.** No game of its kind burns its own land.
+  Here a keeper's company of war standing in the blackwood may set it
+  alight, for one of its moves, on its own House's land, land no hold's,
+  or a foe's: the fire burns three watches, and as each watch turns it
+  catches the blackwood beside it, most of all downwind (the watch's wind,
+  the same over the whole lake, from the realm's own seed and drawing on
+  nothing else it draws; 30 in a hundred downwind, 12 a sixth of a turn
+  off it, 3 a third, never upwind, so that on a forest without end a fire
+  takes 14 tiles at the median and 206 at the most of 400, where at 55,
+  30, 10 and 4 nearly every one ran on past 3,000), takes a sixth of the
+  strength of any company standing in it, and leaves ash that yields
+  nothing to the hold whose land it is for thirty watches, its trees
+  standing dead and its undergrowth gone, before the wood grows back. A
+  Still Night keeps it where it is; Rising Mist puts every fire out. Fire
+  takes nothing but the blackwood, never a hold's heart or a site's
+  clearing; every House sees its smoke and hears who set it, and the House
+  whose land it burns is told so; its commanders' counsel, asked of the
+  on-device model, is grounded in it too (fire or ash on the House's land,
+  and the watch's wind). Stewards set none, so worlds of stewards alone
+  play as they did, and step their companies out of one. In the world,
+  three fires to each tile alight, flames licking up among the trees under
+  embers and rolling smoke, the firelight on the wood; the phone's chart
+  draws each tile alight with three tongues of flame and the ash grey with
+  dead trunks, and offers the order with the Mac's words. WildfireTests
+  (the order and its refusals, the wind's shares over 400 watches, the
+  toll, the ash and the regrowth, the Still Night and the mist, a steward
+  stepping out, counsel told of it), WildfireStageTests and
+  CompanionWildfireTests on Linux; WorldRenderTests draws the blackwood
+  burning and burnt beside the same wood unburnt with the world's own
+  shaders (`world-wildfire.png`), **Unverified** until a CI run draws it;
+  RallyScene.setTheWoodAlight plays it between two clients (Ama sets it,
+  both see it burn, Bel's order on her company refused, both see the fire
+  alike as the watch turns) in NetworkRallyTests and in the realm job on a
+  real SpacetimeDB server, **Unverified** there until a run plays it.
 
 ## The order of the work
 

@@ -734,6 +734,15 @@ struct UnitPanel: View {
                         }
                         .help(UnitPanel.mirrorHelp(state.mirrorLanding(from: unit.position, for: unit.id)))
                     }
+                    // Only in the blackwood, and only for a company of war.
+                    if unit.kind.isMilitary, state.isBlackwood(unit.position) {
+                        let refusal = state.kindleRefusal(unit.id, as: session.player)
+                        QuietButton(title: "Set the wood alight", enabled: refusal == nil, name: "Set the blackwood alight with \(unit.kind.title)",
+                                    why: refusal?.description) {
+                            session.perform(.kindle(unit: unit.id))
+                        }
+                        .help(UnitPanel.kindleHelp(in: state))
+                    }
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
                     }
@@ -1618,5 +1627,12 @@ extension UnitPanel {
     static func mirrorHelp(_ landing: Hex?) -> String {
         guard let landing else { return "The Still shows no open ground on the far shore." }
         return "Step into the Still for \(MirrorWalk.price) and come out at \(landing) as the watch turns; every shore sees the water still there."
+    }
+
+    /// What the fire's button says of the fire, and of this watch's wind.
+    static func kindleHelp(in state: GameState) -> String {
+        "Set the blackwood here alight, for one move: it burns \(GameState.watches(Wildfire.burns)), catching the wood beside it, most of all "
+            + "downwind (\(state.windSaid)); any company standing in it as the watch turns loses a sixth of its strength; and its ash yields "
+            + "nothing for \(GameState.watches(Wildfire.ash))."
     }
 }

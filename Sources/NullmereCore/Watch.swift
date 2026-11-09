@@ -50,12 +50,14 @@ extension GameState {
         watch += 1
         if isPaced { pacing = Pacing() }
         turnOmens()
+        keepTheWind()
         events += turnTide()
         events += contestCrown()
         events += dream()
         events += driftBottles()
         events += tendVigils()
         events += lapseMarks()
+        events += turnWildfires()
         events += landCrossings()
         events += turnEdicts()
         forgetOldGifts()
