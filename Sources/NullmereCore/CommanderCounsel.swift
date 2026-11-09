@@ -46,6 +46,16 @@ public struct CommanderCounsel: Sendable {
     /// The most of a report's own lines a commander remembers of it.
     static let linesRemembered = 4
 
+    /// The battles the commander remembers, in a line for counsel on the
+    /// Mac and the phone alike: "Remembers the fight at Wenholme in watch
+    /// 12, won."; nil for none.
+    public var remembersSaid: String? {
+        guard !battles.isEmpty else { return nil }
+        let told = battles.map { "\($0.place) in watch \($0.watch), \($0.outcome.said.lowercased())" }
+        let list = told.count == 1 ? told[0] : told.dropLast().joined(separator: "; ") + "; and " + told[told.count - 1]
+        return (told.count == 1 ? "Remembers the fight " : "Remembers the fights ") + list + "."
+    }
+
     /// The company the commander leads, if any.
     public var company: Unit? {
         state.units(of: player).first { $0.leader == commander.id || $0.second == commander.id }

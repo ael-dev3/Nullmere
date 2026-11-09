@@ -25,6 +25,13 @@ struct CounselSheet: View {
                 Spacer()
                 CloseButton(label: "End counsel with \(commander.name)") { session.closeCounsel() }
             }
+            // The battles they led that they remember, as the reports read.
+            if let remembers = counsel.counsel.remembersSaid {
+                Text(verbatim: remembers)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let unavailable {
                 Text(verbatim: unavailable.said)
                     .font(.nm(11))

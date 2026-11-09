@@ -250,6 +250,7 @@ final class CounselSheetTests: XCTestCase {
         XCTAssertEqual(counsel.counsel.battles.map(\.id), [report.id], "Briefed with the battle they led")
         XCTAssertTrue(counsel.counsel.briefing.contains("In watch \(report.watch), \(report.place): \(report.title)."), counsel.counsel.briefing)
         XCTAssertTrue(counsel.counsel.briefing.contains("led by \(commander.name)"), counsel.counsel.briefing)
+        XCTAssertEqual(counsel.counsel.remembersSaid, "Remembers the fight \(report.place) in watch \(report.watch), won.", "Said on the sheet")
         XCTAssertTrue(counsel.lines.isEmpty, "Nothing is asked that can't be answered")
         XCTAssertEqual(counsel.unavailable, .unavailable(.deviceNotEligible))
         draw(CounselSheet(session: session, counsel: counsel))

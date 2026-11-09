@@ -24,6 +24,13 @@ struct CounselView: View {
                 Text(verbatim: "\(commander.archetype.title) · level \(commander.level) · \(leads)")
                     .font(Night.small)
                     .foregroundStyle(Night.moon)
+                // The battles they led that they remember, as the Mac says it.
+                if let remembers = counsel.counsel.remembersSaid {
+                    Text(verbatim: remembers)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let unavailable {
                     Text(verbatim: unavailable.said)
                         .font(Night.body)

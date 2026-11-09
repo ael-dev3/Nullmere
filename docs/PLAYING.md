@@ -916,7 +916,8 @@ a vote on the realm's law to cast.
   what they put forward. They remember the battles they led your companies
   in, too: the latest three of your House's reports that name them, as
   each report reads (when and where, how it came out, each side as it came
-  and left, and their own company's part). Each such report in the
+  and left, and their own company's part), named under theirs in counsel
+  ("Remembers the fight at Wenholme in watch 12, won."). Each such report in the
   Chronicle's Reports offers Ask them of it, which opens counsel with that
   commander and puts the question as you would ("How went the fight at
   Wenholme in watch 12?"). Where the model can't be asked (a Mac that can't

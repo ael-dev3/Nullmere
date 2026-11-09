@@ -85,9 +85,14 @@ final class BattleMemoryTests: XCTestCase {
         XCTAssertFalse(briefing.contains("watch 7,"), "No more than it remembers")
         XCTAssertFalse(briefing.contains("Galstead"))
         XCTAssertEqual(CommanderCounsel.askedOf(field), "How went the fight at Wenholme in watch 12?")
+        XCTAssertEqual(counsel.remembersSaid,
+                       "Remembers the fights at Wenholme in watch 12, won; on the barrows in watch 9, won; and on the barrows in watch 8, won.")
+        let one = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: commander.id, reports: [field]))
+        XCTAssertEqual(one.remembersSaid, "Remembers the fight at Wenholme in watch 12, won.")
         // With no reports, no battles in the briefing; its budget still leaves room.
         let plain = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: commander.id))
         XCTAssertTrue(plain.battles.isEmpty)
+        XCTAssertNil(plain.remembersSaid)
         XCTAssertFalse(plain.briefing.contains("Battles you led"))
         XCTAssertGreaterThan(CounselBudget.recall(context: 4_096, instructions: counsel.instructions, briefing: briefing), 0)
     }
