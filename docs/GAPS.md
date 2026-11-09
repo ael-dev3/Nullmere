@@ -819,7 +819,16 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   words on its stone, which the phone's own model is asked for as the
   Mac's is (the House's last three barrows among its voices;
   CompanionBurialTests on Linux); the phone's drawing of them Unverified
-  until the companion job builds it.
+  until the companion job builds it. The dead risen as Barrowkin are
+  drawn their own way, no longer as any wild: pale and cold, no House's
+  (`WorldStage.barrowkinColour`, a pose's own colour in place of its
+  sigil's), carrying the corpse-lights of the field they rose from, as
+  many and as bright as hung over it on the eve of the dark
+  (`UnburiedSight.risen`), and those risen this watch come up out of the
+  dark over two and a half seconds from when the keeper first sees them,
+  whole at once where motion is reduced (`WorldStage.risenShowing`);
+  CorpseLightsTests on Linux, WorldStagingTests on the Mac, Unverified
+  there until a CI run.
 
 ## The order of the work
 

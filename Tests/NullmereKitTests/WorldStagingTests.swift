@@ -671,6 +671,45 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertGreaterThan(lit.lights.count, dark.lights.count, "and the field's own light")
     }
 
+    /// The dead risen as Barrowkin are drawn pale and cold, no House's,
+    /// carrying their field's corpse-lights; those risen this watch come up
+    /// out of the dark over a moment from when the keeper first sees them.
+    func testBarrowkinRisePaleOutOfTheDarkWithTheirFieldsLights() throws {
+        var risenAt: Hex?
+        let session = try session { state in
+            let seat = try XCTUnwrap(state.seat(of: state.player)).position
+            let hex = try XCTUnwrap(seat.spiral(2).first { hex in
+                hex != seat && state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+                    && !state.isOccupied(hex) && state.hold(at: hex) == nil
+            })
+            state.wilds = (state.wilds ?? []) + [Wild(id: state.takeID(), kind: .barrowkin, level: 2, position: hex, raised: state.watch)]
+            risenAt = hex
+        }
+        let at = try XCTUnwrap(risenAt)
+        XCTAssertTrue(session.isVisible(at), "beside the seat, in sight")
+        let wild = try XCTUnwrap(session.state.wildsStanding.first { $0.kind == .barrowkin })
+        func figures(_ frame: SceneFrame) -> [ModelInstance] {
+            frame.batches.filter { $0.key == .wild(tier: GameSession.wildTier(of: wild.level)) }.flatMap(\.instances)
+                .filter { $0.hex == SIMD2(Int32(at.q), Int32(at.r)) }
+        }
+        let now = Date()
+        let first = session.sceneFrame(at: 40, now: now)
+        XCTAssertFalse(figures(first).isEmpty)
+        XCTAssertTrue(figures(first).allSatisfy { $0.colour == WorldStage.barrowkinColour }, "pale and cold, no House's")
+        XCTAssertTrue(figures(first).allSatisfy { $0.params.y < 0.05 }, "first seen: still in the dark")
+        let rising = session.sceneFrame(at: 41, now: now.addingTimeInterval(Double(WorldStage.risingSeconds) / 2))
+        XCTAssertTrue(figures(rising).allSatisfy { abs($0.params.y - 0.5) < 0.05 }, "coming up out of it")
+        let whole = session.sceneFrame(at: 43, now: now.addingTimeInterval(Double(WorldStage.risingSeconds) * 2))
+        XCTAssertTrue(figures(whole).allSatisfy { $0.params.y == 1 }, "whole")
+        // Their field's lights about them.
+        let heart = Relief.centre(of: at)
+        let cold = whole.motes.filter { mote in
+            let x = mote.place.x - heart.x, z = mote.place.z - heart.z
+            return (x * x + z * z).squareRoot() < 0.7 && mote.colour.w == 0 && mote.colour.y > mote.colour.x * 1.8
+        }
+        XCTAssertGreaterThanOrEqual(cold.count, 2 * WorldStage.corpseLightCount(troops: UnburiedSight.risen(at: at, level: 2).troops))
+    }
+
     func testAFieldKeepsItsDeadAFewWatches() throws {
         let session = try session()
         let player = session.player, foe = (player + 1) % 3

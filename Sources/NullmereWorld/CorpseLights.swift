@@ -19,12 +19,34 @@ public struct UnburiedSight: Equatable, Sendable {
     /// Whether they will rise as Barrowkin at the dark of the moon, unless
     /// buried; the land takes back fewer.
     public var rises: Bool { troops >= GameState.unquietAt }
+
+    /// Barrowkin risen at `level`, carrying the lights of the field they
+    /// rose from: as many as hung over it, as bright as on the eve of the
+    /// dark.
+    public static func risen(at hex: Hex, level: Int) -> UnburiedSight {
+        UnburiedSight(at: hex, troops: GameState.unquietAt + max(level - 1, 0) * GameState.unquietPerLevel, darkIn: 1)
+    }
 }
 
 extension WorldStage {
     /// The corpse-lights' hue, linear: a cold, pale green no fire, lamp or
     /// mark of the realm burns, so they are never taken for a hearth.
     static let corpseLight = Vec3(0.40, 0.92, 0.80)
+    /// The Barrowkin's colour, the dead risen: a pale, cold grey-green, no
+    /// House's.
+    public static let barrowkinColour = Vec4(0.58, 0.74, 0.70, 1)
+    /// Seconds Barrowkin risen this watch take to come up out of the dark,
+    /// from unseen to whole.
+    public static let risingSeconds: Float = 2.5
+
+    /// How much of Barrowkin risen this watch shows `age` seconds after the
+    /// keeper first sees them: from nothing to whole, slow to start and slow
+    /// to finish; whole at once where motion is reduced.
+    public static func risenShowing(age: Float, still: Bool = false) -> Float {
+        guard !still else { return 1 }
+        let t = min(max(age / risingSeconds, 0), 1)
+        return t * t * (3 - 2 * t)
+    }
     /// The most fields lit at once, nearest the view first, and the most
     /// lights over one.
     static let corpseFieldsMost = 24

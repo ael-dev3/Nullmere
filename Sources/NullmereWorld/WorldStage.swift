@@ -48,6 +48,9 @@ public struct CompanyPose: Equatable, Sendable {
     /// of its death (`Clip.death`): one down, then the next, as long as the
     /// field goes on.
     public var falling: [Float] = []
+    /// Its own colour, in place of its House's by its sigil: the Barrowkin's
+    /// pale cold, the dead risen (`WorldStage.barrowkinColour`).
+    public var colour: Vec4? = nil
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -1623,7 +1626,7 @@ public final class WorldStage: @unchecked Sendable {
         var placed: [(ModelKey, ModelInstance)] = []
         var shared: [PoseKey: UInt32] = [:]
         for company in poses {
-            let colour = WorldStage.colour(houses, sigil: company.sigil)
+            let colour = company.colour ?? WorldStage.colour(houses, sigil: company.sigil)
             let turn = Mat4.rotationY(company.heading)
             let flags = company.isOwn ? ModelInstance.alwaysShown : 0
             let hex = SIMD2(Int32(company.hex.q), Int32(company.hex.r))

@@ -367,6 +367,13 @@ extension GameSession {
         }, near: camera.focus, scale: camera.scale, time: t, still: !full)
         frame.motes += unquiet.motes
         frame.lights += unquiet.lights
+        // And the Barrowkin in sight carry the lights of the field they rose
+        // from, as many and as bright as hung over it on the eve of the dark.
+        let risen = stage.corpseLights(state.wildsStanding.filter { $0.kind == .barrowkin && isVisible($0.position) }.map {
+            UnburiedSight.risen(at: $0.position, level: $0.level)
+        }, near: camera.focus, scale: camera.scale, time: t, still: !full)
+        frame.motes += risen.motes
+        frame.lights += risen.lights
         // The sound of the fields in sight, and of the towns and the lake's
         // edge near the view, follows the picture of them.
         hearBattles()
@@ -618,6 +625,17 @@ extension GameSession {
                                      position: Vec3(centre.x, Float(groundHeight(of: wild.position)), centre.z),
                                      heading: headings[GameSession.wildPoseBase - wild.id] ?? Float(wild.id % 6) * .pi / 3,
                                      clipTime: resting, emphasis: hovered == wild.position ? 0.5 : 0, isOwn: false))
+            // The dead risen as Barrowkin, pale and cold, no House's; those
+            // risen this watch come up out of the dark from when the keeper
+            // first sees them (whole at once where motion is reduced).
+            if wild.kind == .barrowkin {
+                poses[poses.count - 1].colour = WorldStage.barrowkinColour
+                if wild.raised == state.watch {
+                    let seen = risenSeen[wild.id] ?? now
+                    risenSeen[wild.id] = seen
+                    poses[poses.count - 1].opacity = WorldStage.risenShowing(age: Float(now.timeIntervalSince(seen)), still: !animated)
+                }
+            }
         }
         // An expedition's fight on the Spine: the line below the ridge, each
         // commander at the head of a company striking in turn, and the

@@ -84,6 +84,34 @@ final class CorpseLightsTests: XCTestCase {
         XCTAssertEqual(stillNow.motes.count, now.motes.count, "and none the fewer")
     }
 
+    /// The dead risen as Barrowkin carry the lights of the field they rose
+    /// from, as many as hung over it and as bright as on the eve of the
+    /// dark; they are drawn pale and cold, no House's, and those risen this
+    /// watch come up out of the dark.
+    func testTheRisenCarryTheirFieldsLightsAndComeUpOutOfTheDark() throws {
+        XCTAssertEqual(UnburiedSight.risen(at: field, level: 1).troops, GameState.unquietAt)
+        XCTAssertTrue(UnburiedSight.risen(at: field, level: 1).rises)
+        XCTAssertEqual(WorldStage.corpseLightCount(troops: UnburiedSight.risen(at: field, level: 3).troops), 5, "three and one a level past the first")
+        XCTAssertEqual(WorldStage.corpseStrength(UnburiedSight.risen(at: field, level: 2)), 1, accuracy: 0.0001, "as bright as on the eve")
+        XCTAssertEqual(WorldStage.risenShowing(age: 0), 0)
+        XCTAssertEqual(WorldStage.risenShowing(age: WorldStage.risingSeconds / 2), 0.5, accuracy: 0.0001)
+        XCTAssertEqual(WorldStage.risenShowing(age: WorldStage.risingSeconds * 2), 1)
+        XCTAssertEqual(WorldStage.risenShowing(age: 0, still: true), 1, "whole at once where motion is reduced")
+        // Drawn in their own pale colour, not a House's.
+        let centre = Relief.centre(of: field)
+        var pose = CompanyPose(unit: -40, key: .wild(tier: 1), sigil: 0, health: 100, hex: field,
+                               position: Vec3(centre.x, stage.ground(atX: centre.x, z: centre.z), centre.z), heading: 0, isOwn: false)
+        let red = Vec4(0.9, 0.1, 0.1, 1)
+        var frame = SceneFrame()
+        let plain = stage.companies([pose], houses: [red], into: &frame).flatMap(\.instances)
+        XCTAssertFalse(plain.isEmpty)
+        XCTAssertTrue(plain.allSatisfy { $0.colour == red }, "a wild as before, in the colour its sigil gives")
+        pose.colour = WorldStage.barrowkinColour
+        let risen = stage.companies([pose], houses: [red], into: &frame).flatMap(\.instances)
+        XCTAssertEqual(risen.count, plain.count)
+        XCTAssertTrue(risen.allSatisfy { $0.colour == WorldStage.barrowkinColour }, "the risen dead pale and cold")
+    }
+
     func testSeenFromAcrossTheRealmTheNearestFieldsFirst() throws {
         let sights = [UnburiedSight(at: field, troops: 9_000, darkIn: 1)]
         let near = stage.corpseLights(sights, near: Vec3(0, 0, 0), scale: 80, time: 1)

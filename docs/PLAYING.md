@@ -912,7 +912,9 @@ a vote on the realm's law to cast.
   there, where they fell and who raised it; where it can't, the panel
   says why and no words stand in their place. Your phone's chart marks
   the dead lying unburied and the barrows raised, and gives the words on
-  your barrows' stones from its own model.
+  your barrows' stones from its own model. The Barrowkin that rise are
+  pale and cold, carrying the lights that hung over their field, and come
+  up out of the dark as you first see them.
   The Houses the stewards keep bury their own as they fall, and a keeper
   away has theirs buried by the caretaker where a company of the House
   stands idle on them, so a world the stewards play alone is the same

@@ -156,6 +156,9 @@ public final class GameSession {
     /// How far each company fighting hand to hand has pressed up to the
     /// foe, as last drawn, so it eases up and back (`FrontPress`).
     @ObservationIgnored var pressesShown: [Int: FrontPress] = [:]
+    /// When the keeper first saw each company of Barrowkin risen this
+    /// watch, by the wild's id, so it comes up out of the dark from then.
+    @ObservationIgnored var risenSeen: [Int: Date] = [:]
     /// The road along each way the carts go, as laid, by way.
     @ObservationIgnored var roadsLaid: [WorldStage.Way: [ModelInstance]] = [:]
     /// The blows seen struck lately, for the dead they left lying on their
