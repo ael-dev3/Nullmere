@@ -192,8 +192,9 @@ extension GameState {
     /// on them (a keeper's envoy carries their own words), what the Still
     /// showed the House, its riddle while unanswered, what each prisoner
     /// it holds last told, the plea its folk bring it, what its
-    /// watchfires last made out marching dark, and the hamlets and barrows
-    /// its Lanterns sought last (the latest three).
+    /// watchfires last made out marching dark, the hamlets and barrows its
+    /// Lanterns sought last and the barrows it raised over its dead last
+    /// (the latest three of each).
     public func voicedMoments(for house: Int) -> [Voicing.Keyed] {
         var moments: [Voicing.Keyed] = []
         for envoy in envoys where envoy.to == house && houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer {
@@ -222,6 +223,12 @@ extension GameState {
         for latest in found.prefix(3) {
             if let moment = voiced(latest.find, by: house) {
                 moments.append(Voicing.Keyed(key: "find-\(latest.find.id)", moment: moment))
+            }
+        }
+        // The words cut on the stones of the barrows the House raised last.
+        for grave in gravesRaised.filter({ $0.house == house }).suffix(3).reversed() {
+            if let moment = voiced(grave, for: house) {
+                moments.append(Voicing.Keyed(key: "grave-\(grave.key)", moment: moment))
             }
         }
         return moments

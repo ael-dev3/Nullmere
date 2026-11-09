@@ -103,6 +103,11 @@ struct PlaceSections: View {
                     VoicedWords(key: found.voice, who: found.who)
                 }
             }
+            // The words cut on the stone of a barrow the House raised here,
+            // in this phone's model's words.
+            if let stone = place.stone {
+                VoicedWords(key: stone.voice, who: stone.who)
+            }
             ForEach(Array((place.strikes + place.calls).enumerated()), id: \.offset) { order in
                 Button(order.element.title) {
                     session.give(order.element.command, told: order.element.title)
@@ -494,6 +499,27 @@ struct ChartView: View {
             context.fill(mound, with: .color(tint.opacity(fade)))
             context.stroke(mound, with: .color(edge), lineWidth: 1)
             context.fill(Path(CGRect(x: x - size * 0.06, y: y + size * 0.02, width: size * 0.12, height: size * 0.14)), with: .color(edge))
+        case .dead:
+            // The dead lying unburied: pale cold corpse-lights over the
+            // field, as the world hangs them, never a hearth's warmth.
+            context.fill(circle(size * 0.42), with: .color(Self.corpseLight.opacity(0.16)))
+            for (dx, dy) in [(-0.18, 0.06), (0.16, -0.08), (0.02, 0.2)] {
+                let light = CGRect(x: x + size * dx - size * 0.06, y: y + size * dy - size * 0.06, width: size * 0.12, height: size * 0.12)
+                context.fill(Path(ellipseIn: light), with: .color(Self.corpseLight))
+            }
+        case .grave:
+            // A barrow raised over a field's dead: its grassed mound, and
+            // its standing stone at its head in its raiser's colour.
+            let mound = Path { path in
+                path.move(to: CGPoint(x: x - size * 0.32, y: y + size * 0.18))
+                path.addQuadCurve(to: CGPoint(x: x + size * 0.32, y: y + size * 0.18), control: CGPoint(x: x, y: y - size * 0.3))
+                path.closeSubpath()
+            }
+            context.fill(mound, with: .color(Color(white: 0.5).opacity(0.85)))
+            context.stroke(mound, with: .color(edge), lineWidth: 1)
+            let stone = Path(CGRect(x: x + size * 0.18, y: y - size * 0.3, width: size * 0.1, height: size * 0.3))
+            context.fill(stone, with: .color(tint))
+            context.stroke(stone, with: .color(edge), lineWidth: 0.8)
         case .watchfire:
             // A watchfire's flame in the light it keeps, ringed in its House's colour.
             context.fill(circle(size * 0.44), with: .color(Self.flame.opacity(0.16)))
@@ -560,6 +586,9 @@ struct ChartView: View {
 
     /// A vigil's flame, as the world draws it.
     static let flame = Color(red: 1.0, green: 0.74, blue: 0.40)
+    /// The corpse-lights' cold, pale green, as the world hangs them over
+    /// the dead left unburied.
+    static let corpseLight = Color(red: 0.62, green: 0.96, blue: 0.88)
 }
 
 /// What an offer on the chart does, folded away until the keeper asks, so

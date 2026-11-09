@@ -59,6 +59,10 @@ public struct CompanionChart: Equatable, Sendable {
         /// A hamlet of the free folk, or an old barrow, the House has found
         /// in the mist (`Find`); drawn dim once its Lanterns have sought it.
         case hamlet, barrow
+        /// Dead lying unburied (`FieldOfDead`), under the corpse-lights the
+        /// world hangs over them; and a barrow raised over a field's dead
+        /// (`Grave`).
+        case dead, grave
     }
 
     /// Something on the chart.
@@ -117,6 +121,9 @@ public struct CompanionChart: Equatable, Sendable {
         /// there, as the realm's chronicle keeps it, and the folk's or the
         /// stones' words on the phone.
         public var found: Found? = nil
+        /// A barrow the House raised there over a field's dead, as the Mac's
+        /// panel says it, and the words cut on its stone on the phone.
+        public var stone: Found? = nil
 
         /// Every order the rules would take there, each as offered.
         public var orders: [CompanionLedger.Order] {
@@ -280,6 +287,16 @@ public struct CompanionChart: Equatable, Sendable {
             marks.append(Mark(id: "find \(find.id)", hex: find.position, thing: find.kind == .hamlet ? .hamlet : .barrow, side: .other,
                               name: "\(CompanionChart.capitalized(find.named)), \(sought ? "sought" : "not yet sought")", dark: sought))
         }
+        // The dead lying unburied that the House knows of, and the barrows
+        // raised over fields of the dead, as the Mac's ground panel says them.
+        for field in world.fieldsOfDead where reached(field.at) {
+            marks.append(Mark(id: "dead \(field.at.q),\(field.at.r)", hex: field.at, thing: .dead,
+                              side: field.houses.contains(player) ? .own : .other, name: world.fieldOfDeadSaid(field, for: player)))
+        }
+        for grave in world.gravesRaised where reached(grave.at) {
+            marks.append(Mark(id: "grave \(grave.key)", hex: grave.at, thing: .grave, side: side(grave.house),
+                              name: world.graveSaid(grave, for: player)))
+        }
         for wild in world.wildsStanding where reached(wild.position) {
             marks.append(Mark(id: "wild \(wild.id)", hex: wild.position, thing: .wild, side: .wilds,
                               name: wild.called.lineBegun))
@@ -373,12 +390,23 @@ public struct CompanionChart: Equatable, Sendable {
                      raisings: CompanionChart.raisings(at: hex, in: world, player: player),
                      marking: CompanionChart.marking(at: hex, in: world, player: player),
                      watchman: CompanionChart.watchman(at: hex, in: world, player: player),
-                     found: CompanionChart.found(at: hex, in: world, player: player))
+                     found: CompanionChart.found(at: hex, in: world, player: player),
+                     stone: CompanionChart.stone(at: hex, in: world, player: player))
     }
 
     /// What came of the House's Lanterns seeking the hamlet or barrow at
     /// `hex`, and the key of its folk's or its stones' words; nil where
     /// none lies there or the House hasn't sought it.
+    /// The barrow the House raised at a hex, as the Mac's panel says it, and
+    /// the key of the words cut on its stone; nil where it raised none.
+    static func stone(at hex: Hex, in world: GameState, player: Int) -> Found? {
+        guard let grave = world.grave(at: hex), grave.house == player else { return nil }
+        return Found(said: world.graveSaid(grave, for: player), voice: "grave-\(grave.key)", who: CompanionChart.graveVoice)
+    }
+
+    /// Who the phone's model gives words to over a barrow the House raised.
+    public static let graveVoice = "the barrow's stone"
+
     static func found(at hex: Hex, in world: GameState, player: Int) -> Found? {
         guard let find = world.find(at: hex), let entry = world.discovery(of: find, by: player) else { return nil }
         return Found(said: entry.text, voice: "find-\(find.id)", who: find.kind == .hamlet ? "the hamlet's eldest" : "the barrow's stones")

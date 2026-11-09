@@ -813,6 +813,13 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   back not worded again, another House's none (GraveWordsTests on the Mac,
   `game-barrow-words.png`), and asked of the runner's model by CI's voice
   check. Its words on an eligible Mac Unverified, as every voice's are.
+  The phone's chart marks the dead lying unburied under their pale
+  corpse-lights and the barrows raised over fields of the dead, each in
+  the Mac's words, and a barrow its House raised gives the key of the
+  words on its stone, which the phone's own model is asked for as the
+  Mac's is (the House's last three barrows among its voices;
+  CompanionBurialTests on Linux); the phone's drawing of them Unverified
+  until the companion job builds it.
 
 ## The order of the work
 
