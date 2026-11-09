@@ -39,9 +39,22 @@ final class PhoneVoices {
     var unavailable: String? { writer.unvoiced }
 
     /// The moments the ledger keys now: each not yet asked is asked in its
-    /// turn, where the model can be asked at all.
+    /// turn, where the model can be asked at all. One the ledger keys no
+    /// longer (an envoy answered or gone, a plea answered or withdrawn) is
+    /// not asked, and its asking is stopped there, the model going on at
+    /// once to what still waits, as on the Mac; keyed again, it is asked
+    /// again.
     func hear(_ moments: [Voicing.Keyed]) {
         guard writer.unvoiced == nil else { return }
+        let keyed = Set(moments.map(\.key))
+        for gone in queue where !keyed.contains(gone.key) { asked.remove(gone.key) }
+        queue.removeAll { !keyed.contains($0.key) }
+        if let speaking = voicing, !keyed.contains(speaking.key) {
+            asking?.cancel()
+            asking = nil
+            voicing = nil
+            asked.remove(speaking.key)
+        }
         for moment in moments where !asked.contains(moment.key) {
             asked.insert(moment.key)
             queue.append(moment)
