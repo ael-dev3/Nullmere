@@ -268,6 +268,9 @@ final class PanelRenderTests: XCTestCase {
         }
         try draw(HousesPanel(session: session), width: 360, height: 900)
         try draw(EnvoyCards(session: session), width: 360)
+        // As a window draws it, the sending House's seat painted, kept with CI's screenshots.
+        Portraits.shared.prepareNow()
+        try CardShot.keep(EnvoyCards(session: session).padding(30), as: "game-envoy.png")
     }
 
     /// A chronicle's entry with the words the chronicler spoke for it,

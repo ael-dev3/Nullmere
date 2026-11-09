@@ -828,6 +828,8 @@ struct EnvoyCards: View {
 
     /// The most envoys told a line each behind the one heard.
     static let waitingLines = 3
+    /// The side of the sending House's painted seat, in points.
+    static let portrait: CGFloat = 34
 
     @Environment(\.worldMotion) private var motion
     /// The envoy brought forward, if the keeper chose one.
@@ -877,8 +879,10 @@ struct EnvoyCards: View {
                 let house = state.houses[envoy.from]
                 let left = state.watchesWaiting(of: envoy)
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
+                    HStack(spacing: 10) {
+                        // The House the envoy comes from, its seat painted in its people's way and colours.
+                        Portrait(key: .keepOf(state.heritage(of: envoy.from), seat: true), colour: Portrait.colour(of: envoy.from, in: state),
+                                 size: EnvoyCards.portrait)
                         Caps("An envoy of \(house.title)", size: 9, weight: .medium).foregroundStyle(Palette.ink)
                     }
                     VoicingLine(session: session, key: .envoy(envoy.id), who: "the envoy")
