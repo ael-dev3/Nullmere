@@ -495,4 +495,37 @@ extension TownsfolkTests {
         _ = stage.townsfolk([HoldSight(hold: burning, colour: sight.colour)], time: 12, crowds: true, into: &dark)
         XCTAssertTrue(dark.motes.isEmpty, "None walk out of a burning hold")
     }
+
+    /// One of a hold's folk at its gate with a plea for its keeper: standing
+    /// just beyond the gate as the hold is drawn, facing in toward the keep,
+    /// in its House's colour, at a hold whose ward is broken as at any; none
+    /// where no plea waits.
+    func testThePetitionerStandsAtTheGate() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        var hold = try seat([.granary: 1])
+        var frame = SceneFrame()
+        let plain = HoldSight(hold: hold, colour: Vec4(0.8, 0.2, 0.2, 1))
+        func folk(_ batches: [ModelBatch], _ key: ModelKey) -> [ModelInstance] { batches.filter { $0.key == key }.flatMap(\.instances) }
+        let key = ModelKey.folk(variant: Petition.Plea.mend.folk)
+        let without = folk(stage.townsfolk([plain], time: 3, into: &frame), key).count
+        var pleading = plain
+        pleading.petitioner = Petition.Plea.mend.folk
+        let added = folk(stage.townsfolk([pleading], time: 3, into: &frame), key)
+        XCTAssertEqual(added.count, without + 1)
+        let (foot, heading) = stage.petitionerStand(at: hold.position)
+        let petitioner = try XCTUnwrap(added.first { abs($0.model.c3.x - foot.x) < 1e-4 && abs($0.model.c3.z - foot.z) < 1e-4 })
+        XCTAssertEqual(petitioner.model.c3.y, stage.ground(atX: foot.x, z: foot.z), accuracy: 1e-4, "On the ground")
+        XCTAssertEqual(petitioner.colour, pleading.colour, "In their House's colour")
+        let centre = Relief.centre(of: hold.position)
+        let middle = Vec3(centre.x, 0, centre.z)
+        let gate = WorldStage.grand(HoldLayout.gate(of: hold.position), about: centre)
+        XCTAssertGreaterThan(flat(foot, middle), flat(gate, middle), "Beyond the gate as the hold is drawn")
+        let facing = Vec3(Float(sin(Double(heading))), 0, Float(cos(Double(heading))))
+        XCTAssertGreaterThan(facing.x * (middle.x - foot.x) + facing.z * (middle.z - foot.z), 0, "Facing the keep")
+        // At a hold whose ward is broken, the plea's own case: the town keeps within, the petitioner stands.
+        hold.ward = 0
+        pleading.hold = hold
+        XCTAssertEqual(stage.townsfolk([pleading], time: 3, into: &frame).flatMap(\.instances).count, 1)
+        XCTAssertEqual(Petition.Plea.allCases.map(\.folk), [Folk.porter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
+    }
 }

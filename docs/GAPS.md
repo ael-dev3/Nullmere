@@ -476,7 +476,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   caretaker, the keeper's own view alone, the voiced facts, kept in saves
   and the realm's parts, brought by a realm's turn and by no other); on the Mac a card beside the world where envoys
   come, the petitioner painted from the hold's townsfolk
-  (`PetitionCardTests`, kept as a window draws it, `game-petition.png`); on the phone's House tab with the same answers
+  (`PetitionCardTests`, kept as a window draws it, `game-petition.png`),
+  and the petitioner drawn in the world standing just beyond their hold's
+  gate as the hold is drawn, facing in, a lantern in hand where their kind
+  carries one, at a hold whose ward is broken as at any
+  (`testThePetitionerStandsAtTheGate`); on the phone's House tab with the same answers
   and its own model's words (`PhoneVoicesTests`). CI logs the plea waiting
   forty watches on with its photograph (`game-plea.log`,
   `game-later.png`); the petitioner's own words from a model are heard

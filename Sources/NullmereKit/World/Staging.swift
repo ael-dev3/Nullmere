@@ -96,13 +96,15 @@ extension GameSession {
         let view = size.map { ViewFrustum(viewProjection: camera.viewProjection(in: $0)) }
         func inView(_ hex: Hex, within reach: Float) -> Bool { view?.sees(hex, within: reach) ?? true }
 
-        // The holds the keeper knows of, each with its works.
+        // The holds the keeper knows of, each with its works, and the one
+        // whose folk wait at its gate with a plea for the keeper.
         var sights: [HoldSight] = []
+        let pleading = state.petition(of: player)
         for hold in state.holds where isExplored(hold.position) {
             let colour = WorldStage.colour(houses, sigil: state.houses[hold.owner].sigil)
             let (progress, finishing) = rising(of: hold, at: now, animated: full)
             sights.append(HoldSight(hold: hold, colour: colour, progress: progress, finishing: finishing,
-                                    heritage: state.heritage(of: hold.owner)))
+                                    heritage: state.heritage(of: hold.owner), petitioner: pleading.flatMap { $0.hold == hold.id ? $0.plea.folk : nil }))
         }
         let shown = sights.filter { inView($0.hold.position, within: GameSession.holdReach) }
         let (holds, hearths) = stage.holds(shown, time: t, into: &frame)

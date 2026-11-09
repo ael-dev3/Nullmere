@@ -160,6 +160,20 @@ public struct Hearth: Equatable, Sendable {
     }
 }
 
+extension Petition.Plea {
+    /// Which of the townsfolk brings a plea of this kind (`Folk`'s
+    /// variants): a porter for the masons, an elder for the healers, a
+    /// farmhand for the reeve's folk, a water-carrier for the brewers.
+    public var folk: Int {
+        switch self {
+        case .mend: return Folk.porter
+        case .tend: return Folk.elder
+        case .hands: return Folk.farmhand
+        case .feast: return Folk.waterCarrier
+        }
+    }
+}
+
 /// A hold as a frame draws it: its works as the rules keep them, how far
 /// a work rising has risen, and its House's colour.
 public struct HoldSight: Equatable, Sendable {
@@ -172,13 +186,18 @@ public struct HoldSight: Equatable, Sendable {
     public var finishing: HoldLayout.Plan.Rising?
     /// The people its House comes of, whose keep it raises.
     public var heritage: Heritage?
+    /// Which of the townsfolk stands at its gate with a plea for its keeper
+    /// (`Folk`'s variants), while one waits on the answer; nil for none.
+    public var petitioner: Int?
 
-    public init(hold: Hold, colour: Vec4, progress: Float? = nil, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil) {
+    public init(hold: Hold, colour: Vec4, progress: Float? = nil, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil,
+                petitioner: Int? = nil) {
         self.hold = hold
         self.colour = colour
         self.progress = progress
         self.finishing = finishing
         self.heritage = heritage
+        self.petitioner = petitioner
     }
 }
 
@@ -868,7 +887,40 @@ public final class WorldStage: @unchecked Sendable {
                                                        colour: sight.colour, phase: Float(salt % 17) * 0.31, hex: hex, palette: start)))
             }
         }
+        // One of a hold's folk at its gate with a plea for its keeper,
+        // waiting on the answer, facing in, a light in hand where they carry
+        // one: at a hold whose ward is broken as at any.
+        for sight in sights {
+            guard let variant = sight.petitioner else { continue }
+            let (foot, heading) = petitionerStand(at: sight.hold.position)
+            let key = ModelKey.folk(variant: variant)
+            let salt = sight.hold.id &* 89
+            let start = WorldStage.pose(key, .idle, at: time + Float(salt % 13) * 0.23, shared: &shared, into: &frame)
+            placed.append((key, ModelInstance(model: .translation(foot) * .rotationY(heading), colour: sight.colour,
+                                              phase: Float(salt % 17) * 0.31, hex: SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r)),
+                                              palette: start)))
+            if Folk.carriesLantern(variant) {
+                let lantern = WorldStage.lantern(at: foot, heading: heading, height: Folk.lanternHeight(variant), time: time, salt: salt)
+                frame.motes.append(lantern.flame)
+                frame.motes.append(lantern.glow)
+            }
+        }
         return WorldStage.batches(placed)
+    }
+
+    /// How far beyond a hold's gate its petitioner stands.
+    static let petitionerOut: Float = 0.1
+
+    /// Where a hold's petitioner stands, on the ground just beyond its gate
+    /// as the hold is drawn (`grand`), and the way they face: in, toward the
+    /// keep.
+    func petitionerStand(at hex: Hex) -> (foot: Vec3, heading: Float) {
+        let centre = Relief.centre(of: hex), gate = HoldLayout.gate(of: hex)
+        let dx = gate.x - centre.x, dz = gate.z - centre.z
+        let length = max((dx * dx + dz * dz).squareRoot(), 1e-4)
+        let beyond = Vec3(gate.x + dx / length * WorldStage.petitionerOut, 0, gate.z + dz / length * WorldStage.petitionerOut)
+        let at = WorldStage.grand(beyond, about: centre)
+        return (Vec3(at.x, ground(atX: at.x, z: at.z), at.z), Float(atan2(Double(-dx), Double(-dz))))
     }
 
     /// One in this many of the townsfolk with a hand free carries a lantern.

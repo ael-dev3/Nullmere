@@ -1507,9 +1507,11 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   30 grain to tend it by thirty; a work or a muster two watches or more
   from done, the reeve asks 40 grain to bring it a watch nearer; at the
   full moon, a brewer of the seat asks 60 grain for a feast, and the folk
-  give your House a Salt Hourglass in thanks. Its card stands beside the
-  world where envoys come, the petitioner painted from the hold's own
-  townsfolk, and your Mac's model gives them words of their own from the
+  give your House a Salt Hourglass in thanks. The petitioner stands at the
+  hold's gate in the world while the plea waits, facing in, a lantern in
+  hand where they carry one, even at a hold whose ward is broken and whose
+  folk keep within. Its card stands beside the world where envoys come,
+  the petitioner painted from the hold's own townsfolk, and your Mac's model gives them words of their own from the
   plea's facts, the seconds counted as it does, or says why it can't; the
   plea stands in the realm's words beneath. Grant it, paying what they
   ask, or Turn it away; unanswered three watches, it is turned away by

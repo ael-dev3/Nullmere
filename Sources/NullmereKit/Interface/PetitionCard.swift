@@ -1,5 +1,6 @@
 import NullmereCore
 import NullmereModels
+import NullmereWorld
 import SwiftUI
 
 /// A plea the folk of one of the keeper's holds bring to their gate, beside
@@ -70,17 +71,9 @@ struct PetitionCard: View {
     /// The petitioner's portrait's side in points.
     static let portrait: CGFloat = 40
 
-    /// Which of the townsfolk brings a plea: a porter for the masons, an
-    /// elder for the healers, a farmhand for the reeve's folk, a
-    /// water-carrier for the brewers.
-    static func variant(of plea: Petition.Plea) -> Int {
-        switch plea {
-        case .mend: return Folk.porter
-        case .tend: return Folk.elder
-        case .hands: return Folk.farmhand
-        case .feast: return Folk.waterCarrier
-        }
-    }
+    /// Which of the townsfolk brings a plea, as the world stands them at
+    /// the hold's gate (`Petition.Plea.folk`).
+    static func variant(of plea: Petition.Plea) -> Int { plea.folk }
 
     /// How long the plea waits for its answer: "Waits 3 watches".
     static func waits(_ petition: Petition, at watch: Int) -> String {
