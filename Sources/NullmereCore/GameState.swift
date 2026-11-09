@@ -779,11 +779,14 @@ public struct GameState: Codable, Equatable, Sendable {
         return houses.indices.map { held[$0] * 10 + built[$0] * 2 + companies[$0] + spire[$0] * 15 }
     }
 
-    /// Whether no House standing is more renowned than this one.
+    /// Whether no House standing is more renowned than this one: each
+    /// reckoned from its own holds and companies where the realm keeps
+    /// them, until one is found more renowned, not every hold and company
+    /// of the realm gone over for every House's at once.
     public func isForemost(_ house: Int) -> Bool {
-        let renowns = renowns()
-        guard renowns.indices.contains(house) else { return false }
-        return livingIDs.allSatisfy { $0 == house || renowns[$0] <= renowns[house] }
+        guard houses.indices.contains(house) else { return false }
+        let mine = renown(of: house)
+        return livingIDs.allSatisfy { $0 == house || renown(of: $0) <= mine }
     }
 
     // MARK: Sight
