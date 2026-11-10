@@ -349,7 +349,11 @@ a vote on the realm's law to cast.
   shores' regions written faint beneath them, and from each of the
   House's companies on the march a line to where it is bound. Drag to look
   about
-  and pinch to look closer; Your seat turns the chart back. Tap a hex for
+  and pinch to look closer; Your seat turns the chart back. Seek, as the
+  Mac's Seek on the land, turns the chart to the nearest your seat of the
+  wilds, a site of a store, a lair, a holy site or a find your House has
+  seen on it, and chooses it, a line above saying what and where, and how
+  many are seen; choose the same again for the next. Tap a hex for
   what lies there and the orders the rules would take there: a strike on
   it from each company in reach, a rally called on it, a hold of another
   House scouted by the House's Lanterns in reach (the report following

@@ -12,6 +12,10 @@ struct LandTab: View {
     let session: CompanionSession
     @State private var chosen: Hex?
     @State private var recentred = 0
+    /// The keeper's search on the chart, and a count of what it turned the
+    /// chart to, so the chart turns to each.
+    @State private var seeking = ChartSeeking()
+    @State private var sought = 0
 
     var body: some View {
         NavigationStack {
@@ -19,13 +23,21 @@ struct LandTab: View {
                 if let world = session.world, let house = session.keeper?.house {
                     let chart = CompanionChart(world: world, player: house)
                     VStack(spacing: 0) {
-                        ChartView(chart: chart, chosen: $chosen, recentred: recentred)
+                        ChartView(chart: chart, chosen: $chosen, recentred: recentred, sought: sought)
                             .frame(maxWidth: .infinity)
                             .frame(height: 330)
                         List {
                             if session.linkTold {
                                 Section {
                                     ReachLine(session: session)
+                                }
+                            }
+                            // What the search found, or that the House has seen none.
+                            if let line = seeking.line(on: chart) {
+                                Section {
+                                    Text(verbatim: line)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.8))
                                 }
                             }
                             if let hex = chosen, chart.contains(hex) {
@@ -41,6 +53,21 @@ struct LandTab: View {
                         .scrollContentBackground(.hidden)
                     }
                     .toolbar {
+                        // Rise of Kingdoms' search on the map, as the Mac's
+                        // Seek on the land: the nearest the seat of what the
+                        // House has seen; chosen again, the next.
+                        Menu("Seek") {
+                            ForEach(Seeking.allCases, id: \.self) { kind in
+                                Button(kind.title) {
+                                    if let hex = seeking.seek(kind, on: chart, in: world, player: house) {
+                                        chosen = hex
+                                        sought += 1
+                                    }
+                                }
+                            }
+                        }
+                        .font(Night.small)
+                        .accessibilityHint("Turns the chart to the nearest your House has seen of what you choose, and chooses it; choose it again for the next")
                         Button("Your seat") {
                             chosen = chart.center
                             recentred += 1
@@ -229,6 +256,8 @@ struct ChartView: View {
     @Binding var chosen: Hex?
     /// Changed to turn the chart back to its heart.
     let recentred: Int
+    /// Changed to turn the chart to the hex chosen, as a search finds one.
+    var sought = 0
     /// How far the chart is moved from its heart, in hexes' sizes, so it
     /// holds the same ground as it is pinched.
     @State private var pan = CGSize.zero
@@ -272,6 +301,15 @@ struct ChartView: View {
         .onChange(of: recentred) {
             pan = .zero
             panned = .zero
+        }
+        .onChange(of: sought) {
+            // The hex found brought to the chart's middle, as far as the
+            // chart may be moved.
+            guard let chosen else { return }
+            let layout = HexLayout(size: 1)
+            let heart = layout.center(of: chart.center), at = layout.center(of: chosen)
+            pan = bounded(CGSize(width: heart.x - at.x, height: heart.y - at.y))
+            panned = pan
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The land about your seat")
