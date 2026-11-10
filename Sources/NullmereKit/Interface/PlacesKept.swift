@@ -18,9 +18,10 @@ struct KeepPlaceRow: View {
         _name = State(initialValue: name)
     }
 
-    /// Why the book can't keep another place, while it can't.
+    /// Why the book can't keep another place, while it can't, as the
+    /// phone says it too.
     static func refusal(_ book: PlaceBook) -> String? {
-        book.isFull ? "Your book keeps \(PlaceBook.limit) places: forget one to keep another." : nil
+        book.refusal
     }
 
     var body: some View {
@@ -76,21 +77,15 @@ struct PlacesSection: View {
         _open = State(initialValue: open)
     }
 
-    /// The book in a line, while it is folded.
+    /// The book in a line, while it is folded, as the phone says it too.
     static func summary(_ book: PlaceBook) -> String {
-        guard let newest = book.places.first else {
-            return "No places kept. Keep one from a hold or the ground to come back to it."
-        }
-        let count = book.places.count == 1 ? "1 place kept" : "\(book.places.count) places kept"
-        return "\(count), the newest \(newest.name)."
+        book.summary
     }
 
     /// What stands at a kept place now, if it goes by another name than it
-    /// was kept by, and since when it is kept.
+    /// was kept by, and since when it is kept, as the phone says it too.
     static func line(_ place: KeptPlace, in state: GameState) -> String {
-        let now = state.keptName(of: place.at)
-        let since = "kept at watch \(place.kept)"
-        return now == place.name ? since.prefix(1).uppercased() + since.dropFirst() : "\(now), \(since)"
+        state.keptLine(place)
     }
 
     var body: some View {

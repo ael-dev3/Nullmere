@@ -23,7 +23,8 @@ struct LandTab: View {
                 if let world = session.world, let house = session.keeper?.house {
                     let chart = CompanionChart(world: world, player: house)
                     VStack(spacing: 0) {
-                        ChartView(chart: chart, chosen: $chosen, recentred: recentred, sought: sought)
+                        ChartView(chart: chart, chosen: $chosen, recentred: recentred, sought: sought,
+                                  kept: session.placeBook.places.map(\.at))
                             .frame(maxWidth: .infinity)
                             .frame(height: 330)
                         List {
@@ -68,12 +69,36 @@ struct LandTab: View {
                         }
                         .font(Night.small)
                         .accessibilityHint("Turns the chart to the nearest your House has seen of what you choose, and chooses it; choose it again for the next")
-                        Button("Your seat") {
-                            chosen = chart.center
-                            recentred += 1
+                        // The seat and the places kept in this phone's
+                        // book (Rise of Kingdoms' bookmarks), as the Mac
+                        // keeps its own: chosen, the chart turns there.
+                        Menu("Places") {
+                            Button("Your seat") {
+                                chosen = chart.center
+                                recentred += 1
+                            }
+                            .accessibilityHint("Turns the chart back to your seat and chooses it")
+                            let book = session.placeBook
+                            if book.places.isEmpty {
+                                Text(verbatim: book.summary)
+                            } else {
+                                Section("Kept on this phone") {
+                                    ForEach(book.places) { place in
+                                        let reached = chart.contains(place.at)
+                                        Button {
+                                            chosen = place.at
+                                            sought += 1
+                                        } label: {
+                                            Text(verbatim: place.name)
+                                            Text(verbatim: reached ? world.keptLine(place) : "Beyond the chart about your seat")
+                                        }
+                                        .disabled(!reached)
+                                    }
+                                }
+                            }
                         }
                         .font(Night.small)
-                        .accessibilityHint("Turns the chart back to your seat and chooses it")
+                        .accessibilityHint("Turns the chart to your seat or a place kept in your book, and chooses it")
                     }
                 }
             }
@@ -85,9 +110,11 @@ struct LandTab: View {
         }
         .onAppear {
             #if DEBUG
-            // Seen by the smoke test with the House's first company chosen.
+            // Seen by the smoke test with the House's first company chosen,
+            // and its seat kept in the phone's book, marked on the chart.
             if CompanionCheck.tabShown == .land, chosen == nil, let world = session.world, let house = session.keeper?.house {
                 chosen = world.units(of: house).first?.position ?? world.seat(of: house)?.position
+                if let seat = world.seat(of: house)?.position { session.keepPlace(seat) }
             }
             #endif
         }
@@ -135,6 +162,7 @@ struct PlaceSections: View {
             if let stone = place.stone {
                 VoicedWords(key: stone.voice, who: stone.who)
             }
+            KeepPlaceRow(session: session, hex: place.hex)
             ForEach(Array((place.strikes + place.calls).enumerated()), id: \.offset) { order in
                 Button(order.element.title) {
                     session.give(order.element.command, told: order.element.title)
@@ -200,6 +228,63 @@ struct PlaceSections: View {
     }
 }
 
+/// Whether this phone's book keeps the hex chosen (Rise of Kingdoms'
+/// bookmarks), by what name, to forget it; or else to keep it, by the name
+/// it goes by or one the keeper gives, as the Mac keeps its own.
+struct KeepPlaceRow: View {
+    let session: CompanionSession
+    let hex: Hex
+    @State private var naming = false
+    @State private var name = ""
+
+    var body: some View {
+        let book = session.placeBook
+        if let kept = book.place(at: hex) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: "Among your places")
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.6))
+                    Text(verbatim: kept.name)
+                        .font(Night.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                Spacer(minLength: 8)
+                Button("Forget") { session.forgetPlace(hex) }
+                    .font(Night.small)
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Forget \(kept.name) from your places")
+            }
+        } else {
+            let called = session.world?.keptName(of: hex) ?? "this place"
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Keep this place") {
+                    name = ""
+                    naming = true
+                }
+                .font(Night.small)
+                .buttonStyle(.bordered)
+                .disabled(book.isFull)
+                .accessibilityHint("Keeps it among your places on this phone, to turn the chart back to")
+                if let refusal = book.refusal {
+                    Text(verbatim: refusal)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .alert("Keep this place", isPresented: $naming) {
+                TextField(called, text: $name)
+                Button("Keep") { session.keepPlace(hex, named: name) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(verbatim: "By a name of your own, or as \(called).")
+            }
+        }
+    }
+}
+
 /// Orders side by side, each its own bordered button, wrapping onto the
 /// next line where they don't fit.
 struct FlowOrders: View {
@@ -258,6 +343,8 @@ struct ChartView: View {
     let recentred: Int
     /// Changed to turn the chart to the hex chosen, as a search finds one.
     var sought = 0
+    /// The places kept in this phone's book, each marked by a pennant.
+    var kept: [Hex] = []
     /// How far the chart is moved from its heart, in hexes' sizes, so it
     /// holds the same ground as it is pinched.
     @State private var pan = CGSize.zero
@@ -425,6 +512,13 @@ struct ChartView: View {
             guard shown.contains(at) else { continue }
             Self.draw(mark, at: at, size: size, in: &context)
         }
+        for hex in kept where chart.contains(hex) {
+            let at = point(of: hex, canvas: canvas, size: size)
+            guard shown.contains(at) else { continue }
+            let pennant = Self.pennant(at: at, size: size)
+            context.fill(pennant, with: .color(Night.moon.opacity(0.85)))
+            context.stroke(pennant, with: .color(Night.background.opacity(0.8)), lineWidth: 0.6)
+        }
         if let chosen, chart.contains(chosen) {
             let at = point(of: chosen, canvas: canvas, size: size)
             context.stroke(cell.offsetBy(dx: at.x, dy: at.y), with: .color(Night.moon), lineWidth: 2.5)
@@ -445,6 +539,21 @@ struct ChartView: View {
                             .foregroundStyle(Self.colour(of: mark.side)),
                          at: CGPoint(x: Double(at.x), y: Double(at.y) + size * 1.05))
         }
+    }
+
+    /// A place kept, marked by a small pennant on its staff at the hex's
+    /// upper right, clear of what stands at its heart; the same size
+    /// however the chart is pinched, so it never hides the land.
+    static func pennant(at hex: CGPoint, size: Double) -> Path {
+        let foot = CGPoint(x: Double(hex.x) + size * 0.45, y: Double(hex.y) - size * 0.1)
+        let height = 9.0, width = 6.0
+        var path = Path()
+        path.move(to: foot)
+        path.addLine(to: CGPoint(x: foot.x, y: foot.y - height))
+        path.addLine(to: CGPoint(x: foot.x + width, y: foot.y - height * 0.7))
+        path.addLine(to: CGPoint(x: foot.x, y: foot.y - height * 0.4))
+        path.closeSubpath()
+        return path
     }
 
     /// The most Houses named at once on a chart pinched out.

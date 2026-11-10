@@ -27,6 +27,7 @@ final class PlaceBookTests: XCTestCase {
 
     func testANameIsKeptOnOneLineAndNoLongerThanABookAllows() throws {
         XCTAssertEqual(PlaceBook.kept("  The ford\nby Wenholme  "), "The ford by Wenholme")
+        XCTAssertEqual(PlaceBook.kept("The ford\n  by \t Wenholme"), "The ford by Wenholme", "its words a space apart")
         XCTAssertNil(PlaceBook.kept(" \n\t "))
         let long = try XCTUnwrap(PlaceBook.kept(String(repeating: "Blackwood ", count: 10)))
         XCTAssertLessThanOrEqual(long.count, PlaceBook.longestName)
@@ -39,6 +40,20 @@ final class PlaceBookTests: XCTestCase {
         XCTAssertFalse(book.rename(Hex(0, 1), to: "   "), "never named nothing")
         XCTAssertEqual(book.place(at: Hex(0, 1))?.name, "Where the Spears wait")
         XCTAssertFalse(book.rename(Hex(5, 5), to: "Nowhere"), "a place it doesn't keep")
+    }
+
+    /// The book in a line and why it keeps no more, as the Mac and the
+    /// phone both say them.
+    func testABookIsSaidInALine() {
+        var book = PlaceBook()
+        XCTAssertEqual(book.summary, "No places kept. Keep one from a hold or the ground to come back to it.")
+        XCTAssertNil(book.refusal)
+        book.keep(Hex(2, 2), named: "The ford", at: 4)
+        XCTAssertEqual(book.summary, "1 place kept, the newest The ford.")
+        book.keep(Hex(3, 2), named: "Wenholme", at: 5)
+        XCTAssertEqual(book.summary, "2 places kept, the newest Wenholme.")
+        for index in 0..<PlaceBook.limit { book.keep(Hex(index, 9), named: "Place \(index)", at: 6) }
+        XCTAssertEqual(book.refusal, "Your book keeps 20 places: forget one to keep another.")
     }
 
     func testABookIsFullAtAScoreAndKeepsWhatItKeptAcrossItsKeeping() throws {

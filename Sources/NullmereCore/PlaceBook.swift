@@ -35,11 +35,10 @@ public struct PlaceBook: Codable, Equatable, Sendable {
 
     public var isFull: Bool { places.count >= PlaceBook.limit }
 
-    /// A name as a book keeps it: on one line, without spaces about it, no
-    /// longer than `longestName`; nil if nothing is left.
+    /// A name as a book keeps it: on one line, its words a space apart and
+    /// none about them, no longer than `longestName`; nil if nothing is left.
     public static func kept(_ name: String) -> String? {
-        let line = name.split(whereSeparator: \.isNewline).joined(separator: " ")
-            .trimmingCharacters(in: .whitespaces)
+        let line = name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         guard !line.isEmpty else { return nil }
         return String(line.prefix(longestName)).trimmingCharacters(in: .whitespaces)
     }
@@ -68,7 +67,32 @@ public struct PlaceBook: Codable, Equatable, Sendable {
     }
 }
 
+extension PlaceBook {
+    /// The book in a line, as the Mac's list folded away and the phone's
+    /// menu say it.
+    public var summary: String {
+        guard let newest = places.first else {
+            return "No places kept. Keep one from a hold or the ground to come back to it."
+        }
+        let count = places.count == 1 ? "1 place kept" : "\(places.count) places kept"
+        return "\(count), the newest \(newest.name)."
+    }
+
+    /// Why the book can't keep another place, while it can't.
+    public var refusal: String? {
+        isFull ? "Your book keeps \(PlaceBook.limit) places: forget one to keep another." : nil
+    }
+}
+
 extension GameState {
+    /// What stands at a kept place now, if it goes by another name than it
+    /// was kept by, and since when it is kept.
+    public func keptLine(_ place: KeptPlace) -> String {
+        let now = keptName(of: place.at)
+        let since = "kept at watch \(place.kept)"
+        return now == place.name ? since.prefix(1).uppercased() + since.dropFirst() : "\(now), \(since)"
+    }
+
     /// What a place is called in a keeper's book unless they name it: the
     /// hold standing there, or its ground by the nearest hold within a few
     /// tiles, as a report says where something happened.

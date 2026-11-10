@@ -232,6 +232,81 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// The places a keeper keeps in their phone's own book (Rise of
+    /// Kingdoms' bookmarks), as their Mac keeps its own: none until kept;
+    /// each kept by the name it goes by or one of the keeper's, the newest
+    /// first, once to a hex, a score at most; let go; kept in the phone's
+    /// memory for the age, none of another; forgotten with the rest when
+    /// the phone is let go.
+    func testThePhoneKeepsItsOwnBookOfPlaces() async throws {
+        let (db, running, mac, keeper, _) = try await realm()
+        defer { running.cancel() }
+        let memory = PassingMemory()
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: memory) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        XCTAssertFalse(phone.keepPlace(Hex(0, 0)), "Speaking for no keeper, it keeps nothing")
+        XCTAssertNil(memory.places)
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping && phone.status != nil }
+        let world = try XCTUnwrap(phone.world)
+        let age = try XCTUnwrap(phone.status?.age)
+        let seat = try XCTUnwrap(world.seat(of: try XCTUnwrap(keeper.house)))
+        XCTAssertTrue(phone.placeBook.places.isEmpty)
+        XCTAssertEqual(phone.placeBook.summary, "No places kept. Keep one from a hold or the ground to come back to it.")
+
+        // The seat by the name it goes by; ground beside it by the keeper's
+        // own name, or by its own where the keeper's is empty.
+        let ground = try XCTUnwrap(seat.position.neighbors.first { world.hold(at: $0) == nil })
+        let farther = try XCTUnwrap(ground.neighbors.first { $0 != seat.position && $0 != ground && world.hold(at: $0) == nil })
+        XCTAssertTrue(phone.keepPlace(seat.position))
+        XCTAssertTrue(phone.keepPlace(ground, named: "  The ford\n by the seat "))
+        XCTAssertTrue(phone.keepPlace(farther, named: " \n "))
+        XCTAssertEqual(phone.placeBook.places.map(\.name), [world.keptName(of: farther), "The ford by the seat", seat.name], "The newest first")
+        XCTAssertEqual(phone.placeBook.place(at: seat.position)?.kept, world.watch)
+        XCTAssertEqual(world.keptLine(try XCTUnwrap(phone.placeBook.place(at: seat.position))), "Kept at watch \(world.watch)")
+        XCTAssertEqual(world.keptLine(try XCTUnwrap(phone.placeBook.place(at: ground))),
+                       "\(world.keptName(of: ground)), kept at watch \(world.watch)", "What it goes by now, beside the keeper's name")
+        XCTAssertEqual(phone.placeBook.summary, "3 places kept, the newest \(world.keptName(of: farther)).")
+        XCTAssertFalse(phone.keepPlace(seat.position, named: "Home"), "Once to a hex")
+        XCTAssertEqual(memory.places, PhonePlaces(age: age, book: phone.placeBook), "Kept in the phone's memory for the age")
+        let written = try JSONEncoder().encode(try XCTUnwrap(memory.places))
+        XCTAssertEqual(try JSONDecoder().decode(PhonePlaces.self, from: written), memory.places, "As the phone's defaults keep it")
+
+        // Let go, one place; one the book doesn't keep changes nothing.
+        phone.forgetPlace(ground)
+        XCTAssertNil(phone.placeBook.place(at: ground))
+        phone.forgetPlace(Hex(seat.position.q + 40, seat.position.r))
+        XCTAssertEqual(phone.placeBook.places.map(\.at), [farther, seat.position])
+        XCTAssertEqual(memory.places?.book, phone.placeBook)
+
+        // A score at most, and why no more.
+        var q = 0
+        while !phone.placeBook.isFull {
+            q += 1
+            XCTAssertTrue(phone.keepPlace(Hex(seat.position.q + 30 + q, seat.position.r)))
+        }
+        XCTAssertEqual(phone.placeBook.places.count, PlaceBook.limit)
+        XCTAssertFalse(phone.keepPlace(ground))
+        XCTAssertEqual(phone.placeBook.refusal, "Your book keeps \(PlaceBook.limit) places: forget one to keep another.")
+
+        // A book of an age gone by is none of this one's, and keeping begins
+        // this age's anew.
+        memory.places = PhonePlaces(age: age - 1, book: phone.placeBook)
+        XCTAssertTrue(phone.placeBook.places.isEmpty, "Nothing of an age gone by")
+        XCTAssertTrue(phone.keepPlace(ground))
+        XCTAssertEqual(memory.places?.age, age)
+        XCTAssertEqual(phone.placeBook.places.map(\.at), [ground])
+
+        // Let go from the phone: its book forgotten, and nothing kept after.
+        phone.unlink()
+        XCTAssertNil(memory.places)
+        XCTAssertTrue(phone.placeBook.places.isEmpty)
+        XCTAssertFalse(phone.keepPlace(ground), "Linked to no realm, it keeps no places")
+        XCTAssertNil(memory.places)
+        mac.close()
+    }
+
     /// The realm's other words, as the phone hears them while it keeps the
     /// House: an order the realm refused, its reason told with the world as
     /// it stands; a refusal of anything else, told as itself; the world

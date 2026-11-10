@@ -54,6 +54,7 @@ final class DefaultsMemory: CompanionMemory {
     private let key = "companion.realm"
     private let counselKey = "companion.counsel"
     private let seenKey = "companion.lastSeen"
+    private let placesKey = "companion.places"
     var realm: URL? {
         get { UserDefaults.standard.string(forKey: key).flatMap(URL.init(string:)) }
         set { UserDefaults.standard.set(newValue?.absoluteString, forKey: key) }
@@ -65,6 +66,16 @@ final class DefaultsMemory: CompanionMemory {
                 UserDefaults.standard.set(data, forKey: seenKey)
             } else {
                 UserDefaults.standard.removeObject(forKey: seenKey)
+            }
+        }
+    }
+    var places: PhonePlaces? {
+        get { UserDefaults.standard.data(forKey: placesKey).flatMap { try? JSONDecoder().decode(PhonePlaces.self, from: $0) } }
+        set {
+            if let newValue, let data = try? JSONEncoder().encode(newValue) {
+                UserDefaults.standard.set(data, forKey: placesKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: placesKey)
             }
         }
     }

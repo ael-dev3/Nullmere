@@ -182,10 +182,21 @@ struct OwnHoldDetails: View {
                 if session.playerHouse.isPlayer, hold.isSeat || state.isVeiled(session.player) {
                     VeilLine(session: session)
                 }
-                HStack {
-                    Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
-                    Spacer()
-                    CostLine(cost: state.income(of: hold), available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
+                // The yield beside its label where the four fit a line, else
+                // beneath it whole (run 924's seat card broke them over two
+                // lines beside the label, the fourth alone under the rest).
+                let yield = state.income(of: hold)
+                let unbounded = Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max)
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5)).fixedSize()
+                        Spacer(minLength: 12)
+                        CostLine(cost: yield, available: unbounded).fixedSize()
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
+                        CostLine(cost: yield, available: unbounded)
+                    }
                 }
                 .accessibilityElement(children: .combine)
                 // Only while it stands under its alliance's standards.

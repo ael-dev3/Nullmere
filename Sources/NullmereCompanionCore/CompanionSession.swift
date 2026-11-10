@@ -14,6 +14,9 @@ public protocol CompanionMemory: AnyObject {
     /// What the keeper last saw of their House on this phone, to tell them
     /// what happened while it was set aside.
     var lastSeen: LastSeen? { get set }
+    /// The places the keeper keeps in this phone's own book, and the age
+    /// they were kept in.
+    var places: PhonePlaces? { get set }
 }
 
 /// A memory kept for the life of the process: for tests.
@@ -21,7 +24,21 @@ public final class PassingMemory: CompanionMemory {
     public var realm: URL?
     public var counsel: [Int: CounselMemory] = [:]
     public var lastSeen: LastSeen?
+    public var places: PhonePlaces?
     public init(realm: URL? = nil) { self.realm = realm }
+}
+
+/// The places a keeper keeps in their phone's own book (Rise of Kingdoms'
+/// bookmarks, as their Mac keeps its own: the realm knows nothing of
+/// either), for the age they were kept in.
+public struct PhonePlaces: Codable, Equatable, Sendable {
+    public let age: Int
+    public var book: PlaceBook
+
+    public init(age: Int, book: PlaceBook = PlaceBook()) {
+        self.age = age
+        self.book = book
+    }
 }
 
 /// A keeper's phone on their realm. Linked once by the code their Mac shows,
@@ -305,6 +322,40 @@ public final class CompanionSession {
         away = nil
     }
 
+    /// The places the keeper keeps in this phone's book this age, the
+    /// newest first, as the Mac keeps its own; none of another age.
+    public var placeBook: PlaceBook {
+        _ = placesChanged
+        guard let kept = memory.places, let age = status?.age, kept.age == age else { return PlaceBook() }
+        return kept.book
+    }
+
+    /// Changed as the book is, so what shows it is drawn again.
+    private var placesChanged = 0
+
+    /// Keeps `hex` in this phone's book of places, by `name` if the keeper
+    /// gives one or else by the name it goes by, as the Mac keeps it; false
+    /// where the book keeps it already or is full, or the phone speaks for
+    /// no keeper.
+    @discardableResult
+    public func keepPlace(_ hex: Hex, named name: String? = nil) -> Bool {
+        guard phase == .keeping, let world, let age = status?.age else { return false }
+        var book = placeBook
+        guard book.keep(hex, named: name.flatMap(PlaceBook.kept) ?? world.keptName(of: hex), at: world.watch) else { return false }
+        memory.places = PhonePlaces(age: age, book: book)
+        placesChanged &+= 1
+        return true
+    }
+
+    /// Lets the place at `hex` go from this phone's book.
+    public func forgetPlace(_ hex: Hex) {
+        guard let age = status?.age, placeBook.place(at: hex) != nil else { return }
+        var book = placeBook
+        book.forget(hex)
+        memory.places = PhonePlaces(age: age, book: book)
+        placesChanged &+= 1
+    }
+
     /// Keeps what a commander remembers of counsel taken here, forgetting
     /// what any remembers of an age gone by.
     public func remember(_ counsel: CounselMemory) {
@@ -563,6 +614,8 @@ public final class CompanionSession {
         memory.realm = nil
         memory.counsel = [:]
         memory.lastSeen = nil
+        memory.places = nil
+        placesChanged &+= 1
         away = nil
         hearing = nil
         keeper = nil
