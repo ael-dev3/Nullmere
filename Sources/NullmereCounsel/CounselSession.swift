@@ -51,6 +51,11 @@ public actor CounselBench {
         return kept(counsel.allianceReport)
     }
 
+    public func yourself() -> String {
+        looks.append("Looked to themself")
+        return kept(counsel.selfReport)
+    }
+
     private func kept(_ said: String) -> String {
         told.append(said)
         return said
@@ -59,7 +64,16 @@ public actor CounselBench {
     /// An order weighed as the realm weighs one: put to the keeper if it can
     /// be given, and the commander told either way.
     public func propose(_ action: String, company: String, place: String) -> String {
-        let proposal = counsel.propose(action, company: company, place: place)
+        weighed(counsel.propose(action, company: company, place: place))
+    }
+
+    /// Something put forward for the commander themself, weighed as the
+    /// realm weighs every order: a talent learned, gear worn, a star raised.
+    public func proposeForSelf(_ action: String, what: String) -> String {
+        weighed(counsel.proposeForSelf(action, what: what))
+    }
+
+    private func weighed(_ proposal: CounselProposal) -> String {
         if proposal.isGiven {
             proposals.append(proposal)
         } else {
@@ -163,6 +177,45 @@ struct AllianceReport: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await bench.alliance()
+    }
+}
+
+/// The commander themself, as their House's Commanders board tells them.
+struct YourselfReport: Tool {
+    let bench: CounselBench
+    let name = "yourself"
+    let description = "Tells of yourself: your level and stars, the talents you have learned and may learn now, the gear you wear, "
+        + "and what your House's armoury holds unworn."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "What you want to know of: talents, stars or gear")
+        var about: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.yourself()
+    }
+}
+
+/// Something for the commander themself put to the keeper, never done by
+/// the commander.
+struct ProposeForYourself: Tool {
+    let bench: CounselBench
+    let name = "proposeForYourself"
+    let description = "Puts to your keeper something for yourself, who decides whether to give it: to learn a talent's next rank, "
+        + "to wear a piece of your House's gear, or to raise a star with your House's sculptures."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "What you would do: learn, wear or star")
+        var action: String
+        @Guide(description: "For learn, the talent's name as you were told it; for wear, the piece's name as you were told it; for star, empty")
+        var what: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.proposeForSelf(arguments.action, what: arguments.what)
     }
 }
 
@@ -359,7 +412,8 @@ public final class CommanderCounselSession: ObservableObject {
 
     private func makeSession() -> LanguageModelSession {
         let tools: [any Tool] = [CompanyReport(bench: bench), LookAbout(bench: bench), HouseAffairs(bench: bench), HouseReport(bench: bench),
-                                 AllianceReport(bench: bench), ProposeOrder(bench: bench)]
+                                 AllianceReport(bench: bench), YourselfReport(bench: bench), ProposeOrder(bench: bench),
+                                 ProposeForYourself(bench: bench)]
         let made = LanguageModelSession(model: model, tools: tools, instructions: instructions)
         session = made
         return made

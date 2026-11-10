@@ -93,7 +93,8 @@ public struct CommanderCounsel: Sendable {
         and plain, as an old soldier speaks, in at most three sentences and seventy words, with no exclamation \
         marks and no modern words. Know only what you are told here and what your looks tell you: never invent \
         a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
-        your House's affairs, at your alliance, or at another House by its name. You may put an order to your keeper only by proposing it, and you never give \
+        your House's affairs, at your alliance, at yourself (your talents, stars and gear), or at another House by its name. You \
+        may put an order to your keeper only by proposing it, for a company or for yourself, and you never give \
         one yourself: say that you have put it forward, and that the keeper decides. Name companies by their \
         handles and names as given. Never speak of games, players, turns, rules, models or tools.
         """
@@ -116,6 +117,9 @@ public struct CommanderCounsel: Sendable {
             lines.append("You lead no company now.")
         }
         lines.append("Your skills: " + commander.skills.map(\.title).joined(separator: ", ") + ".")
+        // Where they stand themself, as their line on the Commanders board
+        // tells it: what more they may look at, and put forward, of it.
+        lines.append(standingSaid)
         if !battles.isEmpty {
             lines.append("Battles you led your House's companies in lately, as their reports read to your keeper, the latest first:")
             lines += battles.map(remembered)

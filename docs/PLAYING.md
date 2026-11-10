@@ -1107,9 +1107,14 @@ a vote on the realm's law to cast.
   counsels patience and the walls, a vanguard the bold stroke), and knows
   what your House knows and no more: as they answer they may look at a
   company of yours by its handle, about the company they lead (only what
-  your House sees), or at your House's stores and wars, and each look is
-  shown as they take it. They may put an order to you (a company to march,
-  strike, fortify, halt, drill, set the blackwood where it stands
+  your House sees), at your House's stores and wars, or at themself (their
+  level and stars, the talents they have learned and may learn now, the
+  gear they wear and what your armoury holds unworn), and each look is
+  shown as they take it. For themself they may put forward a talent's next
+  rank, a piece of your House's gear (from the armoury, or from another
+  commander, said so) or a star raised with your sculptures, each weighed
+  by the rules as an order is. They may put an order to you (a company to march,
+  strike, fortify, halt, drill, raise a tier, set the blackwood where it stands
   alight, told when theirs may and which way the wind would carry it, or
   douse its torches and march dark, or light them again, told when it
   marches dark),
