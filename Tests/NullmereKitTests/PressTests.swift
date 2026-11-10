@@ -1142,8 +1142,9 @@ final class PressTests: XCTestCase {
         state.holds[seat].training = nil
         let (session, link) = session(state)
         session.selection = .hold(state.holds[seat].id)
-        [OwnHoldDetails.worksKey, OwnHoldDetails.companiesKey].forEach { UserDefaults.standard.removeObject(forKey: $0) }
-        defer { [OwnHoldDetails.worksKey, OwnHoldDetails.companiesKey].forEach { UserDefaults.standard.removeObject(forKey: $0) } }
+        let folds = [OwnHoldDetails.worksKey, OwnHoldDetails.companiesKey, OwnHoldDetails.barterKey]
+        folds.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+        defer { folds.forEach { UserDefaults.standard.removeObject(forKey: $0) } }
         draw(SelectionPanel(session: session), height: 1400)
         // The works and the companies open folded to a line each, until asked for.
         XCTAssertFalse(PressableButtons.press("Build I"), "Folded: \(shown)")
@@ -1164,6 +1165,11 @@ final class PressTests: XCTestCase {
         XCTAssertTrue(link.sent.contains { if case .build = $0 { return true } else { return false } })
         XCTAssertTrue(PressableButtons.press("Train"))
         XCTAssertTrue(link.sent.contains { if case .train = $0 { return true } else { return false } })
+        // The barter folded to a line until asked for, then pressed.
+        XCTAssertFalse(PressableButtons.actions.keys.contains("Barter"), "folded: \(shown)")
+        XCTAssertTrue(PressableButtons.press("Barter…"), "Among \(shown)")
+        draw(SelectionPanel(session: session), height: 1400)
+        XCTAssertTrue(PressableButtons.actions.keys.contains("Fold barter"))
         XCTAssertTrue(PressableButtons.press("Barter"))
         XCTAssertTrue(link.sent.contains { if case .barter = $0 { return true } else { return false } })
     }

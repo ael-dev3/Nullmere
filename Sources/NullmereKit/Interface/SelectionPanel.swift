@@ -108,6 +108,8 @@ struct OwnHoldDetails: View {
     @AppStorage(OwnHoldDetails.companiesKey) private var companiesOpen = false
     static let worksKey = "hold.works.open"
     static let companiesKey = "hold.companies.open"
+    /// The barter at a hold card's foot, folded the same way.
+    static let barterKey = "hold.barter.open"
     /// What a hold by the lake does on the water, folded the same way.
     @AppStorage(OwnHoldDetails.waterKey) private var waterOpen = false
     static let waterKey = "hold.water.open"
@@ -503,6 +505,12 @@ struct BarterRow: View {
     @State private var give: Resource = .grain
     @State private var take: Resource = .timber
     @State private var amount = 20
+    /// Folded to a line until asked for: the barter is the House's, not the
+    /// hold's, and a card opened on every hold need not bear its pickers.
+    @AppStorage(OwnHoldDetails.barterKey) private var open = false
+
+    /// The barter in a line, while it is folded.
+    static let summary = "A surplus for what you lack, three to one; moonsalt counts as three of any other store."
 
     /// Why a barter would be refused, as the realm would refuse it; nil when
     /// it would be carried out.
@@ -514,8 +522,27 @@ struct BarterRow: View {
         let price = take.barterCost(of: amount, paidIn: give)
         let stock = session.playerHouse.stock
         let problem = BarterRow.problem(give: give, take: take, amount: amount, stock: stock, room: session.ledger.room)
+        VStack(alignment: .leading, spacing: open ? 8 : 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Caps("Barter", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
+                Spacer()
+                QuietButton(title: open ? "Fold barter" : "Barter…", size: 8.5,
+                            name: open ? "Fold the barter away" : "Barter a store for another") { open.toggle() }
+            }
+            if !open {
+                Text(verbatim: BarterRow.summary)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                trade(price: price, problem: problem)
+            }
+        }
+    }
+
+    /// The pickers, the price and the button, while the barter is open.
+    @ViewBuilder private func trade(price: Int, problem: String?) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Caps("Barter", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
             HStack(spacing: 8) {
                 Picker("Take", selection: $take) {
                     ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }

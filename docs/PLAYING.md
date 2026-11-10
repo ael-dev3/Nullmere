@@ -658,8 +658,10 @@ a vote on the realm's law to cast.
   level II, a hold's land reaches a tile further too), and a Muster Hall to
   train stronger companies, at level III to train all but Lanterns a
   watch sooner, and to level V for the higher tiers. Barter a surplus
-  for what you lack, three to one; moonsalt counts as three of any other
-  store, so one costs nine of them, and fetches one. Each new hold costs
+  for what you lack, three to one, from Barter… at the foot of any hold's
+  card (folded to a line until asked for, and kept as you leave it);
+  moonsalt counts as three of any other store, so one costs nine of them,
+  and fetches one. Each new hold costs
   more to found than the last, so a House grows by choice, not by habit. A
   company trained with no free tile within three of its hold waits,
   trained, and the hold trains no other until it has room to stand.
