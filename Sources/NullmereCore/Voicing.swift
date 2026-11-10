@@ -127,7 +127,8 @@ extension Voicing {
 extension GameState {
     /// An envoy, for the device's model to give words: whose House sends
     /// it and its temper, to whom, how the two Houses stand and have dealt,
-    /// which is the stronger, and a trade's terms.
+    /// which is the stronger, where each stands by might, and a trade's
+    /// terms.
     public func voiced(_ envoy: Envoy) -> Voicing.Moment {
         let house = houses[envoy.from]
         let player = houses[envoy.to]
@@ -145,6 +146,12 @@ extension GameState {
         let ours = strength(of: envoy.to)
         if theirs > ours * 3 / 2 { facts.append("\(house.title) is the stronger House.") }
         if ours > theirs * 3 / 2 { facts.append("\(player.title) is the stronger House.") }
+        // Where each stands by might, as the Rankings tell every keeper.
+        let theirRank = ranking(.might, for: envoy.from, most: 0), ourRank = ranking(.might, for: envoy.to, most: 0)
+        if let theirPlace = theirRank.place, let ourPlace = ourRank.place {
+            facts.append("By might \(house.title) stands \(briefOrdinal(theirPlace)) of \(GameState.counted(theirRank.count)) Houses, "
+                         + "and \(player.title) \(briefOrdinal(ourPlace)).")
+        }
         if let trade = envoy.trade {
             facts.append("\(house.title) would give \(trade.given) for \(trade.taken).")
         }

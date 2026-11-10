@@ -190,8 +190,9 @@ public struct CommanderCounsel: Sendable {
     }
 
     /// The House's affairs: its holds and companies, its stores, how it
-    /// stands with the Houses it is at war with or sworn to, the fire on its
-    /// land, and its watchfires and what they lately made out marching dark.
+    /// stands with the Houses it is at war with or sworn to, where it and its
+    /// alliance stand in the Rankings, the fire on its land, and its
+    /// watchfires and what they lately made out marching dark.
     public var affairs: String {
         guard state.houses.indices.contains(player) else { return "Your House has fallen." }
         let house = state.houses[player]
@@ -203,6 +204,21 @@ public struct CommanderCounsel: Sendable {
         let pacts = others.filter { state.stance(player, $0.id) == .pact }.map(\.title)
         lines.append(wars.isEmpty ? "It is at war with no House." : "It is at war with " + wars.prefix(8).joined(separator: ", ") + ".")
         if !pacts.isEmpty { lines.append("It has pacts with " + pacts.prefix(8).joined(separator: ", ") + ".") }
+        // Where it stands, as the Rankings tell its keeper: by might and by
+        // foes slain, its alliance among the alliances, the mightiest House,
+        // and the mightiest of those at war with it.
+        let standing = state.rankingsSaid(for: player)
+        if !standing.isEmpty { lines.append(standing) }
+        let byMight = state.ranking(.might, for: player, most: state.houses.count)
+        if let first = byMight.lines.first, first.id != player {
+            lines.append("The mightiest House is \(first.name), with might \(GameState.counted(first.figure)).")
+        }
+        if let foe = byMight.lines.first(where: { state.stance(player, $0.id) == .war }) {
+            lines.append("Of the Houses at war with it, \(foe.name) stands highest by might, \(briefOrdinal(foe.place)) of \(GameState.counted(byMight.count)).")
+        }
+        if state.alliance(of: player) != nil, let alliance = state.ranking(.might, alliances: true, for: player, most: 0).standing {
+            lines.append(alliance)
+        }
         // The blackwood burning on its land, or lying there as ash.
         let fires = state.firesAndAsh
         if !fires.isEmpty {

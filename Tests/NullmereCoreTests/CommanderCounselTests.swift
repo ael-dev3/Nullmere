@@ -167,6 +167,41 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertTrue(counsel.affairs.contains("It is at war with \(world.houses[1].title)."), counsel.affairs)
     }
 
+    /// Counsel knows where the House stands as its keeper sees it in the
+    /// Rankings: by might and by foes slain, the mightiest House, the
+    /// mightiest of those at war with it, and its alliance among the
+    /// alliances; and an envoy knows where both Houses stand by might.
+    func testCounselAndEnvoysKnowWhereTheHousesStand() throws {
+        var (counsel, world) = try counsel("standings")
+        let me = counsel.player
+        let view = world.view(for: me)
+        XCTAssertTrue(counsel.affairs.contains(view.rankingsSaid(for: me)), counsel.affairs)
+        let first = try XCTUnwrap(view.ranking(.might, for: me, most: 1).lines.first)
+        let mightiest = "The mightiest House is \(first.name), with might \(GameState.counted(first.figure))."
+        XCTAssertEqual(counsel.affairs.contains(mightiest), first.id != me, counsel.affairs)
+        XCTAssertFalse(counsel.affairs.contains("at war with it"), "no foe while at war with none")
+        // At war: the mightiest of its foes told by place.
+        let foe = (me + 1) % world.houses.count
+        try world.perform(.declareWar(on: foe), as: me)
+        var warring = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        let place = try XCTUnwrap(world.view(for: me).ranking(.might, for: foe, most: 0).place)
+        XCTAssertTrue(warring.affairs.contains("Of the Houses at war with it, \(world.houses[foe].title) stands highest by might, "
+                                               + "\(briefOrdinal(place)) of \(world.livingHouses.count)."), warring.affairs)
+        // Sworn: its alliance's place among the alliances.
+        _ = try world.perform(.foundAlliance(name: "The Salt Pact"), as: me)
+        warring = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        let sworn = try XCTUnwrap(world.view(for: me).ranking(.might, alliances: true, for: me, most: 0).standing)
+        XCTAssertTrue(sworn.hasPrefix("Your alliance stands "), sworn)
+        XCTAssertTrue(warring.affairs.contains(sworn), warring.affairs)
+        // An envoy knows where both Houses stand by might.
+        let envoy = Envoy(id: 1, from: foe, to: me, proposal: .peace, arrived: world.watch, trade: nil)
+        let seen = world.view(for: me)
+        let theirs = try XCTUnwrap(seen.ranking(.might, for: foe, most: 0).place), ours = try XCTUnwrap(seen.ranking(.might, for: me, most: 0).place)
+        XCTAssertTrue(seen.voiced(envoy).facts.contains("By might \(world.houses[foe].title) stands \(briefOrdinal(theirs)) of "
+                                                         + "\(world.livingHouses.count) Houses, and \(world.houses[me].title) \(briefOrdinal(ours))."),
+                      "\(seen.voiced(envoy).facts)")
+    }
+
     /// An order is only ever proposed, read as the order book reads it: a
     /// march to a place the House knows is put forward as the realm would
     /// take it; one the realm wouldn't is told why, and nothing else is a
