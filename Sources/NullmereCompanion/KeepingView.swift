@@ -545,6 +545,46 @@ struct StoresRow: View {
     }
 }
 
+/// A kind of company's mark, stroked as the rules keep it (`CompanyMarks`)
+/// and the Mac's flat map strokes it on a company's token.
+struct CompanyMark: View {
+    let kind: UnitKind
+    var size: CGFloat = 18
+
+    var body: some View {
+        Canvas { context, canvas in
+            let r = min(canvas.width, canvas.height) / 2 * 0.8
+            let path = Path(companyMark: kind, at: CGPoint(x: canvas.width / 2, y: canvas.height / 2), radius: r)
+            context.stroke(path, with: .color(Night.moon), lineWidth: 1.4)
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+extension Path {
+    /// A kind of company's mark (`CompanyMarks`) about `c`, `r` its radius,
+    /// as the Mac builds it.
+    init(companyMark kind: UnitKind, at c: CGPoint, radius r: CGFloat) {
+        self.init()
+        func point(_ p: StoreMarks.Point) -> CGPoint { CGPoint(x: c.x + CGFloat(p.x) * r, y: c.y + CGFloat(p.y) * r) }
+        for stroke in CompanyMarks.strokes(of: kind) {
+            switch stroke {
+            case .lines(let points, let closed):
+                guard let first = points.first else { continue }
+                move(to: point(first))
+                for next in points.dropFirst() { addLine(to: point(next)) }
+                if closed { closeSubpath() }
+            case .arc(let centre, let radius, let from, let to, let clockwise):
+                addArc(center: point(centre), radius: CGFloat(radius) * r, startAngle: .degrees(from), endAngle: .degrees(to),
+                       clockwise: clockwise)
+            case .ellipse(let x, let y, let width, let height):
+                addEllipse(in: CGRect(x: c.x + CGFloat(x) * r, y: c.y + CGFloat(y) * r, width: CGFloat(width) * r, height: CGFloat(height) * r))
+            }
+        }
+    }
+}
+
 /// A store's small drawn mark, as the rules keep its outlines
 /// (`StoreMarks`) and the Mac draws them: a sheaf of grain, a fir for
 /// timber, a dressed block of stone, a crystal of moonsalt.
@@ -1577,8 +1617,13 @@ struct CompanyRows: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: company.name)
-                .font(Night.heading)
+            // Its kind's mark beside its name, as the Mac's flat map strokes it.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                CompanyMark(kind: company.kind, size: 18)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+                Text(verbatim: company.name)
+                    .font(Night.heading)
+            }
             Text(verbatim: "\(company.troops) troops\(company.leader.map { ", led by \($0)" } ?? "")")
                 .font(Night.small)
                 .foregroundStyle(Night.moon)

@@ -623,48 +623,30 @@ struct WorldMarks: View {
 
     /// A simple line drawing for each kind of company.
     private func glyph(for kind: UnitKind, at c: CGPoint, radius r: CGFloat) -> Path {
-        var p = Path()
-        switch kind {
-        case .lantern:
-            p.move(to: CGPoint(x: c.x, y: c.y - r))
-            p.addLine(to: CGPoint(x: c.x + r * 0.7, y: c.y))
-            p.addLine(to: CGPoint(x: c.x, y: c.y + r))
-            p.addLine(to: CGPoint(x: c.x - r * 0.7, y: c.y))
-            p.closeSubpath()
-        case .spear:
-            p.move(to: CGPoint(x: c.x, y: c.y + r))
-            p.addLine(to: CGPoint(x: c.x, y: c.y - r))
-            p.move(to: CGPoint(x: c.x - r * 0.4, y: c.y - r * 0.45))
-            p.addLine(to: CGPoint(x: c.x, y: c.y - r))
-            p.addLine(to: CGPoint(x: c.x + r * 0.4, y: c.y - r * 0.45))
-        case .bow:
-            p.addArc(center: CGPoint(x: c.x - r * 0.3, y: c.y), radius: r, startAngle: .degrees(-60), endAngle: .degrees(60), clockwise: false)
-            p.move(to: CGPoint(x: c.x + r * 0.2, y: c.y - r * 0.87))
-            p.addLine(to: CGPoint(x: c.x + r * 0.2, y: c.y + r * 0.87))
-        case .rider:
-            p.move(to: CGPoint(x: c.x - r, y: c.y + r * 0.2))
-            p.addLine(to: CGPoint(x: c.x, y: c.y - r * 0.6))
-            p.addLine(to: CGPoint(x: c.x + r, y: c.y + r * 0.2))
-            p.move(to: CGPoint(x: c.x - r, y: c.y + r * 0.8))
-            p.addLine(to: CGPoint(x: c.x, y: c.y))
-            p.addLine(to: CGPoint(x: c.x + r, y: c.y + r * 0.8))
-        case .mangonel:
-            // A frame on its wheel, and its arm raised to throw.
-            p.move(to: CGPoint(x: c.x - r, y: c.y + r * 0.5))
-            p.addLine(to: CGPoint(x: c.x + r, y: c.y + r * 0.5))
-            p.addEllipse(in: CGRect(x: c.x - r * 0.25, y: c.y + r * 0.5, width: r * 0.5, height: r * 0.5))
-            p.move(to: CGPoint(x: c.x - r * 0.3, y: c.y + r * 0.5))
-            p.addLine(to: CGPoint(x: c.x + r * 0.55, y: c.y - r * 0.9))
-            p.addEllipse(in: CGRect(x: c.x + r * 0.45, y: c.y - r, width: r * 0.3, height: r * 0.3))
-        case .founder:
-            p.move(to: CGPoint(x: c.x - r * 0.75, y: c.y + r * 0.7))
-            p.addLine(to: CGPoint(x: c.x - r * 0.75, y: c.y - r * 0.1))
-            p.addLine(to: CGPoint(x: c.x, y: c.y - r * 0.8))
-            p.addLine(to: CGPoint(x: c.x + r * 0.75, y: c.y - r * 0.1))
-            p.addLine(to: CGPoint(x: c.x + r * 0.75, y: c.y + r * 0.7))
-            p.closeSubpath()
+        Path(companyMark: kind, at: c, radius: r)
+    }
+}
+
+extension Path {
+    /// A kind of company's mark (`CompanyMarks`, which the phone strokes
+    /// too) about `c`, `r` its radius.
+    init(companyMark kind: UnitKind, at c: CGPoint, radius r: CGFloat) {
+        self.init()
+        func point(_ p: StoreMarks.Point) -> CGPoint { CGPoint(x: c.x + CGFloat(p.x) * r, y: c.y + CGFloat(p.y) * r) }
+        for stroke in CompanyMarks.strokes(of: kind) {
+            switch stroke {
+            case .lines(let points, let closed):
+                guard let first = points.first else { continue }
+                move(to: point(first))
+                for next in points.dropFirst() { addLine(to: point(next)) }
+                if closed { closeSubpath() }
+            case .arc(let centre, let radius, let from, let to, let clockwise):
+                addArc(center: point(centre), radius: CGFloat(radius) * r, startAngle: .degrees(from), endAngle: .degrees(to),
+                       clockwise: clockwise)
+            case .ellipse(let x, let y, let width, let height):
+                addEllipse(in: CGRect(x: c.x + CGFloat(x) * r, y: c.y + CGFloat(y) * r, width: CGFloat(width) * r, height: CGFloat(height) * r))
+            }
         }
-        return p
     }
 }
 

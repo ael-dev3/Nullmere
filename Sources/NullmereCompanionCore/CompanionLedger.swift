@@ -12,6 +12,8 @@ public struct CompanionLedger: Equatable, Sendable {
     /// A company of the House.
     public struct Company: Equatable, Identifiable, Sendable {
         public let id: Int
+        /// Its kind, as its mark shows it (`CompanyMarks`).
+        public let kind: UnitKind
         /// As the order book names it: kind, tier and where it stands.
         public let name: String
         public let troops: String
@@ -1084,7 +1086,7 @@ public struct CompanionLedger: Equatable, Sendable {
             }.map { hold in
                 Order(title: "March to \(hold.name)", command: .move(unit: unit.id, to: hold.position))
             }
-            return Company(id: unit.id, name: named(unit), troops: GameState.counted(world.troops(of: unit)),
+            return Company(id: unit.id, kind: unit.kind, name: named(unit), troops: GameState.counted(world.troops(of: unit)),
                            leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world, for: player),
                            orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
                            gathers: CompanionLedger.gathers(for: unit, in: world, player: player),
