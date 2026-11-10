@@ -161,7 +161,6 @@ extension GameState {
         return strength(of: house) + 10 * works + 8 * learning + 4 * leading
     }
 
-    /// The Houses standing, mightiest first.
     /// What still waits for a keeper's orders, as the Mac's top bar and the
     /// phone say it: "2 companies wait · 1 hold idle"; nil when nothing
     /// does. A company waits while it may still act this watch, on no march
@@ -179,6 +178,7 @@ extension GameState {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// The Houses standing, mightiest first.
     public var byMight: [Int] {
         let might = houses.map { self.might(of: $0.id) }
         return livingHouses.map(\.id).sorted { (-might[$0], $0) < (-might[$1], $1) }

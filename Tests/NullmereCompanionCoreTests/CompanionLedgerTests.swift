@@ -677,6 +677,30 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(CompanionLedger(world: state.view(for: me), player: me).shares, "taken, gone")
     }
 
+    /// The Rankings on the phone, as the Mac's Realm panel shows them, read
+    /// from the keeper's view: every House and alliance by might and by
+    /// foes slain, and where the House stands in a line; the ledger changed
+    /// when only they change.
+    func testThePhoneShowsTheRankings() throws {
+        var (state, me) = try world()
+        let foe = (me + 1) % state.houses.count
+        state.foesSlain = [Int](repeating: 0, count: state.houses.count)
+        state.foesSlain![foe] = 900
+        let view = state.view(for: me)
+        let ledger = CompanionLedger(world: view, player: me)
+        XCTAssertEqual(ledger.rankings, view.rankings(for: me))
+        XCTAssertEqual(ledger.rankings.map(\.title), ["Houses by might", "Houses by foes slain", "Alliances by might", "Alliances by foes slain"])
+        XCTAssertEqual(ledger.rankings[1].lines.map(\.id), [foe])
+        XCTAssertEqual(ledger.rankings[1].lines.map(\.figure), [900])
+        XCTAssertEqual(ledger.rankingsSaid, view.rankingsSaid(for: me))
+        XCTAssertTrue(ledger.rankingsSaid.hasSuffix(" by might and has slain no foe this age."), ledger.rankingsSaid)
+        XCTAssertEqual(ledger.rankings[2].standing, "Your House is sworn to no alliance.")
+        state.foesSlain![me] = 1_200
+        let later = CompanionLedger(world: state.view(for: me), player: me)
+        XCTAssertNotEqual(later, ledger, "changed when only the rankings change")
+        XCTAssertEqual(later.rankings[1].lines.first?.isOwn, true)
+    }
+
     /// What the House's alliance keeps of its own on the phone, in the words
     /// of the Mac's Alliance panel: nothing while sworn to no alliance;
     /// sworn, its standards, hall, coffers, storehouse and yards told, and

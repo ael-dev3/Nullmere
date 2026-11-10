@@ -333,7 +333,7 @@ extension GameState {
         head.gifts = nil
         // What every keeper is told alike of the realm as it stands, apart
         // from the head too: the same in every view, and every House's
-        // strength and might in it move at nearly every pace of a wide
+        // strength, might and foes slain in it move at nearly every pace of a wide
         // realm while the rest of a keeper's head stands (at 384 seats,
         // every keeper's head, 16 KB, was written again at every pace).
         let common = Common(of: self)
@@ -344,6 +344,7 @@ extension GameState {
         }
         head.reputed = nil
         head.reputedMight = nil
+        head.foesSlain = nil
         head.stillHour = nil
         head.happening = nil
         // And the rest of what every keeper is told alike of the realm,
@@ -394,17 +395,19 @@ extension GameState {
     public static let commonPart = "common"
 
     /// What every keeper is told alike of the realm as it stands: every
-    /// House's strength and might as all are told them, the glimpses of the
-    /// Still Hour, and the realm's happening.
+    /// House's strength and might as all are told them, the foes each has
+    /// slain, the glimpses of the Still Hour, and the realm's happening.
     struct Common: Codable, Equatable {
         var reputed: [Int]?
         var reputedMight: [Int]?
+        var foesSlain: [Int]?
         var stillHour: StillHour?
         var happening: Happening?
 
         init(of world: GameState) {
             reputed = world.reputed
             reputedMight = world.reputedMight
+            foesSlain = world.foesSlain
             stillHour = world.stillHour
             happening = world.happening
         }
@@ -825,6 +828,7 @@ extension GameState {
             let common = try GameState.part(GameState.commonPart, of: parts, using: decoder, as: Common.self, read: read)
             reputed = common.reputed
             reputedMight = common.reputedMight
+            foesSlain = common.foesSlain
             stillHour = common.stillHour
             happening = common.happening
         }

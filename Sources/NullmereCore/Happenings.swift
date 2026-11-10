@@ -150,6 +150,8 @@ extension GameState {
         // And a share of the spoils to each keeper of an alliance whose
         // House struck down the wilds or broke a lair.
         setAsideShares(for: events)
+        // And the foes each House slew, for the Rankings.
+        countSlain(events)
         guard var happening, watch < happening.ends else { return }
         var changed = false
         for event in events {

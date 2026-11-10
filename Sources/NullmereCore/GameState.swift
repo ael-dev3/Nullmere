@@ -321,6 +321,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var chargesDone: [Int]?
     /// In a keeper's view, each House's might as the realm reckons it.
     var reputedMight: [Int]?
+    /// The troops of other Houses each House has slain this age, by its
+    /// id (`slain(by:)`), known to every keeper as Rise of Kingdoms' kill
+    /// points are; absent before any fell.
+    public internal(set) var foesSlain: [Int]?
     /// In a keeper's view, the marches they may know of: where their
     /// companies are bound and when they should be there, and the way
     /// others in sight are going. Absent in the world itself.

@@ -860,6 +860,13 @@ public struct CompanionLedger: Equatable, Sendable {
     /// How the Sundering stands for the House, as the Mac's Realm panel
     /// tells it (`GameState.sunderingSaid`).
     public let sundering: String
+    /// The Rankings, as the Mac's Realm panel shows them: the Houses by
+    /// might and by foes slain, then the alliances, each the foremost and
+    /// the House's own beneath them (`GameState.rankings(for:)`).
+    public let rankings: [Ranking]
+    /// Where the House stands in them, in a line
+    /// (`GameState.rankingsSaid(for:)`).
+    public let rankingsSaid: String
     /// The watch the Sundering under way ends; nil while none is fought.
     public let sunderingEnds: Int?
     /// The House's companies of war: its levy, were it to cross to the
@@ -927,6 +934,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
             && a.errands == b.errands && a.course == b.course && a.lyceum == b.lyceum && a.remembering == b.remembering && a.prophecies == b.prophecies && a.mayForetell == b.mayForetell && a.whispers == b.whispers && a.titles == b.titles && a.holySites == b.holySites
             && a.sundering == b.sundering && a.sunderingEnds == b.sunderingEnds && a.levy == b.levy
+            && a.rankings == b.rankings && a.rankingsSaid == b.rankingsSaid && a.shares == b.shares
     }
 
     /// What waits on the keeper on the House tab, for its badge: envoys to
@@ -1352,6 +1360,8 @@ public struct CompanionLedger: Equatable, Sendable {
                                                        command: .stake(prophecy: prophecy.id, backs: false, moonsalt: stake)) : nil)
         }
         sundering = world.sunderingSaid(for: player)
+        rankings = world.rankings(for: player)
+        rankingsSaid = world.rankingsSaid(for: player) ?? ""
         sunderingEnds = world.sundering.flatMap { $0.settled ? nil : $0.ends }
         levy = world.units(of: player).filter(\.kind.isMilitary).count
         holySites = world.holySites.map { shrine in

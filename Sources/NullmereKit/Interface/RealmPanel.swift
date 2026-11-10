@@ -2,7 +2,8 @@ import NullmereCore
 import SwiftUI
 
 /// The realm's course as the House stands in it: the happening under way
-/// and the foremost in it, or the next to come; the charge set it; what
+/// and the foremost in it, or the next to come; the Rankings, every House
+/// and alliance by might and by foes slain; the charge set it; what
 /// its satchel holds; the people it comes of; its deeds; its might among
 /// the Houses; and the keeper's favour with the lake and renown over ages.
 struct RealmPanel: View {
@@ -27,6 +28,8 @@ struct RealmPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     happening(board)
+                    Rule(opacity: 0.18)
+                    RankingsSection(session: session)
                     Rule(opacity: 0.18)
                     CalendarSection(session: session)
                     if session.state.labours(of: session.player) != nil {

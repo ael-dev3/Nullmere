@@ -720,6 +720,94 @@ struct VenturesPage: View {
     }
 }
 
+/// The Rankings on the phone, as the Mac's Realm panel shows them: the
+/// Houses or the alliances, by might or by foes slain, the foremost and
+/// the House's own beneath them where it stands lower; each line one thing
+/// to VoiceOver.
+struct RankingRows: View {
+    let rankings: [Ranking]
+    let said: String
+    @State private var alliances = false
+    @State private var by: RankedBy = .might
+
+    init(rankings: [Ranking], said: String) {
+        self.rankings = rankings
+        self.said = said
+    }
+
+    var body: some View {
+        if !said.isEmpty {
+            Text(verbatim: said)
+                .font(Night.small)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        Picker("Ranked", selection: $alliances) {
+            Text(verbatim: "Houses").tag(false)
+            Text(verbatim: "Alliances").tag(true)
+        }
+        .pickerStyle(.segmented)
+        Picker("By", selection: $by) {
+            ForEach(RankedBy.allCases) { each in
+                Text(verbatim: each.title).tag(each)
+            }
+        }
+        .pickerStyle(.segmented)
+        if let ranking = rankings.first(where: { $0.alliances == alliances && $0.by == by }) {
+            // Where the House stands among the Houses is said above; among
+            // the alliances, here.
+            if let standing = ranking.standing, alliances {
+                Text(verbatim: standing)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if ranking.lines.isEmpty {
+                Text(verbatim: ranking.none)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.6))
+            }
+            ForEach(ranking.lines) { line in
+                RankingLineRow(line: line, by: by)
+            }
+            if let own = ranking.own {
+                RankingLineRow(line: own, by: by)
+            }
+        }
+    }
+}
+
+/// A line of a ranking on the phone: its place, whose with its alliance or
+/// Houses beneath, and its figure; the House's own in the moon's colour.
+struct RankingLineRow: View {
+    let line: RankingLine
+    let by: RankedBy
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(verbatim: "\(line.place)")
+                .font(Night.figures)
+                .foregroundStyle(Night.ink.opacity(line.place <= 3 ? 0.9 : 0.55))
+                .frame(minWidth: 28, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: line.name)
+                    .font(Night.body)
+                    .foregroundStyle(line.isOwn ? Night.moon : Night.ink)
+                if let note = line.note {
+                    Text(verbatim: note)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.55))
+                }
+            }
+            Spacer(minLength: 8)
+            Text(verbatim: GameState.counted(line.figure))
+                .font(Night.figures)
+                .foregroundStyle(line.isOwn ? Night.moon : Night.ink.opacity(0.8))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(line.said(by))
+    }
+}
+
 /// The realm's law, its oaths and the Augury, on a page of their own off
 /// the Alliance tab: the edict before the realm and the House's vote, the
 /// edicts holding it and those the House may put; the oaths between the
@@ -746,6 +834,12 @@ struct RealmPage: View {
                     Text(verbatim: ledger.sundering)
                         .font(Night.small)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                // The Rankings, as the Mac's Realm panel shows them: every
+                // House or alliance by might or by foes slain, the foremost
+                // and the House's own beneath them.
+                Section("Rankings") {
+                    RankingRows(rankings: ledger.rankings, said: ledger.rankingsSaid)
                 }
                 // The Frontier the realm borders, as the Mac's Realm panel
                 // tells it to a keeper at home: its season, how its
