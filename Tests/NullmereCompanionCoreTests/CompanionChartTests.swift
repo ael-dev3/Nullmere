@@ -366,6 +366,64 @@ final class CompanionChartTests: XCTestCase {
                        "Only the leader raises the alliance's works: \(theirs)")
     }
 
+    /// The chart shows the alliances' land as the Mac's map does: each hex
+    /// under the keeper's alliance's standards its alliance's, the land's
+    /// edges where it meets other ground, and a place there saying whose it
+    /// is; another alliance's land only once the House has explored it.
+    func testTheChartShowsTheAlliancesLand() throws {
+        var (state, me) = world()
+        _ = try state.perform(.foundAlliance(name: "The Near Accord"), as: me)
+        let sworn = try XCTUnwrap(state.alliance(of: me)).id
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let spot = try XCTUnwrap(seat.position.spiral(2).first { $0.distance(to: seat.position) == 2 && state.map[$0] != nil && state.hold(at: $0) == nil })
+        var standard = Standard(id: state.takeID(), alliance: sworn, raisedBy: me, position: spot, raised: state.watch)
+        standard.built = Standard.raising
+        state.standards = state.standardsStanding + [standard]
+        var view = state.view(for: me)
+        var chart = CompanionChart(world: view, player: me)
+        let land = Set(chart.cells.filter { $0.alliance == .ally }.map(\.hex))
+        XCTAssertTrue(land.contains(spot))
+        for cell in chart.cells {
+            XCTAssertEqual(cell.alliance, view.allianceLand(at: cell.hex).map { $0 == sworn ? .ally : .other }, "\(cell.hex)")
+        }
+        XCTAssertTrue(land.allSatisfy { $0.distance(to: spot) <= Standard.reach })
+        XCTAssertFalse(chart.allianceBorders.isEmpty)
+        for border in chart.allianceBorders {
+            XCTAssertTrue(land.contains(border.hex), "an edge of the land from within it")
+            XCTAssertFalse(land.contains(border.beyond), "to ground beyond it")
+            XCTAssertEqual(border.side, .ally)
+        }
+        XCTAssertTrue(chart.place(at: spot, in: view, player: me).lines.contains("On the land of The Near Accord, your alliance."),
+                      "\(chart.place(at: spot, in: view, player: me).lines)")
+        let away = try XCTUnwrap(chart.cells.first { $0.alliance == nil }?.hex)
+        XCTAssertFalse(chart.place(at: away, in: view, player: me).lines.contains { $0.hasPrefix("On the land of") })
+
+        // Another alliance's standard on the chart, on ground the House has
+        // not explored: not shown until it has.
+        let other = try XCTUnwrap(state.houses.indices.first { $0 != me && state.alliance(of: $0) == nil })
+        _ = try state.perform(.foundAlliance(name: "The Far Pact"), as: other)
+        let theirs = try XCTUnwrap(state.alliance(of: other)).id
+        let far = try XCTUnwrap(chart.cells.filter { state.hold(at: $0.hex) == nil && state.map[$0.hex] != nil }
+            .max { ($0.hex.distance(to: spot), $1.hex.q, $1.hex.r) < ($1.hex.distance(to: spot), $0.hex.q, $0.hex.r) }?.hex)
+        XCTAssertGreaterThan(far.distance(to: spot), 2 * Standard.reach, "the two alliances' lands apart")
+        for hex in far.spiral(Standard.reach) {
+            if let index = state.map.index(of: hex) { state.houses[me].explored[index] = false }
+        }
+        var foreign = Standard(id: state.takeID(), alliance: theirs, raisedBy: other, position: far, raised: state.watch)
+        foreign.built = Standard.raising
+        state.standards = state.standardsStanding + [foreign]
+        view = state.view(for: me)
+        chart = CompanionChart(world: view, player: me)
+        XCTAssertFalse(chart.cells.contains { $0.alliance == .other }, "not over ground the House hasn't explored")
+        state.reveal(around: far, range: Standard.reach, for: me)
+        view = state.view(for: me)
+        chart = CompanionChart(world: view, player: me)
+        XCTAssertEqual(chart.cells.first { $0.hex == far }?.alliance, .other)
+        XCTAssertTrue(chart.allianceBorders.contains { $0.side == .other && $0.hex.distance(to: far) <= Standard.reach })
+        XCTAssertTrue(chart.place(at: far, in: view, player: me).lines.contains("On the land of The Far Pact."),
+                      "\(chart.place(at: far, in: view, player: me).lines)")
+    }
+
     /// On the alliance's land beyond the House's own, the seat raised anew
     /// is offered from the chart in its own words, for its dearer moonsalt,
     /// as the Mac's ground panel offers it.

@@ -25,6 +25,10 @@ public struct CompanionChart: Equatable, Sendable {
         /// whole hex takes the fire's light or the ash's grey, so the fire
         /// shows around a company or hold standing in it.
         public var burn: Burn? = nil
+        /// Whose alliance's land it lies in, as the standards and halls the
+        /// keeper's view knows of claim it: `.ally` for the keeper's own
+        /// alliance, `.other` for another's; none's, nil.
+        public var alliance: Side? = nil
     }
 
     /// The blackwood burning, or the ash it leaves, on a hex.
@@ -180,6 +184,10 @@ public struct CompanionChart: Equatable, Sendable {
     /// The edges of the Houses' lands within the chart: all the House's
     /// own, and another House's where the House has explored.
     public let borders: [Border]
+    /// The edges of the alliances' lands within the chart, where each meets
+    /// another alliance's land or none: all the keeper's own alliance's,
+    /// and another's where the House has explored.
+    public let allianceBorders: [Border]
     /// The Houses named over their land once the chart is pinched out to
     /// take in the country, as the Mac's map names them from afar: each
     /// House whose seat lies on the chart and the House has seen, in the
@@ -236,15 +244,22 @@ public struct CompanionChart: Equatable, Sendable {
         // Whose land each hex lies in, by the claims of the holds the view knows.
         let claims = world.territory()
         var owner: [Hex: Int] = [:]
+        // And whose alliance's, by the standards and halls it knows.
+        let sworn = world.alliance(of: player)?.id
+        var allied: [Hex: Int] = [:]
+        let claimsAllianceLand = !world.standardsStanding.isEmpty || !world.hallsStanding.isEmpty
         // The blackwood burning and the ash it left, every House seeing them.
         let fires = world.wildfiresByHex
         cells = center.spiral(radius).compactMap { hex in
             guard let index = world.map.index(of: hex) else { return nil }
             let house = claims.indices.contains(index) ? claims[index].flatMap { world.hold($0)?.owner } : nil
             if let house { owner[hex] = house }
+            let alliance = claimsAllianceLand ? world.allianceLand(at: hex) : nil
+            if let alliance { allied[hex] = alliance }
             return Cell(hex: hex, terrain: world.map[index].terrain, explored: explored.indices.contains(index) && explored[index],
                         seen: seen.indices.contains(index) && seen[index], land: house.map(side),
-                        burn: fires[hex].map { $0.isBurning(at: world.watch) ? .burning : .ash })
+                        burn: fires[hex].map { $0.isBurning(at: world.watch) ? .burning : .ash },
+                        alliance: alliance.map { $0 == sworn ? .ally : .other })
         }
         // Each land's edge where it meets another House's land or no one's,
         // within the chart: the House's own wherever it runs, another's only
@@ -258,6 +273,17 @@ public struct CompanionChart: Equatable, Sendable {
             }
         }
         self.borders = borders
+        // Each alliance's land's edge where it meets another's or no one's:
+        // the keeper's own alliance's wherever it runs, another's only over
+        // ground the House has explored.
+        var allianceBorders: [Border] = []
+        for cell in cells {
+            guard let alliance = allied[cell.hex], let land = cell.alliance, land == .ally || cell.explored else { continue }
+            for beyond in cell.hex.neighbors where onChart.contains(beyond) && allied[beyond] != alliance {
+                allianceBorders.append(Border(hex: cell.hex, beyond: beyond, side: land))
+            }
+        }
+        self.allianceBorders = allianceBorders
         func reached(_ hex: Hex) -> Bool { hex.distance(to: center) <= radius }
         func whose(_ house: Int) -> String {
             house == player ? "your" : houses.indices.contains(house) ? "\(houses[house].title)'s" : "a fallen House's"
@@ -362,6 +388,10 @@ public struct CompanionChart: Equatable, Sendable {
         var lines = marks.filter { $0.hex == hex }.map(\.name)
         if lines.isEmpty {
             lines = [explored ? "Nothing your House knows of stands here." : "Your House hasn't explored this ground."]
+        }
+        // The alliance whose land it is, as the chart draws it.
+        if let land = cell?.alliance, let alliance = world.allianceLand(at: hex).flatMap({ world.alliance($0) }) {
+            lines.append(land == .ally ? "On the land of \(alliance.name), your alliance." : "On the land of \(alliance.name).")
         }
         // The alliance's mark here, who made it and how long it stands.
         if let mark = world.marksSeen(by: player).first(where: { $0.at == hex }), marks.contains(where: { $0.id == CompanionChart.markID(mark) }) {

@@ -521,15 +521,19 @@ struct ChartView: View {
             let shade = CompanionChart.shade(of: each)
             let placed = cell.offsetBy(dx: at.x, dy: at.y)
             context.fill(placed, with: .color(Color(red: shade.red, green: shade.green, blue: shade.blue)))
-            // The House's own land lit faintly, as its claims reach.
-            if each.land == .own { context.fill(placed, with: .color(Night.moon.opacity(0.08))) }
+            // The House's own land lit faintly, as its claims reach; its
+            // alliance's land beyond it more faintly, in its allies' colour.
+            if each.land == .own {
+                context.fill(placed, with: .color(Night.moon.opacity(0.08)))
+            } else if each.alliance == .ally {
+                context.fill(placed, with: .color(Self.colour(of: .ally).opacity(0.07)))
+            }
             context.stroke(placed, with: .color(Night.background.opacity(0.55)), lineWidth: 0.5)
         }
-        // Whose land is whose: each land's edge where it meets another's or
-        // no one's, in the colour of whose it is.
-        for border in chart.borders {
+        // The edge two hexes share.
+        func sharedEdge(_ border: CompanionChart.Border) -> Path? {
             let at = point(of: border.hex, canvas: canvas, size: size)
-            guard shown.contains(at) else { continue }
+            guard shown.contains(at) else { return nil }
             let beyond = point(of: border.beyond, canvas: canvas, size: size)
             let middle = CGPoint(x: (at.x + beyond.x) / 2, y: (at.y + beyond.y) / 2)
             func far(_ corner: CGPoint) -> CGFloat {
@@ -537,11 +541,25 @@ struct ChartView: View {
             }
             // The two corners nearest the midpoint between the two hexes: their shared edge.
             let corners = unit.map { CGPoint(x: Double(at.x) + $0.x, y: Double(at.y) + $0.y) }.sorted { far($0) < far($1) }
-            var edge = Path()
-            edge.move(to: corners[0])
-            edge.addLine(to: corners[1])
+            var path = Path()
+            path.move(to: corners[0])
+            path.addLine(to: corners[1])
+            return path
+        }
+        // Whose land is whose: each land's edge where it meets another's or
+        // no one's, in the colour of whose it is.
+        for border in chart.borders {
+            guard let edge = sharedEdge(border) else { continue }
             let own = border.side == .own
             context.stroke(edge, with: .color(Self.colour(of: border.side).opacity(own ? 0.95 : 0.7)), lineWidth: own ? 1.8 : 1.1)
+        }
+        // And each alliance's land, dashed: the keeper's own alliance's in
+        // its allies' colour, another's fainter.
+        for border in chart.allianceBorders {
+            guard let edge = sharedEdge(border) else { continue }
+            let ours = border.side == .ally
+            context.stroke(edge, with: .color(Self.colour(of: border.side).opacity(ours ? 0.85 : 0.55)),
+                           style: StrokeStyle(lineWidth: ours ? 1.4 : 1, dash: [3, 2.5]))
         }
         // The House's marches: a line from each company to where it is bound.
         for mark in chart.marks {
