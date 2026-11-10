@@ -91,7 +91,7 @@ final class AllianceMarkTests: XCTestCase {
         XCTAssertEqual(state.markRefusal(at: ground, as: 99), .notAKeeper)
         var keeper = state
         keeper.houses[ally].isPlayer = true
-        XCTAssertEqual(refusal(.markGround(ground, .strike, words: nil), in: keeper, as: ally), .notAllianceLeader, "A sworn House follows its leader's marks")
+        XCTAssertEqual(refusal(.markGround(ground, .strike, words: nil), in: keeper, as: ally), .notAllianceOfficer, "A sworn House follows its leader's marks")
         keeper.houses[other].isPlayer = true
         XCTAssertEqual(refusal(.markGround(ground, .strike, words: nil), in: keeper, as: other), .notInAlliance)
         XCTAssertEqual(refusal(.markGround(Hex(9_999, 9_999), .strike, words: nil), in: state, as: me), .notApplicable)
@@ -126,7 +126,7 @@ final class AllianceMarkTests: XCTestCase {
         var (state, me, ally, _, alliance) = try allied()
         _ = try state.perform(.markGround(try seen(state, by: me), .hold, words: nil), as: me)
         let mark = try XCTUnwrap(state.marks(of: alliance).first)
-        XCTAssertEqual(refusal(.unmarkGround(mark.id), in: state, as: ally), .notAllianceLeader)
+        XCTAssertEqual(refusal(.unmarkGround(mark.id), in: state, as: ally), .notAllianceOfficer)
         XCTAssertEqual(refusal(.unmarkGround(99_999), in: state, as: me), .notApplicable)
         var lifted = state
         XCTAssertEqual(try lifted.perform(.unmarkGround(mark.id), as: me), [.markLifted(mark, lapsed: false)])

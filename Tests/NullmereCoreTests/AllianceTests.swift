@@ -72,7 +72,7 @@ final class AllianceTests: XCTestCase {
         XCTAssertEqual(answered, [.allianceInvited(alliance: id, house: 1), .allianceAnswered(alliance: id, house: 1, accepted: true),
                                   .allianceJoined(alliance: id, house: 1)])
         XCTAssertTrue(state.areAllied(me, 1))
-        XCTAssertEqual(refusal(.inviteToAlliance(house: 2), in: state, as: 1), .notAllianceLeader)
+        XCTAssertEqual(refusal(.inviteToAlliance(house: 2), in: state, as: 1), .notAllianceOfficer)
         XCTAssertEqual(refusal(.inviteToAlliance(house: 1), in: state, as: me), .inAnAlliance)
         state.houses[2].temperament = .ambitious
         var strong = state
@@ -160,7 +160,7 @@ final class AllianceTests: XCTestCase {
         for house in 1...3 { _ = try state.perform(.inviteToAlliance(house: house), as: me) }
         XCTAssertEqual(state.alliance(id)?.members, [me, 1, 2, 3])
 
-        XCTAssertEqual(refusal(.expel(house: 2), in: state, as: 1), .notAllianceLeader)
+        XCTAssertEqual(refusal(.expel(house: 2), in: state, as: 1), .notAllianceOfficer)
         XCTAssertEqual(refusal(.expel(house: 7), in: state, as: me), .notAMember)
         XCTAssertEqual(refusal(.expel(house: me), in: state, as: me), .notAMember)
         XCTAssertEqual(try state.perform(.expel(house: 3), as: me), [.allianceLeft(alliance: id, house: 3, expelled: true)])
@@ -189,6 +189,130 @@ final class AllianceTests: XCTestCase {
                        [.allianceLeft(alliance: id, house: 3, expelled: false), .allianceDisbanded(alliance: id, name: "Ninefold")])
         XCTAssertNil(state.alliance(id))
         XCTAssertTrue(state.alliancesStanding.isEmpty)
+    }
+
+    /// Officers (Rise of Kingdoms' R4): the leader names up to three of its
+    /// Houses officers, and names them so no longer; an officer invites,
+    /// admits or refuses those asking, casts out any House neither the
+    /// leader nor an officer, and marks ground for the alliance, where the
+    /// rest do none of it. Each naming told to the alliance's Houses alone,
+    /// in each one's words. The leader gone, the banner goes to the strongest
+    /// officer, however strong the rest; an officer gone is one no longer.
+    func testOfficersKeepTheRollAndTheMarks() throws {
+        var state = lake("officers")
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "Lantern Oath"), as: me)
+        let id = try XCTUnwrap(state.alliance(of: me)).id
+        // Three keepers' Houses sworn to it, the officer to be the last.
+        let (sworn, other, officer) = (1, 2, 3)
+        for house in [sworn, other, officer] {
+            state.houses[house].isPlayer = true
+            _ = try state.perform(.inviteToAlliance(house: house), as: me)
+            _ = try state.perform(.answerInvitation(alliance: id, accept: true), as: house)
+        }
+        XCTAssertEqual(state.alliance(id)?.members, [me, sworn, other, officer])
+        XCTAssertNil(state.alliance(id)?.officers)
+
+        // Only the leader names them, of its own Houses.
+        XCTAssertEqual(refusal(.nameOfficer(house: other, named: true), in: state, as: sworn), .notAllianceLeader)
+        XCTAssertEqual(refusal(.nameOfficer(house: me, named: true), in: state, as: me), .notAMember)
+        XCTAssertEqual(refusal(.nameOfficer(house: 7, named: true), in: state, as: me), .notAMember)
+        XCTAssertEqual(refusal(.nameOfficer(house: officer, named: false), in: state, as: me), .notAnOfficer)
+        XCTAssertEqual(refusal(.nameOfficer(house: officer, named: true), in: state, as: 7), .notInAlliance)
+        let named = try state.perform(.nameOfficer(house: officer, named: true), as: me)
+        XCTAssertEqual(named, [.officerNamed(alliance: id, house: officer, named: true)])
+        XCTAssertEqual(state.alliance(id)?.officers, [officer])
+        XCTAssertEqual(refusal(.nameOfficer(house: officer, named: true), in: state, as: me), .alreadyAnOfficer)
+        XCTAssertTrue(state.chronicle.contains { $0.kind == .alliance && $0.text.hasSuffix("an officer of Lantern Oath.") })
+        XCTAssertEqual(try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(state)), state)
+
+        // Told to the alliance's Houses alone, each in their own words.
+        func said(_ event: GameEvent, to viewer: Int) -> String? { state.tidings(of: event, for: viewer)?.text }
+        let theirs = state.houses[officer].title
+        XCTAssertEqual(said(named[0], to: officer), "You are named an officer of Lantern Oath: you may invite and admit Houses, "
+                       + "cast out any not its leader or an officer, and mark ground for it.")
+        XCTAssertEqual(said(named[0], to: me), "You name \(theirs) an officer of Lantern Oath.")
+        XCTAssertEqual(said(named[0], to: sworn), "\(theirs) is named an officer of Lantern Oath.")
+        let unnamed = GameEvent.officerNamed(alliance: id, house: officer, named: false)
+        XCTAssertEqual(said(unnamed, to: officer), "You are an officer of Lantern Oath no longer.")
+        XCTAssertEqual(said(unnamed, to: me), "\(theirs) is an officer of Lantern Oath no longer.")
+        XCTAssertEqual(said(unnamed, to: sworn), "\(theirs) is an officer of Lantern Oath no longer.")
+        XCTAssertEqual(state.events(named, heardBy: sworn), named)
+        XCTAssertEqual(state.events(named, heardBy: 7), [], "Not another alliance's to hear")
+
+        // The board: the leader, then its officers, then the rest.
+        let board = state.allianceBoard(for: officer)
+        XCTAssertTrue(board.isOfficer)
+        XCTAssertFalse(board.isLeader)
+        XCTAssertEqual(board.members.map(\.house), [me, officer, sworn, other])
+        XCTAssertEqual(board.members.map(\.isOfficer), [false, true, false, false])
+        XCTAssertFalse(state.allianceBoard(for: sworn).isOfficer)
+        XCTAssertEqual(state.view(for: 7).alliance(id)?.officers, [officer], "Its officers known to all, as its leader is")
+
+        // The officer keeps the roll: any not the leader or an officer cast out.
+        XCTAssertEqual(refusal(.expel(house: me), in: state, as: officer), .notAllianceLeader)
+        XCTAssertNil(refusal(.expel(house: sworn), in: state, as: officer))
+        XCTAssertEqual(refusal(.expel(house: other), in: state, as: sworn), .notAllianceOfficer)
+        var two = state
+        _ = try two.perform(.nameOfficer(house: sworn, named: true), as: me)
+        XCTAssertEqual(refusal(.expel(house: sworn), in: two, as: officer), .notAllianceLeader, "Another officer is the leader's to cast out")
+        XCTAssertNil(refusal(.expel(house: sworn), in: two, as: me))
+        // Room made, the officer invites, and answers a House asking.
+        var room = state
+        XCTAssertEqual(try room.perform(.expel(house: other), as: officer), [.allianceLeft(alliance: id, house: other, expelled: true)])
+        room.houses[5].isPlayer = true
+        XCTAssertNil(refusal(.inviteToAlliance(house: 5), in: room, as: officer))
+        XCTAssertEqual(refusal(.inviteToAlliance(house: 5), in: room, as: sworn), .notAllianceOfficer)
+        XCTAssertTrue(room.allianceBoard(for: officer).invitable.contains(5))
+        XCTAssertEqual(room.allianceBoard(for: sworn).invitable, [])
+        _ = try room.perform(.askToJoin(alliance: id), as: 5)
+        XCTAssertEqual(room.allianceBoard(for: officer).asking, [5])
+        XCTAssertEqual(room.allianceBoard(for: sworn).asking, [])
+        XCTAssertEqual(refusal(.answerRequest(house: 5, accept: true), in: room, as: sworn), .noRequest)
+        _ = try room.perform(.answerRequest(house: 5, accept: true), as: officer)
+        XCTAssertTrue(room.areAllied(5, me))
+
+        // And marks the ground for it, which the rest may not.
+        let ground = try XCTUnwrap(state.seat(of: officer)).position
+        XCTAssertNil(state.markRefusal(at: ground, as: officer))
+        XCTAssertEqual(state.markRefusal(at: ground, as: sworn), .notAllianceOfficer)
+        var marked = state
+        _ = try marked.perform(.markGround(ground, .hold, words: nil), as: officer)
+        let mark = try XCTUnwrap(marked.marksSeen(by: me).first { $0.at == ground })
+        XCTAssertEqual(marked.unmarkRefusal(mark.id, as: sworn), .notAllianceOfficer)
+        XCTAssertNil(marked.unmarkRefusal(mark.id, as: me))
+        XCTAssertNil(marked.unmarkRefusal(mark.id, as: officer))
+
+        // The leader gone, the banner goes to its officer, however strong the rest.
+        var heirs = state
+        let seat = try XCTUnwrap(heirs.seat(of: sworn)).position
+        for _ in 0..<4 { heirs.put(.rider, tier: 3, of: sworn, at: try XCTUnwrap(heirs.freeHex(near: seat, within: 1...3))) }
+        XCTAssertGreaterThan(heirs.strength(of: sworn), heirs.strength(of: officer))
+        XCTAssertEqual(try heirs.perform(.leaveAlliance, as: me),
+                       [.allianceLeft(alliance: id, house: me, expelled: false), .allianceLed(alliance: id, house: officer)])
+        XCTAssertEqual(heirs.alliance(id)?.leader, officer)
+        XCTAssertNil(heirs.alliance(id)?.officers, "Leading, it is its officer no longer")
+        // An officer gone is one no longer.
+        var gone = state
+        _ = try gone.perform(.leaveAlliance, as: officer)
+        XCTAssertNil(gone.alliance(id)?.officers)
+
+        // Named so no longer, it keeps neither roll nor marks.
+        XCTAssertEqual(try state.perform(.nameOfficer(house: officer, named: false), as: me), [unnamed])
+        XCTAssertNil(state.alliance(id)?.officers)
+        XCTAssertEqual(state.markRefusal(at: ground, as: officer), .notAllianceOfficer)
+
+        // Three at most.
+        var many = state
+        let index = try XCTUnwrap(many.alliances?.firstIndex { $0.id == id })
+        many.alliances![index].members += [4, 5]
+        for house in [sworn, other, officer] { _ = try many.perform(.nameOfficer(house: house, named: true), as: me) }
+        XCTAssertEqual(many.alliance(id)?.officers, [sworn, other, officer])
+        XCTAssertEqual(refusal(.nameOfficer(house: 4, named: true), in: many, as: me), .officersFull)
+        XCTAssertEqual(RuleError.officersFull.description, "The alliance has all the officers it may: 3.")
+        var realm = RealmState(name: "R", seed: "parts of officers", seats: 4, radius: 18, watchLength: 60, now: 0)
+        realm.world.alliances = many.alliances
+        XCTAssertEqual(try RealmState(parts: realm.parts(using: Scene.encoder)), realm, "Its officers kept in the realm's parts")
     }
 
     /// A steward that takes up a keeper's banner answers the Houses asking
@@ -444,7 +568,8 @@ final class AllianceTests: XCTestCase {
         XCTAssertNil(said(.allianceInvited(alliance: 777, house: 1)))
         XCTAssertEqual(RuleError.atWarWithAMember(3).description, "No alliance takes in a House at war with one of its own.")
         XCTAssertEqual(RuleError.allyInAlliance(3).description, "Your House is sworn to the same alliance as theirs.")
-        let texts = [RuleError.inAnAlliance, .notInAlliance, .notAllianceLeader, .allianceNameInvalid, .allianceNameTaken, .unknownAlliance,
+        let texts = [RuleError.inAnAlliance, .notInAlliance, .notAllianceLeader, .notAllianceOfficer, .alreadyAnOfficer, .notAnOfficer,
+                     .officersFull, .allianceNameInvalid, .allianceNameTaken, .unknownAlliance,
                      .allianceFull, .alreadyInvited, .alreadyAsked, .noInvitation, .noRequest, .notAMember, .notAnAlly, .nothingToHelp].map(\.description)
         XCTAssertEqual(Set(texts).count, texts.count, "Each refusal its own words")
     }

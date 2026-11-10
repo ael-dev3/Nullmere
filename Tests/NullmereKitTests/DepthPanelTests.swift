@@ -271,6 +271,42 @@ final class DepthPanelTests: XCTestCase {
         guard case .askToJoin? = asked.sent.last else { return XCTFail("Asked: \(String(describing: asked.sent.last))") }
     }
 
+    /// Officers on the Mac's Alliance panel: the leader names a House of the
+    /// alliance an officer, which the panel then offers to unname; an officer
+    /// casts out a House neither leader nor officer, and is offered no other
+    /// to cast out; a sworn House neither names officers nor casts out.
+    func testTheLeaderNamesOfficersAndAnOfficerCastsOut() throws {
+        var state = world("pressed officers")
+        let me = state.player
+        let (officer, sworn) = ((me + 1) % 6, (me + 2) % 6)
+        _ = try state.perform(.foundAlliance(name: "The Ashen Ring"), as: me)
+        let banner = try XCTUnwrap(state.alliance(of: me)).id
+        let index = try XCTUnwrap(state.alliances?.firstIndex { $0.id == banner })
+        state.alliances![index].members.append(officer)
+        let (session, link) = session(state)
+        draw(AlliancePanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Name officer"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .nameOfficer(house: officer, named: true))
+        XCTAssertEqual(session.state.alliance(of: me)?.officers, [officer], "in the keeper's copy")
+        draw(AlliancePanel(session: session))
+        XCTAssertFalse(shown.contains("Name officer"), "\(shown)")
+        XCTAssertTrue(PressableButtons.press("Unname officer"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .nameOfficer(house: officer, named: false))
+
+        // The officer's own panel: the House neither leader nor officer to cast out.
+        state.alliances![index].members.append(sworn)
+        state.alliances![index].officers = [officer]
+        let (theirs, sent) = self.session(state, as: officer)
+        draw(AlliancePanel(session: theirs))
+        XCTAssertFalse(shown.contains("Name officer") || shown.contains("Unname officer"), "\(shown)")
+        XCTAssertTrue(PressableButtons.press("Cast out"), "Among \(shown)")
+        XCTAssertEqual(sent.sent.last, .expel(house: sworn))
+        // A sworn House, neither: nothing to name, none to cast out.
+        let (plain, _) = self.session(state, as: sworn)
+        draw(AlliancePanel(session: plain))
+        XCTAssertFalse(shown.contains("Cast out") || shown.contains("Name officer"), "\(shown)")
+    }
+
     func testASwornHouseInvitesHelpsAndLeaves() throws {
         let state = world("pressed alliance")
         let (session, link) = session(state)

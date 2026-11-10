@@ -151,7 +151,7 @@ enum Narration {
              .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised, .favourRose, .frontier,
              .makingsFound, .gearForged, .drilled,
              .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
-             .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
+             .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed, .officerNamed,
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .crownSurfaced, .crownTaken, .crownFell, .crownSank, .carriedAshore, .recalled, .marchHalted,

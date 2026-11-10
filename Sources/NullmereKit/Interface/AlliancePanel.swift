@@ -104,6 +104,8 @@ struct AlliancePanel: View {
                         .foregroundStyle(Palette.text(0.9))
                     if member.isLeader {
                         Caps("Leader", size: 8).foregroundStyle(Palette.glowWords)
+                    } else if member.isOfficer {
+                        Caps("Officer", size: 8).foregroundStyle(Palette.glowWords.opacity(0.8))
                     }
                     Spacer()
                     Text(verbatim: "Might \(member.might)").font(.nm(10).monospacedDigit()).foregroundStyle(Palette.text(0.55))
@@ -123,6 +125,17 @@ struct AlliancePanel: View {
                             }
                         }
                         if board.isLeader {
+                            // The leader names its officers, who keep the roll and the marks with them.
+                            let naming = !member.isOfficer
+                            let refusal = session.state.officerRefusal(member.house, named: naming, as: session.player)
+                            QuietButton(title: naming ? "Name officer" : "Unname officer", size: 8.5, enabled: refusal == nil,
+                                        name: naming ? "Name \(title(member.house)) an officer" : "Name \(title(member.house)) an officer no longer",
+                                        why: refusal?.description) {
+                                session.perform(.nameOfficer(house: member.house, named: naming))
+                            }
+                        }
+                        // The leader casts out any House; an officer, any not the leader or an officer.
+                        if board.isLeader || (board.isOfficer && !member.isLeader && !member.isOfficer) {
                             ConfirmButton(title: "Cast out", confirm: "Cast them out?") { session.perform(.expel(house: member.house)) }
                         }
                     }
@@ -159,11 +172,11 @@ struct AlliancePanel: View {
             RallyRow(session: session, line: line, chosen: chosen)
         }
 
-        if board.isLeader, !board.invitable.isEmpty {
+        if !board.invitable.isEmpty {
             Rule(opacity: 0.18)
             Caps("Invite", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
             if board.invitable.count > HouseChoice.shownWhole {
-                // A realm of a thousand Houses: those the leader has reason to invite, and any other found by name.
+                // A realm of a thousand Houses: those the leader or an officer has reason to invite, and any other found by name.
                 HouseChooser(session: session, excluding: [session.player], among: Set(board.invitable)) { house in
                     QuietButton(title: "Invite \(house.title)", size: 8.5) {
                         session.perform(.inviteToAlliance(house: house.id))

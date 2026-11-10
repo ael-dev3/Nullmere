@@ -168,6 +168,8 @@ public struct AllyLine: Equatable, Sendable, Identifiable {
     public var id: Int { house }
     public let house: Int
     public let isLeader: Bool
+    /// One of the alliance's officers.
+    public let isOfficer: Bool
     public let might: Int
     /// Its works, musters and study the viewing House could still help.
     public let helpable: Int
@@ -199,15 +201,19 @@ public struct AllianceBoard: Equatable, Sendable {
     /// The alliance it is sworn to, if any.
     public let alliance: Alliance?
     public let isLeader: Bool
-    /// The alliance's Houses, the leader first, then in the order they joined.
+    /// The House is one of its alliance's officers, keeping its roll and its
+    /// marks with its leader.
+    public let isOfficer: Bool
+    /// The alliance's Houses, the leader first, then its officers, then the
+    /// rest in the order they joined.
     public let members: [AllyLine]
     /// Alliances that have invited the House.
     public let invitations: [Alliance]
     /// The other alliances standing.
     public let others: [AllianceLine]
-    /// Houses asking to join, for the leader to answer.
+    /// Houses asking to join, for the leader or an officer to answer.
     public let asking: [Int]
-    /// Houses the leader could invite.
+    /// Houses the leader or an officer could invite.
     public let invitable: [Int]
     public let rallies: [RallyLine]
     /// The most Houses an alliance takes.
@@ -219,9 +225,12 @@ extension GameState {
     public func allianceBoard(for house: Int) -> AllianceBoard {
         let own = alliance(of: house)
         let isLeader = own?.leader == house
-        let members = own.map { alliance in
-            ([alliance.leader] + alliance.members.filter { $0 != alliance.leader }).map { member in
-                AllyLine(house: member, isLeader: member == alliance.leader, might: might(of: member),
+        let manages = own?.manages(house) == true
+        let members: [AllyLine] = own.map { (alliance: Alliance) -> [AllyLine] in
+            let officers = alliance.members.filter(alliance.isOfficer)
+            let rest = alliance.members.filter { $0 != alliance.leader && !alliance.isOfficer($0) }
+            return ([alliance.leader] + officers + rest).map { member in
+                AllyLine(house: member, isLeader: member == alliance.leader, isOfficer: alliance.isOfficer(member), might: might(of: member),
                          helpable: member == house ? 0 : helpable(by: house, for: member))
             }
         } ?? []
@@ -230,7 +239,7 @@ extension GameState {
                          refusal: joinRefusal(of: house, to: alliance) ?? (alliance.asking.contains(house) ? .alreadyAsked : nil))
         }
         let invitable: [Int] = own.map { (alliance: Alliance) -> [Int] in
-            guard isLeader else { return [] }
+            guard manages else { return [] }
             return houses.filter { other in
                 other.id != house && !other.isEliminated && !alliance.invited.contains(other.id)
                     && joinRefusal(of: other.id, to: alliance) == nil
@@ -241,9 +250,9 @@ extension GameState {
                       companies: rally.companies.filter { unit($0)?.errand == .rally(rally.id) }.count,
                       capacity: capacity(of: rally), isCaller: rally.caller == house)
         }
-        return AllianceBoard(alliance: own, isLeader: isLeader, members: members,
+        return AllianceBoard(alliance: own, isLeader: isLeader, isOfficer: own?.isOfficer(house) == true, members: members,
                              invitations: alliancesStanding.filter { $0.invited.contains(house) }, others: others,
-                             asking: isLeader ? own?.asking ?? [] : [], invitable: invitable, rallies: rallies,
+                             asking: manages ? own?.asking ?? [] : [], invitable: invitable, rallies: rallies,
                              limit: allianceLimit)
     }
 }

@@ -68,8 +68,11 @@ public enum Command: Codable, Equatable, Sendable {
     /// An alliance's leader answers a House asking to join.
     case answerRequest(house: Int, accept: Bool)
     case leaveAlliance
-    /// Its leader casts a House out of the alliance.
+    /// Its leader, or one of its officers, casts a House out of the alliance.
     case expel(house: Int)
+    /// Its leader names one of its Houses an officer, or names them one no
+    /// longer.
+    case nameOfficer(house: Int, named: Bool)
     /// Help every work, muster and study of an ally's not helped yet.
     case help(house: Int)
     /// Call a rally at one of the House's holds against a hold of a House
@@ -389,6 +392,13 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notInAlliance
     /// What only an alliance's leader may do.
     case notAllianceLeader
+    /// What only an alliance's leader or one of its officers may do.
+    case notAllianceOfficer
+    /// A House named an officer already, or not one to unname.
+    case alreadyAnOfficer
+    case notAnOfficer
+    /// An alliance with all the officers it may have.
+    case officersFull
     case allianceNameInvalid
     case allianceNameTaken
     case unknownAlliance
@@ -724,6 +734,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .inAnAlliance: return "That House is sworn to an alliance already."
         case .notInAlliance: return "Your House is sworn to no alliance."
         case .notAllianceLeader: return "Only the alliance's leader can do that."
+        case .notAllianceOfficer: return "Only the alliance's leader or one of its officers can do that."
+        case .alreadyAnOfficer: return "That House is already an officer."
+        case .notAnOfficer: return "That House isn't an officer."
+        case .officersFull: return "The alliance has all the officers it may: \(Alliance.mostOfficers)."
         case .allianceNameInvalid: return "An alliance's name is two to twenty-four letters, spaces, hyphens or apostrophes."
         case .allianceNameTaken: return "An alliance already goes by that name."
         case .unknownAlliance: return "No such alliance stands."
@@ -1143,6 +1157,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case allianceLeft(alliance: Int, house: Int, expelled: Bool)
     /// A House takes up an alliance's banner as its leader.
     case allianceLed(alliance: Int, house: Int)
+    /// An alliance's leader names a House of it an officer, or names it one
+    /// no longer.
+    case officerNamed(alliance: Int, house: Int, named: Bool)
     /// An alliance left with no House is no more.
     case allianceDisbanded(alliance: Int, name: String)
     /// A House helps an ally's works, musters and study.

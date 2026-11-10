@@ -766,7 +766,9 @@ public struct CompanionLedger: Equatable, Sendable {
     /// study, caches while the stores have room, ward stones for the holds
     /// whose ward isn't whole, and draughts while a company is hurt.
     public let satchel: [Item]
-    /// The alliance, by name, and its Houses, the leader first.
+    /// The alliance, by name, and its Houses, the leader first, then its
+    /// officers, each said so ("House Orren (leader)", "House Quell
+    /// (officer)").
     public let alliance: String?
     public let allies: [String]
     public let allianceWords: [Said]
@@ -776,17 +778,23 @@ public struct CompanionLedger: Equatable, Sendable {
     /// The alliances' invitations to the House while it is sworn to none,
     /// as the Mac's Alliance panel shows them (`GameState.allianceBoard`).
     public let invitations: [Answer]
-    /// For the leader of the House's alliance, the Houses asking to join.
+    /// For the leader of the House's alliance, or one of its officers, the
+    /// Houses asking to join.
     public let requests: [Answer]
     /// The alliances the House, sworn to none, may ask to join now, those
     /// whose leaders' seats are nearest first, and none that invited it.
     public let asks: [Order]
-    /// For the leader, the Houses it may invite now, the nearest first.
+    /// For the leader or an officer, the Houses it may invite now, the
+    /// nearest first.
     public let invites: [Order]
     /// The House's alliance to leave, while it is sworn to one.
     public let leave: Order?
-    /// For the leader, each of its alliance's other Houses to cast out.
+    /// For the leader, each of its alliance's other Houses to cast out; for
+    /// an officer, each that is neither its leader nor an officer.
     public let castOut: [Order]
+    /// For the leader, each of its alliance's other Houses to name an
+    /// officer, or an officer no longer, as the rules would have it.
+    public let officers: [Order]
     /// What the House's alliance keeps of its own, while it is sworn to one.
     public let allianceOwn: AllianceOwn?
     /// The shares of the alliance's spoils waiting for the House, as the
@@ -928,7 +936,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
-            && a.leave == b.leave && a.castOut == b.castOut && a.allianceOwn == b.allianceOwn && a.calls == b.calls
+            && a.leave == b.leave && a.castOut == b.castOut && a.officers == b.officers && a.allianceOwn == b.allianceOwn && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
@@ -1258,8 +1266,13 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         let allied = world.alliance(of: player)
         alliance = allied?.name
-        let sworn = allied.map { [$0.leader] + $0.members.filter { $0 != allied?.leader } } ?? []
-        allies = sworn.map(title)
+        let sworn: [Int] = allied.map { (own: Alliance) -> [Int] in
+            [own.leader] + own.members.filter(own.isOfficer) + own.members.filter { $0 != own.leader && !own.isOfficer($0) }
+        } ?? []
+        allies = sworn.map { house in
+            guard let own = allied else { return title(house) }
+            return title(house) + (house == own.leader ? " (leader)" : own.isOfficer(house) ? " (officer)" : "")
+        }
         helps = sworn.filter { $0 != player }.compactMap { ally in
             let count = world.helpable(by: player, for: ally)
             return count > 0 ? Order(title: "Help \(title(ally)), \(count) under way", command: .help(house: ally)) : nil
@@ -1315,6 +1328,14 @@ public struct CompanionLedger: Equatable, Sendable {
         castOut = board.alliance.map { own in
             sworn.filter { $0 != player && world.refusal(of: .expel(house: $0), as: player) == nil }.map { other in
                 Order(title: "Cast \(title(other)) out of \(own.name)", command: .expel(house: other))
+            }
+        } ?? []
+        officers = board.alliance.map { (own: Alliance) -> [Order] in
+            sworn.filter { $0 != player }.compactMap { (other: Int) -> Order? in
+                let naming = !own.isOfficer(other)
+                guard world.officerRefusal(other, named: naming, as: player) == nil else { return nil }
+                return Order(title: naming ? "Name \(title(other)) an officer" : "Name \(title(other)) an officer no longer",
+                             command: .nameOfficer(house: other, named: naming))
             }
         } ?? []
         // The shares of the alliance's spoils waiting, to take.

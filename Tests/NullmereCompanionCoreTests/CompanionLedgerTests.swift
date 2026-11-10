@@ -703,6 +703,51 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(later.rankings[1].lines.first?.isOwn, true)
     }
 
+    /// Officers from the phone: the leader names each other House of the
+    /// alliance an officer, or one no longer, as the rules have it; the
+    /// alliance's Houses said with its leader and officers marked, the
+    /// officers after the leader; an officer offered the Houses asking, the
+    /// invitations, and casting out those neither leader nor officer, where
+    /// another House is offered none of it.
+    func testThePhoneNamesOfficersAndOfficersKeepTheRoll() throws {
+        var state = GameState(settings: GameSettings(seedText: "phone officers", houseCount: 12, radius: 36, keepers: 1))
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Stone Accord"), as: me)
+        let id = try XCTUnwrap(state.alliance(of: me)).id
+        let (sworn, officer) = ((me + 1) % 12, (me + 2) % 12)
+        for house in [sworn, officer] {
+            state.houses[house].isPlayer = true
+            _ = try state.perform(.inviteToAlliance(house: house), as: me)
+            _ = try state.perform(.answerInvitation(alliance: id, accept: true), as: house)
+        }
+        func title(_ house: Int) -> String { state.houses[house].title }
+        var ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.allies, ["\(title(me)) (leader)", title(sworn), title(officer)])
+        XCTAssertEqual(ledger.officers.map(\.title), ["Name \(title(sworn)) an officer", "Name \(title(officer)) an officer"])
+        assertTaken(ledger.officers, in: state, as: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: officer).officers.isEmpty, "Not a House of it's to do")
+        _ = try state.perform(.nameOfficer(house: officer, named: true), as: me)
+        ledger = CompanionLedger(world: state, player: me)
+        XCTAssertEqual(ledger.allies, ["\(title(me)) (leader)", "\(title(officer)) (officer)", title(sworn)])
+        XCTAssertEqual(ledger.officers.map(\.title), ["Name \(title(officer)) an officer no longer", "Name \(title(sworn)) an officer"])
+        assertTaken(ledger.officers, in: state, as: me)
+
+        // The officer keeps the roll; the other House, none of it.
+        let theirs = CompanionLedger(world: state, player: officer)
+        XCTAssertEqual(theirs.castOut.map(\.title), ["Cast \(title(sworn)) out of The Stone Accord"])
+        assertTaken(theirs.castOut, in: state, as: officer)
+        XCTAssertFalse(theirs.invites.isEmpty)
+        assertTaken(theirs.invites, in: state, as: officer)
+        let others = CompanionLedger(world: state, player: sworn)
+        XCTAssertTrue(others.castOut.isEmpty && others.invites.isEmpty && others.officers.isEmpty)
+        let asker = (me + 3) % 12
+        state.houses[asker].isPlayer = true
+        _ = try state.perform(.askToJoin(alliance: id), as: asker)
+        XCTAssertEqual(CompanionLedger(world: state, player: officer).requests.map(\.question), ["\(title(asker)) asks to join The Stone Accord."])
+        XCTAssertTrue(CompanionLedger(world: state, player: sworn).requests.isEmpty)
+        XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger, "Changed when the alliance's roll changes")
+    }
+
     /// What the House's alliance keeps of its own on the phone, in the words
     /// of the Mac's Alliance panel: nothing while sworn to no alliance;
     /// sworn, its standards, hall, coffers, storehouse and yards told, and

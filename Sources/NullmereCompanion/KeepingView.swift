@@ -1272,8 +1272,20 @@ struct AllianceTab: View {
                                 .font(Night.small)
                                 .accessibilityLabel("Help every ally with work under way")
                             }
-                            // For the leader: another House cast out, asked first
-                            // as the Mac asks.
+                            // For the leader: officers named, or named no longer,
+                            // to keep the roll and the marks with them.
+                            if !ledger.officers.isEmpty {
+                                Menu("Officers") {
+                                    ForEach(Array(ledger.officers.enumerated()), id: \.offset) { order in
+                                        Button(order.element.title) { session.give(order.element.command, told: order.element.title) }
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel("Name your alliance's officers")
+                            }
+                            // For the leader, or an officer: another House cast
+                            // out, asked first as the Mac asks.
                             if !ledger.castOut.isEmpty {
                                 Menu("Cast out") {
                                     ForEach(Array(ledger.castOut.enumerated()), id: \.offset) { order in

@@ -230,6 +230,8 @@ extension GameState {
             return try leaveAlliance(as: house)
         case let .expel(target):
             return try expel(target, by: house)
+        case let .nameOfficer(target, named):
+            return try nameOfficer(target, named: named, as: house)
         case let .help(ally):
             return try help(ally, by: house)
         case let .callRally(holdID, targetID, watches):

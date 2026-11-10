@@ -1817,6 +1817,7 @@ public final class GameSession {
         case .inviteToAlliance, .askToJoin: return .envoy
         case .answerInvitation(_, let accept), .answerRequest(_, let accept): return accept ? .banner : .refusal
         case .expel: return .refusal
+        case .nameOfficer(_, let named): return named ? .banner : .stand
         case .callRally: return .horn
         case .say, .sharePlace: return .parley
         case .sing: return .lore

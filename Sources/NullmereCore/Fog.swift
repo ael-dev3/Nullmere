@@ -415,7 +415,8 @@ extension GameState {
                 return visible(at)
             case .allianceFounded, .allianceJoined, .allianceLeft, .allianceLed, .allianceDisbanded:
                 return true
-            case .allianceInvited(let id, let other), .allianceAsked(let id, let other), .allianceAnswered(let id, let other, _):
+            case .allianceInvited(let id, let other), .allianceAsked(let id, let other), .allianceAnswered(let id, let other, _),
+                 .officerNamed(let id, let other, _):
                 return other == house || alliance(id)?.members.contains(house) == true
             case .helpGiven(let by, let to, _):
                 return by == house || to == house

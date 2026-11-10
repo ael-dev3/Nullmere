@@ -537,6 +537,19 @@ extension GameState {
             let name = alliance(id)?.name ?? "the alliance"
             return house == viewer ? Tidings("The banner of \(name) passes to you.", .good)
                 : Tidings("\(houses[house].title) takes up the banner of \(name).", .neutral)
+        case .officerNamed(let id, let house, let named):
+            let name = alliance(id)?.name ?? "the alliance"
+            if house == viewer {
+                return named ? Tidings("You are named an officer of \(name): you may invite and admit Houses, cast out any not its leader "
+                                       + "or an officer, and mark ground for it.", .good)
+                    : Tidings("You are an officer of \(name) no longer.", .neutral)
+            }
+            if alliance(id)?.leader == viewer {
+                return Tidings(named ? "You name \(houses[house].title) an officer of \(name)." : "\(houses[house].title) is an officer of \(name) no longer.",
+                               .neutral)
+            }
+            return Tidings(named ? "\(houses[house].title) is named an officer of \(name)." : "\(houses[house].title) is an officer of \(name) no longer.",
+                           .neutral)
         case .allianceDisbanded(_, let name):
             return Tidings("\(Alliance.titled(name)) is no more.", .neutral)
         case .helpGiven(let by, let to, let count):

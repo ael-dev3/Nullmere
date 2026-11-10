@@ -20,6 +20,24 @@ public struct Alliance: Codable, Equatable, Identifiable, Sendable {
     /// What it keeps of its own, filled by its land and its yards and spent
     /// first on what its Houses raise for it; absent before it had any.
     public internal(set) var coffers: Stock?
+    /// The Houses its leader has named its officers (Rise of Kingdoms' R4),
+    /// in the order they were named, at most `mostOfficers`: they invite
+    /// and admit Houses, cast out those who are not officers, and mark
+    /// ground for it; absent while it has none.
+    public internal(set) var officers: [Int]?
+
+    /// The most officers an alliance may have.
+    public static let mostOfficers = 3
+
+    /// Its officers, in the order they were named.
+    public var officersNamed: [Int] { officers ?? [] }
+
+    /// Whether a House is one of its officers.
+    public func isOfficer(_ house: Int) -> Bool { officersNamed.contains(house) }
+
+    /// Whether a House keeps its roll and its marks: its leader, or one of
+    /// its officers.
+    public func manages(_ house: Int) -> Bool { house == leader || isOfficer(house) }
 
     /// Its name as a line begins with it: "The Still Accord", where the
     /// stewards' alliances are named to be said within a line ("the Still
@@ -106,7 +124,7 @@ extension GameState {
 
     mutating func invite(_ target: Int, by house: Int) throws(RuleError) -> [GameEvent] {
         guard let alliance = alliance(of: house) else { throw .notInAlliance }
-        guard alliance.leader == house else { throw .notAllianceLeader }
+        guard alliance.manages(house) else { throw .notAllianceOfficer }
         guard target != house, let other = self.house(target), !other.isEliminated else { throw .unknownHouse }
         if let refusal = joinRefusal(of: target, to: alliance) { throw refusal }
         guard !alliance.invited.contains(target) else { throw .alreadyInvited }
@@ -147,9 +165,10 @@ extension GameState {
         return events
     }
 
-    /// An alliance's leader answers a House asking to join.
+    /// An alliance's leader, or one of its officers, answers a House asking
+    /// to join.
     mutating func answerRequest(of asker: Int, accept: Bool, as house: Int) throws(RuleError) -> [GameEvent] {
-        guard let alliance = alliance(of: house), alliance.leader == house, alliance.asking.contains(asker),
+        guard let alliance = alliance(of: house), alliance.manages(house), alliance.asking.contains(asker),
               let index = allianceIndex(alliance.id) else { throw .noRequest }
         alliances![index].asking.removeAll { $0 == asker }
         let accepted = accept && joinRefusal(of: asker, to: alliances![index]) == nil
@@ -195,17 +214,53 @@ extension GameState {
         return [.allianceLeft(alliance: alliance.id, house: house, expelled: false)] + part(house, from: alliance.id)
     }
 
+    /// Its leader casts a House out of the alliance; an officer, a House
+    /// that is neither its leader nor another officer.
     mutating func expel(_ target: Int, by house: Int) throws(RuleError) -> [GameEvent] {
         guard let alliance = alliance(of: house) else { throw .notInAlliance }
-        guard alliance.leader == house else { throw .notAllianceLeader }
+        guard alliance.manages(house) else { throw .notAllianceOfficer }
         guard target != house, alliance.members.contains(target) else { throw .notAMember }
+        guard alliance.leader == house || (target != alliance.leader && !alliance.isOfficer(target)) else { throw .notAllianceLeader }
         record(.alliance, [target, house], "\(houses[house].title) casts \(houses[target].title) out of \(alliance.name).")
         return [.allianceLeft(alliance: alliance.id, house: target, expelled: true)] + part(target, from: alliance.id)
     }
 
+    // MARK: Officers
+
+    /// Why a House can't name another an officer of its alliance, or name
+    /// it one no longer, if it can't: only its leader may, of a House of
+    /// the alliance other than itself, and never past `mostOfficers`.
+    public func officerRefusal(_ target: Int, named: Bool, as house: Int) -> RuleError? {
+        guard let alliance = alliance(of: house) else { return .notInAlliance }
+        guard alliance.leader == house else { return .notAllianceLeader }
+        guard target != house, alliance.members.contains(target) else { return .notAMember }
+        if named {
+            guard !alliance.isOfficer(target) else { return .alreadyAnOfficer }
+            guard alliance.officersNamed.count < Alliance.mostOfficers else { return .officersFull }
+        } else {
+            guard alliance.isOfficer(target) else { return .notAnOfficer }
+        }
+        return nil
+    }
+
+    /// An alliance's leader names a House of it an officer, or names it one
+    /// no longer.
+    mutating func nameOfficer(_ target: Int, named: Bool, as house: Int) throws(RuleError) -> [GameEvent] {
+        if let refusal = officerRefusal(target, named: named, as: house) { throw refusal }
+        let alliance = alliance(of: house)!
+        let index = allianceIndex(alliance.id)!
+        var officers = alliance.officersNamed
+        if named { officers.append(target) } else { officers.removeAll { $0 == target } }
+        alliances![index].officers = officers.isEmpty ? nil : officers
+        record(.alliance, [target, house], named ? "\(houses[house].title) names \(houses[target].title) an officer of \(alliance.name)."
+               : "\(houses[target].title) is an officer of \(alliance.name) no longer.")
+        return [.officerNamed(alliance: alliance.id, house: target, named: named)]
+    }
+
     /// A House goes from its alliance, by its will, its leader's, or its
-    /// fall: a leader gone leaves the banner to the strongest still sworn,
-    /// and an alliance left with none is no more.
+    /// fall, and is its officer no longer: a leader gone leaves the banner
+    /// to the strongest of its officers, or of all still sworn where it has
+    /// none, and an alliance left with none is no more.
     mutating func part(_ house: Int, from allianceID: Int) -> [GameEvent] {
         guard let index = allianceIndex(allianceID) else { return [] }
         // Its rallies lose the room their alliance's hall gave them.
@@ -213,6 +268,8 @@ extension GameState {
         // What it laid up in the alliance's storehouse goes with it.
         returnLaidUp(of: house, from: allianceID)
         alliances![index].members.removeAll { $0 == house }
+        let officers = alliances![index].officersNamed.filter { $0 != house }
+        alliances![index].officers = officers.isEmpty ? nil : officers
         let alliance = alliances![index]
         guard !alliance.members.isEmpty else {
             alliances!.remove(at: index)
@@ -225,8 +282,12 @@ extension GameState {
             return [.allianceDisbanded(alliance: allianceID, name: alliance.name)]
         }
         guard alliance.leader == house else { return [] }
-        let heir = alliance.members.max { (strength(of: $0), -$0) < (strength(of: $1), -$1) }!
+        let heirs = alliance.officersNamed.isEmpty ? alliance.members : alliance.officersNamed
+        let heir = heirs.max { (strength(of: $0), -$0) < (strength(of: $1), -$1) }!
         alliances![index].leader = heir
+        // The heir leads now, and is its officer no longer.
+        let staying = alliance.officersNamed.filter { $0 != heir }
+        alliances![index].officers = staying.isEmpty ? nil : staying
         alliances![index].invited = []
         record(.alliance, [heir], "\(houses[heir].title) takes up the banner of \(alliance.name).")
         return [.allianceLed(alliance: allianceID, house: heir)]

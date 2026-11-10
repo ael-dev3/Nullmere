@@ -1834,8 +1834,8 @@ extension RallyScene {
                 && earB.world?.marksSeen(by: bel).contains { $0.at == spot && $0.kind == .hold && $0.words == words } == true
         }
         await MainActor.run { b.send(.markGround(spot, .strike, words: nil)) }
-        try await until("Bel refused: he does not lead the alliance") {
-            earB.refusals.contains(RuleError.notAllianceLeader.description)
+        try await until("Bel refused: he neither leads the alliance nor is its officer") {
+            earB.refusals.contains(RuleError.notAllianceOfficer.description)
         }
         let id = try await MainActor.run { try XCTUnwrap(earA.world?.marksSeen(by: ama).first { $0.at == spot }?.id) }
         await MainActor.run { a.send(.unmarkGround(id)) }

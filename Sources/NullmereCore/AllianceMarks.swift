@@ -124,20 +124,21 @@ extension GameState {
     }
 
     /// Why a House can't mark that ground for its alliance, if it can't:
-    /// only a keeper who leads one may, on ground their House has seen.
+    /// only a keeper who leads one, or is one of its officers, may, on
+    /// ground their House has seen.
     public func markRefusal(at hex: Hex, as house: Int) -> RuleError? {
         guard houses.indices.contains(house), houses[house].isPlayer, !houses[house].isEliminated else { return .notAKeeper }
         guard let alliance = alliance(of: house) else { return .notInAlliance }
-        guard alliance.leader == house else { return .notAllianceLeader }
+        guard alliance.manages(house) else { return .notAllianceOfficer }
         guard let index = map.index(of: hex) else { return .notApplicable }
         let explored = houses[house].explored
         guard explored.indices.contains(index), explored[index] else { return .unexplored }
         return nil
     }
 
-    /// A keeper leading an alliance marks ground for it: a mark already on
-    /// that ground gives way to the new one, and with three standing the
-    /// oldest does.
+    /// A keeper leading an alliance, or an officer of it, marks ground for
+    /// it: a mark already on that ground gives way to the new one, and with
+    /// three standing the oldest does.
     mutating func markGround(_ hex: Hex, _ kind: AllianceMark.Kind, words: String?, as house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = markRefusal(at: hex, as: house) { throw refusal }
         let alliance = alliance(of: house)!.id
@@ -155,15 +156,15 @@ extension GameState {
     }
 
     /// Why a House can't lift a mark, if it can't: only the leader of the
-    /// alliance that made it may.
+    /// alliance that made it, or one of its officers, may.
     public func unmarkRefusal(_ id: Int, as house: Int) -> RuleError? {
         guard let mark = allianceMarks?.first(where: { $0.id == id }) else { return .notApplicable }
         guard let alliance = alliance(of: house), alliance.id == mark.alliance else { return .notInAlliance }
-        guard alliance.leader == house else { return .notAllianceLeader }
+        guard alliance.manages(house) else { return .notAllianceOfficer }
         return nil
     }
 
-    /// An alliance's leader lifts one of its marks.
+    /// An alliance's leader, or one of its officers, lifts one of its marks.
     mutating func unmarkGround(_ id: Int, as house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = unmarkRefusal(id, as: house) { throw refusal }
         let mark = allianceMarks!.first { $0.id == id }!
