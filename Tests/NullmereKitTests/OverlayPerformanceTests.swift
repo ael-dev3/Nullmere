@@ -136,49 +136,6 @@ final class OverlayPerformanceTests: XCTestCase {
         print("PERF marks as a fresh image each time, held to nothing: median \(String(format: "%.2f", images[images.count / 2])) ms")
         let best = beside.min() ?? StagingTimes.plainPace
         print("PERFMETRIC marks.pace.cpu \(String(format: "%.3f", best))")
-        // The same shapes timed three ways into the same canvas, held to
-        // nothing and told beside the marks: a path for them all (run 939's
-        // marks, a path a colour across the view), a path for each square of
-        // the view (`GatheredMarks`), and a fill for each shape (run 933's).
-        // A run shows which way the marks' cost goes on the runner.
-        let spots: [CGRect] = (0..<120).map { index in
-            CGRect(x: CGFloat((index * 7919) % Int(size.width)), y: CGFloat((index * 104729) % Int(size.height)), width: 9, height: 9)
-        }
-        func shapesOnce(_ mode: Int) -> Double {
-            let shapes = Canvas { context, _ in
-                switch mode {
-                case 0:
-                    var whole = Path()
-                    for spot in spots { whole.addRect(spot) }
-                    context.fill(whole, with: .color(.white))
-                case 1:
-                    var squares: [Int: Path] = [:]
-                    for spot in spots { squares[GatheredMarks.key(0, at: spot.origin), default: Path()].addRect(spot) }
-                    for key in squares.keys.sorted() {
-                        if let square = squares[key] { context.fill(square, with: .color(.white)) }
-                    }
-                default:
-                    for spot in spots { context.fill(Path(spot), with: .color(.white)) }
-                }
-            }
-            let renderer = ImageRenderer(content: shapes.frame(width: size.width, height: size.height))
-            canvas.clear(CGRect(origin: .zero, size: pixels))
-            let start = ThreadClock.milliseconds()
-            renderer.render(rasterizationScale: 2) { _, draw in
-                canvas.saveGState()
-                canvas.scaleBy(x: 2, y: 2)
-                draw(canvas)
-                canvas.restoreGState()
-            }
-            return ThreadClock.milliseconds() - start
-        }
-        for mode in 0..<3 { for _ in 0..<3 { _ = shapesOnce(mode) } }
-        var shapeTimes: [[Double]] = [[], [], []]
-        for _ in 0..<25 { for mode in 0..<3 { shapeTimes[mode].append(shapesOnce(mode)) } }
-        for (mode, name) in ["shapes.whole", "shapes.squares", "shapes.each"].enumerated() {
-            let sorted = shapeTimes[mode].sorted()
-            print("PERFMETRIC \(name).cpu.p50 \(String(format: "%.3f", sorted[sorted.count / 2]))")
-        }
         let pace = min(max(best / StagingTimes.plainPace, 1), 2)
         for (name, median) in medians {
             XCTAssertLessThan(median, 5 * pace, "The marks must leave the frame to the world (\(name), at x\(pace) for the Mac's pace)")

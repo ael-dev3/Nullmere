@@ -7,11 +7,19 @@ extension GameSession {
     /// The height of a hex's heart, the water's face over the lake: where
     /// what stands in it stands. Worked out once for each map.
     func groundHeight(of hex: Hex) -> Double {
-        guard let index = state.map.index(of: hex) else { return Double(max(relief.height(of: hex), Relief.waterline)) }
-        if heartHeights.count != state.map.count {
-            heartHeights = state.map.hexes.map { Double(max(relief.height(of: $0), Relief.waterline)) }
+        let map = state.map
+        guard let index = map.index(of: hex) else { return Double(max(relief.height(of: hex), Relief.waterline)) }
+        return heightsOfHearts(on: map)[index]
+    }
+
+    /// The height of each hex's heart by map index, `map` the map in play:
+    /// worked out when first asked, for each map. The marks read them once a
+    /// frame (`MarksFrame`).
+    func heightsOfHearts(on map: WorldMap) -> [Double] {
+        if heartHeights.count != map.count {
+            heartHeights = map.hexes.map { Double(max(relief.height(of: $0), Relief.waterline)) }
         }
-        return heartHeights[index]
+        return heartHeights
     }
 
     /// Where a hex shows in the view: its heart, on the land or the water,

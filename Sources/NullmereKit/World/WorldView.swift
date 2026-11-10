@@ -232,13 +232,13 @@ struct WorldMarks: View {
 
     /// Where a company is drawn: along its march, leaning into a blow it
     /// strikes, shaken by one it takes.
-    private func position(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
-        var point = marchPoint(of: unit, at: date, camera: camera, size: size)
+    private func position(of unit: NullmereCore.Unit, at date: Date, in frame: MarksFrame) -> CGPoint {
+        var point = marchPoint(of: unit, at: date, in: frame)
         guard !reduceMotion else { return point }
-        for blow in session.blows where blow.attacker == unit.id || blow.defender == unit.id {
+        for blow in frame.blows where blow.attacker == unit.id || blow.defender == unit.id {
             let age = date.timeIntervalSince(blow.start) / GameSession.Blow.duration
             if blow.attacker == unit.id, !blow.isRanged {
-                let foe = session.viewPoint(of: blow.at, in: size)
+                let foe = frame.point(of: blow.at)
                 let lean = CGFloat(GameSession.Blow.lunge(at: age))
                 point = CGPoint(x: point.x + (foe.x - point.x) * lean, y: point.y + (foe.y - point.y) * lean)
             } else if blow.defender == unit.id {
@@ -248,16 +248,16 @@ struct WorldMarks: View {
         return point
     }
 
-    private func marchPoint(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
-        guard !reduceMotion, let march = session.marches[unit.id], march.path.count > 1 else {
-            return session.viewPoint(of: unit.position, in: size)
+    private func marchPoint(of unit: NullmereCore.Unit, at date: Date, in frame: MarksFrame) -> CGPoint {
+        guard !reduceMotion, let march = frame.marches[unit.id], march.path.count > 1 else {
+            return frame.point(of: unit.position)
         }
         let progress = min(max(date.timeIntervalSince(march.start) / march.duration, 0), 1)
         let eased = progress * progress * (3 - 2 * progress)
         let along = eased * Double(march.path.count - 1)
         let step = min(Int(along), march.path.count - 2)
-        let a = session.viewPoint(of: march.path[step], in: size)
-        let b = session.viewPoint(of: march.path[step + 1], in: size)
+        let a = frame.point(of: march.path[step])
+        let b = frame.point(of: march.path[step + 1])
         let f = along - Double(step)
         return CGPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f)
     }
@@ -268,11 +268,14 @@ struct WorldMarks: View {
             let state = session.state
             let scale = camera.scale
             let player = session.player
+            // What the marks read of the session, read once a frame rather
+            // than once a mark (`MarksFrame`).
+            let frame = MarksFrame(session: session, size: size)
 
             // A stream under the pointer followed from its spring to its
             // mouth; the land's names stand in their own layer beneath.
             if let atlas = state.atlas {
-                WorldMarks.drawStream(atlas, hovered: session.hovered, in: &context) { session.viewPoint(of: $0, in: size) }
+                WorldMarks.drawStream(atlas, hovered: frame.hovered, in: &context) { frame.point(of: $0) }
             }
 
             // The places the keeper keeps in their book, each a small pale
@@ -280,7 +283,7 @@ struct WorldMarks: View {
             // marks each by a diamond and the phone's chart by a pennant.
             let bounds = CGRect(origin: .zero, size: size).insetBy(dx: -24, dy: -24)
             for place in session.placeBook.places {
-                let point = session.viewPoint(of: place.at, in: size)
+                let point = frame.point(of: place.at)
                 guard bounds.contains(point) else { continue }
                 let pennant = WorldMarks.pennant(at: point, scale: scale)
                 context.fill(pennant, with: .color(Palette.glowWords.opacity(0.92)))
@@ -291,7 +294,7 @@ struct WorldMarks: View {
             if !session.pathPreview.isEmpty, let unit = session.selectedUnit {
                 var moves = unit.movesLeft
                 var watch = 0
-                var previous = session.viewPoint(of: unit.position, in: size)
+                var previous = frame.point(of: unit.position)
                 for hex in session.pathPreview {
                     let cost = state.map[hex]?.terrain.moveCost ?? 1
                     if moves < cost && moves < unit.kind.movement {
@@ -299,14 +302,14 @@ struct WorldMarks: View {
                         moves = unit.kind.movement
                     }
                     moves = max(0, moves - cost)
-                    let point = session.viewPoint(of: hex, in: size)
+                    let point = frame.point(of: hex)
                     var line = Path()
                     line.move(to: previous)
                     line.addLine(to: point)
                     context.stroke(line, with: .color(Palette.line(watch == 0 ? 0.55 : 0.28)), style: StrokeStyle(lineWidth: 1.2, dash: [3, 4]))
                     previous = point
                 }
-                let end = session.viewPoint(of: session.pathPreview.last!, in: size)
+                let end = frame.point(of: session.pathPreview.last!)
                 let ring = Path(ellipseIn: CGRect(x: end.x - 6, y: end.y - 6, width: 12, height: 12))
                 context.stroke(ring, with: .color(Palette.line(0.7)), lineWidth: 1.2)
                 if watch > 0 {
@@ -320,7 +323,7 @@ struct WorldMarks: View {
             // Bottles on the lake where the keeper sees them: a pale glint
             // afloat, a brighter one washed up and waiting to be found.
             for bottle in state.bottlesOnTheLake where bottle.foundBy == nil {
-                let point = session.viewPoint(of: bottle.position, in: size)
+                let point = frame.point(of: bottle.position)
                 let r = max(2.0, scale * 0.09) * (bottle.ashore ? 1.3 : 1)
                 context.fill(Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2)),
                              with: .color(Palette.glow.opacity(bottle.ashore ? 0.95 : 0.6)))
@@ -328,9 +331,9 @@ struct WorldMarks: View {
 
             // What the Beacons warn of: a dashed line from each march to
             // the hold it is bound for, and what the Beacon tells of it.
-            for warning in session.state.warnings ?? [] {
-                guard let hold = session.state.hold(warning.hold) else { continue }
-                let from = session.viewPoint(of: warning.from, in: size), to = session.viewPoint(of: hold.position, in: size)
+            for warning in state.warnings ?? [] {
+                guard let hold = state.hold(warning.hold) else { continue }
+                let from = frame.point(of: warning.from), to = frame.point(of: hold.position)
                 var line = Path()
                 line.move(to: from)
                 line.addLine(to: to)
@@ -338,7 +341,7 @@ struct WorldMarks: View {
                 let r = scale * 0.3
                 context.stroke(Path(ellipseIn: CGRect(x: from.x - r, y: from.y - r, width: r * 2, height: r * 2)),
                                with: .color(Palette.bad.opacity(0.85)), lineWidth: 1.2)
-                context.draw(Text(verbatim: WorldMarks.warningLine(warning, in: session.state)).font(.nm(9.5)).foregroundStyle(Palette.bad),
+                context.draw(Text(verbatim: WorldMarks.warningLine(warning, in: state)).font(.nm(9.5)).foregroundStyle(Palette.bad),
                              at: CGPoint(x: from.x, y: from.y - r - 8))
             }
 
@@ -353,7 +356,7 @@ struct WorldMarks: View {
                 var area = Path(), border = Path()
                 for hex in session.reach {
                     let world = layout.corners(of: hex)
-                    let corners = world.map { session.viewPoint(worldX: $0.x, worldY: $0.y, onHex: hex, in: size) }
+                    let corners = world.map { frame.point(worldX: $0.x, worldY: $0.y, onHex: hex) }
                     guard let first = corners.first else { continue }
                     area.move(to: first)
                     for corner in corners.dropFirst() { area.addLine(to: corner) }
@@ -371,7 +374,7 @@ struct WorldMarks: View {
                 context.fill(area, with: .color(Palette.glow.opacity(0.035)), style: FillStyle(antialiased: false))
                 context.stroke(border, with: .color(Palette.glow.opacity(0.3)), lineWidth: 0.8)
                 for hex in session.strikeTargets {
-                    let point = session.viewPoint(of: hex, in: size)
+                    let point = frame.point(of: hex)
                     let r = scale * 0.62
                     let ring = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
                     context.stroke(ring, with: .color(Palette.bad.opacity(0.85)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
@@ -381,10 +384,10 @@ struct WorldMarks: View {
             // The flashes where blows land, the world's own where it is
             // drawn: a glow fading to its edge, with no filter to pay for.
             if !reduceMotion, !modelsDrawn {
-                for blow in session.blows {
+                for blow in frame.blows {
                     let flash = GameSession.Blow.flash(at: min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1))
                     guard flash > 0 else { continue }
-                    let point = session.viewPoint(of: blow.at, in: size)
+                    let point = frame.point(of: blow.at)
                     let glow = scale * 0.4 * CGFloat(1.6 - flash * 0.6)
                     let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
                     let warm = Color(red: 1, green: 0.88, blue: 0.68)
@@ -395,13 +398,13 @@ struct WorldMarks: View {
 
             // Blows: a ring spreading from where each fell, and the damage
             // rising and fading above it. Still, under Reduce Motion.
-            for blow in session.blows {
+            for blow in frame.blows {
                 let age = reduceMotion ? 0.5 : min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1)
-                let point = session.viewPoint(of: blow.at, in: size)
+                let point = frame.point(of: blow.at)
                 let fade = 1 - age
                 // A bow's shot crossing the gap; the models loose their own arrows.
                 if blow.isRanged, !reduceMotion, !modelsDrawn, age < 0.1 {
-                    let origin = session.viewPoint(of: blow.from, in: size)
+                    let origin = frame.point(of: blow.from)
                     let t = CGFloat(age / 0.1)
                     let head = CGPoint(x: origin.x + (point.x - origin.x) * t, y: origin.y + (point.y - origin.y) * t)
                     let tail = CGPoint(x: origin.x + (point.x - origin.x) * max(t - 0.35, 0), y: origin.y + (point.y - origin.y) * max(t - 0.35, 0))
@@ -412,7 +415,7 @@ struct WorldMarks: View {
                 }
                 // The fallen fade and sink where they stood; the models fall themselves.
                 for fell in blow.fallen where !modelsDrawn {
-                    let at = session.viewPoint(of: fell.at, in: size)
+                    let at = frame.point(of: fell.at)
                     let r = min(max(scale * 0.34, 7), 16) * CGFloat(1 - 0.25 * age)
                     let sunk = CGPoint(x: at.x, y: at.y + CGFloat(8 * age))
                     let colour = Palette.house(state.houses[fell.owner]).opacity(0.8 * fade)
@@ -435,8 +438,8 @@ struct WorldMarks: View {
                     at: CGPoint(x: point.x, y: point.y - scale * 0.6 - 18 * age)
                 )
                 if let lost = blow.strikersLost, !blow.isRanged {
-                    let origin = session.viewPoint(of: blow.from, in: size)
-                    let theirs = state.unit(blow.attacker)?.owner == session.player ? Palette.bad : Color(red: 0.95, green: 0.93, blue: 0.86)
+                    let origin = frame.point(of: blow.from)
+                    let theirs = state.unit(blow.attacker)?.owner == player ? Palette.bad : Color(red: 0.95, green: 0.93, blue: 0.86)
                     context.draw(
                         Text(verbatim: "−\(lost)")
                             .font(.nm(11, weight: .semibold).monospacedDigit())
@@ -446,46 +449,46 @@ struct WorldMarks: View {
                 }
             }
 
-            // Holds the player knows of; their names drawn after them, over
-            // a dark shadow a hair below, unblurred. Their small marks are
-            // gathered as they come, by what they are drawn in and the
-            // square of the view they stand in (`GatheredMarks`), and drawn
-            // after them: a fill or stroke a mark, a few hundred a frame
-            // over a late game, was most of what the marks cost, and one
-            // path a colour across the whole view cost more.
+            // Holds the player knows of, each drawn as it comes: its threat
+            // ring, its token where no model stands, whose it is and its
+            // ward; their names drawn after them, over a dark shadow a hair
+            // below, unblurred. A fill or a stroke a mark: gathered into one
+            // path a colour across the view (2c9bc36) or one a square of it
+            // (eeed828), the marks timed more, not less (runs 939 to 943),
+            // and run 943 timed the same 120 small shapes at 0.34 ms filled
+            // one by one, 0.47 by squares and 0.60 as one path.
             var names: [(text: Text, at: CGPoint, opacity: Double)] = []
-            var threatRings = GatheredMarks(), holdOwnership = GatheredMarks(), wardBacks = GatheredMarks()
-            var wards = GatheredMarks()
-            var holdTokens = HoldTokens()
-            for hold in state.holds where session.isExplored(hold.position) {
-                let point = session.viewPoint(of: hold.position, in: size)
+            for hold in state.holds where frame.isExplored(hold.position) {
+                let point = frame.point(of: hold.position)
                 guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
+                let colour = Palette.house(state.houses[hold.owner])
                 let r = min(max(scale * 0.36, 7), 18)
                 // Enemies gather near it: a red ring, broken like a warning.
-                if session.threatened.contains(hold.id) {
-                    threatRings.add(at: point) { $0.addEllipse(in: CGRect(x: point.x - r * 1.9, y: point.y - r * 1.9, width: r * 3.8, height: r * 3.8)) }
+                if frame.threatened.contains(hold.id) {
+                    let ring = Path(ellipseIn: CGRect(x: point.x - r * 1.9, y: point.y - r * 1.9, width: r * 3.8, height: r * 3.8))
+                    context.stroke(ring, with: .color(Palette.bad.opacity(0.6)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
                 }
                 // Its marks stand under the token, or over the keep where it is drawn.
                 var marks = point.y + r * 1.15
                 if modelsDrawn {
-                    marks = session.viewPoint(of: hold.position, in: size, lift: WorldMarks.holdLift(seat: hold.isSeat)).y
+                    marks = frame.point(of: hold.position, lift: WorldMarks.holdLift(seat: hold.isSeat)).y
                 } else {
-                    holdTokens.add(hold, at: point, radius: r)
+                    token(of: hold, at: point, radius: r, colour: colour, in: &context)
                 }
                 // With "Differentiate without colour" on, whose it is is
                 // said in shape too, as over a company: a bar over the
                 // keeper's own, a cross by a foe's.
                 if differentiate {
-                    let mark = WorldMarks.ownership(hold.owner == player ? .own : state.isAtWar(player, hold.owner) ? .foe : .other,
-                                                    at: modelsDrawn ? CGPoint(x: point.x, y: marks - r * 0.9) : point, radius: r * 1.6)
-                    holdOwnership.add(at: point) { $0.addPath(mark) }
+                    context.stroke(WorldMarks.ownership(hold.owner == player ? .own : state.isAtWar(player, hold.owner) ? .foe : .other,
+                                                        at: modelsDrawn ? CGPoint(x: point.x, y: marks - r * 0.9) : point, radius: r * 1.6),
+                                   with: .color(Palette.ink), lineWidth: 1.4)
                 }
-                if session.isVisible(hold.position), hold.ward < hold.maximumWard {
+                if frame.isVisible(hold.position), hold.ward < hold.maximumWard {
                     let width = r * 2
                     let fraction = CGFloat(hold.ward) / CGFloat(max(hold.maximumWard, 1))
                     let bar = CGRect(x: point.x - width / 2, y: marks, width: width, height: 2)
-                    wardBacks.add(at: point) { $0.addRect(bar) }
-                    wards.add(hold.owner, at: point) { $0.addRect(CGRect(x: bar.minX, y: bar.minY, width: width * fraction, height: 2)) }
+                    context.fill(Path(bar), with: .color(Color.black.opacity(0.7)))
+                    context.fill(Path(CGRect(x: bar.minX, y: bar.minY, width: width * fraction, height: 2)), with: .color(colour))
                 }
                 if scale >= 18 {
                     let name = Text(verbatim: hold.name.uppercased())
@@ -496,14 +499,6 @@ struct WorldMarks: View {
                                   opacity: hold.owner == player ? 0.92 : 0.7))
                 }
             }
-            // The rings beneath the holds' tokens, as each was drawn alone.
-            threatRings.each { _, rings in
-                context.stroke(rings, with: .color(Palette.bad.opacity(0.6)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
-            }
-            holdTokens.draw(in: &context) { Palette.house(state.houses[$0]) }
-            holdOwnership.each { _, marks in context.stroke(marks, with: .color(Palette.ink), lineWidth: 1.4) }
-            wardBacks.each { _, backs in context.fill(backs, with: .color(Color.black.opacity(0.7))) }
-            wards.each { owner, ward in context.fill(ward, with: .color(Palette.house(state.houses[owner]))) }
             for name in names {
                 // Laid out once, drawn twice.
                 var resolved = context.resolve(name.text)
@@ -513,80 +508,67 @@ struct WorldMarks: View {
                 context.draw(resolved, at: name.at)
             }
 
-            // Companies the player can see, their small marks gathered as
-            // the holds' are and drawn once each after them, in the order
-            // each company's were: whose it is, its rank, ready, its health,
-            // and its troops in a field of battle over them all.
+            // Companies the player can see, each drawn as it comes: its
+            // token where no model stands, whose it is, its rank, ready, its
+            // health, and its troops in a field of battle.
             let fighting = Set(state.fieldsOfBattle.flatMap { $0.fighters.filter(\.standing).map(\.unit) })
-            var companyOwnership = GatheredMarks(), readyDots = GatheredMarks(), healthBacks = GatheredMarks()
-            var healthGood = GatheredMarks(), healthBad = GatheredMarks(), ranks = GatheredMarks()
-            var troopsAt: [(count: String, at: CGPoint)] = []
-            var companyTokens = CompanyTokens()
-            for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
-                var point = position(of: unit, at: date, camera: camera, size: size)
+            for unit in state.units where unit.owner == player || frame.isVisible(unit.position) {
+                var point = position(of: unit, at: date, in: frame)
                 guard point.x > -40, point.y > -40, point.x < size.width + 40, point.y < size.height + 40 else { continue }
+                let colour = Palette.house(state.houses[unit.owner])
                 // A company in a hold stands at its foot, smaller, so the hold
                 // stays legible; drawn, it stands within the walls.
-                let inHold = session.holdsByPosition[unit.position] != nil && session.marches[unit.id] == nil
+                let inHold = frame.holds[unit.position] != nil && frame.marches[unit.id] == nil
                 let r = min(max(scale * 0.34, 7), 16) * (inHold && !modelsDrawn ? 0.62 : 1)
                 if modelsDrawn {
                     // Its marks over its figures' heads.
-                    let ground = session.viewPoint(of: unit.position, in: size)
-                    let lifted = session.viewPoint(of: unit.position, in: size, lift: WorldMarks.companyLift)
+                    let ground = frame.point(of: unit.position)
+                    let lifted = frame.point(of: unit.position, lift: WorldMarks.companyLift)
                     point = CGPoint(x: point.x + lifted.x - ground.x, y: point.y + lifted.y - ground.y - r - 4)
                 } else {
                     if inHold {
                         point = CGPoint(x: point.x + r * 1.9, y: point.y + r * 0.9)
                     }
-                    companyTokens.add(unit, at: point, radius: r, chosen: session.selectedUnit?.id == unit.id,
-                                      hovered: session.hovered == unit.position && !inHold)
+                    token(of: unit, at: point, radius: r, colour: colour, selected: frame.chosen == unit.id,
+                          hovered: frame.hovered == unit.position && !inHold, in: &context)
                 }
                 if differentiate {
-                    let mark = WorldMarks.ownership(unit.owner == player ? .own : state.isAtWar(player, unit.owner) ? .foe : .other,
-                                                    at: point, radius: r)
-                    companyOwnership.add(at: point) { $0.addPath(mark) }
+                    context.stroke(WorldMarks.ownership(unit.owner == player ? .own : state.isAtWar(player, unit.owner) ? .foe : .other,
+                                                        at: point, radius: r),
+                                   with: .color(Palette.ink), lineWidth: 1.4)
                 }
                 // Rank: a small chevron for each, beneath the token.
                 if unit.rank > 0 {
-                    let chevrons = WorldMarks.chevrons(unit.rank, under: CGPoint(x: point.x, y: point.y + r + 7))
-                    ranks.add(unit.owner, at: point) { $0.addPath(chevrons) }
+                    context.stroke(WorldMarks.chevrons(unit.rank, under: CGPoint(x: point.x, y: point.y + r + 7)), with: .color(colour), lineWidth: 1.1)
                 }
                 if unit.owner == player, unit.movesLeft > 0, unit.destination == nil, !unit.fortified {
-                    readyDots.add(at: point) { $0.addEllipse(in: CGRect(x: point.x + r * 0.62, y: point.y - r * 1.02, width: 4, height: 4)) }
+                    let dot = Path(ellipseIn: CGRect(x: point.x + r * 0.62, y: point.y - r * 1.02, width: 4, height: 4))
+                    context.fill(dot, with: .color(Palette.ink))
                 }
                 if unit.health < 100 {
                     let fraction = CGFloat(unit.health) / 100
                     let bar = CGRect(x: point.x - r, y: point.y + r + 3, width: r * 2, height: 2)
-                    healthBacks.add(at: point) { $0.addRect(bar) }
-                    let left = CGRect(x: bar.minX, y: bar.minY, width: bar.width * fraction, height: 2)
-                    if fraction > 0.5 { healthGood.add(at: point) { $0.addRect(left) } } else { healthBad.add(at: point) { $0.addRect(left) } }
+                    context.fill(Path(bar), with: .color(Color.black.opacity(0.7)))
+                    context.fill(Path(CGRect(x: bar.minX, y: bar.minY, width: bar.width * fraction, height: 2)),
+                                 with: .color(fraction > 0.5 ? Palette.good : Palette.bad))
                 }
-                // In a field of battle, its troops beneath it.
+                // In a field of battle, its troops beneath it: laid out
+                // once, drawn twice, its shadow and then itself.
                 if fighting.contains(unit.id) {
-                    troopsAt.append((count: GameState.counted(state.troops(of: unit)), at: CGPoint(x: point.x, y: point.y + r + 11)))
+                    var troops = context.resolve(Text(verbatim: GameState.counted(state.troops(of: unit))).font(.nm(8.5, weight: .medium)))
+                    let at = CGPoint(x: point.x, y: point.y + r + 11)
+                    troops.shading = .color(Color.black.opacity(0.85))
+                    context.draw(troops, at: CGPoint(x: at.x + 0.7, y: at.y + 0.7))
+                    troops.shading = .color(Palette.text(0.9))
+                    context.draw(troops, at: at)
                 }
-            }
-            companyTokens.draw(in: &context) { Palette.house(state.houses[$0]) }
-            companyOwnership.each { _, marks in context.stroke(marks, with: .color(Palette.ink), lineWidth: 1.4) }
-            ranks.each { owner, rank in context.stroke(rank, with: .color(Palette.house(state.houses[owner])), lineWidth: 1.1) }
-            readyDots.each { _, dots in context.fill(dots, with: .color(Palette.ink)) }
-            healthBacks.each { _, backs in context.fill(backs, with: .color(Color.black.opacity(0.7))) }
-            healthGood.each { _, bars in context.fill(bars, with: .color(Palette.good)) }
-            healthBad.each { _, bars in context.fill(bars, with: .color(Palette.bad)) }
-            for troops in troopsAt {
-                // Laid out once, drawn twice: its shadow, then itself.
-                var count = context.resolve(Text(verbatim: troops.count).font(.nm(8.5, weight: .medium)))
-                count.shading = .color(Color.black.opacity(0.85))
-                context.draw(count, at: CGPoint(x: troops.at.x + 0.7, y: troops.at.y + 0.7))
-                count.shading = .color(Palette.text(0.9))
-                context.draw(count, at: troops.at)
             }
 
             // Fields of battle: crossed blades over each one's heart, and
             // either side of them the troops each side has standing there,
             // in the colours of the House that leads it.
             for field in state.fieldsOfBattle {
-                let point = session.viewPoint(of: field.at, in: size, lift: modelsDrawn ? WorldMarks.fieldLift : 0)
+                let point = frame.point(of: field.at, lift: modelsDrawn ? WorldMarks.fieldLift : 0)
                 guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
                 let y = point.y - (modelsDrawn ? 0 : min(max(scale * 0.34, 7), 16) * 2.4)
                 let blade = min(max(scale * 0.2, 5), 9)
@@ -611,6 +593,57 @@ struct WorldMarks: View {
                 }
             }
         }
+    }
+
+    /// A hold drawn flat, where no models stand: its side towers once it
+    /// has grown, its walls as they rise, its keep, a warm window, the
+    /// seat's banner and the moonspire's needle.
+    private func token(of hold: Hold, at point: CGPoint, radius r: CGFloat, colour: Color, in context: inout GraphicsContext) {
+        let towers = TokenArt.towerCount(for: hold)
+        if towers > 0 {
+            let flanks = TokenArt.towers(at: point, radius: r, count: towers)
+            context.fill(flanks, with: .color(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)))
+            context.stroke(flanks, with: .color(colour.opacity(0.8)), lineWidth: 1)
+        }
+        let keep = TokenArt.keep(at: point, radius: r, seat: hold.isSeat)
+        if hold.level(.walls) > 0 {
+            let walls = TokenArt.walls(at: point, radius: r)
+            context.fill(walls, with: .color(Color.black.opacity(0.55)))
+            context.stroke(walls, with: .color(colour.opacity(0.7)), lineWidth: CGFloat(hold.level(.walls)) * 0.5 + 0.6)
+        }
+        context.fill(keep, with: .color(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)))
+        context.stroke(keep, with: .color(colour), lineWidth: hold.isSeat ? 1.6 : 1.2)
+        // One warm window: someone keeps the lamp lit.
+        context.fill(TokenArt.window(at: point, radius: r), with: .color(Color(red: 1.0, green: 0.76, blue: 0.45)))
+        if hold.isSeat {
+            let banner = TokenArt.banner(at: point, radius: r)
+            context.stroke(banner.pole, with: .color(colour), lineWidth: 1.1)
+            context.fill(banner.pennant, with: .color(colour))
+        }
+        if hold.level(.moonspire) > 0 {
+            let spire = CGFloat(hold.level(.moonspire))
+            let top = TokenArt.keepTop(at: point, radius: r, seat: hold.isSeat)
+            var needle = Path()
+            needle.move(to: CGPoint(x: point.x - r * 0.35, y: top))
+            needle.addLine(to: CGPoint(x: point.x - r * 0.35, y: top - r * 0.45 * spire))
+            context.stroke(needle, with: .color(Color(red: 0.86, green: 0.9, blue: 1.0)), lineWidth: 1.6)
+        }
+    }
+
+    /// A company drawn flat, where no models stand: a shield with its
+    /// kind's mark, bolder dug in, and a halo chosen or under the pointer.
+    private func token(of unit: NullmereCore.Unit, at point: CGPoint, radius r: CGFloat, colour: Color, selected: Bool, hovered: Bool,
+                       in context: inout GraphicsContext) {
+        let shield = TokenArt.shield(at: point, radius: r)
+        context.fill(shield, with: .color(Color(red: 0.03, green: 0.035, blue: 0.05).opacity(0.9)))
+        context.stroke(shield, with: .color(colour), lineWidth: unit.fortified ? 2.2 : 1.3)
+        // The chosen company wears a bright halo; the one under the
+        // pointer a faint one.
+        if selected || hovered {
+            let halo = Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2))
+            context.stroke(halo, with: .color(Palette.line(selected ? 0.9 : 0.4)), lineWidth: selected ? 1.4 : 1)
+        }
+        context.stroke(glyph(for: unit.kind, at: point, radius: r * 0.55), with: .color(colour), lineWidth: 1.3)
     }
 
     enum Ownership { case own, foe, other }
@@ -641,104 +674,74 @@ struct WorldMarks: View {
     }
 }
 
-/// The holds drawn flat, where no models stand, gathered and drawn at once,
-/// layer by layer as each was drawn alone: every hold's towers, then its
-/// walls as they rise, its keep, a warm window, the seat's banner and the
-/// moonspire's needle; each layer by the squares of the view its holds
-/// stand in (`GatheredMarks`). No two holds share a hex, so none is drawn
-/// over another.
-private struct HoldTokens {
-    private var towers = GatheredMarks(), walls = GatheredMarks(), keeps = GatheredMarks(), windows = GatheredMarks()
-    private var needles = GatheredMarks()
-    /// Rims by owner; the walls' by owner and height, which thickens them;
-    /// the keeps' by owner and whether a seat's.
-    private var towerRims = GatheredMarks(), wallRims = GatheredMarks(), keepRims = GatheredMarks()
-    private var poles = GatheredMarks(), pennants = GatheredMarks()
+/// What the marks read of the session, read once a frame rather than once
+/// a mark. `GameSession` is `@Observable`, and each read of its state hands
+/// back the whole of it, more than a hundred fields: in a debug build about
+/// a microsecond a read, where `viewPoint`, `isVisible`, `isExplored` and
+/// `holdsByPosition` each read it, so the full realm's frame, a thousand
+/// marks and more, paid a millisecond and more in reads alone (run 943 timed
+/// the marks flat at 6.89 ms against the 6.14 allowed).
+@MainActor
+private struct MarksFrame {
+    let session: GameSession
+    let camera: Camera
+    let size: CGSize
+    let map: WorldMap
+    /// The height of each hex's heart, by map index.
+    let heights: [Double]
+    let visible: [Bool]
+    let explored: Explored
+    let marches: [Int: GameSession.March]
+    let blows: [GameSession.Blow]
+    let holds: [Hex: Hold]
+    let threatened: Set<Int>
+    /// The chosen company's id, if a company is chosen.
+    let chosen: Int?
+    let hovered: Hex?
 
-    mutating func add(_ hold: Hold, at point: CGPoint, radius r: CGFloat) {
-        let count = TokenArt.towerCount(for: hold)
-        if count > 0 {
-            let flanks = TokenArt.towers(at: point, radius: r, count: count)
-            towers.add(at: point) { $0.addPath(flanks) }
-            towerRims.add(hold.owner, at: point) { $0.addPath(flanks) }
-        }
-        let height = hold.level(.walls)
-        if height > 0 {
-            let ring = TokenArt.walls(at: point, radius: r)
-            walls.add(at: point) { $0.addPath(ring) }
-            wallRims.add(hold.owner * 8 + height, at: point) { $0.addPath(ring) }
-        }
-        let keep = TokenArt.keep(at: point, radius: r, seat: hold.isSeat)
-        keeps.add(at: point) { $0.addPath(keep) }
-        keepRims.add(hold.owner * 2 + (hold.isSeat ? 1 : 0), at: point) { $0.addPath(keep) }
-        // One warm window: someone keeps the lamp lit.
-        let window = TokenArt.window(at: point, radius: r)
-        windows.add(at: point) { $0.addPath(window) }
-        if hold.isSeat {
-            let banner = TokenArt.banner(at: point, radius: r)
-            poles.add(hold.owner, at: point) { $0.addPath(banner.pole) }
-            pennants.add(hold.owner, at: point) { $0.addPath(banner.pennant) }
-        }
-        let spire = hold.level(.moonspire)
-        if spire > 0 {
-            let top = TokenArt.keepTop(at: point, radius: r, seat: hold.isSeat)
-            needles.add(at: point) { needle in
-                needle.move(to: CGPoint(x: point.x - r * 0.35, y: top))
-                needle.addLine(to: CGPoint(x: point.x - r * 0.35, y: top - r * 0.45 * CGFloat(spire)))
-            }
-        }
+    init(session: GameSession, size: CGSize) {
+        let state = session.state
+        self.session = session
+        camera = session.camera
+        self.size = size
+        map = state.map
+        heights = session.heightsOfHearts(on: state.map)
+        visible = session.visible
+        explored = state.houses[session.player].explored
+        marches = session.marches
+        blows = session.blows
+        holds = session.holdsByPosition
+        threatened = session.threatened
+        chosen = session.selectedUnit?.id
+        hovered = session.hovered
     }
 
-    func draw(in context: inout GraphicsContext, colour: (Int) -> Color) {
-        guard !keeps.isEmpty else { return }
-        let dark = Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)
-        towers.each { _, path in context.fill(path, with: .color(dark)) }
-        towerRims.each { owner, rim in context.stroke(rim, with: .color(colour(owner).opacity(0.8)), lineWidth: 1) }
-        walls.each { _, path in context.fill(path, with: .color(Color.black.opacity(0.55))) }
-        wallRims.each { key, rim in
-            context.stroke(rim, with: .color(colour(key / 8).opacity(0.7)), lineWidth: CGFloat(key % 8) * 0.5 + 0.6)
-        }
-        keeps.each { _, path in context.fill(path, with: .color(dark)) }
-        keepRims.each { key, rim in context.stroke(rim, with: .color(colour(key / 2)), lineWidth: key % 2 == 1 ? 1.6 : 1.2) }
-        windows.each { _, path in context.fill(path, with: .color(Color(red: 1.0, green: 0.76, blue: 0.45))) }
-        poles.each { owner, pole in context.stroke(pole, with: .color(colour(owner)), lineWidth: 1.1) }
-        pennants.each { owner, pennant in context.fill(pennant, with: .color(colour(owner))) }
-        needles.each { _, path in context.stroke(path, with: .color(Color(red: 0.86, green: 0.9, blue: 1.0)), lineWidth: 1.6) }
-    }
-}
-
-/// The companies drawn flat, where no models stand, gathered and drawn at
-/// once, layer by layer as each was drawn alone: a shield, its rim bolder
-/// dug in, a halo for the one chosen or under the pointer, and its kind's
-/// mark; each layer by the squares of the view its companies stand in. No
-/// two companies share a hex, so none is drawn over another.
-private struct CompanyTokens {
-    private var shields = GatheredMarks()
-    /// Rims by owner and whether dug in; marks by owner.
-    private var rims = GatheredMarks(), marks = GatheredMarks()
-    private var halos: [(ring: Path, chosen: Bool)] = []
-
-    mutating func add(_ unit: NullmereCore.Unit, at point: CGPoint, radius r: CGFloat, chosen: Bool, hovered: Bool) {
-        let shield = TokenArt.shield(at: point, radius: r)
-        shields.add(at: point) { $0.addPath(shield) }
-        rims.add(unit.owner * 2 + (unit.fortified ? 1 : 0), at: point) { $0.addPath(shield) }
-        // The chosen company wears a bright halo; the one under the
-        // pointer a faint one.
-        if chosen || hovered {
-            halos.append((Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2)), chosen))
-        }
-        let mark = Path(companyMark: unit.kind, at: point, radius: r * 0.55)
-        marks.add(unit.owner, at: point) { $0.addPath(mark) }
+    /// The height of a hex's heart, as `GameSession.groundHeight(of:)`.
+    func height(of hex: Hex) -> Double {
+        guard let index = map.index(of: hex), heights.indices.contains(index) else { return session.groundHeight(of: hex) }
+        return heights[index]
     }
 
-    func draw(in context: inout GraphicsContext, colour: (Int) -> Color) {
-        guard !shields.isEmpty else { return }
-        shields.each { _, path in context.fill(path, with: .color(Color(red: 0.03, green: 0.035, blue: 0.05).opacity(0.9))) }
-        rims.each { key, rim in context.stroke(rim, with: .color(colour(key / 2)), lineWidth: key % 2 == 1 ? 2.2 : 1.3) }
-        for halo in halos {
-            context.stroke(halo.ring, with: .color(Palette.line(halo.chosen ? 0.9 : 0.4)), lineWidth: halo.chosen ? 1.4 : 1)
-        }
-        marks.each { owner, mark in context.stroke(mark, with: .color(colour(owner)), lineWidth: 1.3) }
+    /// Where a hex shows in the view, as `GameSession.viewPoint(of:in:lift:)`.
+    func point(of hex: Hex, lift: Double = 0) -> CGPoint {
+        camera.viewPoint(of: hex, height: height(of: hex) + lift, in: size)
+    }
+
+    /// Where a point of a hex shows in the view, at the hex's height.
+    func point(worldX x: Double, worldY y: Double, onHex hex: Hex) -> CGPoint {
+        camera.viewPoint(worldX: x, worldY: y, height: height(of: hex), in: size)
+    }
+
+    /// As `GameSession.isVisible(_:)`.
+    func isVisible(_ hex: Hex) -> Bool {
+        guard let index = map.index(of: hex), visible.indices.contains(index) else { return false }
+        return visible[index]
+    }
+
+    /// As `GameSession.isExplored(_:)`.
+    func isExplored(_ hex: Hex) -> Bool {
+        guard let index = map.index(of: hex), explored.indices.contains(index) else { return false }
+        return explored[index]
     }
 }
 
