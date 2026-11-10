@@ -25,3 +25,8 @@ Wayhouse and Lyceum Blender models landed on main (every-work-in-Blender pass), 
 ## 2026-11-05 (Europe/Belgrade)
 
 Blender-authored unit models landed through the day: spearman, archer, lantern-bearer, rider/horse, commanders, mangonel crew, founder and handcart. Two-bone skinning, glTF reader, view-distance land draw, and a SpacetimeDB WebSocket close fix also went to main. World city screenshot `docs/shots/world-city.png` is in the tree. Session on Opus 5.5 Max for polish. Standing bar unchanged: Rise of Kingdoms or better, live multiplayer, original 3D, minimal UI.
+## 2026-11-11
+
+- Chill week: the Claude session moved to Haiku 5.5 Low to save usage, with a once-a-day check and at least one commit on main per day.
+- Landed Nov 10: commanders counsel the House's dealings (peace, pact, tribute, war), its holds and its Lanterns' scouting; FERRY in the order book; the phone ferries and disbands companies and musters at the highest open tier; parley with envoys through the on-device model; a fix so TRAIN at a named tier musters that tier; run 964's Mac test failures mended.
+- Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
