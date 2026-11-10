@@ -128,3 +128,41 @@ extension GameState {
         return events
     }
 }
+
+extension Voicing {
+    /// What the model is asked for the pedlar's call up from his skiff to
+    /// the keeper's hold (`GameState.voiced(_ pedlar:)`).
+    public static let pedlarTask = "Speak as the Pedlar of the Still, an old trader who poles his skiff across the black lake, calling up from the "
+        + "water to the keeper's hold: offer the wares told here for what he asks, keeping every ware and price as given, and say when he "
+        + "poles away. Two or three sentences, at most 50 words."
+}
+
+extension GameState {
+    /// The pedlar lying off a House's hold, as its device asks its model to
+    /// voice his call from the water: the hold he lies off, what he still
+    /// offers and for what, what he has sold, and when he poles away.
+    public func voiced(_ pedlar: Pedlar) -> Voicing.Moment {
+        let house = houses.indices.contains(pedlar.house) ? houses[pedlar.house].title : "the keeper's House"
+        var facts = ["He lies on the water off \(hold(pedlar.hold)?.name ?? "a hold"), a hold of \(house)."]
+        let unsold = pedlar.wares.filter { !$0.sold }
+        facts += unsold.map { "He offers \($0.goods.title) for \($0.price)." }
+        let sold = pedlar.wares.filter(\.sold).map(\.goods.title)
+        if !sold.isEmpty { facts.append("He has sold \(sold.joined(separator: " and ")) already.") }
+        if unsold.isEmpty { facts.append("He has nothing left to sell.") }
+        facts.append(GameState.pedlarLeaves(pedlar, at: watch))
+        return Voicing.Moment(task: Voicing.pedlarTask, facts: facts)
+    }
+
+    /// When the pedlar poles away, from a watch of his stay.
+    public static func pedlarLeaves(_ pedlar: Pedlar, at watch: Int) -> String {
+        let left = max(1, pedlar.came + Pedlar.stays - watch)
+        return left == 1 ? "He poles away as this watch ends." : "He poles away in \(left) watches."
+    }
+
+    /// Which of the pedlar's calls a voice gave words to: his coming, and
+    /// how many of his wares are sold since, so he calls up again, his
+    /// words fresh, once one is bought.
+    public static func voiceKey(of pedlar: Pedlar) -> Int {
+        pedlar.came * 10 + pedlar.wares.filter(\.sold).count
+    }
+}

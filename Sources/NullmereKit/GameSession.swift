@@ -206,6 +206,9 @@ public final class GameSession {
         /// The words cut on the stone of a barrow the House raised over a
         /// field's dead, by the barrow's key (`Grave.key`).
         case grave(Int)
+        /// The pedlar's call from the water, by his coming and how many of
+        /// his wares are sold (`GameState.voiceKey(of:)`).
+        case pedlar(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -223,6 +226,7 @@ public final class GameSession {
             case .watchman(let key): return "watchman-\(key)"
             case .find(let id): return "find-\(id)"
             case .grave(let key): return "grave-\(key)"
+            case .pedlar(let key): return "pedlar-\(key)"
             }
         }
 
@@ -239,6 +243,7 @@ public final class GameSession {
             case "watchman": self = .watchman(number)
             case "find": self = .find(number)
             case "grave": self = .grave(number)
+            case "pedlar": self = .pedlar(number)
             default: return nil
             }
         }
@@ -2930,6 +2935,13 @@ public final class GameSession {
                 voiceQueue.append((.grave(grave.key), moment))
             }
         }
+        // The pedlar's call from the water, called afresh as each ware is
+        // sold.
+        if let pedlar = state.pedlar(for: player), !asked.contains(.pedlar(GameState.voiceKey(of: pedlar))) {
+            let key = Spoken.pedlar(GameState.voiceKey(of: pedlar))
+            asked.insert(key)
+            voiceQueue.append((key, VoiceFacts.pedlar(pedlar, in: state)))
+        }
         // The lake's riddle, set in the Still's voice.
         if let riddle = state.riddle(of: player), riddle.answered == nil, !asked.contains(.riddle(riddle.set)) {
             asked.insert(.riddle(riddle.set))
@@ -2976,13 +2988,15 @@ public final class GameSession {
     }
 
     /// Whether what a voice speaks for is still before the keeper: an
-    /// envoy still waiting on its answer, a plea still at the gate; the
-    /// rest (what the Still showed, a prisoner's word, the lake's riddle,
-    /// the chronicle) stays.
+    /// envoy still waiting on its answer, a plea still at the gate, the
+    /// pedlar's call while he lies off the hold with his wares as they were
+    /// when he called; the rest (what the Still showed, a prisoner's word,
+    /// the lake's riddle, the chronicle) stays.
     func stillVoiced(_ key: Spoken) -> Bool {
         switch key {
         case .envoy(let id): return state.envoys.contains { $0.id == id }
         case .petition(let id): return state.petition(of: player)?.id == id
+        case .pedlar(let key): return state.pedlar(for: player).map(GameState.voiceKey(of:)) == key
         default: return true
         }
     }

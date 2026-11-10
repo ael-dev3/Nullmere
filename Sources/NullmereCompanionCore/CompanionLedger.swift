@@ -466,10 +466,12 @@ public struct CompanionLedger: Equatable, Sendable {
     }
 
     /// The Pedlar of the Still's wares, while he lies off one of the House's
-    /// holds: where he lies and when he poles away, and each ware.
+    /// holds: where he lies and when he poles away, and each ware; and the
+    /// key of his call from the water, which the phone's model gives words.
     public struct Wares: Equatable, Sendable {
         public let said: String
         public let wares: [Ware]
+        public let voice: String
     }
 
     /// One of the pedlar's wares: what it is and what he asks, or that it is
@@ -1540,7 +1542,7 @@ public struct CompanionLedger: Equatable, Sendable {
                         buy: refusal == nil ? Order(title: "Buy \(ware.goods.title)", command: .buyFromPedlar(ware: ware.id)) : nil,
                         why: refusal?.description)
         }
-        return Wares(said: said, wares: wares)
+        return Wares(said: said, wares: wares, voice: "pedlar-\(GameState.voiceKey(of: pedlar))")
     }
 
     /// The House's letters, the latest first, lined as the Mac lines them;

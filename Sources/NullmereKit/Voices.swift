@@ -93,6 +93,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// The words cut on the stone of a barrow the House raised over a
         /// field's dead.
         case grave
+        /// The Pedlar of the Still calling up from his skiff to the House's
+        /// hold, offering his wares.
+        case pedlar
     }
 
     public let kind: Kind
@@ -130,6 +133,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = kind == .hamlet ? Voicing.hamletTask : Voicing.barrowTask
         case .grave:
             task = Voicing.graveTask
+        case .pedlar:
+            task = Voicing.pedlarTask
         }
         return Voicing.asking(task, facts: facts)
     }
@@ -312,6 +317,13 @@ enum VoiceFacts {
     /// whose dead and where they fell. Nil for another House's.
     static func grave(_ grave: Grave, by house: Int, in state: GameState) -> VoiceMoment? {
         state.voiced(grave, for: house).map { VoiceMoment(kind: .grave, facts: $0.facts) }
+    }
+
+    /// The pedlar lying off the House's hold, for his call from the water:
+    /// where he lies, what he still offers and for what, what he has sold,
+    /// and when he poles away.
+    static func pedlar(_ pedlar: Pedlar, in state: GameState) -> VoiceMoment {
+        VoiceMoment(kind: .pedlar, facts: state.voiced(pedlar).facts)
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {

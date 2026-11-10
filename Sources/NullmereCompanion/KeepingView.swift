@@ -561,6 +561,9 @@ struct MarketPage: View {
                             .font(Night.small)
                             .foregroundStyle(Night.ink.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
+                        // His call from the water, in the words this
+                        // phone's model gives him.
+                        VoicedWords(key: pedlar.voice, who: "the pedlar")
                         ForEach(pedlar.wares) { ware in
                             WareRow(session: session, ware: ware)
                         }

@@ -1804,20 +1804,30 @@ struct RippleRow: View {
     }
 }
 
-/// The Pedlar of the Still lying off a hold: his three wares, each with
-/// its price and a button to buy it, while it is unsold.
+/// The Pedlar of the Still lying off a hold: his call up from the water,
+/// in his own voice where this Mac's model gives him words; then his three
+/// wares, each with its price and a button to buy it, while it is unsold.
 struct PedlarCard: View {
     let session: GameSession
     let pedlar: Pedlar
 
     var body: some View {
         let state = session.state
+        let call = GameSession.Spoken.pedlar(GameState.voiceKey(of: pedlar))
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Caps("The Pedlar of the Still", size: 9, weight: .medium).foregroundStyle(Palette.text(0.75))
                 Spacer()
                 Text(verbatim: "Poles away in \(max(1, pedlar.came + Pedlar.stays - state.watch)) watch\(pedlar.came + Pedlar.stays - state.watch == 1 ? "" : "es")")
                     .font(.nm(9.5)).foregroundStyle(Palette.text(0.5))
+            }
+            VoicingLine(session: session, key: call, who: "the pedlar")
+            if let spoken = session.spoken[call] {
+                Text(verbatim: "\"\(spoken)\"")
+                    .font(.nm(11.5, weight: .light).italic())
+                    .foregroundStyle(Palette.text(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
             }
             ForEach(pedlar.wares) { ware in
                 let refusal = state.buyRefusal(ware.id, as: session.player)

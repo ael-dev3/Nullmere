@@ -168,6 +168,11 @@ final class CompanionLedgerTests: XCTestCase {
         var ledger = CompanionLedger(world: state, player: me)
         let buyable = try XCTUnwrap(ledger.pedlar).wares.filter { $0.buy != nil }.count
         XCTAssertGreaterThan(buyable, 0)
+        // His call from the water, keyed as the Mac keys it and given words
+        // by the phone's own model.
+        let lyingOff = try XCTUnwrap(state.pedlar(for: me))
+        XCTAssertEqual(ledger.pedlar?.voice, "pedlar-\(GameState.voiceKey(of: lyingOff))")
+        XCTAssertTrue(state.view(for: me).voicedMoments(for: me).contains { $0.key == ledger.pedlar?.voice })
         XCTAssertEqual(ledger.errands, ["The pedlar lies off \(seat.name): \(buyable == 1 ? "a ware" : "\(buyable) wares") you may buy",
                                         "2 silver keys and a gold key to spend at the Inn",
                                         "A \(ItemKind.grainCache.title) ready to use"],

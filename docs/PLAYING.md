@@ -313,7 +313,8 @@ a vote on the realm's law to cast.
   which counts as the keeper's, Mac or phone.
 - **Barter, the Inn and the satchel.** A page of its own off the House's
   stores: the Pedlar of the Still, while he lies off one of the House's
-  holds, when he poles away and his three wares, each with what he asks
+  holds, when he poles away, his call from the water in the words the
+  phone's own model gives him, and his three wares, each with what he asks
   and Buy where the House can pay, or why not; the Lantern Inn, the House's
   keys (a word when one more silver would be lost) and its chests to open,
   a silver with a key and a gold with one or for moonsalt, what a chest
@@ -1976,6 +1977,10 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   the envoy words… 1.4 s"); where the model gives none, the card says why
   in a line ("Apple's on-device model is busy with another answer, so the
   realm's own words stand alone."), and the realm's own words stand alone.
+  The Pedlar of the Still calls up from his skiff in the same way, on his
+  card in the hold's record: his wares as he truly has them and what he
+  asks, what he has sold and when he poles away, called afresh each time a
+  ware is bought.
 
 ## Sound and music
 

@@ -194,7 +194,8 @@ extension GameState {
     /// it holds last told, the plea its folk bring it, what its
     /// watchfires last made out marching dark, the hamlets and barrows its
     /// Lanterns sought last and the barrows it raised over its dead last
-    /// (the latest three of each).
+    /// (the latest three of each), and the pedlar's call while he lies off
+    /// one of its holds.
     public func voicedMoments(for house: Int) -> [Voicing.Keyed] {
         var moments: [Voicing.Keyed] = []
         for envoy in envoys where envoy.to == house && houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer {
@@ -230,6 +231,10 @@ extension GameState {
             if let moment = voiced(grave, for: house) {
                 moments.append(Voicing.Keyed(key: "grave-\(grave.key)", moment: moment))
             }
+        }
+        // The pedlar's call from the water, called afresh as each ware is sold.
+        if let pedlar = pedlar(for: house) {
+            moments.append(Voicing.Keyed(key: "pedlar-\(GameState.voiceKey(of: pedlar))", moment: voiced(pedlar)))
         }
         return moments
     }
