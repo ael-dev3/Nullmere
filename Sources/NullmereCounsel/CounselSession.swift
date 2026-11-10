@@ -80,6 +80,13 @@ public actor CounselBench {
         weighed(counsel.proposeAnswer(action, house: house))
     }
 
+    /// A deed for the House's alliance, weighed as the realm weighs every
+    /// order: an ally helped, the shares taken up, stores given toward its
+    /// study, a thing taken from its stall.
+    public func proposeForAlliance(_ action: String, what: String) -> String {
+        weighed(counsel.proposeForAlliance(action, what: what))
+    }
+
     private func weighed(_ proposal: CounselProposal) -> String {
         if proposal.isGiven {
             proposals.append(proposal)
@@ -223,6 +230,27 @@ struct ProposeForYourself: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await bench.proposeForSelf(arguments.action, what: arguments.what)
+    }
+}
+
+/// A deed for the House's alliance put to the keeper, never done by the
+/// commander.
+struct ProposeForTheAlliance: Tool {
+    let bench: CounselBench
+    let name = "proposeForTheAlliance"
+    let description = "Puts to your keeper a deed for your House's alliance, who decides whether to do it: help an ally's works, "
+        + "take up the shares of its spoils, give stores toward its study, or take a thing from its stall for your House's merit."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The deed: help, shares, give or take")
+        var action: String
+        @Guide(description: "For help, the ally's House by its name; for give, the stores such as 50 grain; for take, the thing as you were told it; for shares, empty")
+        var what: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.proposeForAlliance(arguments.action, what: arguments.what)
     }
 }
 
@@ -441,7 +469,7 @@ public final class CommanderCounselSession: ObservableObject {
     private func makeSession() -> LanguageModelSession {
         let tools: [any Tool] = [CompanyReport(bench: bench), LookAbout(bench: bench), HouseAffairs(bench: bench), HouseReport(bench: bench),
                                  AllianceReport(bench: bench), YourselfReport(bench: bench), ProposeOrder(bench: bench),
-                                 ProposeForYourself(bench: bench), AnswerAnEnvoy(bench: bench)]
+                                 ProposeForYourself(bench: bench), AnswerAnEnvoy(bench: bench), ProposeForTheAlliance(bench: bench)]
         let made = LanguageModelSession(model: model, tools: tools, instructions: instructions)
         session = made
         return made

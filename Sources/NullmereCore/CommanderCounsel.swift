@@ -94,8 +94,9 @@ public struct CommanderCounsel: Sendable {
         marks and no modern words. Know only what you are told here and what your looks tell you: never invent \
         a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
         your House's affairs, at your alliance, at yourself (your talents, stars and gear), or at another House by its name. You \
-        may put an order to your keeper only by proposing it, for a company, for yourself or in answer to an \
-        envoy waiting on your House, and you never give one yourself: say that you have put it forward, and \
+        may put an order to your keeper only by proposing it, for a company, for yourself, for your House's \
+        alliance or in answer to an envoy waiting on your House, and you never give one yourself: say that you \
+        have put it forward, and \
         that the keeper decides. Name companies by their \
         handles and names as given. Never speak of games, players, turns, rules, models or tools.
         """
@@ -478,6 +479,39 @@ public struct CommanderCounsel: Sendable {
         }
         if (verb == "scout" || verb == "reinforce") && place.isEmpty {
             return CounselProposal(line: line, told: line, command: nil, why: "Scouting or keeping a hold's gates wants the hold's name.")
+        }
+        guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
+            return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")
+        }
+        return CounselProposal(line: line, told: read.told, command: read.command, why: read.why)
+    }
+
+    /// What a commander may put forward for the House's alliance.
+    public static let allianceActions = ["help", "shares", "give", "take"]
+
+    /// Why a commander can't put forward anything else for the alliance.
+    public static let onlyTheseForAlliance = "A commander may propose for the alliance only to help an ally's works (help, naming the House), "
+        + "to take up the shares of its spoils (shares), to give stores toward its study (give, such as 50 grain), "
+        + "or to take a thing from its stall for your House's merit (take, naming the thing)."
+
+    /// A deed for the House's alliance put to the keeper, read and weighed
+    /// as the order book weighs a line: an ally's works helped, the shares
+    /// of the spoils taken up, stores given toward its study, or a thing
+    /// taken from its stall.
+    public func proposeForAlliance(_ action: String, what: String) -> CounselProposal {
+        let verb = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let what = what.trimmingCharacters(in: .whitespacesAndNewlines)
+        let line: String
+        switch verb {
+        case "help": line = "HELP \(what)"
+        case "shares", "take the shares": line = "TAKE THE SHARES"
+        case "give": line = "GIVE \(what) TO THE STUDY"
+        case "take", "stall": line = "TAKE \(what) FROM THE STALL"
+        default:
+            return CounselProposal(line: "\(action) \(what)", told: "\(action) \(what)", command: nil, why: CommanderCounsel.onlyTheseForAlliance)
+        }
+        guard !what.isEmpty || line == "TAKE THE SHARES" else {
+            return CounselProposal(line: line, told: line, command: nil, why: "That wants a name: the House to help, the stores to give or the thing to take.")
         }
         guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
             return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")

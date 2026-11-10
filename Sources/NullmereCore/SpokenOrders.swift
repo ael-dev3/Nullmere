@@ -46,6 +46,7 @@ public enum SpokenOrders {
                                "SWEAR TO SEND <amount> <store> TO <house> EACH WATCH FOR <watches> WATCHES",
                                "RENOUNCE THE OATH TO <house>",
                                "HELP <house>", "TAKE THE SHARES", "MARK <mark> AT <place> SAYING <words>",
+                               "GIVE <amount> <store> TO THE STUDY", "TAKE <thing> FROM THE STALL",
                                "WHILE AWAY MUSTER <kind>", "WHILE AWAY RAISE <work> FIRST", "WHILE AWAY KEEP HOME",
                                "WHILE AWAY MAKE PEACE", "WHILE AWAY MAKE NO PEACE", "WHILE AWAY PAY TRIBUTE", "WHILE AWAY PAY NO TRIBUTE",
                                "WHILE AWAY AS YOU SEE FIT"]
@@ -252,6 +253,14 @@ public enum SpokenOrders {
         if !shares.isEmpty {
             lines.append("Shares of the alliance's spoils waiting for your House (TAKE THE SHARES): \(shares.count), holding \(state.sharesHeldSaid(by: player))")
         }
+        if let next = sworn.lore?.next {
+            lines.append("Your alliance pursues \(next.study.title) \(BuildingKind.numeral(next.grade)); your House may give stores toward it "
+                         + "(GIVE <amount> <store> TO THE STUDY).")
+        }
+        let reaches = GameState.stall.filter { state.stallRefusal($0, as: player) == nil }.map(\.title)
+        lines.append("Your House's merit with the alliance is \(GameState.counted(state.merit(of: player)))"
+                     + (reaches.isEmpty ? "; it reaches nothing at the stall yet."
+                        : "; at its stall it may take any of (TAKE <thing> FROM THE STALL): " + reaches.joined(separator: ", ") + "."))
         if sworn.manages(player) {
             lines.append("Your House may mark ground for its alliance (MARK): "
                          + AllianceMark.Kind.allCases.map(\.word).joined(separator: ", ")
@@ -441,6 +450,14 @@ public enum SpokenOrders {
             guard let (what, to) = split("TO") else { return nil }
             guard let (amount, store) = stores(what) else { return nil }
             guard let resource = resource(store) else { return refused(text, "No store goes by the name \(store).") }
+            if Self.studyNames.contains(plain(to)) {
+                // Stores given toward the alliance's study.
+                var gift = Stock()
+                gift[resource] = amount
+                let toward = state.alliance(of: player)?.lore?.next.map { " toward \($0.study.title) \(BuildingKind.numeral($0.grade))" }
+                    ?? " toward your alliance's study"
+                return given(.giveToAlliance(gift), "\(GameState.counted(amount)) \(resource.title.lowercased()) given\(toward).")
+            }
             guard let other = house(to, in: state, player: player) else { return refused(text, "No House goes by the name \(to).") }
             return given(.gift(to: other, resource: resource, amount: amount),
                          "\(GameState.counted(amount)) \(resource.title.lowercased()) sent to \(state.houses[other].title).")
@@ -501,6 +518,12 @@ public enum SpokenOrders {
             guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
             return given(.help(house: other), "Your House lends a hand to the works, musters and study of \(state.houses[other].title) under way.")
         case "TAKE":
+            if let (what, from) = split("FROM"), ["stall", "alliance's stall", "alliance stall"].contains(plain(from)) {
+                // One of what the alliance's stall keeps, for the House's merit.
+                guard let kind = Self.stallThing(what) else { return refused(text, "The alliance's stall keeps nothing called \(what).") }
+                return given(.takeFromStall(kind), "Your House takes \(kind.counted(1)) from the alliance's stall for "
+                             + "\(GameState.stallPrice(of: kind)) merit.")
+            }
             guard ["THE SHARES", "SHARES", "THE SPOILS", "THE SHARES OF THE SPOILS"].contains(rest.joined(separator: " ").uppercased()) else {
                 return nil
             }
@@ -606,6 +629,20 @@ public enum SpokenOrders {
     static func house(_ name: String, in state: GameState, player: Int) -> Int? {
         state.houses.filter { $0.id != player && [plain($0.title), plain($0.name)].contains(plain(name)) }
             .min { ($0.isEliminated ? 1 : 0, $0.id) < ($1.isEliminated ? 1 : 0, $1.id) }?.id
+    }
+
+    /// What a GIVE line names the alliance's study by, as matched.
+    static let studyNames = ["study", "alliance's study", "alliance study", "alliance's studies"]
+
+    /// The thing a TAKE line names at the stall: by its whole name, or by
+    /// one word of it where no other thing's name holds that word ("tome",
+    /// "hourglass"; not "cache", which four do).
+    static func stallThing(_ name: String) -> ItemKind? {
+        let wanted = plain(name)
+        if let whole = GameState.stall.first(where: { plain($0.title) == wanted }) { return whole }
+        guard !wanted.contains(" ") else { return nil }
+        let holding = GameState.stall.filter { plain($0.title).split(separator: " ").contains(Substring(wanted)) }
+        return holding.count == 1 ? holding[0] : nil
     }
 
     /// The envoy of another House waiting on the House's answer, the one

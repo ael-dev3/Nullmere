@@ -1899,8 +1899,11 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   PACT TO a House, DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an
   amount of a store TO one, TRADE an amount of a store FOR another WITH
   one, and the oaths below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO
-  one, RENOUNCE THE OATH TO one; and for the alliance, HELP an ally's
-  works under way, TAKE THE SHARES of its spoils, and, for its leader or
+  one, RENOUNCE THE OATH TO one; to an envoy waiting, ACCEPT or REFUSE
+  THE ENVOY OF a House, or OFFER HALF THE TRIBUTE TO a steward's; and for
+  the alliance, HELP an ally's works under way, TAKE THE SHARES of its
+  spoils, GIVE an amount of a store TO THE STUDY, TAKE a thing FROM THE
+  STALL for the House's merit, and, for its leader or
   an officer, MARK GATHER, STRIKE, HOLD or BEWARE AT a place, SAYING a
   few words), given a briefing of the House's companies, numbered C1
   and on (each that may set the blackwood where it stands alight told
@@ -1908,7 +1911,9 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   been sent to do), its holds, the sites it may gather at, the rallies
   of its side gathering, the places it knows, the works, the kinds of
   company, the other Houses standing and how it stands with each, its
-  oaths, the stores, and what it may do for its alliance now.
+  oaths, the envoys waiting on its answer, the stores, and what it may
+  do for its alliance now: the study it pursues and what the House's
+  merit reaches at the stall.
   Each line is read against the keeper's own view into the order the
   realm would take, or said not to be one, and shown with what it would
   do or why it can't be given; those that can are given together only
