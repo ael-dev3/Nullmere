@@ -571,6 +571,14 @@ enum CompanionCheck {
             await give(pursue.command, told: pursue.title, as: "Pursued")
             if await until(30, { session.ledger?.allianceGifts.isEmpty == false }), let gift = session.ledger?.allianceGifts.first {
                 await give(gift.command, told: gift.title, as: "Given toward the study")
+                // The merit the gift earned the House with its alliance, as
+                // the realm keeps it. The Mac must see the same.
+                if let house = session.keeper?.house,
+                   await until(30, { (session.world?.merit(of: house) ?? 0) > 0 }), let merit = session.world?.merit(of: house) {
+                    lines.append("Merit with the alliance: \(merit)")
+                } else {
+                    lines.append("No merit earned with the alliance: the gift came to less than \(GameState.worthPerMerit) worth")
+                }
             } else {
                 lines.append("Nothing the House could give toward the study")
             }

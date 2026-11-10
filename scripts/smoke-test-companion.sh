@@ -285,6 +285,15 @@ if [ -n "$MARKED" ]; then
     done
 fi
 echo "The Mac sees the ground the phone marked for the alliance: $MARK_SEEN${MARKED:+ ($MARKED)}"
+MERIT="$(sed -n 's/^Merit with the alliance: //p' "$REPORT" | head -n 1)"
+MERIT_SEEN=no
+if [ -n "$MERIT" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "merit: $MERIT" "$MAC_REPORT" 2>/dev/null; then MERIT_SEEN=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the merit the phone earned with the alliance: $MERIT_SEEN${MERIT:+ ($MERIT)}"
 STANDING="$(sed -n 's/^Standing orders: //p' "$REPORT" | head -n 1)"
 STOOD=no
 if [ -n "$STANDING" ]; then
@@ -488,6 +497,10 @@ if [ -n "$SHARED" ] && [ "$SHARED_SEEN" != yes ]; then
 fi
 if [ -n "$MARKED" ] && [ "$MARK_SEEN" != yes ]; then
     echo "error: the Mac never saw the ground marked for the alliance on the phone" >&2
+    exit 1
+fi
+if [ -n "$MERIT" ] && [ "$MERIT_SEEN" != yes ]; then
+    echo "error: the Mac never saw the merit the phone earned with the alliance" >&2
     exit 1
 fi
 if [ "$STOOD" != yes ]; then

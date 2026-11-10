@@ -578,6 +578,23 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(marked(state), ["marked: Gather at \(seat.position.q),\(seat.position.r)"])
     }
 
+    /// What the Mac tells the phone's smoke test of its House's merit with
+    /// its alliance: none while sworn to none; then what it has earned, as
+    /// the realm keeps it, for the test to find what the phone earned.
+    func testTheLinkReportTellsTheHousesMeritWithItsAlliance() throws {
+        var state = GameState(settings: GameSettings(seedText: "linked merit", houseCount: 4, radius: 12, keepers: 1))
+        func merit(_ world: GameState) -> [String] {
+            GameApp.linkReport(of: world, player: world.player).split(separator: "\n").map(String.init).filter { $0.hasPrefix("merit:") }
+        }
+        XCTAssertEqual(merit(state), [], "Sworn to none, no merit")
+        _ = try state.perform(.foundAlliance(name: "The Linked Accord"), as: state.player)
+        XCTAssertEqual(merit(state), ["merit: 0"])
+        _ = try state.perform(.pursueAllianceStudy(.fieldcraft), as: state.player)
+        state.houses[state.player].stock.grain += 50
+        _ = try state.perform(.giveToAlliance(Stock(grain: 50, timber: 0, stone: 0, moonsalt: 0)), as: state.player)
+        XCTAssertEqual(merit(state), ["merit: \(50 / GameState.worthPerMerit)"], "What the gift earned")
+    }
+
     /// What the Mac tells the phone's smoke test of watchfires: each it sees
     /// burning, where it burns, for the test to find the one the phone lit;
     /// nothing, where none burns.
