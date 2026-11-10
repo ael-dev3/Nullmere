@@ -165,9 +165,13 @@ extension GameSession {
         // each watch, and birds come down to a field fought lately.
         let dead = fieldBlows.isEmpty ? [] : stage.fieldDead(fieldBlows.filter { inView($0.at, within: GameSession.companyReach) },
                                                             watch: state.watch, time: t, birds: full, into: &frame)
-        // The barrows raised over fields of the dead the keeper knows.
+        // The barrows raised over fields of the dead the keeper knows; one
+        // the keeper has just seen raised heaped up from the ground while
+        // its dead's lights rise (whole at once where motion is reduced).
+        let raising = full ? Dictionary(releases.map { ($0.at, WorldStage.graveRaised(age: Float(now.timeIntervalSince($0.start)))) },
+                                        uniquingKeysWith: { min($0, $1) }) : [:]
         let barrows = state.gravesRaised.isEmpty ? [] : stage.graves(state.gravesRaised.filter { isExplored($0.at) && inView($0.at, within: 1) }
-            .map { (at: $0.at, troops: $0.troops) })
+            .map { (at: $0.at, troops: $0.troops) }, raising: raising)
 
         // The land's sites the keeper knows, its holy sites and the lairs of
         // the wilds, and its furniture, cleared where companies, sites,
@@ -766,6 +770,10 @@ extension GameSession {
             happenings.marching.append(Happenings.Spot(at: pose.position, strength: riders ? 1.4 : 1, seed: UInt32(truncatingIfNeeded: pose.unit)))
         }
         happenings.rising = (stage.risingWorks(sights) + stage.risingHalls(halls)).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }
+        // Earth thrown up about a barrow while it is heaped.
+        for release in releases where Float(now.timeIntervalSince(release.start)) < WorldStage.graveRaisingSeconds {
+            happenings.rising.append(Happenings.Spot(at: stage.gravePlace(release.at), seed: UInt32(truncatingIfNeeded: release.at.q &* 31 &+ release.at.r)))
+        }
         // The dust over every field of battle in sight, the thicker the more companies stand in it.
         // Each company found once, for every field's fronts.
         let unitsByID = state.fieldsOfBattle.isEmpty ? [:] : Dictionary(state.units.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })

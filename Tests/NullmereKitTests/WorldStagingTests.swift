@@ -752,6 +752,35 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(climbing(gone), 0, "gone a few seconds on")
     }
 
+    /// A barrow the keeper sees raised is heaped up from the ground while
+    /// its dead's lights rise, its stone set up as it ends, and a few
+    /// seconds on stands as every barrow does.
+    func testABarrowSeenRaisedIsHeapedUpFromTheGround() throws {
+        var raisedAt: Hex?
+        let session = try session { state in
+            let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
+            state.graves = [Grave(at: company.position, troops: 7_000, house: state.player, watch: state.watch, dead: [state.player])]
+            raisedAt = company.position
+        }
+        let field = try XCTUnwrap(raisedAt)
+        let cell = SIMD2(Int32(field.q), Int32(field.r))
+        func mound(_ frame: SceneFrame) -> ModelInstance? {
+            frame.batches.filter { $0.key == .furnishing(.barrowMound) }.flatMap(\.instances).first { $0.hex == cell }
+        }
+        func stones(_ frame: SceneFrame) -> Int {
+            frame.batches.filter { $0.key == .furnishing(.standingStone) }.flatMap(\.instances).filter { $0.hex == cell }.count
+        }
+        let standing = try XCTUnwrap(mound(session.sceneFrame(at: 40)), "the barrow stands")
+        let now = Date()
+        session.showBlows([.buried(FieldOfDead(at: field, troops: 7_000, houses: [session.player], since: session.state.watch), by: session.player)])
+        let begun = session.sceneFrame(at: 40.5, now: now.addingTimeInterval(0.5))
+        XCTAssertLessThan(try XCTUnwrap(mound(begun)).params.x, standing.params.x, "heaped up from the ground as it is raised")
+        XCTAssertEqual(stones(begun), 0, "its stone not yet set up")
+        let raised = session.sceneFrame(at: 45, now: now.addingTimeInterval(5))
+        XCTAssertEqual(mound(raised), standing, "standing whole a few seconds on")
+        XCTAssertEqual(stones(raised), 1)
+    }
+
     func testAFieldKeepsItsDeadAFewWatches() throws {
         let session = try session()
         let player = session.player, foe = (player + 1) % 3

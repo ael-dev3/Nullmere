@@ -250,4 +250,39 @@ final class FieldDeadTests: XCTestCase {
         XCTAssertEqual(WorldStage.graveScale(troops: -5), WorldStage.graveScale(troops: 0))
         XCTAssertTrue(stage.graves([]).isEmpty)
     }
+
+    /// A barrow the keeper sees raised is heaped up from the ground over a
+    /// few seconds, its stone set up at its head over the last half, while
+    /// the lights of its dead still rise; once raised it stands as every
+    /// barrow does, and where motion is reduced it stands whole at once.
+    func testABarrowBeingRaisedIsHeapedUpFromTheGround() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let field = Hex(3, -6)
+        func parts(_ done: Float?) -> (mound: [ModelInstance], stone: [ModelInstance]) {
+            let batches = stage.graves([(at: field, troops: 6_000)], raising: done.map { [field: $0] } ?? [:])
+            return (batches.first { $0.key == .furnishing(.barrowMound) }?.instances ?? [],
+                    batches.first { $0.key == .furnishing(.standingStone) }?.instances ?? [])
+        }
+        let mound = Library.model(.furnishing(.barrowMound)).mesh.bounds
+        let stone = Library.model(.furnishing(.standingStone)).mesh.bounds
+        let begun = parts(0.1), half = parts(0.5), late = parts(0.8), done = parts(1), standing = parts(nil)
+        XCTAssertEqual(begun.mound.count, 1)
+        XCTAssertGreaterThan(begun.mound[0].params.x, mound.min.y, "heaped from the ground")
+        XCTAssertLessThan(begun.mound[0].params.x, half.mound[0].params.x, "higher as it goes")
+        XCTAssertLessThan(half.mound[0].params.x, mound.max.y, "not yet whole")
+        XCTAssertTrue(begun.stone.isEmpty && half.stone.isEmpty, "its stone not yet set up")
+        XCTAssertEqual(late.stone.count, 1, "its stone going up as it ends")
+        XCTAssertLessThan(late.stone[0].params.x, stone.max.y)
+        XCTAssertEqual(done.mound, standing.mound, "raised, it stands as every barrow does")
+        XCTAssertEqual(done.stone, standing.stone)
+        let at = stage.gravePlace(field), foot = begun.mound[0].model.transformPoint(.zero)
+        XCTAssertLessThan(flat(at, foot) + abs(at.y - foot.y), 1e-4, "where it stands")
+        // Its pace: slow to start and slow to end, whole after, and whole at
+        // once where motion is reduced; heaped while its dead's lights rise.
+        XCTAssertEqual(WorldStage.graveRaised(age: 0), 0)
+        XCTAssertEqual(WorldStage.graveRaised(age: WorldStage.graveRaisingSeconds / 2), 0.5, accuracy: 1e-4)
+        XCTAssertEqual(WorldStage.graveRaised(age: WorldStage.graveRaisingSeconds * 2), 1)
+        XCTAssertEqual(WorldStage.graveRaised(age: 0, still: true), 1)
+        XCTAssertLessThan(WorldStage.graveRaisingSeconds, WorldStage.releaseSeconds)
+    }
 }

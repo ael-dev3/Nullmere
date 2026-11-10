@@ -895,7 +895,8 @@ a vote on the realm's law to cast.
   they fell, unburied: on a field where your companies were struck, where
   your foe's blow struck back. A company of war standing on them may
   bury them (Bury the dead, in its panel, any House's dead lying there):
-  its watch is spent raising a barrow over them, which stays on the land,
+  its watch is spent raising a barrow over them, which stays on the land
+  (you see it heaped up from the ground as the dead's lights rise from it),
   and each field your House buries adds two to your renown as the age
   ends (five fields at most). Left unburied where 6,000 troops or more
   lie, at the dark of the moon (when the Houses dream, once in each moon

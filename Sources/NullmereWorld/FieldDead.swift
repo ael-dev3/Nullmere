@@ -222,25 +222,58 @@ extension WorldStage {
         0.55 + 0.35 * min(Float(max(troops, 0)) / 12_000, 1)
     }
 
+    /// Seconds a barrow the keeper sees raised takes to be heaped up, from
+    /// bare ground to its full height, its stone set up at its head as it
+    /// ends; while the lights of the dead laid in it rise and fade.
+    public static let graveRaisingSeconds: Float = 3
+
+    /// How far a barrow raised `age` seconds ago is heaped up: from nothing
+    /// to whole, slow to start and slow to finish; whole at once where
+    /// motion is reduced.
+    public static func graveRaised(age: Float, still: Bool = false) -> Float {
+        guard !still else { return 1 }
+        let t = min(max(age / graveRaisingSeconds, 0), 1)
+        return t * t * (3 - 2 * t)
+    }
+
+    /// Where a barrow raised on `hex` stands: beside the field's heart, off
+    /// the ground a company stands on, on the land under it.
+    public func gravePlace(_ hex: Hex) -> Vec3 {
+        let centre = Relief.centre(of: hex)
+        let bearing = WorldStage.phase(of: hex, salt: 83)
+        let x = centre.x + WorldStage.graveOffset * Float(cos(Double(bearing)))
+        let z = centre.z + WorldStage.graveOffset * Float(sin(Double(bearing)))
+        return Vec3(x, ground(atX: x, z: z), z)
+    }
+
     /// The barrows raised over fields of the dead: a low mound beside the
     /// field's heart, each turned its own way, the larger the more laid in
-    /// it, with a standing stone at its head.
-    public func graves(_ graves: [(at: Hex, troops: Int)]) -> [ModelBatch] {
+    /// it, with a standing stone at its head. One being raised (`raising`,
+    /// how far, 0 to 1, by its hex) is heaped up from the ground as far as
+    /// it has come, its top fresh earth, its stone set up over the last
+    /// half of it.
+    public func graves(_ graves: [(at: Hex, troops: Int)], raising: [Hex: Float] = [:]) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
+        let mound = Library.model(.furnishing(.barrowMound)).mesh.bounds
+        let stone = Library.model(.furnishing(.standingStone)).mesh.bounds
         for grave in graves {
-            let centre = Relief.centre(of: grave.at)
+            let at = gravePlace(grave.at)
             let bearing = WorldStage.phase(of: grave.at, salt: 83)
-            let x = centre.x + WorldStage.graveOffset * Float(cos(Double(bearing)))
-            let z = centre.z + WorldStage.graveOffset * Float(sin(Double(bearing)))
             let hex = SIMD2(Int32(grave.at.q), Int32(grave.at.r))
             let scale = WorldStage.graveScale(troops: grave.troops)
-            placed.append((.furnishing(.barrowMound), ModelInstance(model: .translation(Vec3(x, ground(atX: x, z: z), z))
-                                                                    * .rotationY(bearing) * .scale(scale), hex: hex)))
-            // Its stone at its head, along the way it is turned.
+            let done = min(max(raising[grave.at] ?? 1, 0), 1)
+            var heaped = ModelInstance(model: .translation(at) * .rotationY(bearing) * .scale(scale), hex: hex)
+            if done < 1 { heaped.params.x = mound.min.y + done * (mound.max.y - mound.min.y) }
+            placed.append((.furnishing(.barrowMound), heaped))
+            // Its stone at its head, along the way it is turned, set up
+            // once the mound is half heaped.
+            let set = min(max(done * 2 - 1, 0), 1)
+            guard set > 0 else { continue }
             let head = 0.32 * scale
-            let sx = x + head * Float(sin(Double(bearing))), sz = z + head * Float(cos(Double(bearing)))
-            placed.append((.furnishing(.standingStone), ModelInstance(model: .translation(Vec3(sx, ground(atX: sx, z: sz), sz))
-                                                                      * .rotationY(bearing) * .scale(0.45), hex: hex)))
+            let sx = at.x + head * Float(sin(Double(bearing))), sz = at.z + head * Float(cos(Double(bearing)))
+            var standing = ModelInstance(model: .translation(Vec3(sx, ground(atX: sx, z: sz), sz)) * .rotationY(bearing) * .scale(0.45), hex: hex)
+            if set < 1 { standing.params.x = stone.min.y + set * (stone.max.y - stone.min.y) }
+            placed.append((.furnishing(.standingStone), standing))
         }
         return WorldStage.batches(placed)
     }

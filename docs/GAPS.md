@@ -855,7 +855,13 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   drawing in toward the barrow's heart, slowing and fading, gone after six
   seconds (`WorldStage.releasedLights`, CorpseLightsTests on Linux;
   WorldStagingTests passing on the Mac in run 895); where
-  motion is reduced the barrow simply stands. CI's Mac draws the unquiet
+  motion is reduced the barrow simply stands. And as they rise the barrow
+  is heaped up from the ground beneath them over three seconds, its top
+  fresh earth and earth thrown up about it, its stone set up at its head
+  over the last half, standing as every barrow does once raised, whole at
+  once where motion is reduced (`WorldStage.graveRaised`, `graves(_:raising:)`;
+  FieldDeadTests on Linux, WorldStagingTests on the Mac, Unverified there
+  until a CI run). CI's Mac draws the unquiet
   dead as the session stages them, a field of 11,000 unburied under its
   corpse-lights, a barrow beside it and Barrowkin risen pale, measures
   that the lights brighten the field in their own cold colour, and keeps
