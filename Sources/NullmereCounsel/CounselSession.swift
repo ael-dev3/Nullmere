@@ -51,6 +51,11 @@ public actor CounselBench {
         return kept(counsel.allianceReport)
     }
 
+    public func holds() -> String {
+        looks.append("Looked over the House's holds")
+        return kept(counsel.holdsReport)
+    }
+
     public func yourself() -> String {
         looks.append("Looked to themself")
         return kept(counsel.selfReport)
@@ -91,6 +96,12 @@ public actor CounselBench {
     /// order: an envoy offering peace or a pact or demanding tribute, or war.
     public func proposeDealing(_ action: String, house: String) -> String {
         weighed(counsel.proposeDealing(action, house: house))
+    }
+
+    /// A work raised or a company mustered at a hold of the House, weighed
+    /// as the realm weighs every order.
+    public func proposeForAHold(_ action: String, hold: String, what: String) -> String {
+        weighed(counsel.proposeForAHold(action, hold: hold, what: what))
     }
 
     private func weighed(_ proposal: CounselProposal) -> String {
@@ -281,6 +292,44 @@ struct AnswerAnEnvoy: Tool {
     }
 }
 
+/// The House's holds, as their panels tell the keeper.
+struct HoldsReport: Tool {
+    let bench: CounselBench
+    let name = "yourHolds"
+    let description = "Looks over your House's holds: what each raises and musters, its works, "
+        + "and what it may raise or muster now and for what."
+
+    @Generable
+    struct Arguments {}
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.holds()
+    }
+}
+
+/// A work raised or a company mustered at a hold of the House, put to the
+/// keeper and never given by the commander.
+struct ProposeForAHold: Tool {
+    let bench: CounselBench
+    let name = "proposeForAHold"
+    let description = "Puts to your keeper a work raised a level at a hold of your House, "
+        + "or a company mustered there, who decides whether to do it."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "What the hold is to do: raise or muster")
+        var action: String
+        @Guide(description: "The hold of your House, by its name as you were told it")
+        var hold: String
+        @Guide(description: "For raise, the work, such as Granary; for muster, the kind of company, such as Spears")
+        var what: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.proposeForAHold(arguments.action, hold: arguments.hold, what: arguments.what)
+    }
+}
+
 /// A dealing with another House, put to the keeper and never given by the
 /// commander.
 struct ProposeToAHouse: Tool {
@@ -307,15 +356,12 @@ struct ProposeToAHouse: Tool {
 struct ProposeOrder: Tool {
     let bench: CounselBench
     let name = "proposeAnOrder"
+    // Kept short, for the tools' words take the model's context: the
+    // argument names what may be ordered, a look at the company tells
+    // what more it may do there, and a proposal of anything else is told
+    // what each is (`CommanderCounsel.onlyThese`).
     let description = "Puts an order for a company of your House to your keeper, who decides whether to give it. "
-        + "Only march, strike, fortify, halt, drill, raise (a tier, by a Muster Hall of your House where the company stands), "
-        + "kindle (set the blackwood where the company stands alight), "
-        + "douse (its torches, to march dark: a tile slower, seen by other Houses only close by), light (its torches again), "
-        + "wait (lie in wait in the blackwood, marching dark, and spring upon the first foe at war that comes within reach), "
-        + "bury (the dead lying unburied where the company stands), gather (a store, at the nearest site of it the company may work), "
-        + "recall (from the land's work, home with its load), scout (another House's hold, with Lanterns near it), "
-        + "reinforce (keep the gates of a hold of your House or an ally's), rally (join a rally of your side still gathering) "
-        + "or ferry (across the lake by barge, from a shore hold of your House's to another of its shore holds)."
+        + "A look at the company tells what more it may do where it stands."
 
     @Generable
     struct Arguments {
@@ -495,12 +541,18 @@ public final class CommanderCounselSession: ObservableObject {
         return text
     }
 
+    /// The tools the model may call in counsel, its looks and proposals,
+    /// all sharing the one bench. Their names and descriptions go to the
+    /// model before a word is asked, within `CounselBudget.toolsShare`.
+    static func tools(_ bench: CounselBench) -> [any Tool] {
+        [CompanyReport(bench: bench), LookAbout(bench: bench), HouseAffairs(bench: bench), HouseReport(bench: bench),
+         AllianceReport(bench: bench), YourselfReport(bench: bench), HoldsReport(bench: bench), ProposeOrder(bench: bench),
+         ProposeForYourself(bench: bench), AnswerAnEnvoy(bench: bench), ProposeForTheAlliance(bench: bench),
+         ProposeToAHouse(bench: bench), ProposeForAHold(bench: bench)]
+    }
+
     private func makeSession() -> LanguageModelSession {
-        let tools: [any Tool] = [CompanyReport(bench: bench), LookAbout(bench: bench), HouseAffairs(bench: bench), HouseReport(bench: bench),
-                                 AllianceReport(bench: bench), YourselfReport(bench: bench), ProposeOrder(bench: bench),
-                                 ProposeForYourself(bench: bench), AnswerAnEnvoy(bench: bench), ProposeForTheAlliance(bench: bench),
-                                 ProposeToAHouse(bench: bench)]
-        let made = LanguageModelSession(model: model, tools: tools, instructions: instructions)
+        let made = LanguageModelSession(model: model, tools: Self.tools(bench), instructions: instructions)
         session = made
         return made
     }

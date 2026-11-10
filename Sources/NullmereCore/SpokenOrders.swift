@@ -608,12 +608,24 @@ public enum SpokenOrders {
     /// The kind of company a line names, by its title or one less its last
     /// letter: "Spears" or "Spear".
     static func kind(_ name: String) -> UnitKind? {
-        UnitKind.allCases.first { [plain($0.title), String(plain($0.title).dropLast())].contains(plain(name)) }
+        let name = unnumbered(name)
+        return UnitKind.allCases.first { [plain($0.title), String(plain($0.title).dropLast())].contains(name) }
     }
 
     /// The work a line names.
     static func work(_ name: String) -> BuildingKind? {
-        BuildingKind.allCases.first { plain($0.title) == plain(name) }
+        let name = unnumbered(name)
+        return BuildingKind.allCases.first { plain($0.title) == name }
+    }
+
+    /// A work or a kind of company as a line names it, plainly, with the
+    /// numeral of a level or tier after it set aside, as a look names them
+    /// ("Granary II", "Spears I"): the order says what it raises or musters.
+    static func unnumbered(_ name: String) -> String {
+        let words = plain(name).split(separator: " ")
+        guard words.count > 1, let last = words.last,
+              (1...10).contains(where: { BuildingKind.numeral($0).lowercased() == last }) else { return plain(name) }
+        return words.dropLast().joined(separator: " ")
     }
 
     /// An amount of a store as a line gives it: "50 timber", "1,000 grain".

@@ -1129,7 +1129,13 @@ a vote on the realm's law to cast.
   at peace), a demand of tribute, or war, weighed the same way; war put
   forward in counsel asks you again before it goes, as the Houses panel
   does ("War on House Venn?", or "Betray House Venn?" where a pact stands),
-  and on the phone in a dialog. Answers appear
+  and on the phone in a dialog. They may look over your holds too (the
+  seat first, four at most: what each raises and musters and how long each
+  has to go, its works, and what it may raise a level or muster now and for
+  what, as the rules would take it) and put forward a work raised or a
+  company mustered at one, read as the order book reads BUILD and TRAIN.
+  The order book reads a work or kind named with its numeral as a look
+  names them ("BUILD Granary II AT Wenholme"). Answers appear
   as they are spoken and can be stopped; one that doesn't begin within
   twenty-five seconds is given up. A commander remembers the last dozen
   exchanges of the age, kept on your Mac, and is told what you did with

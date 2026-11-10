@@ -85,6 +85,8 @@ final class CounselSessionTests: XCTestCase {
         XCTAssertEqual(alliance, counsel.allianceReport)
         let yourself = await bench.yourself()
         XCTAssertEqual(yourself, counsel.selfReport)
+        let holds = await bench.holds()
+        XCTAssertEqual(holds, counsel.holdsReport)
         let given = await bench.propose("fortify", company: handle, place: "")
         XCTAssertTrue(given.hasPrefix("Put forward to your keeper:"))
         let refused = await bench.propose("march", company: "C99", place: "Anywhere")
@@ -96,10 +98,11 @@ final class CounselSessionTests: XCTestCase {
         let dealt = await bench.proposeDealing("war", house: other)
         XCTAssertEqual(dealt, "Put forward to your keeper: War on \(other). The keeper decides.")
         let taken = await bench.taken()
-        XCTAssertEqual(taken.looks.count, 8, "Six looks and two orders weighed and refused: \(taken.looks)")
+        XCTAssertEqual(taken.looks.count, 9, "Seven looks and two orders weighed and refused: \(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked at \(other)"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked to the alliance"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked to themself"), "\(taken.looks)")
+        XCTAssertTrue(taken.looks.contains("Looked over the House's holds"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.last?.contains("cannot be ordered") == true)
         let rival = (counsel.player + 1) % counsel.state.houses.count
         XCTAssertEqual(taken.proposals.map(\.command), [.fortify(unit: unit.id), .declareWar(on: rival)])
@@ -107,7 +110,7 @@ final class CounselSessionTests: XCTestCase {
         let again = await bench.taken()
         XCTAssertTrue(again.looks.isEmpty && again.proposals.isEmpty, "Each taken once")
         let told = await bench.told
-        XCTAssertEqual(told, [report, look, affairs, house, alliance, yourself, given, refused, star, dealt])
+        XCTAssertEqual(told, [report, look, affairs, house, alliance, yourself, holds, given, refused, star, dealt])
         // Renewed, the looks tell the world as it now stands.
         var moved = counsel.state
         let index = try XCTUnwrap(moved.unitIndex(unit.id))
@@ -115,6 +118,17 @@ final class CounselSessionTests: XCTestCase {
         await bench.renew(try XCTUnwrap(CommanderCounsel(state: moved, player: counsel.player, commander: counsel.commander.id)))
         let after = await bench.report(on: handle)
         XCTAssertTrue(after.contains("dug in"), after)
+    }
+
+    /// The tools' own words go to the model before a word is asked: each
+    /// named once, and all within their share of the smallest context the
+    /// model has had, 4,096 tokens, so the asking, a look or two and the
+    /// answer still fit.
+    func testTheToolsWordsStayWithinTheirShareOfTheContext() throws {
+        let tools = try CommanderCounselSession.tools(CounselBench(counsel()))
+        XCTAssertEqual(Set(tools.map { $0.name }).count, tools.count, "Each named once")
+        let words = tools.map { $0.name.count + $0.description.count }.reduce(0, +)
+        XCTAssertLessThanOrEqual(words, CounselBudget.toolWords(context: 4_096), "\(words) characters in \(tools.count) tools")
     }
 
     /// An offer is given once, or set aside, and never both.

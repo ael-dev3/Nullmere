@@ -529,6 +529,11 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertLessThan(Double(counsel.instructions.count + counsel.briefing.count + room),
                           4_096 * CounselBudget.broughtShare * CounselBudget.charactersPerToken + 1)
         XCTAssertEqual(CounselBudget.recall(context: 100, instructions: counsel.instructions, briefing: counsel.briefing), 0)
+        // The tools' own words have a share of their own, and what is
+        // brought and the tools together leave the most of a third for the
+        // asking, the looks taken and the answer.
+        XCTAssertEqual(CounselBudget.toolWords(context: 4_096), Int(4_096 * CounselBudget.toolsShare * CounselBudget.charactersPerToken))
+        XCTAssertLessThanOrEqual(CounselBudget.broughtShare + CounselBudget.toolsShare, 0.65)
     }
 
     /// Why no counsel came is told plainly, never answered for.

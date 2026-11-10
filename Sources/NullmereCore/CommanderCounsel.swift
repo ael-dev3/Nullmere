@@ -93,8 +93,8 @@ public struct CommanderCounsel: Sendable {
         and plain, as an old soldier speaks, in at most three sentences and seventy words, with no exclamation \
         marks and no modern words. Know only what you are told here and what your looks tell you: never invent \
         a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
-        your House's affairs, at your alliance, at yourself (your talents, stars and gear), or at another House by its name. You \
-        may put an order to your keeper only by proposing it, for a company, for yourself, for your House's \
+        your House's affairs, at its holds, at your alliance, at yourself (your talents, stars and gear), or at another House by its name. You \
+        may put an order to your keeper only by proposing it, for a company, for a hold of your House, for yourself, for your House's \
         alliance, toward another House or in answer to an envoy waiting on your House, and you never give one yourself: say that you \
         have put it forward, and \
         that the keeper decides. Name companies by their \
@@ -788,6 +788,17 @@ public enum CounselBudget {
     public static let broughtShare = 0.45
     /// The most tokens an answer may run to.
     public static let answerTokens = 220
+    /// The share of the context the tools' names and descriptions may take
+    /// beside what is brought: what the model reads of its looks and
+    /// proposals before a word is asked, the rest left for the asking, the
+    /// looks it takes and its answer.
+    public static let toolsShare = 0.2
+
+    /// The characters the tools' names and descriptions may run to, in a
+    /// context of so many tokens.
+    public static func toolWords(context tokens: Int) -> Int {
+        Int(Double(tokens) * toolsShare * charactersPerToken)
+    }
 
     /// The characters left for what the commander recalls, given the
     /// context's size in tokens and what else is brought.
