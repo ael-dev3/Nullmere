@@ -39,11 +39,18 @@ struct RankingsSection: View {
             }
             if open {
                 let ranking = state.ranking(by, alliances: alliances, for: session.player)
-                FlowLayout(spacing: 4, lineSpacing: 2) {
-                    QuietButton(title: "Houses", size: 8.5, prominent: !alliances, name: "Rank the Houses") { alliances = false }
-                    QuietButton(title: "Alliances", size: 8.5, prominent: alliances, name: "Rank the alliances") { alliances = true }
-                    ForEach(RankedBy.allCases) { each in
-                        QuietButton(title: each.title, size: 8.5, prominent: by == each, name: "Rank \(each.said)") { by = each }
+                // Whose and by what, each pair kept together: side by side
+                // where both fit, one above the other where they don't, never
+                // a choice left alone on a line of its own (run 948's
+                // picture had Foes slain under Houses).
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 14) {
+                        whose
+                        byWhat
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        whose
+                        byWhat
                     }
                 }
                 if let standing = ranking.standing {
@@ -82,6 +89,25 @@ struct RankingsSection: View {
     private func going(to line: RankingLine) -> (() -> Void)? {
         guard let at = line.at else { return nil }
         return { session.goToPlace(at) }
+    }
+
+    /// The Houses or the alliances.
+    private var whose: some View {
+        HStack(spacing: 4) {
+            QuietButton(title: "Houses", size: 8.5, prominent: !alliances, name: "Rank the Houses") { alliances = false }
+            QuietButton(title: "Alliances", size: 8.5, prominent: alliances, name: "Rank the alliances") { alliances = true }
+        }
+        .fixedSize()
+    }
+
+    /// By might or by foes slain.
+    private var byWhat: some View {
+        HStack(spacing: 4) {
+            ForEach(RankedBy.allCases) { each in
+                QuietButton(title: each.title, size: 8.5, prominent: by == each, name: "Rank \(each.said)") { by = each }
+            }
+        }
+        .fixedSize()
     }
 
     private var heading: some View {
