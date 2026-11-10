@@ -210,6 +210,9 @@ public final class GameSession {
         /// The pedlar's call from the water, by his coming and how many of
         /// his wares are sold (`GameState.voiceKey(of:)`).
         case pedlar(Int)
+        /// The caretaker's word to the keeper come back, by the watch they
+        /// came back to.
+        case caretaker(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -228,6 +231,7 @@ public final class GameSession {
             case .find(let id): return "find-\(id)"
             case .grave(let key): return "grave-\(key)"
             case .pedlar(let key): return "pedlar-\(key)"
+            case .caretaker(let watch): return "caretaker-\(watch)"
             }
         }
 
@@ -245,6 +249,7 @@ public final class GameSession {
             case "find": self = .find(number)
             case "grave": self = .grave(number)
             case "pedlar": self = .pedlar(number)
+            case "caretaker": self = .caretaker(number)
             default: return nil
             }
         }
@@ -674,6 +679,8 @@ public final class GameSession {
         // up): its briefing, and the first steps if never yet taken.
         if let seen = store.loadLastSeen(), seen.house == nil || seen.house == house {
             awayReport = AwayReport(since: seen, now: world, player: house)
+            // Its caretaker asked for their word, now there is one to give.
+            askVoices()
         } else if world.houses.indices.contains(house) {
             seatBriefing = SeatBriefing(world: world, player: house)
             if store.loadFirstSteps() == nil { store.saveFirstSteps(FirstSteps()) }
@@ -1243,6 +1250,8 @@ public final class GameSession {
 
     public func dismissAwayReport() {
         withAnimation(.easeOut(duration: 0.3)) { awayReport = nil }
+        // The caretaker's word, if it was still being given, is not wanted.
+        stopVoiceGone()
     }
 
     // MARK: The realm's word
@@ -2897,6 +2906,12 @@ public final class GameSession {
     /// that touch the player, one at a time.
     private func askVoices() {
         guard voice != nil else { return }
+        // The caretaker's word to the keeper come back, first: it greets
+        // them as they enter.
+        if let report = awayReport, !asked.contains(.caretaker(report.watch)) {
+            asked.insert(.caretaker(report.watch))
+            voiceQueue.insert((.caretaker(report.watch), VoiceFacts.caretaker(report, house: player, in: state)), at: 0)
+        }
         // Envoys of stewards speak; a keeper's envoy carries their offer, not
         // words the model would put in a person's mouth.
         for envoy in envoys where !asked.contains(.envoy(envoy.id)) && !state.houses[envoy.from].isPlayer {
@@ -2997,13 +3012,15 @@ public final class GameSession {
     /// Whether what a voice speaks for is still before the keeper: an
     /// envoy still waiting on its answer, a plea still at the gate, the
     /// pedlar's call while he lies off the hold with his wares as they were
-    /// when he called; the rest (what the Still showed, a prisoner's word,
-    /// the lake's riddle, the chronicle) stays.
+    /// when he called, the caretaker's word while their card stands; the
+    /// rest (what the Still showed, a prisoner's word, the lake's riddle,
+    /// the chronicle) stays.
     func stillVoiced(_ key: Spoken) -> Bool {
         switch key {
         case .envoy(let id): return state.envoys.contains { $0.id == id }
         case .petition(let id): return state.petition(of: player)?.id == id
         case .pedlar(let key): return state.pedlar(for: player).map(GameState.voiceKey(of:)) == key
+        case .caretaker(let watch): return awayReport?.watch == watch
         default: return true
         }
     }

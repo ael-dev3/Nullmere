@@ -332,7 +332,7 @@ struct PlayView: View {
             }
 
             if let report = session.awayReport, session.state.outcome == nil {
-                AwayCard(report: report) { session.dismissAwayReport() }
+                AwayCard(report: report, session: session) { session.dismissAwayReport() }
                     .transition(.opacity)
             }
 

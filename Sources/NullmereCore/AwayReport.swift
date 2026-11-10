@@ -47,12 +47,15 @@ public struct AwayReport: Equatable, Sendable {
     /// That a caretaker kept the House by the keeper's standing orders,
     /// where it kept it and they had given any.
     public let standing: String?
+    /// The watch the keeper came back to.
+    public let watch: Int
 
     public static let lines = 8
 
     /// Nil when nothing passed worth telling.
     public init?(since seen: LastSeen, now world: GameState, player: Int) {
         guard world.watch > seen.watch, world.houses.indices.contains(player) else { return nil }
+        watch = world.watch
         watches = world.watch - seen.watch
         let stock = world.houses[player].stock
         changes = Resource.allCases.compactMap { resource in
@@ -123,5 +126,37 @@ public struct AwayReport: Equatable, Sendable {
         case let n where n > 0: return "You hold \(n) more holds."
         default: return "You lost \(-holdsChange) holds."
         }
+    }
+}
+
+extension Voicing {
+    /// What the model is asked for the caretaker's word to a keeper come
+    /// back to their House (`AwayReport.voiced(house:)`).
+    public static let caretakerTask = "Speak as the caretaker who kept the keeper's House while they were away, greeting them on their return "
+        + "and telling them plainly what passed, the gravest first, keeping every number, name and event as given. Two or three sentences, "
+        + "at most 60 words."
+}
+
+extension AwayReport {
+    /// The news told the caretaker gives words to, at most.
+    public static let caretakerTells = 5
+
+    /// What passed while the keeper was away, as the caretaker who kept
+    /// their House tells it on their return, for a device's own model to
+    /// voice: how long they were gone, how the stores and holds stand
+    /// changed, the news that touched the House, and whether its standing
+    /// orders were kept.
+    public func voiced(house title: String) -> Voicing.Moment {
+        let gone = watches == 1 ? "one watch" : "\(watches) watches"
+        var facts = ["The caretaker kept \(title.isEmpty ? "the House" : title) while its keeper was away \(gone)."]
+        let gained = changes.filter { $0.delta > 0 }.map { "\($0.delta) \($0.resource.title.lowercased())" }
+        let lost = changes.filter { $0.delta < 0 }.map { "\(-$0.delta) \($0.resource.title.lowercased())" }
+        if !gained.isEmpty { facts.append("The stores grew by \(gained.joined(separator: ", ")).") }
+        if !lost.isEmpty { facts.append("The stores fell by \(lost.joined(separator: ", ")).") }
+        if let holds = holdsLine { facts.append(holds) }
+        facts += news.suffix(AwayReport.caretakerTells)
+        if let standing { facts.append(standing) }
+        if news.count > AwayReport.caretakerTells || more > 0 { facts.append("More of it stands in the Chronicle.") }
+        return Voicing.Moment(task: Voicing.caretakerTask, facts: facts)
     }
 }

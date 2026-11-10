@@ -4,6 +4,9 @@ import SwiftUI
 /// On returning: what happened to the keeper's House while they were away.
 struct AwayCard: View {
     let report: AwayReport
+    /// The session whose caretaker greets the keeper in its own words,
+    /// where this Mac's model gives them; none, the report alone.
+    var session: GameSession? = nil
     let dismiss: () -> Void
 
     /// VoiceOver goes to the card as it appears, its title first.
@@ -17,6 +20,18 @@ struct AwayCard: View {
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Rule(opacity: 0.3)
+            // The caretaker's word, in their own voice.
+            if let session {
+                let word = GameSession.Spoken.caretaker(report.watch)
+                VoicingLine(session: session, key: word, who: "the caretaker")
+                if let spoken = session.spoken[word] {
+                    Text(verbatim: "\"\(spoken)\"")
+                        .font(.nm(12, weight: .light).italic())
+                        .foregroundStyle(Palette.text(0.88))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                }
+            }
             if !report.changes.isEmpty || report.holdsLine != nil {
                 HStack(spacing: 14) {
                     ForEach(report.changes, id: \.self) { change in

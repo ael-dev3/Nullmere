@@ -212,7 +212,10 @@ full screen at launch as chosen.
   as a checklist, ticked as you do them, until all are done.
 - **Coming back.** Return after watches have passed, and a card tells
   what happened while you were away: your stores and holds, and the news
-  that touched your House.
+  that touched your House. Above it the caretaker who kept your House
+  greets you in their own words, written on your Mac by Apple's on-device
+  model from what the card holds alone, the gravest first; where the model
+  gives none, the card says why and stands on its own.
 - **What you see.** The realm tells each keeper only what their House
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
