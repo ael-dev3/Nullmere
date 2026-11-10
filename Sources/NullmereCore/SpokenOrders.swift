@@ -44,6 +44,7 @@ public enum SpokenOrders {
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "ACCEPT THE ENVOY OF <house>", "REFUSE THE ENVOY OF <house>", "OFFER HALF THE TRIBUTE TO <house>",
                                "QUESTION <prisoner>", "LET <prisoner> GO", "RANSOM <commander>",
+                               "GRANT THE PLEA", "TURN AWAY THE PLEA",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
                                "SWEAR PEACE WITH <house> FOR <watches> WATCHES",
                                "SWEAR TO SEND <amount> <store> TO <house> EACH WATCH FOR <watches> WATCHES",
@@ -245,6 +246,7 @@ public enum SpokenOrders {
         lines.append("Houses: " + houses.joined(separator: ", "))
         lines += envoysSaid(in: state, player: player)
         lines += prisonersSaid(in: state, player: player)
+        lines += pleaSaid(in: state, player: player)
         lines.append("Stores: " + Resource.allCases.map(\.title).joined(separator: ", "))
         let sworn = state.oaths(by: player)
         if !sworn.isEmpty {
@@ -498,6 +500,16 @@ public enum SpokenOrders {
                 return refused(text, "Your House holds no prisoner by the name \(name).")
             }
             return given(.release(commander: held.id), state.letGoSaid(held))
+        case "GRANT", "TURN":
+            // The plea at the gate granted, or turned away: a House has one
+            // at a time.
+            let said = rest.joined(separator: " ").uppercased()
+            let forms = verb == "GRANT" ? ["THE PLEA", "PLEA"] : ["AWAY THE PLEA", "AWAY PLEA", "THE PLEA AWAY"]
+            guard forms.contains(said) else { return nil }
+            guard let petition = state.petition(of: player) else { return refused(text, "No plea waits at your gate.") }
+            return verb == "GRANT"
+                ? given(.answerPetition(petition.id, grant: true), state.grantSaid(petition))
+                : given(.answerPetition(petition.id, grant: false), state.turnAwaySaid(petition))
         case "RANSOM":
             // The House's own commander held by another House, bought back.
             let name = rest.joined(separator: " ")
@@ -789,6 +801,13 @@ public enum SpokenOrders {
             }.joined(separator: "; "))
         }
         return lines
+    }
+
+    /// The plea at the House's gate, as the briefing tells it: who brings
+    /// it and what the folk ask. Nothing where none waits.
+    static func pleaSaid(in state: GameState, player: Int) -> [String] {
+        guard let petition = state.petition(of: player) else { return [] }
+        return ["A plea at the gate (GRANT THE PLEA or TURN AWAY THE PLEA): \(state.petitioner(of: petition)): \(state.asked(by: petition))"]
     }
 
     /// The company a line names: C and its number in the briefing, the

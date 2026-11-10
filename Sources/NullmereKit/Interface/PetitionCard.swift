@@ -30,10 +30,17 @@ struct PetitionCard: View {
                             .foregroundStyle(Palette.text(0.7))
                             .fixedSize(horizontal: false, vertical: true)
                         // How long it waits, beside the petitioner rather than
-                        // on a line of its own under the plea.
-                        Text(verbatim: PetitionCard.waits(petition, at: state.watch))
-                            .font(.nm(10))
-                            .foregroundStyle(Palette.text(0.4))
+                        // on a line of its own under the plea, and words of the
+                        // keeper's own with them through this Mac's model.
+                        HStack(spacing: 8) {
+                            Text(verbatim: PetitionCard.waits(petition, at: state.watch))
+                                .font(.nm(10))
+                                .foregroundStyle(Palette.text(0.4))
+                            QuietButton(title: "Parley", size: 8.5, name: "Parley with \(state.petitioner(of: petition))") {
+                                session.openParley(.petition(petition.id))
+                            }
+                            .help(PetitionCard.parleyHelp)
+                        }
                     }
                 }
                 VoicingLine(session: session, key: .petition(petition.id), who: "the petitioner")
@@ -93,6 +100,10 @@ struct PetitionCard: View {
         .help(refusal.map { PetitionCard.why($0) } ?? "")
     }
 
+    /// What Parley offers, on its help.
+    static let parleyHelp = "Speak with them in your own words, through Apple's on-device model on this Mac. They keep to what "
+        + "their folk ask, and put your answer to you to give."
+
     /// The petitioner's portrait's side in points.
     static let portrait: CGFloat = 40
 
@@ -102,8 +113,7 @@ struct PetitionCard: View {
 
     /// How long the plea waits for its answer: "Waits 3 watches".
     static func waits(_ petition: Petition, at watch: Int) -> String {
-        let left = max(Petition.patience - (watch - petition.arrived), 1)
-        return left == 1 ? "Waits this watch" : "Waits \(left) watches"
+        GameState.pleaWaitsSaid(petition, at: watch)
     }
 
     /// The way to grant it, with its price: "Grant, for 30 stone".

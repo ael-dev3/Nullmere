@@ -771,6 +771,44 @@ public enum CounselTrouble: Equatable, Sendable, Error {
     }
 }
 
+extension CounselTrouble {
+    /// The words the keeper is shown in a parley, of the one they would
+    /// speak with ("the envoy", "Mabyn the Grey"), never of a commander's
+    /// counsel: where the model can't be asked, that they can't be spoken
+    /// with here; where an answer failed, that they gave none, and why.
+    public func said(parleyingWith speaker: String, addressed: String) -> String {
+        switch self {
+        case .unavailable(.deviceNotEligible):
+            return "This device can't run Apple's on-device model, so \(addressed) can't be spoken with here. Everything else plays as ever."
+        case .unavailable(.appleIntelligenceOff):
+            #if os(iOS)
+            return "Apple Intelligence is turned off in Settings, so \(addressed) can't be spoken with until it is turned on."
+            #else
+            return "Apple Intelligence is turned off in System Settings, so \(addressed) can't be spoken with until it is turned on."
+            #endif
+        case .unavailable(.modelNotReady):
+            return "Apple's on-device model is still downloading or preparing. You may speak with \(addressed) once it is ready."
+        case .unavailable(.systemTooOld):
+            return "A parley needs Apple's on-device model, which needs a newer system than this one."
+        case .refused: return "\(speaker) will not speak of that. Say it another way."
+        case .language: return "\(speaker) can't make out that language here. Speak in one Apple's model speaks on this device."
+        case .busy: return "Apple's on-device model is answering another. Speak again in a moment."
+        case .tooLong: return "The parley has run too long to hold. Begin it afresh."
+        case .garbled: return "\(speaker) gave an answer that came out garbled. Speak again."
+        case .assetsMissing, .slow: return said
+        case .silent: return "\(speaker) gave no answer, and Apple's on-device model said nothing of why. Speak again in a while."
+        case .failed(let reason): return "\(speaker) gave no answer: \(reason)"
+        }
+    }
+}
+
+extension Parley {
+    /// Trouble in this parley, in words of whom it is with.
+    public func said(_ trouble: CounselTrouble) -> String {
+        trouble.said(parleyingWith: speaker, addressed: addressed)
+    }
+}
+
 extension CommanderCounsel {
     /// The foot of a counsel sheet, on the Mac and the phone alike: who
     /// speaks for the commander there, and how long its last answer took;

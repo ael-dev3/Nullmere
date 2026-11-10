@@ -1624,10 +1624,12 @@ struct AnswerRow: View {
 /// its House sent, and the keeper's answer, which the realm carries out.
 /// A plea at the gate on the phone: who brings it, their own words where
 /// the phone's model gave them, what the folk ask and would do, what
-/// turning it away costs, how long it waits, and Grant or Turn away.
+/// turning it away costs, how long it waits, and Parley, Grant or Turn away.
 struct PleaRow: View {
     let session: CompanionSession
     let plea: CompanionLedger.Plea
+    /// A parley with the petitioner, while it is open.
+    @State private var parleying: Parleying?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1664,8 +1666,27 @@ struct PleaRow: View {
                     .buttonStyle(.bordered)
             }
             .font(Night.small)
+            // Words of the keeper's own with the petitioner, through this
+            // phone's model, as on the Mac.
+            if session.parley(with: .petition(plea.id)) != nil {
+                Button("Parley", action: openParley)
+                    .buttonStyle(.bordered)
+                    .font(Night.small)
+                    .accessibilityLabel("Parley with \(plea.petitioner)")
+            }
         }
         .padding(.vertical, 4)
+        .sheet(item: $parleying, onDismiss: { parleying = nil }) { open in
+            ParleyView(session: session, parley: open.parley) { parleying = nil }
+        }
+    }
+
+    /// Opens a parley with the petitioner, spoken by this phone's own model.
+    private func openParley() {
+        guard let grounded = session.parley(with: .petition(plea.id)) else { return }
+        let opened = ParleySession(parley: grounded)
+        opened.prewarm()
+        parleying = Parleying(id: .petition(plea.id), parley: opened)
     }
 }
 

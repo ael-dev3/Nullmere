@@ -71,6 +71,32 @@ final class PetitionCardTests: XCTestCase {
         XCTAssertEqual(otherLink.sent.last, .answerPetition(petition.id, grant: false))
     }
 
+    /// Parley on the card opens a parley with the petitioner, through this
+    /// Mac's model; the answer they put to the keeper is given from it as
+    /// any answer is, and once the plea is answered the parley ends.
+    func testThePetitionerIsParleyedWithFromTheCard() throws {
+        let (session, link, petition) = try session()
+        // Opened where no model is warmed.
+        session.counselAvailability = { .unavailable(.deviceNotEligible) }
+        draw(PetitionCard(session: session))
+        XCTAssertTrue(PressableButtons.press("Parley"), "Among \(shown)")
+        let parley = try XCTUnwrap(session.parley)
+        XCTAssertEqual(parley.subject, .petition(petition.id))
+        XCTAssertEqual(parley.parley.named, session.state.petitioner(of: petition))
+        XCTAssertEqual(parley.parley.summary, session.state.asked(by: petition))
+        XCTAssertTrue(link.sent.isEmpty, "A parley answers nothing of itself")
+        let offered = parley.parley.putAnswer("grant")
+        XCTAssertEqual(offered.command, .answerPetition(petition.id, grant: true))
+        XCTAssertEqual(offered.told, session.state.grantSaid(petition))
+        // Answered from the card itself, the plea is gone and so is the parley.
+        draw(PetitionCard(session: session))
+        XCTAssertTrue(PressableButtons.press(PetitionCard.grant(petition)), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .answerPetition(petition.id, grant: true))
+        XCTAssertTrue(parley.gone)
+        XCTAssertEqual(parley.lines.last?.text, "\(petition.name) has gone.")
+        session.closeParley()
+    }
+
     func testAPoorHouseCanOnlyTurnThePleaAway() throws {
         let (session, link, petition) = try session(stock: .zero)
         PressableButtons.forget(PetitionCard.grant(petition))

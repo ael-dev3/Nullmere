@@ -1402,6 +1402,14 @@ a vote on the realm's law to cast.
   weighed as the order book weighs it. What they tell when questioned is
   shown in the parley as the realm's word comes, and once they are let go,
   ransomed or slip away the parley ends.
+- **Parley with a petitioner.** The folk at your gate may be spoken with
+  in your own words as well (Parley on the plea's card on the Mac, and on
+  its row on the phone), through Apple's on-device model on that device
+  and nothing in its place. The petitioner speaks from the plea's own
+  facts, how long they wait and whether you can grant it, and asks no more
+  than their folk ask. When your words come to granting the plea or
+  turning it away, they put that answer to you to give, weighed as the
+  order book weighs it; once the plea is answered the parley ends.
 - **Fealty.** A steward's House that loses its seat with four holds or
   fewer left, and no vassals of its own, bends the knee to the House that
   took it, if that House is sworn to no one; and a beaten House may offer
@@ -1958,7 +1966,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   one, RENOUNCE THE OATH TO one; to an envoy waiting, ACCEPT or REFUSE
   THE ENVOY OF a House, or OFFER HALF THE TRIBUTE TO a steward's; for
   prisoners, QUESTION one your House holds or LET one GO, and RANSOM a
-  commander of yours another House holds; and for
+  commander of yours another House holds; GRANT THE PLEA at your gate or
+  TURN AWAY THE PLEA; and for
   the alliance, HELP an ally's works under way, TAKE THE SHARES of its
   spoils, GIVE an amount of a store TO THE STUDY, TAKE a thing FROM THE
   STALL for the House's merit, and, for its leader or
@@ -1970,7 +1979,7 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   of its side gathering, the places it knows, the works, the kinds of
   company, the other Houses standing and how it stands with each, its
   oaths, the envoys waiting on its answer, the prisoners it holds and its
-  own held by others, the stores, and what it may
+  own held by others, the plea at its gate, the stores, and what it may
   do for its alliance now: the study it pursues and what the House's
   merit reaches at the stall.
   Each line is read against the keeper's own view into the order the

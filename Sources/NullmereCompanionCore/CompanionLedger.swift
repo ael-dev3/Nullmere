@@ -1096,13 +1096,12 @@ public struct CompanionLedger: Equatable, Sendable {
                          held: envoy.bargained == true ? "Offered half, \(title(envoy.from)) holds to the whole." : nil)
         }
         plea = world.petition(of: player).map { petition in
-            let left = max(Petition.patience - (world.watch - petition.arrived), 1)
-            return Plea(id: petition.id, petitioner: world.petitioner(of: petition), asked: world.asked(by: petition),
-                        turnedAway: GameState.turnedAwaySaid, waits: left == 1 ? "Waits this watch" : "Waits \(left) watches",
-                        grant: world.petitionRefusal(petition.id, grant: true, as: player) == nil
-                            ? Order(title: "Grant, for \(petition.price)", command: .answerPetition(petition.id, grant: true)) : nil,
-                        turnAway: Order(title: "Turn away", command: .answerPetition(petition.id, grant: false)),
-                        voice: "petition-\(petition.id)", remembered: world.rememberedPlea(petition))
+            Plea(id: petition.id, petitioner: world.petitioner(of: petition), asked: world.asked(by: petition),
+                 turnedAway: GameState.turnedAwaySaid, waits: GameState.pleaWaitsSaid(petition, at: world.watch),
+                 grant: world.petitionRefusal(petition.id, grant: true, as: player) == nil
+                     ? Order(title: "Grant, for \(petition.price)", command: .answerPetition(petition.id, grant: true)) : nil,
+                 turnAway: Order(title: "Turn away", command: .answerPetition(petition.id, grant: false)),
+                 voice: "petition-\(petition.id)", remembered: world.rememberedPlea(petition))
         }
         voices = world.voicedMoments(for: player)
         dreams = world.dreams(of: player).reversed().map { Dream(watch: $0.watch, told: world.told($0), voice: "dream-\($0.watch)") }

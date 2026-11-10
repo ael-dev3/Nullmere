@@ -128,6 +128,27 @@ final class PrisonerParleyTests: XCTestCase {
         XCTAssertFalse(fallen.facts.contains { $0.hasPrefix("Your House and the keeper's stand") })
     }
 
+    /// Trouble in a parley is said of whom it is with, never of a
+    /// commander's counsel: where the model can't be asked, that they can't
+    /// be spoken with; where an answer failed, that they gave none.
+    func testTroubleInAParleyIsSaidOfWhomItIsWith() throws {
+        let (state, me, _, prisoner) = try holding("a parley's trouble")
+        let parley = try XCTUnwrap(PrisonerParley(state: state, player: me, prisoner: prisoner.id))
+        let all: [CounselTrouble] = [.unavailable(.deviceNotEligible), .unavailable(.appleIntelligenceOff), .unavailable(.modelNotReady),
+                                     .unavailable(.systemTooOld), .refused, .language, .busy, .tooLong, .garbled, .assetsMissing, .slow,
+                                     .silent, .failed("the model was stopped")]
+        for trouble in all {
+            let said = parley.said(trouble)
+            XCTAssertFalse(said.lowercased().contains("commander"), "\(trouble): \(said)")
+            XCTAssertFalse(said.lowercased().contains("counsel"), "\(trouble): \(said)")
+        }
+        XCTAssertEqual(parley.said(.unavailable(.deviceNotEligible)),
+                       "This device can't run Apple's on-device model, so the prisoner can't be spoken with here. Everything else plays as ever.")
+        XCTAssertEqual(parley.said(.refused), "\(prisoner.name) will not speak of that. Say it another way.")
+        XCTAssertEqual(parley.said(.failed("the model was stopped")), "\(prisoner.name) gave no answer: the model was stopped")
+        XCTAssertEqual(parley.said(.slow), CounselTrouble.slow.said, "Said alike where it names no one")
+    }
+
     func testNoParleyWithAnotherHousesPrisonerOrAFreeCommander() throws {
         let (state, me, steward, prisoner) = try holding("no parley with these")
         let other = try XCTUnwrap(state.houses.first { $0.id != me && $0.id != steward }?.id)

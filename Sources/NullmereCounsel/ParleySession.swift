@@ -83,16 +83,35 @@ struct PutToKeeper: Tool {
     }
 }
 
-/// A parley with an envoy waiting on the keeper or a commander the keeper's
-/// House holds prisoner, spoken by Apple's on-device model on this device
-/// and nowhere else: a conversation the model holds while it lasts, grounded
-/// in the keeper's own view of the realm, with the one tool that puts the
-/// keeper's answer, or what they would do with the prisoner, to them to
-/// give. Each answer streams as it is spoken and may be stopped; one slow to
-/// begin is given up; trouble is told plainly and never answered for; when
-/// the parley outgrows what the model holds, it is begun afresh from what
-/// was said. Once the one parleyed with has gone, nothing more is asked of
-/// them.
+/// A petitioner's one tool: the keeper's answer to the plea put to them to
+/// give, never given by the petitioner.
+struct PutPleaToKeeper: Tool {
+    let bench: ParleyBench
+    let name = "putPleaToKeeper"
+    let description = "Puts the keeper's answer to your plea to them, for them to give: grant (they grant it, paying what your "
+        + "folk ask) or turn away (they turn it away). Use it only once the keeper has said their answer."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The keeper's answer: grant or turn away")
+        var answer: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.putAnswer(arguments.answer)
+    }
+}
+
+/// A parley with an envoy waiting on the keeper, a commander the keeper's
+/// House holds prisoner or a petitioner at the gate, spoken by Apple's
+/// on-device model on this device and nowhere else: a conversation the model
+/// holds while it lasts, grounded in the keeper's own view of the realm,
+/// with the one tool that puts the keeper's answer, or what they would do
+/// with the prisoner, to them to give. Each answer streams as it is spoken
+/// and may be stopped; one slow to begin is given up; trouble is told
+/// plainly and never answered for; when the parley outgrows what the model
+/// holds, it is begun afresh from what was said. Once the one parleyed with
+/// has gone, nothing more is asked of them.
 @MainActor
 public final class ParleySession: ObservableObject {
     public typealias Line = CommanderCounselSession.Line
@@ -167,6 +186,7 @@ public final class ParleySession: ObservableObject {
         switch subject {
         case .envoy: return PutAnswerToKeeper(bench: bench)
         case .prisoner: return PutToKeeper(bench: bench)
+        case .petition: return PutPleaToKeeper(bench: bench)
         }
     }
 

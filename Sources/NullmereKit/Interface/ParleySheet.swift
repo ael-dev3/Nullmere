@@ -118,7 +118,8 @@ struct ParleySheet: View {
 
     /// Whom the parley is with, painted: the House an envoy comes from, its
     /// seat in its people's way and colours; a prisoner by their kind of
-    /// commander, in their House's colours.
+    /// commander, in their House's colours; a petitioner as the folk of the
+    /// keeper's House stand at the gate.
     @ViewBuilder
     static func portrait(of grounded: any Parley) -> some View {
         if let envoy = grounded as? EnvoyParley {
@@ -127,6 +128,9 @@ struct ParleySheet: View {
         } else if let held = grounded as? PrisonerParley {
             Portrait(key: .commander(variant: Archetype.allCases.firstIndex(of: held.prisoner.archetype) ?? 0),
                      colour: Portrait.colour(of: held.prisoner.owner, in: held.state), size: 44)
+        } else if let plea = grounded as? PetitionParley {
+            Portrait(key: .folk(variant: PetitionCard.variant(of: plea.petition.plea)),
+                     colour: Portrait.colour(of: plea.player, in: plea.state), size: 44)
         }
     }
 }

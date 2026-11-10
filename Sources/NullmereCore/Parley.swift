@@ -2,19 +2,21 @@ import Foundation
 
 /// Whom a keeper may parley with in their own words through Apple's
 /// on-device model on the Mac or the phone (beyond Rise of Kingdoms, whose
-/// envoys and captives never speak).
+/// envoys, captives and townsfolk never speak).
 public enum ParleySubject: Hashable, Sendable {
     /// A steward's envoy waiting on the keeper's answer, by its id.
     case envoy(Int)
     /// A commander the keeper's House holds prisoner, by their id.
     case prisoner(Int)
+    /// One of the keeper's folk come to the gate with a plea, by its id.
+    case petition(Int)
 
     /// What the keeper does with what is put to them, as its button says
     /// it on the Mac and the phone: an envoy's answer given, an order for a
     /// prisoner given.
     public var giving: String {
         switch self {
-        case .envoy: return "Give the answer"
+        case .envoy, .petition: return "Give the answer"
         case .prisoner: return "Give the order"
         }
     }
@@ -87,6 +89,7 @@ public enum Parleys {
         switch subject {
         case .envoy(let id): return EnvoyParley(state: state, player: player, envoy: id)
         case .prisoner(let id): return PrisonerParley(state: state, player: player, prisoner: id)
+        case .petition(let id): return PetitionParley(state: state, player: player, petition: id)
         }
     }
 
