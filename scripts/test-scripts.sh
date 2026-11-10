@@ -241,6 +241,8 @@ git init -q --bare "$WORK/shots.git"
 mkdir -p "$WORK/mac" "$WORK/phone" "$WORK/next" "$WORK/none"
 echo mac > "$WORK/mac/game-world.png"
 echo "1.5 Tests.slowest" > "$WORK/mac/test-times.txt"
+echo '{"marks.cpu.p50": 1.2}' > "$WORK/mac/perf.json"
+echo "PERF-CHECK marks.cpu.p50 within" > "$WORK/mac/perf-check.log"
 echo moving > "$WORK/mac/world-battle-motion.gif"
 echo phone > "$WORK/phone/companion-house.png"
 echo next > "$WORK/next/game-world.png"
@@ -249,6 +251,7 @@ on_branch() { git --git-dir="$WORK/shots.git" show "ci-shots:$1" 2>/dev/null || 
 shots 746 abc "$WORK/mac"
 check "push-ci-shots.sh begins the branch with the run's screenshots" "$(on_branch 746/game-world.png)" "mac"
 check "and each test's time beside them" "$(on_branch 746/test-times.txt)" "1.5 Tests.slowest"
+check "and the frame times' figures and verdict" "$(on_branch 746/perf.json) $(on_branch 746/perf-check.log)" '{"marks.cpu.p50": 1.2} PERF-CHECK marks.cpu.p50 within'
 check "and its moving pictures" "$(on_branch 746/world-battle-motion.gif)" "moving"
 check "and the run's commit" "$(on_branch 746/COMMIT)" "abc"
 shots 746 abc "$WORK/phone" & phone_job=$!
