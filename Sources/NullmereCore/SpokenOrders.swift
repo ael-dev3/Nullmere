@@ -429,7 +429,13 @@ public enum SpokenOrders {
                 return given(.build(hold: hold.id, kind: kind), "\(hold.name) raises its \(kind.title).")
             }
             guard let kind = Self.kind(what) else { return refused(text, "No company goes by the name \(what).") }
-            return given(.train(hold: hold.id, kind: kind), "\(hold.name) musters a company of \(kind.title).")
+            // At the tier named, as the Mac's Train and the phone muster
+            // it ("Spears III"), else the first.
+            guard let tier = Self.numeral(of: what), tier > 1 else {
+                return given(.train(hold: hold.id, kind: kind), "\(hold.name) musters a company of \(kind.title).")
+            }
+            return given(.train(hold: hold.id, kind: kind, tier: tier),
+                         "\(hold.name) musters a company of \(state.named(kind, tier: tier, of: player)).")
         case "ACCEPT", "REFUSE":
             // An answer to the envoy another House sent: its offer taken, or
             // turned away.
@@ -622,10 +628,15 @@ public enum SpokenOrders {
     /// numeral of a level or tier after it set aside, as a look names them
     /// ("Granary II", "Spears I"): the order says what it raises or musters.
     static func unnumbered(_ name: String) -> String {
+        numeral(of: name) == nil ? plain(name) : plain(name).split(separator: " ").dropLast().joined(separator: " ")
+    }
+
+    /// The level or tier a name gives by the numeral after it ("Spears
+    /// III" gives 3), if it gives one.
+    static func numeral(of name: String) -> Int? {
         let words = plain(name).split(separator: " ")
-        guard words.count > 1, let last = words.last,
-              (1...10).contains(where: { BuildingKind.numeral($0).lowercased() == last }) else { return plain(name) }
-        return words.dropLast().joined(separator: " ")
+        guard words.count > 1, let last = words.last else { return nil }
+        return (1...10).first { BuildingKind.numeral($0).lowercased() == last }
     }
 
     /// An amount of a store as a line gives it: "50 timber", "1,000 grain".

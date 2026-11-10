@@ -58,8 +58,10 @@ extension CommanderCounsel {
             said += raisable.isEmpty ? " It may raise nothing now." : " It may raise now: " + raisable.joined(separator: ", ") + "."
         }
         if hold.training == nil {
-            let musters = UnitKind.allCases.filter { state.refusal(of: .train(hold: hold.id, kind: $0), as: player) == nil }.map { kind in
-                "\(state.named(kind, tier: 1, of: player)) (\(state.trainingCost(of: kind, tier: 1, for: player).description))"
+            // Each kind at the tier it would be mustered at now, as the phone offers it.
+            let musters = UnitKind.allCases.compactMap { kind -> String? in
+                guard let tier = state.musterTier(of: kind, at: hold, for: player) else { return nil }
+                return "\(state.named(kind, tier: tier, of: player)) (\(state.trainingCost(of: kind, tier: tier, for: player).description))"
             }
             said += musters.isEmpty ? " It may muster nothing now." : " It may muster now: " + musters.joined(separator: ", ") + "."
         }

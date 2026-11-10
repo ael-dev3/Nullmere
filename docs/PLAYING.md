@@ -1136,7 +1136,8 @@ a vote on the realm's law to cast.
   and on the phone in a dialog. They may look over your holds too (the
   seat first, four at most: what each raises and musters and how long each
   has to go, its works, and what it may raise a level or muster now and for
-  what, as the rules would take it) and put forward a work raised or a
+  what, each kind at the tier it would be mustered at now, as the phone
+  offers it, as the rules would take it) and put forward a work raised or a
   company mustered at one, read as the order book reads BUILD and TRAIN.
   The order book reads a work or kind named with its numeral as a look
   names them ("BUILD Granary II AT Wenholme"). Answers appear
@@ -1932,7 +1933,9 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   one from the land's work, SCOUT a hold WITH Lanterns, REINFORCE a hold
   WITH a company, RALLY AGAINST a target WITH one, FERRY one TO a shore
   hold of the House's across the lake, BUILD a work AT a
-  hold, TRAIN a kind AT a hold; with the other Houses, OFFER PEACE or A
+  hold, TRAIN a kind AT a hold (at the tier named, "TRAIN Spears III AT
+  Wenholme", else the first: a tier your studies or its Muster Hall don't
+  open is refused, never mustered lower); with the other Houses, OFFER PEACE or A
   PACT TO a House, DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an
   amount of a store TO one, TRADE an amount of a store FOR another WITH
   one, and the oaths below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO

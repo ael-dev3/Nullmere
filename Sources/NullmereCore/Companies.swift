@@ -76,6 +76,21 @@ extension GameState {
         return (1...kind.highestTier).last { muster >= kind.requiredMuster(tier: $0) && $0 <= studied } ?? 1
     }
 
+    /// The tier a House would muster a kind at a hold now: the highest its
+    /// Muster Hall and studies open, as the Mac's Train first chooses it,
+    /// or the highest below that its stores pay for; none where the hold
+    /// is not the House's, musters already or the rules open no tier the
+    /// stores pay for. Weighed as `train` weighs it, without trying it, for
+    /// the phone's offers and a commander's look ask it of every kind at
+    /// every hold.
+    public func musterTier(of kind: UnitKind, at hold: Hold, for house: Int) -> Int? {
+        guard houses.indices.contains(house), hold.owner == house, hold.training == nil else { return nil }
+        let stock = houses[house].stock
+        return (1...highestTier(of: kind, at: hold, for: house)).reversed().first { tier in
+            tierRefusal(of: kind, tier: tier, at: hold, for: house) == nil && stock.covers(trainingCost(of: kind, tier: tier, for: house))
+        }
+    }
+
     /// Why a House can't muster a tier of a kind at a hold, if it can't.
     public func tierRefusal(of kind: UnitKind, tier: Int, at hold: Hold, for house: Int) -> RuleError? {
         guard (1...Unit.highestTier).contains(tier) else { return .noSuchTier }

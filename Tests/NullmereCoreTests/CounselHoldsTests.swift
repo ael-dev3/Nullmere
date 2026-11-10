@@ -124,6 +124,47 @@ final class CounselHoldsTests: XCTestCase {
                        "That wants the hold, and the work to raise or the kind of company to muster there.")
     }
 
+    /// A muster named with its tier is mustered at that tier, or refused in
+    /// the realm's words, never quietly at the first; and a commander's
+    /// look offers each kind at the tier it would be mustered at now, as
+    /// the phone offers it.
+    func testAMusterNamedWithItsTierIsMusteredAtIt() throws {
+        var state = try world().state
+        let me = state.player
+        let seat = try XCTUnwrap(state.hold(try XCTUnwrap(state.seat(of: me)).id))
+        // No study opens the third tier yet: refused, not mustered at the first.
+        let early = try XCTUnwrap(SpokenOrders.read("TRAIN Spears III AT \(seat.name)", in: state, player: me).first)
+        XCTAssertEqual(early.command, .train(hold: seat.id, kind: .spear, tier: 3))
+        XCTAssertEqual(early.why, state.refusal(of: .train(hold: seat.id, kind: .spear, tier: 3), as: me)?.description)
+        XCTAssertNotNil(early.why)
+        XCTAssertEqual(state.musterTier(of: .spear, at: seat, for: me), 1)
+
+        // Drill and Iron Ranks studied, a Muster Hall of III: the third, named as the realm names it.
+        state.houses[me].research.learn(.drill, grade: 1)
+        state.houses[me].research.learn(.ironRanks, grade: 1)
+        state.holds[try XCTUnwrap(state.holdIndex(seat.id))].levels[.musterHall] = 3
+        let raised = try XCTUnwrap(state.hold(seat.id))
+        XCTAssertEqual(state.musterTier(of: .spear, at: raised, for: me), 3)
+        let third = try XCTUnwrap(SpokenOrders.read("TRAIN Spears III AT \(seat.name)", in: state, player: me).first)
+        XCTAssertEqual(third.command, .train(hold: seat.id, kind: .spear, tier: 3))
+        XCTAssertNil(third.why)
+        XCTAssertEqual(third.told, "\(seat.name) musters a company of \(state.named(.spear, tier: 3, of: me)).")
+        let report = try counsel(state).holdsReport
+        XCTAssertTrue(report.contains("\(state.named(.spear, tier: 3, of: me)) (\(state.trainingCost(of: .spear, tier: 3, for: me).description))"),
+                      report)
+        let put = try counsel(state).proposeForAHold("muster", hold: seat.name, what: "Spears III")
+        XCTAssertTrue(put.isGiven)
+        // Short of the third's cost but not the second's: the second.
+        var short = state
+        short.houses[me].stock = state.trainingCost(of: .spear, tier: 2, for: me)
+        XCTAssertEqual(short.musterTier(of: .spear, at: raised, for: me), 2)
+        // Mustering, the hold offers no muster at any tier; nor does another House's hold.
+        _ = try state.perform(try XCTUnwrap(put.command), as: me)
+        XCTAssertNil(state.musterTier(of: .spear, at: try XCTUnwrap(state.hold(seat.id)), for: me))
+        let theirs = try XCTUnwrap(state.holds.first { $0.owner != me })
+        XCTAssertNil(state.musterTier(of: .spear, at: theirs, for: me))
+    }
+
     /// The order book reads a work or kind named with its numeral, as a
     /// look names them, and a name that only ends like one as itself.
     func testTheOrderBookReadsAWorkOrKindWithItsNumeral() throws {
@@ -136,5 +177,9 @@ final class CounselHoldsTests: XCTestCase {
         XCTAssertEqual(SpokenOrders.unnumbered("Granary"), "granary")
         XCTAssertEqual(SpokenOrders.unnumbered("IV"), "iv", "A numeral alone is a name, not a level")
         XCTAssertEqual(SpokenOrders.unnumbered("Spears XI"), "spears xi", "Only the numerals of a level or tier are set aside")
+        XCTAssertEqual(SpokenOrders.numeral(of: "Spears III"), 3)
+        XCTAssertEqual(SpokenOrders.numeral(of: "the granary iv"), 4)
+        XCTAssertNil(SpokenOrders.numeral(of: "Granary"))
+        XCTAssertNil(SpokenOrders.numeral(of: "IV"))
     }
 }
