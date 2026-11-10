@@ -543,6 +543,9 @@ struct BarterRow: View {
     /// The pickers, the price and the button, while the barter is open.
     @ViewBuilder private func trade(price: Int, problem: String?) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            // What to take and how much, then what for, a line each: the
+            // four on one line ran past the card's edge (run 924's reeve's
+            // card drew the second store's picker beyond it).
             HStack(spacing: 8) {
                 Picker("Take", selection: $take) {
                     ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -550,6 +553,8 @@ struct BarterRow: View {
                 .labelsHidden()
                 .frame(width: 96)
                 AmountField(name: "Amount to take", amount: $amount, most: Stock.cap, step: 10)
+            }
+            HStack(spacing: 8) {
                 Text(verbatim: "for").font(.nm(10.5)).foregroundStyle(Palette.text(0.5))
                 Picker("Give", selection: $give) {
                     ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -740,17 +745,18 @@ struct UnitPanel: View {
                 subtitle: mine ? (unit.kind.isMilitary ? veterancy(of: unit) : nil) : owner.title,
                 accent: Palette.houseWords(owner)
             )
-            HStack(spacing: 14) {
-                Stat(label: "Health", value: "\(unit.health)")
-                if unit.kind.isMilitary {
-                    Stat(label: "Attack", value: "\(unit.kind.attack * state.attackPercent(of: unit) / 100)")
-                    Stat(label: "Defence", value: "\(unit.kind.defense * state.defensePercent(of: unit) / 100)")
+            // Its figures in a row, each label whole; where they don't fit
+            // the card (a company of war of the keeper's shows five, and
+            // larger type widens each), in two rows, never a label broken
+            // mid-word ("HEALT H", as run 924's commander's card drew it).
+            let figures = UnitPanel.figures(of: unit, in: state, mine: mine)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    ForEach(figures) { Stat(label: $0.label, value: $0.value) }
                 }
-                if unit.kind.hasTiers {
-                    Stat(label: "Tier", value: Narration.roman(unit.tier))
-                }
-                if mine {
-                    Stat(label: "Moves", value: "\(unit.movesLeft)/\(state.movement(of: unit))")
+                Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+                    GridRow { ForEach(figures.prefix(3)) { Stat(label: $0.label, value: $0.value) } }
+                    GridRow { ForEach(figures.dropFirst(3)) { Stat(label: $0.label, value: $0.value) } }
                 }
             }
             Meter(fraction: Double(unit.health) / 100, colour: unit.health > 50 ? Palette.good : Palette.bad, label: "Health")
@@ -1066,9 +1072,37 @@ private struct Stat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(verbatim: value).font(.nm(14, weight: .light).monospacedDigit()).foregroundStyle(Palette.ink)
-            Caps(label, size: 7.5).foregroundStyle(Palette.text(0.45))
+            // Whole, as wide as it is: the row of figures makes room for it.
+            Caps(label, size: 7.5).foregroundStyle(Palette.text(0.45)).lineLimit(1).fixedSize()
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension UnitPanel {
+    /// A figure of a company's card: its label and its value.
+    struct Figure: Identifiable, Equatable {
+        let label: String
+        let value: String
+        var id: String { label }
+    }
+
+    /// A company's figures, as its card shows them: its health; a company
+    /// of war's attack and defence as they stand; its tier where it has
+    /// tiers; and the keeper's own company's moves.
+    static func figures(of unit: NullmereCore.Unit, in state: GameState, mine: Bool) -> [Figure] {
+        var figures = [Figure(label: "Health", value: "\(unit.health)")]
+        if unit.kind.isMilitary {
+            figures.append(Figure(label: "Attack", value: "\(unit.kind.attack * state.attackPercent(of: unit) / 100)"))
+            figures.append(Figure(label: "Defence", value: "\(unit.kind.defense * state.defensePercent(of: unit) / 100)"))
+        }
+        if unit.kind.hasTiers {
+            figures.append(Figure(label: "Tier", value: Narration.roman(unit.tier)))
+        }
+        if mine {
+            figures.append(Figure(label: "Moves", value: "\(unit.movesLeft)/\(state.movement(of: unit))"))
+        }
+        return figures
     }
 }
 

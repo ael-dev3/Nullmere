@@ -19,14 +19,20 @@ struct FoldedList<Content: View>: View {
     var body: some View {
         let shown = open || held
         VStack(alignment: .leading, spacing: shown ? 8 : 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Caps(title, size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
-                Spacer()
-                if !held {
-                    QuietButton(title: shown ? "Fold \(title.lowercased())" : "All \(count) \(title.lowercased())", size: 8.5,
-                                name: shown ? "Fold the \(title.lowercased()) away" : "Show all \(count) \(title.lowercased())") {
-                        open.toggle()
-                    }
+            // Its title and its button on one line where both fit with room
+            // between them; where they don't (a long title on a narrow card,
+            // or larger type), the button beneath the title, never run into
+            // it ("BY THE WATERALL 3 BY THE WATER", as run 924's reeve's card
+            // drew it).
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    heading
+                    Spacer(minLength: 12)
+                    toggle
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    heading
+                    toggle
                 }
             }
             if shown {
@@ -37,6 +43,22 @@ struct FoldedList<Content: View>: View {
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private var heading: some View {
+        Caps(title, size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).lineLimit(1).fixedSize()
+    }
+
+    /// Fold or show all; none while something it holds keeps it open.
+    @ViewBuilder private var toggle: some View {
+        let shown = open || held
+        if !held {
+            QuietButton(title: shown ? "Fold \(title.lowercased())" : "All \(count) \(title.lowercased())", size: 8.5,
+                        name: shown ? "Fold the \(title.lowercased()) away" : "Show all \(count) \(title.lowercased())") {
+                open.toggle()
+            }
+            .fixedSize()
         }
     }
 }
