@@ -58,13 +58,15 @@ final class AwayReportTests: XCTestCase {
         let theirs = since.filter { $0.houses.contains(state.player) }
         let lakes = since.filter { !$0.houses.contains(state.player) && [.fall, .ending].contains($0.kind) }
         let omens = since.filter { !$0.houses.contains(state.player) && $0.kind == .omen }
+        let plain = report.news.map { AwayReport.unfolded($0).line }
         for entry in theirs.suffix(AwayReport.lines) {
-            XCTAssertTrue(report.news.contains(AwayReport.told(entry.text, to: state.houses[state.player].title)),
+            XCTAssertTrue(plain.contains(AwayReport.told(entry.text, to: state.houses[state.player].title)),
                           "What touched the House is told before the lake's news, the House named as the keeper's: \(entry.text)")
         }
         XCTAssertLessThanOrEqual(report.news.filter { line in omens.contains { $0.text == line } }.count, 1, "One omen at most")
         let worthTelling = theirs.count + lakes.count + min(omens.count, 1)
-        XCTAssertEqual(report.news.count + report.more, worthTelling, "Each told, or counted among the more")
+        let told = report.news.map { AwayReport.unfolded($0).times }.reduce(0, +)
+        XCTAssertEqual(told + report.more, worthTelling, "Each told, those told alike folded into one line, or counted among the more")
         XCTAssertEqual(report.moreLine == nil, report.more == 0)
         XCTAssertEqual(report.holdsChange, world.holds(of: state.player).count - state.holds(of: state.player).count)
         for change in report.changes {

@@ -73,11 +73,45 @@ public struct AwayReport: Equatable, Sendable {
             told.append(index)
         }
         let title = world.houses[player].title
-        news = told.sorted().map { AwayReport.told(chronicle[$0].text, to: title) }
+        news = AwayReport.folded(told.sorted().map { AwayReport.told(chronicle[$0].text, to: title) })
         more = theirs.count + lakes.count + (omen == nil ? 0 : 1) - told.count
         let orders = world.standingOrders(of: player)
         standing = watches >= RealmState.caretakerAfter && !orders.isEmpty
             ? "A caretaker kept your House by your standing orders, which still stand." : nil
+    }
+
+    /// The news said once a line, in the order first told: a line told more
+    /// than once while the keeper was away (two drowned ruins searched for
+    /// the same, say) said once with how many times (`repeated`), not twice
+    /// over in the same words.
+    public static func folded(_ lines: [String]) -> [String] {
+        var order: [String] = []
+        var times: [String: Int] = [:]
+        for line in lines {
+            if times[line] == nil { order.append(line) }
+            times[line, default: 0] += 1
+        }
+        return order.map { repeated($0, times: times[$0] ?? 1) }
+    }
+
+    /// A line of news told more than once, said once with how many times:
+    /// "Your House searches a drowned ruin and recovers 30 grain (twice)."
+    public static func repeated(_ line: String, times: Int) -> String {
+        guard times > 1 else { return line }
+        let said = times == 2 ? "twice" : "\(times) times"
+        return line.hasSuffix(".") ? "\(line.dropLast()) (\(said))." : "\(line) (\(said))"
+    }
+
+    /// A line of news as it was told before it was folded, and how many
+    /// times it was told.
+    public static func unfolded(_ line: String) -> (line: String, times: Int) {
+        let stop = line.hasSuffix(".")
+        let body = stop ? String(line.dropLast()) : line
+        guard body.hasSuffix(")"), let open = body.range(of: " (", options: .backwards) else { return (line, 1) }
+        let said = body[open.upperBound..<body.index(before: body.endIndex)]
+        let times = said == "twice" ? 2 : said.hasSuffix(" times") ? Int(said.dropLast(" times".count)) ?? 1 : 1
+        guard times > 1 else { return (line, 1) }
+        return (String(body[..<open.lowerBound]) + (stop ? "." : ""), times)
     }
 
     /// A chronicle line as the keeper it is told to reads it: their own

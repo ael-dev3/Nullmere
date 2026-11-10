@@ -35,6 +35,30 @@ final class AwayWordsTests: XCTestCase {
             XCTAssertFalse(line.contains(title), "The keeper's own House is theirs: \(line)")
         }
         let theirs = state.chronicle.filter { $0.watch > seen.watch && $0.houses.contains(state.player) }
-        XCTAssertTrue(theirs.suffix(AwayReport.lines).allSatisfy { report.news.contains(AwayReport.told($0.text, to: title)) })
+        // Each told, a line told alike more than once said once (`folded`).
+        let plain = report.news.map { AwayReport.unfolded($0).line }
+        XCTAssertTrue(theirs.suffix(AwayReport.lines).allSatisfy { plain.contains(AwayReport.told($0.text, to: title)) })
+        XCTAssertEqual(Set(plain).count, plain.count, "no line twice over in the same words")
+    }
+
+    /// Two drowned ruins searched for the same, while the keeper was away,
+    /// are one line of news said twice, not the same words twice over.
+    func testALineToldMoreThanOnceIsSaidOnceWithHowManyTimes() {
+        let ruin = "Your House searches a drowned ruin and recovers 30 grain, 30 timber, 30 stone, 10 moonsalt."
+        let founds = "Your House founds Harshade on the greyfield."
+        XCTAssertEqual(AwayReport.folded([ruin, founds, ruin]),
+                       ["Your House searches a drowned ruin and recovers 30 grain, 30 timber, 30 stone, 10 moonsalt (twice).", founds],
+                       "said once, where first told")
+        XCTAssertEqual(AwayReport.folded([ruin, ruin, ruin]),
+                       ["Your House searches a drowned ruin and recovers 30 grain, 30 timber, 30 stone, 10 moonsalt (3 times)."])
+        XCTAssertEqual(AwayReport.folded([founds]), [founds])
+        // Folded lines come apart again into what each told.
+        XCTAssertEqual(AwayReport.unfolded(AwayReport.repeated(ruin, times: 3)).line, ruin)
+        XCTAssertEqual(AwayReport.unfolded(AwayReport.repeated(ruin, times: 3)).times, 3)
+        XCTAssertEqual(AwayReport.unfolded(AwayReport.repeated(ruin, times: 2)).times, 2)
+        XCTAssertEqual(AwayReport.unfolded(founds).times, 1)
+        XCTAssertEqual(AwayReport.unfolded("The Lyceum rises (at last).").times, 1, "a line's own words in brackets are its own")
+        XCTAssertEqual(AwayReport.repeated("No stop", times: 2), "No stop (twice)")
+        XCTAssertEqual(AwayReport.unfolded("No stop (twice)").line, "No stop")
     }
 }
