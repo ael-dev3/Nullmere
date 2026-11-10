@@ -99,6 +99,16 @@ final class PlacesKeptTests: XCTestCase {
         try CardShot.keep(ZStack { WorldFallback(session: session); WorldMarks(session: session) }
             .frame(width: size.width, height: size.height), as: "world-places.png", size: size)
 
+        // Named anew from its row, kept since it was kept; never by no name.
+        draw(KeepPlaceRow(session: session, hex: ground))
+        XCTAssertTrue(PressableButtons.press("Name anew…"), "Among \(shown)")
+        draw(KeepPlaceRow(session: session, hex: ground, open: true, name: " The ford\n"))
+        XCTAssertTrue(PressableButtons.press("Keep the name"), "Among \(shown)")
+        XCTAssertEqual(session.placeBook.place(at: ground)?.name, "The ford")
+        XCTAssertEqual(session.placeBook.place(at: ground)?.kept, state.watch)
+        XCTAssertFalse(session.renamePlace(ground, to: "  "))
+        XCTAssertEqual(LocalStore(directory: dir).loadPlaces().place(at: ground)?.name, "The ford", "kept by this Mac")
+
         // Forgotten from its row; and kept by this Mac, so a session begun
         // again has what was left.
         draw(KeepPlaceRow(session: session, hex: ground))

@@ -273,6 +273,15 @@ final class CompanionSessionTests: XCTestCase {
         let written = try JSONEncoder().encode(try XCTUnwrap(memory.places))
         XCTAssertEqual(try JSONDecoder().decode(PhonePlaces.self, from: written), memory.places, "As the phone's defaults keep it")
 
+        // Named anew, kept since it was kept; never by no name, nor a place
+        // the book doesn't keep.
+        XCTAssertTrue(phone.renamePlace(ground, to: "  The ford\n at dusk "))
+        XCTAssertEqual(phone.placeBook.place(at: ground)?.name, "The ford at dusk")
+        XCTAssertEqual(phone.placeBook.place(at: ground)?.kept, world.watch)
+        XCTAssertFalse(phone.renamePlace(ground, to: " \n "))
+        XCTAssertFalse(phone.renamePlace(Hex(seat.position.q + 40, seat.position.r), to: "Nowhere"))
+        XCTAssertEqual(memory.places?.book.place(at: ground)?.name, "The ford at dusk", "kept in the phone's memory too")
+
         // Let go, one place; one the book doesn't keep changes nothing.
         phone.forgetPlace(ground)
         XCTAssertNil(phone.placeBook.place(at: ground))
@@ -303,6 +312,7 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertNil(memory.places)
         XCTAssertTrue(phone.placeBook.places.isEmpty)
         XCTAssertFalse(phone.keepPlace(ground), "Linked to no realm, it keeps no places")
+        XCTAssertFalse(phone.renamePlace(ground, to: "Home"))
         XCTAssertNil(memory.places)
         mac.close()
     }

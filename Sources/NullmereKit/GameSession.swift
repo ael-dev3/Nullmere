@@ -2442,6 +2442,15 @@ public final class GameSession {
         return true
     }
 
+    /// Names the place at `hex` in the keeper's book anew; false where the
+    /// book doesn't keep it or the name is empty.
+    @discardableResult
+    public func renamePlace(_ hex: Hex, to name: String) -> Bool {
+        guard placeBook.rename(hex, to: name) else { return false }
+        store.savePlaces(placeBook)
+        return true
+    }
+
     /// Lets the place at `hex` go from the keeper's book.
     public func forgetPlace(_ hex: Hex) {
         guard placeBook.place(at: hex) != nil else { return }

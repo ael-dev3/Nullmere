@@ -229,12 +229,14 @@ struct PlaceSections: View {
 }
 
 /// Whether this phone's book keeps the hex chosen (Rise of Kingdoms'
-/// bookmarks), by what name, to forget it; or else to keep it, by the name
-/// it goes by or one the keeper gives, as the Mac keeps its own.
+/// bookmarks), by what name, to name it anew or forget it; or else to keep
+/// it, by the name it goes by or one the keeper gives, as the Mac keeps its
+/// own.
 struct KeepPlaceRow: View {
     let session: CompanionSession
     let hex: Hex
     @State private var naming = false
+    @State private var renaming = false
     @State private var name = ""
 
     var body: some View {
@@ -251,10 +253,24 @@ struct KeepPlaceRow: View {
                 }
                 .accessibilityElement(children: .combine)
                 Spacer(minLength: 8)
+                Button("Rename") {
+                    name = kept.name
+                    renaming = true
+                }
+                .font(Night.small)
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Name \(kept.name) anew")
                 Button("Forget") { session.forgetPlace(hex) }
                     .font(Night.small)
                     .buttonStyle(.bordered)
                     .accessibilityLabel("Forget \(kept.name) from your places")
+            }
+            .alert("Name this place anew", isPresented: $renaming) {
+                TextField(kept.name, text: $name)
+                Button("Rename") { session.renamePlace(hex, to: name) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(verbatim: "Kept as \(kept.name).")
             }
         } else {
             let called = session.world?.keptName(of: hex) ?? "this place"

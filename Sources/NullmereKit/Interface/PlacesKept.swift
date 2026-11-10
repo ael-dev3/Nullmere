@@ -2,15 +2,16 @@ import NullmereCore
 import SwiftUI
 
 /// Whether the keeper's book keeps this place (RoK's bookmarks), by what
-/// name, to forget it; or else to keep it, by the name it goes by or one of
-/// their own, folded to one button until asked for.
+/// name, to name it anew or forget it; or else to keep it, by the name it
+/// goes by or one of their own, folded to one button until asked for.
 struct KeepPlaceRow: View {
     let session: GameSession
     let hex: Hex
     @State private var open: Bool
     @State private var name: String
 
-    /// `open`: the keeping shown unfolded, as a test draws it.
+    /// `open`: the keeping, or the naming anew of a place kept, shown
+    /// unfolded, as a test draws it.
     init(session: GameSession, hex: Hex, open: Bool = false, name: String = "") {
         self.session = session
         self.hex = hex
@@ -31,14 +32,34 @@ struct KeepPlaceRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Caps("Among your places", size: 8.5).foregroundStyle(Palette.text(0.5))
                     Spacer()
+                    QuietButton(title: open ? "Name anew" : "Name anew…", size: 8.5,
+                                name: open ? "Fold the naming of \(kept.name) away" : "Name \(kept.name) anew") {
+                        name = open ? "" : kept.name
+                        open.toggle()
+                    }
                     QuietButton(title: "Forget", size: 8.5, name: "Forget \(kept.name) from your places") {
                         session.forgetPlace(hex)
                     }
                 }
-                Text(verbatim: kept.name)
-                    .font(.nm(11))
-                    .foregroundStyle(Palette.text(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
+                if open {
+                    TextField(kept.name, text: $name)
+                        .textFieldStyle(.plain)
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.vertical, 3)
+                        .overlay(alignment: .bottom) { Rule(opacity: 0.5) }
+                        .accessibilityLabel("A new name for \(kept.name)")
+                        .onSubmit { rename() }
+                    QuietButton(title: "Keep the name", size: 8.5, enabled: PlaceBook.kept(name) != nil,
+                                name: "Name it \(PlaceBook.kept(name) ?? kept.name)", why: PlaceBook.kept(name) == nil ? "Give it a name first." : nil) {
+                        rename()
+                    }
+                } else {
+                    Text(verbatim: kept.name)
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.text(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 let called = session.state.keptName(of: hex)
                 QuietButton(title: open ? "Keep this place" : "Keep this place…", size: 8.5,
@@ -60,6 +81,16 @@ struct KeepPlaceRow: View {
                     }
                 }
             }
+        }
+    }
+}
+
+extension KeepPlaceRow {
+    /// The place kept by the name given, the naming folded away once it is.
+    private func rename() {
+        if session.renamePlace(hex, to: name) {
+            name = ""
+            open = false
         }
     }
 }

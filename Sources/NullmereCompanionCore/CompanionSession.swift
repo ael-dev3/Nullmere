@@ -347,6 +347,18 @@ public final class CompanionSession {
         return true
     }
 
+    /// Names the place at `hex` in this phone's book anew; false where the
+    /// book doesn't keep it or the name is empty.
+    @discardableResult
+    public func renamePlace(_ hex: Hex, to name: String) -> Bool {
+        guard let age = status?.age else { return false }
+        var book = placeBook
+        guard book.rename(hex, to: name) else { return false }
+        memory.places = PhonePlaces(age: age, book: book)
+        placesChanged &+= 1
+        return true
+    }
+
     /// Lets the place at `hex` go from this phone's book.
     public func forgetPlace(_ hex: Hex) {
         guard let age = status?.age, placeBook.place(at: hex) != nil else { return }
