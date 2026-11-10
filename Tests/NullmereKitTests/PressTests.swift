@@ -1177,9 +1177,10 @@ final class PressTests: XCTestCase {
         link.onEvent?(.changed(demanded))
         draw(EnvoyCards(session: session))
         XCTAssertNil(PressableButtons.actions["Offer half"], "Among \(shown)")
-        XCTAssertEqual(GameSession.cues(for: [.tributeBargained(from: steward, to: me, paid: nil)], player: me), [.refusal])
+        // Heard as the watch's events are, after its gong.
+        XCTAssertEqual(GameSession.cues(for: [.tributeBargained(from: steward, to: me, paid: nil)], player: me), [.watch, .refusal])
         XCTAssertEqual(GameSession.cues(for: [.tributeBargained(from: steward, to: me, paid: Stock(grain: 10, timber: 0, stone: 0, moonsalt: 0))],
-                                        player: me), [.coin])
+                                        player: me), [.watch, .coin])
     }
 
     func testATradeIsComposedAndOffered() throws {
