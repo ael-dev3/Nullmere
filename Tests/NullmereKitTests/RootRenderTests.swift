@@ -90,6 +90,45 @@ final class RootRenderTests: XCTestCase {
         XCTAssertLessThan(brightness(vignette, x: 2, y: 2), brightness(vignette, x: 800, y: 500) - 60, "Its corners darkened")
     }
 
+    /// Hide the Interface leaves the world alone: no bar, card, panel or
+    /// name drawn over it, and VoiceOver told how to bring it back. Escape
+    /// brings it back, and so does a panel asked for.
+    func testTheWorldAloneHidesTheInterfaceAndEscapeBringsItBack() throws {
+        let app = app({ .ready }, seed: "the world alone")
+        app.checkModel()
+        app.enterWorld(name: "Ama")
+        let session = try XCTUnwrap(app.session)
+        session.dismissSeatBriefing()
+        session.dismissFirstSteps()
+        defer { PressableButtons.isListening = false }
+        PressableButtons.isListening = true
+        try draw(PlayView(app: app, session: session))
+        XCTAssertNotNil(PressableButtons.actions["Ready"], "The bar's Ready among \(PressableButtons.actions.keys.sorted())")
+
+        session.toggleInterface()
+        XCTAssertTrue(session.interfaceHidden)
+        XCTAssertEqual(session.lastSaid, GameSession.interfaceHiddenSaid)
+        PressableButtons.isListening = true
+        try draw(PlayView(app: app, session: session))
+        XCTAssertTrue(PressableButtons.actions.isEmpty, "Nothing to press but the world: \(PressableButtons.actions.keys.sorted())")
+        try draw(WorldAloneHint(), width: 900, height: 200)
+
+        // Escape brings it back, before it puts anything else away.
+        session.panel = nil
+        XCTAssertTrue(session.handle(.escape))
+        XCTAssertFalse(session.interfaceHidden)
+        XCTAssertEqual(session.lastSaid, "The interface is back.")
+        // So does a panel asked for, or the orders card.
+        session.toggleInterface()
+        session.panel = .houses
+        XCTAssertFalse(session.interfaceHidden)
+        session.panel = nil
+        session.toggleInterface()
+        session.toggleOrders()
+        XCTAssertFalse(session.interfaceHidden)
+        XCTAssertNotNil(session.ordersInWords)
+    }
+
     /// The red, green and blue of a pixel, summed.
     private func brightness(_ image: CGImage, x: Int, y: Int) -> Int {
         var pixel = [UInt8](repeating: 0, count: 4)

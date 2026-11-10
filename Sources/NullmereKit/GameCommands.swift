@@ -100,6 +100,13 @@ public struct GameCommands: Commands {
             item(.goToSeat)
             item(.viewCity)
             item(.resetView)
+            // The world alone, every bar, card and name put away.
+            Toggle("Hide the Interface", isOn: Binding(get: { app.session?.interfaceHidden ?? false },
+                                                       set: { hidden in
+                                                           if let session = app.session, session.interfaceHidden != hidden { session.toggleInterface() }
+                                                       }))
+                .keyboardShortcut("h", modifiers: [.command, .shift])
+                .disabled(app.session == nil)
             Divider()
             // The launcher makes no sound: these wait for the realm's face.
             Toggle("Sound", isOn: Binding(get: { app.isSoundOn }, set: { app.isSoundOn = $0 }))

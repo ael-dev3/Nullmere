@@ -155,6 +155,7 @@ enum Guide {
             "1: Houses · 2: Chronicle · 3: Archive · 4: Commanders · 5: Alliance · 6: the Realm · 7: Words · ? or ⌘?: this Guide · ⇧⌘W: leave the world · ⌘,: Settings",
             "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",
             "⇧⌘M: sound on or off · ⇧⌘U: the music · ⇧⌘+: larger text",
+            "⇧⌘H: hide the interface and see the world alone, every bar, card, panel, name and mark put away; ⇧⌘H again, Esc or a panel's key brings it back",
         ]),
     ]
 }

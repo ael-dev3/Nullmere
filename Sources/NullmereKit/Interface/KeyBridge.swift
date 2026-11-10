@@ -87,7 +87,10 @@ extension GameSession {
             click(camera.centreHex)
             sayChosen()
         case .escape:
-            if ordersInWords != nil {
+            if interfaceHidden {
+                // The world alone: Escape brings the interface back first.
+                toggleInterface()
+            } else if ordersInWords != nil {
                 toggleOrders()
             } else if panel != nil {
                 panel = nil

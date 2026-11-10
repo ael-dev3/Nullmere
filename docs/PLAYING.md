@@ -2197,10 +2197,11 @@ world, so there is nothing to save.
 | M | March the selected company to the middle of the view; to strike there, M shows the odds and M again strikes: play without a pointer |
 | Arrows or WASD, + − | Pan, zoom |
 | ⌘0, or Reset under the small map | Reset View: the whole House in sight, north up; the small map's other buttons zoom and turn |
+| ⇧⌘H | Hide the Interface: the world alone, every bar, card, panel, name and mark put away; ⇧⌘H again, Esc or a panel's key brings it back |
 | Page Up / Page Down | Scroll the open panel, or the chosen hold's |
 | 1 / 2 / ? or ⌘? | Houses / Chronicle / Guide |
 | 3 / 4 / 5 / 6 / 7 | Archive / Commanders / Alliance / the Realm / Words |
-| Esc | Close a panel, then clear the selection |
+| Esc | Bring the interface back while it is hidden, else close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
 | ⌘, | Settings: display and text (the launcher's), sound and volumes, letter keys alone or with ⌥, counsel, how the voices stand |

@@ -163,141 +163,148 @@ struct PlayView: View {
             MapVignette()
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                TopBar(session: session)
-                // The omen under the bar, in the flow, so nothing sits beneath it.
-                // A battle the keeper's House fights, whatever is chosen.
-                if let line = MoonBand.battleLine(in: session.state, for: session.player) {
-                    MoonBand(line: line)
-                        .chrome("band")
-                        .padding(.top, 8)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-                // Bands only while nothing is chosen: a chosen thing has the view.
-                if PlayView.standingCardsShown(session), let omen = session.state.currentOmen {
-                    OmenBand(omen: omen, watch: session.state.watch)
-                        .chrome("band")
-                        .padding(.top, 8)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-                // The moon's ford, only about the full.
-                if PlayView.standingCardsShown(session), let line = MoonBand.line(watch: session.state.watch, open: session.state.ford != nil) {
-                    MoonBand(line: line)
-                        .chrome("band")
-                        .padding(.top, 8)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-                // The Still's calm, only while it gives to the keeper's shore.
-                if PlayView.standingCardsShown(session), let line = MoonBand.calmLine(in: session.state, for: session.player) {
-                    MoonBand(line: line)
-                        .chrome("band")
-                        .padding(.top, 4)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-                // The Drowned Crown, only while it lies on the ford.
-                if PlayView.standingCardsShown(session), let line = MoonBand.crownLine(in: session.state, for: session.player) {
-                    MoonBand(line: line)
-                        .chrome("band")
-                        .padding(.top, 4)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-                HStack(alignment: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // The watch's notices while nothing is chosen: with a
-                        // panel up, it alone holds the column.
-                        if PlayView.noticesShown(session) {
-                            NoticeFeed(session: session)
-                                .layoutPriority(-1)
-                        }
-                        Spacer(minLength: 0)
-                        // The briefing says it first; then the first steps,
-                        // and counsel once they're done.
-                        // With anything chosen, its panel alone: the
-                        // standing cards give way so the world shows.
-                        // With a panel open, it alone stands: the column's
-                        // cards give way so only one card covers the world.
-                        if session.seatBriefing == nil, session.panel == nil, PlayView.standingCardsShown(session) {
-                            if session.firstSteps == nil, LyceumCard.next(session) != nil {
-                                // The Lyceum while it sits and asks: it alone.
-                                LyceumCard(session: session)
+            // The world alone, while the keeper has put the interface away.
+            if !session.interfaceHidden {
+                VStack(spacing: 0) {
+                    TopBar(session: session)
+                    // The omen under the bar, in the flow, so nothing sits beneath it.
+                    // A battle the keeper's House fights, whatever is chosen.
+                    if let line = MoonBand.battleLine(in: session.state, for: session.player) {
+                        MoonBand(line: line)
+                            .chrome("band")
+                            .padding(.top, 8)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                    // Bands only while nothing is chosen: a chosen thing has the view.
+                    if PlayView.standingCardsShown(session), let omen = session.state.currentOmen {
+                        OmenBand(omen: omen, watch: session.state.watch)
+                            .chrome("band")
+                            .padding(.top, 8)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                    // The moon's ford, only about the full.
+                    if PlayView.standingCardsShown(session), let line = MoonBand.line(watch: session.state.watch, open: session.state.ford != nil) {
+                        MoonBand(line: line)
+                            .chrome("band")
+                            .padding(.top, 8)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                    // The Still's calm, only while it gives to the keeper's shore.
+                    if PlayView.standingCardsShown(session), let line = MoonBand.calmLine(in: session.state, for: session.player) {
+                        MoonBand(line: line)
+                            .chrome("band")
+                            .padding(.top, 4)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                    // The Drowned Crown, only while it lies on the ford.
+                    if PlayView.standingCardsShown(session), let line = MoonBand.crownLine(in: session.state, for: session.player) {
+                        MoonBand(line: line)
+                            .chrome("band")
+                            .padding(.top, 4)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                    HStack(alignment: .top, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            // The watch's notices while nothing is chosen: with a
+                            // panel up, it alone holds the column.
+                            if PlayView.noticesShown(session) {
+                                NoticeFeed(session: session)
+                                    .layoutPriority(-1)
+                            }
+                            Spacer(minLength: 0)
+                            // The briefing says it first; then the first steps,
+                            // and counsel once they're done.
+                            // With anything chosen, its panel alone: the
+                            // standing cards give way so the world shows.
+                            // With a panel open, it alone stands: the column's
+                            // cards give way so only one card covers the world.
+                            if session.seatBriefing == nil, session.panel == nil, PlayView.standingCardsShown(session) {
+                                if session.firstSteps == nil, LyceumCard.next(session) != nil {
+                                    // The Lyceum while it sits and asks: it alone.
+                                    LyceumCard(session: session)
+                                        .transition(.opacity)
+                                } else if let steps = session.firstSteps {
+                                    FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
+                                        .transition(.opacity)
+                                } else if !chargesHidden, session.state.realmBoard(for: session.player).charge != nil {
+                                    // The first hour's charges; counsel when none is before the House.
+                                    ChargeCard(session: session)
+                                } else {
+                                    CounselCard(session: session)
+                                }
+                            }
+                            if session.panel == nil {
+                                SelectionPanel(session: session)
                                     .transition(.opacity)
-                            } else if let steps = session.firstSteps {
-                                FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
-                                    .transition(.opacity)
-                            } else if !chargesHidden, session.state.realmBoard(for: session.player).charge != nil {
-                                // The first hour's charges; counsel when none is before the House.
-                                ChargeCard(session: session)
-                            } else {
-                                CounselCard(session: session)
                             }
                         }
-                        if session.panel == nil {
-                            SelectionPanel(session: session)
-                                .transition(.opacity)
-                        }
-                    }
-                    Spacer(minLength: 16)
-                    VStack(alignment: .trailing, spacing: 12) {
-                        switch session.panel {
-                        case .houses?:
-                            opened(HousesPanel(session: session), named: "Houses")
-                        case .chronicle?:
-                            opened(ChroniclePanel(session: session), named: "Chronicle")
-                        case .guide?:
-                            opened(GuidePanel(session: session), named: "Guide")
-                        case .archive?:
-                            opened(ArchivePanel(session: session), named: "Archive")
-                        case .commanders?:
-                            opened(CommandersPanel(session: session), named: "Commanders")
-                        case .alliance?:
-                            opened(AlliancePanel(session: session), named: "Alliance")
-                        case .realm?:
-                            opened(RealmPanel(session: session), named: "The Realm")
-                        case .words?:
-                            opened(WordsPanel(session: session), named: "Words")
-                        case nil:
-                            EmptyView()
-                        }
-                        Spacer(minLength: 0)
-                        EnvoyCards(session: session)
-                            .chrome("envoys")
-                        PetitionCard(session: session)
-                            .chrome("petition")
-                        // With a panel open, its keys and its close button
-                        // serve, and the panel keeps the column's height.
-                        if session.panel == nil {
-                            if mapShown {
-                                MiniMap(session: session)
-                                    .chrome("map")
-                                    .transition(.opacity)
-                                CameraButtons(session: session)
-                                    .chrome("map")
+                        Spacer(minLength: 16)
+                        VStack(alignment: .trailing, spacing: 12) {
+                            switch session.panel {
+                            case .houses?:
+                                opened(HousesPanel(session: session), named: "Houses")
+                            case .chronicle?:
+                                opened(ChroniclePanel(session: session), named: "Chronicle")
+                            case .guide?:
+                                opened(GuidePanel(session: session), named: "Guide")
+                            case .archive?:
+                                opened(ArchivePanel(session: session), named: "Archive")
+                            case .commanders?:
+                                opened(CommandersPanel(session: session), named: "Commanders")
+                            case .alliance?:
+                                opened(AlliancePanel(session: session), named: "Alliance")
+                            case .realm?:
+                                opened(RealmPanel(session: session), named: "The Realm")
+                            case .words?:
+                                opened(WordsPanel(session: session), named: "Words")
+                            case nil:
+                                EmptyView()
+                            }
+                            Spacer(minLength: 0)
+                            EnvoyCards(session: session)
+                                .chrome("envoys")
+                            PetitionCard(session: session)
+                                .chrome("petition")
+                            // With a panel open, its keys and its close button
+                            // serve, and the panel keeps the column's height.
+                            if session.panel == nil {
+                                if mapShown {
+                                    MiniMap(session: session)
+                                        .chrome("map")
+                                        .transition(.opacity)
+                                    CameraButtons(session: session)
+                                        .chrome("map")
+                                        .transition(.opacity)
+                                }
+                                PanelRail(session: session)
+                                    .chrome("rail")
                                     .transition(.opacity)
                             }
-                            PanelRail(session: session)
-                                .chrome("rail")
-                                .transition(.opacity)
-                        }
-                        // The keys, while the first steps are taught; the
-                        // Guide and each button's tooltip keep them after.
-                        if session.firstSteps != nil {
-                            KeyHints()
+                            // The keys, while the first steps are taught; the
+                            // Guide and each button's tooltip keep them after.
+                            if session.firstSteps != nil {
+                                KeyHints()
+                            }
                         }
                     }
+                    .padding(16)
+                    .animation(.easeOut(duration: 0.2), value: session.panel)
+                    .animation(.easeOut(duration: 0.3), value: session.envoys)
                 }
-                .padding(16)
-                .animation(.easeOut(duration: 0.2), value: session.panel)
-                .animation(.easeOut(duration: 0.3), value: session.envoys)
+                // A card before the world: VoiceOver reads the card alone.
+                .accessibilityHidden(session.isShowingCard)
             }
-            // A card before the world: VoiceOver reads the card alone.
-            .accessibilityHidden(session.isShowingCard)
 
-            if let card = session.watchCard {
+            if session.interfaceHidden {
+                WorldAloneHint()
+            }
+
+            if !session.interfaceHidden, let card = session.watchCard {
                 // High in the view, above where the seat is centred.
                 WatchCard(summary: card.summary)
                     .id(card.id)
@@ -310,7 +317,9 @@ struct PlayView: View {
             // Between the selection panel on the left and the hints on the
             // right, so it never lies over either; while orders are written
             // in the keeper's own words, their card in its place.
-            if session.ordersInWords != nil {
+            if session.interfaceHidden {
+                EmptyView()
+            } else if session.ordersInWords != nil {
                 OrdersCard(session: session)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .padding(.leading, 362)

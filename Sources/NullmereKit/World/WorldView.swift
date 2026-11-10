@@ -29,13 +29,16 @@ struct WorldView: View {
                     if !WorldView.stepDown(session) { metalFailed = true }
                 }
             }
-            LandNames(session: session)
-            WorldMarks(session: session, modelsDrawn: !metalFailed && WorldMetalView.systemDevice != nil)
-                .allowsHitTesting(false)
-            ForecastOverlay(session: session)
-                .allowsHitTesting(false)
-            HouseNamesAfar(session: session)
-            CityLabels(session: session)
+            // Names and marks, but for the world alone (Hide the Interface).
+            if !session.interfaceHidden {
+                LandNames(session: session)
+                WorldMarks(session: session, modelsDrawn: !metalFailed && WorldMetalView.systemDevice != nil)
+                    .allowsHitTesting(false)
+                ForecastOverlay(session: session)
+                    .allowsHitTesting(false)
+                HouseNamesAfar(session: session)
+                CityLabels(session: session)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The world map")

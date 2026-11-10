@@ -93,12 +93,18 @@ public final class GameSession {
     /// Whether the keeper has opened the rail of panels; it is folded to
     /// one button otherwise, so the world has the screen.
     public var railShown = false
+    /// Whether the keeper has put the whole interface away to see the world
+    /// alone: its bars, cards, panels, names and marks (Watch, Hide the
+    /// Interface, ⌘⇧H); Escape or the same again brings it back.
+    public var interfaceHidden = false
     /// The panel open over the map; a leaf turned as one opens, laid down
     /// as the last closes.
     public var panel: Panel? {
         didSet {
             guard panel != oldValue else { return }
             emit(panel == nil ? .fold : .leaf)
+            // A panel asked for brings the interface back with it.
+            if panel != nil, interfaceHidden { interfaceHidden = false }
         }
     }
     /// Page Up and Page Down, as heard: each panel that scrolls pages
@@ -2982,6 +2988,16 @@ public final class GameSession {
 
     /// Opens the card for orders in the keeper's own words, or puts it
     /// away: it opens only while the age goes on and the House stands.
+    /// The interface put away, so the world stands alone, or brought back;
+    /// said either way, for VoiceOver.
+    public func toggleInterface() {
+        interfaceHidden.toggle()
+        sayNow(interfaceHidden ? GameSession.interfaceHiddenSaid : "The interface is back.")
+    }
+
+    /// What is said as the interface is put away, and shown a moment.
+    public static let interfaceHiddenSaid = "The world alone. Command-Shift-H or Escape brings the interface back."
+
     func toggleOrders() {
         guard ordersInWords != nil || (state.outcome == nil && !playerHouse.isEliminated) else { return }
         // Put away, a reading under way is stopped with it.
@@ -2990,6 +3006,8 @@ public final class GameSession {
             readingOrders = nil
         }
         withAnimation(.easeOut(duration: 0.2)) { ordersInWords = ordersInWords == nil ? OrdersInWords() : nil }
+        // The orders card asked for brings the interface back with it.
+        if ordersInWords != nil, interfaceHidden { interfaceHidden = false }
     }
 
     /// Reads the keeper's words into the order book's lines: by this Mac's
