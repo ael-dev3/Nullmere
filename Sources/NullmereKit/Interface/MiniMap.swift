@@ -3,8 +3,9 @@ import NullmereCore
 import SwiftUI
 
 /// The whole lake in the corner: the country the House has found, the
-/// holds it knows in their Houses' colours, its own companies, and where
-/// the view looks; a click there carries the view to it.
+/// holds it knows in their Houses' colours, its own companies, the places
+/// the keeper keeps in their book, and where the view looks; a click there
+/// carries the view to it.
 struct MiniMap: View {
     let session: GameSession
 
@@ -44,7 +45,22 @@ struct MiniMap: View {
         let holds = state.holds(of: session.player).count
         let known = state.holds.filter { $0.owner != session.player && session.isExplored($0.position) }.count
         let companies = state.units(of: session.player).count
+        let kept = session.placeBook.places.count
+        let places = kept == 0 ? "" : ", \(kept) place\(kept == 1 ? "" : "s") kept"
         return "\(holds) hold\(holds == 1 ? "" : "s") of yours, \(known) of other Houses known, \(companies) compan\(companies == 1 ? "y" : "ies") of yours"
+            + places
+    }
+
+    /// A kept place's mark on the map: a small diamond about `point`, `size`
+    /// from its middle to each corner.
+    static func diamond(at point: CGPoint, size: CGFloat) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: point.x, y: point.y - size))
+        path.addLine(to: CGPoint(x: point.x + size, y: point.y))
+        path.addLine(to: CGPoint(x: point.x, y: point.y + size))
+        path.addLine(to: CGPoint(x: point.x - size, y: point.y))
+        path.closeSubpath()
+        return path
     }
 
     var body: some View {
@@ -69,6 +85,12 @@ struct MiniMap: View {
                 for unit in state.units(of: session.player) {
                     let p = Self.point(of: unit.position, radius: radius, side: size.width)
                     context.fill(Path(ellipseIn: CGRect(x: p.x - 1.6, y: p.y - 1.6, width: 3.2, height: 3.2)), with: .color(Palette.ink))
+                }
+                // The places the keeper keeps in their book, each a small
+                // pale diamond.
+                for place in session.placeBook.places {
+                    let p = Self.point(of: place.at, radius: radius, side: size.width)
+                    context.stroke(Self.diamond(at: p, size: 3.4), with: .color(Palette.glowWords), lineWidth: 1)
                 }
                 // Where the view looks.
                 let centre = Self.point(of: session.camera.centreHex, radius: radius, side: size.width)

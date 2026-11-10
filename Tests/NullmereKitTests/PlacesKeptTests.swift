@@ -73,6 +73,11 @@ final class PlacesKeptTests: XCTestCase {
         XCTAssertEqual(PlacesSection.line(try XCTUnwrap(session.placeBook.place(at: ground)), in: state), "Kept at watch \(state.watch)")
         session.goToPlace(seat.position)
         XCTAssertEqual(session.selection, .hold(seat.id))
+        // Marked on the small map, and said with it.
+        XCTAssertTrue(MiniMap.spoken(session).hasSuffix(", 2 places kept"), MiniMap.spoken(session))
+        let mark = MiniMap.diamond(at: CGPoint(x: 10, y: 20), size: 3).boundingRect
+        XCTAssertEqual(mark, CGRect(x: 7, y: 17, width: 6, height: 6))
+        draw(MiniMap(session: session), width: MiniMap.side + 12, height: MiniMap.side + 12)
         try CardShot.keep(PlacesSection(session: session, open: true).padding(16).frame(width: 360).background(Palette.panel),
                           as: "game-places.png")
 
@@ -81,6 +86,7 @@ final class PlacesKeptTests: XCTestCase {
         draw(KeepPlaceRow(session: session, hex: ground))
         XCTAssertTrue(PressableButtons.press("Forget"), "Among \(shown)")
         XCTAssertNil(session.placeBook.place(at: ground))
+        XCTAssertTrue(MiniMap.spoken(session).hasSuffix(", 1 place kept"), MiniMap.spoken(session))
         let again = GameSession(state: state, store: LocalStore(directory: dir))
         XCTAssertEqual(again.placeBook.places.map(\.name), ["Home"])
         XCTAssertEqual(again.placeBook, session.placeBook)

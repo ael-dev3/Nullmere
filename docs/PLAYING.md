@@ -1341,7 +1341,7 @@ a vote on the realm's law to cast.
   to a place; forget one to keep another. The Realm panel lists them
   under Places, each with what stands there now and the watch you kept
   it, Go to carry the view there and choose what stands there, and
-  Forget. They are yours alone, kept by your Mac for the age: the realm
+  Forget; the small map marks each with a pale diamond. They are yours alone, kept by your Mac for the age: the realm
   and the other keepers know nothing of them.
 - **Alliance marks.** A keeper who leads an alliance marks ground their
   House has seen for its Houses: Gather here, Strike here, Hold this
