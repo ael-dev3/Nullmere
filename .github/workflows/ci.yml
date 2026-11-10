@@ -615,28 +615,34 @@ jobs:
           NULLMERE_SOAK_WATCHES: "200"
         run: swift test --enable-code-coverage 2>&1 | tee realm-test.log
 
-      # A mirror caught mid-sync fails `apt-get update` for one index while
-      # the rest are fetched (run 933: "File has unexpected size ... Mirror
-      # sync in progress?"), and chaining the install on it left python3
-      # uninstalled and the coverage unmeasured though every test had
-      # passed. The install is tried on what was fetched, and the whole
-      # asked again a little later, before the step fails on what's missing.
-      - name: Coverage
+      # What the coverage and SpacetimeDB need from Ubuntu's archive, asked
+      # for once. A mirror caught mid-sync fails `apt-get update` for one
+      # index while the rest are fetched (run 933: "File has unexpected size
+      # ... Mirror sync in progress?"), so the install is tried on what was
+      # fetched. A mirror that stalls held run 936's first try silent for 33
+      # minutes (run 924's took seconds) and the job ran out of its hour
+      # before playing through SpacetimeDB: each fetch now gives up after 30
+      # idle seconds and each try after a few minutes, asked again a little
+      # later, and the step fails within 20 minutes on what is still missing
+      # rather than leaving the job to run out in a later step.
+      - name: Install what the coverage and SpacetimeDB need
+        timeout-minutes: 20
         run: |
+          apt_get() { timeout "$1" apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 "${@:2}"; }
           for attempt in 1 2 3; do
-            apt-get update -qq || echo "apt-get update failed (attempt $attempt): installing from the index it fetched"
-            apt-get install -y -qq python3 >/dev/null && break
+            dpkg --configure -a || true
+            apt_get 150 update -qq || echo "apt-get update failed or stalled (attempt $attempt): installing from the index it fetched"
+            apt_get 240 install -y -qq python3 curl build-essential >/dev/null && break
+            echo "apt-get install failed or stalled (attempt $attempt)"
             sleep 15
           done
-          python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereModels=97 NullmereWorld=97 NullmereSound=97 NullmereRealm=97 LauncherCore=97
+          command -v python3 && command -v curl && command -v cc
+
+      - name: Coverage
+        run: python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereModels=97 NullmereWorld=97 NullmereSound=97 NullmereRealm=97 LauncherCore=97
 
       - name: Install Rust and SpacetimeDB
         run: |
-          for attempt in 1 2 3; do
-            apt-get update -qq || echo "apt-get update failed (attempt $attempt): installing from the index it fetched"
-            apt-get install -y -qq curl build-essential >/dev/null && break
-            sleep 15
-          done
           curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --target wasm32-unknown-unknown
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
