@@ -33,6 +33,7 @@ struct WorldView: View {
                 .allowsHitTesting(false)
             ForecastOverlay(session: session)
                 .allowsHitTesting(false)
+            HouseNamesAfar(session: session)
             CityLabels(session: session)
         }
         .accessibilityElement(children: .contain)
@@ -164,6 +165,28 @@ struct WorldMarks: View {
     /// how fully at a scale: none close in, all of them far out.
     static func landNames(at scale: Double) -> Double {
         min(max((18 - scale) / 6, 0), 1)
+    }
+
+    /// Where the land's names stand at a scale, as `drawLand` sets them;
+    /// none while they don't show. The Houses' names from afar stand clear
+    /// of them where they can (`HouseNamesAfar`).
+    @MainActor
+    static func landFrames(_ atlas: Atlas, scale: Double, size: CGSize, point: (Hex) -> CGPoint) -> [CGRect] {
+        guard landNames(at: scale) > 0 else { return [] }
+        var frames: [CGRect] = []
+        let regionPoints = TextSize.shared.size(11, words: true)
+        for region in atlas.regions {
+            let at = point(region.heart)
+            let words = SetWords.size(of: region.name.uppercased(), points: regionPoints, weight: .light, tracking: 3.4)
+            frames.append(CGRect(x: at.x - words.width / 2, y: at.y - words.height / 2, width: words.width, height: words.height))
+        }
+        let riverPoints = TextSize.shared.size(9.5, words: true)
+        for river in atlas.rivers where !river.course.isEmpty {
+            let at = point(river.course[river.course.count / 2])
+            let words = SetWords.size(of: river.name, points: riverPoints, weight: .light)
+            frames.append(CGRect(x: at.x - words.width / 2, y: at.y - 10 - words.height / 2, width: words.width, height: words.height))
+        }
+        return frames
     }
 
     /// The regions' and streams' names over the land, and a hovered
