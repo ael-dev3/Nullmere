@@ -898,6 +898,20 @@ final class DepthPanelTests: XCTestCase {
         session.camera.scale = 10
         session.hovered = stream
         draw(WorldMarks(session: session, moment: Date()), width: 900, height: 700)
+        // Named in a layer of their own, which changes only as the view
+        // moves, not in the marks drawn anew every frame: each region and
+        // stream on the map once, none far off it.
+        let mapSize = CGSize(width: 900, height: 700)
+        let named = LandNames.names(atlas, in: mapSize) { session.viewPoint(of: $0, in: mapSize) }
+        XCTAssertFalse(named.isEmpty, "the land named far out")
+        XCTAssertEqual(Set(named.map(\.id)).count, named.count)
+        XCTAssertLessThanOrEqual(named.filter { $0.kind == .region }.count, atlas.regions.count)
+        XCTAssertLessThanOrEqual(named.filter { $0.kind == .stream }.count, atlas.rivers.count)
+        XCTAssertTrue(named.allSatisfy { $0.at.x > -80 && $0.at.x < mapSize.width + 80 && $0.at.y > -30 && $0.at.y < mapSize.height + 20 },
+                      "\(named)")
+        XCTAssertTrue(named.contains { $0.kind == .region && atlas.regions.map { $0.name.uppercased() }.contains($0.words) }
+                      || named.contains { $0.kind == .stream }, "\(named)")
+        draw(LandNames(session: session), width: 900, height: 700)
         session.camera.scale = 30
         draw(WorldMarks(session: session, moment: Date()), width: 900, height: 700)
 

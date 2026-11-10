@@ -277,6 +277,13 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertFalse(WorldMarks.ownership(.own, at: .zero, radius: 10).isEmpty, "A bar over the keeper's own")
         XCTAssertFalse(WorldMarks.ownership(.foe, at: .zero, radius: 10).isEmpty, "A cross on a foe's")
         XCTAssertTrue(WorldMarks.ownership(.other, at: .zero, radius: 10).isEmpty, "Nothing for others")
+        // A company's rank, a chevron for each, three points apart beneath it.
+        XCTAssertTrue(WorldMarks.chevrons(0, under: .zero).isEmpty, "No rank, no chevron")
+        let three = WorldMarks.chevrons(3, under: CGPoint(x: 10, y: 20)).boundingRect
+        XCTAssertEqual(three.minX, 6, accuracy: 0.001)
+        XCTAssertEqual(three.width, 8, accuracy: 0.001)
+        XCTAssertEqual(three.minY, 20, accuracy: 0.001)
+        XCTAssertEqual(three.maxY, 28.5, accuracy: 0.001, "the third two chevrons' steps below the first")
         let (state, spear, _) = try atWar("shapes, not colours")
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.camera.focus(on: try XCTUnwrap(session.state.unit(spear)).position)
