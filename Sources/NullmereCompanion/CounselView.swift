@@ -144,16 +144,17 @@ struct CounselView: View {
     }
 }
 
-/// A parley with an envoy waiting on the keeper, from the phone, spoken by
-/// Apple's on-device model on this iPhone, as it is on the keeper's Mac: who
-/// sent it and what it carries; the conversation as it goes, each answer
-/// appearing as it is spoken; the answers the envoy puts to the keeper,
-/// which the keeper gives or sets aside, the realm deciding each; and,
-/// plainly, why no parley comes when none can. Nothing here is ever
-/// answered for the model: an envoy the model can't speak for says nothing.
+/// A parley with an envoy waiting on the keeper or a commander the keeper's
+/// House holds prisoner, from the phone, spoken by Apple's on-device model
+/// on this iPhone, as it is on the keeper's Mac: what the envoy carries, or
+/// how long the prisoner is held and what they last told; the conversation
+/// as it goes, each answer appearing as it is spoken; what is put to the
+/// keeper, which the keeper gives or sets aside, the realm deciding each;
+/// and, plainly, why no parley comes when none can. Nothing here is ever
+/// answered for the model: one the model can't speak for says nothing.
 struct ParleyView: View {
     let session: CompanionSession
-    @ObservedObject var parley: EnvoyParleySession
+    @ObservedObject var parley: ParleySession
     let close: () -> Void
     @State private var words = ""
 
@@ -163,8 +164,9 @@ struct ParleyView: View {
         let canSpeak = unavailable == nil && !parley.gone
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                // What it carries, as its row tells it.
-                Text(verbatim: grounded.state.terms(of: grounded.envoy, for: grounded.player))
+                // What the envoy carries, or how long the prisoner is held
+                // and what they last told, as their row tells it.
+                Text(verbatim: grounded.summary)
                     .font(Night.small)
                     .foregroundStyle(Night.moon)
                     .fixedSize(horizontal: false, vertical: true)
@@ -193,7 +195,7 @@ struct ParleyView: View {
                                     .id(-1)
                             }
                             ForEach(parley.offers) { offer in
-                                OfferCard(offer: offer, give: { give(offer) }, setAside: { parley.setAside(offer) }, giving: "Give the answer")
+                                OfferCard(offer: offer, give: { give(offer) }, setAside: { parley.setAside(offer) }, giving: parley.subject.giving)
                             }
                         }
                         .padding(.vertical, 4)
@@ -207,25 +209,25 @@ struct ParleyView: View {
                 }
                 WordLine(session: session)
                 HStack(spacing: 10) {
-                    TextField("Speak to the envoy…", text: $words)
+                    TextField("Speak to \(grounded.addressed)…", text: $words)
                         .font(Night.body)
                         .submitLabel(.send)
                         .disabled(!canSpeak)
                         .onSubmit(speak)
-                        .accessibilityLabel("Your words to the envoy of \(grounded.house.title)")
+                        .accessibilityLabel("Your words to \(grounded.named)")
                     if parley.answering {
                         Button("Stop") { parley.stop() }
                             .buttonStyle(.bordered)
-                            .accessibilityLabel("Stop the envoy's answer")
+                            .accessibilityLabel("Stop \(grounded.addressed)'s answer")
                     } else {
                         Button("Speak", action: speak)
                             .buttonStyle(.borderedProminent)
                             .disabled(!canSpeak || words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .accessibilityLabel("Speak to the envoy of \(grounded.house.title)")
+                            .accessibilityLabel("Speak to \(grounded.named)")
                     }
                 }
-                Text(verbatim: EnvoyParley.foot(on: "iPhone", canAsk: unavailable == nil, firstWords: parley.timing?.firstWords,
-                                                whole: parley.timing?.whole))
+                Text(verbatim: Parleys.foot(on: "iPhone", canAsk: unavailable == nil, for: grounded.spokenFor,
+                                            firstWords: parley.timing?.firstWords, whole: parley.timing?.whole))
                     .font(Night.small.monospacedDigit())
                     .foregroundStyle(Night.ink.opacity(0.45))
             }
@@ -235,17 +237,17 @@ struct ParleyView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done", action: close)
-                        .accessibilityLabel("End the parley with the envoy of \(grounded.house.title)")
+                        .accessibilityLabel("End the parley with \(grounded.named)")
                 }
             }
         }
         .tint(Night.moon)
-        // The envoy told what changed as the realm moves on, or the parley
-        // ended with it gone: as the realm tells each world, never on the
-        // phone's guess at an answer given here; nothing renewed while the
-        // phone keeps no House.
+        // The one parleyed with told what changed as the realm moves on, or
+        // the parley ended with them gone: as the realm tells each world,
+        // never on the phone's guess at an answer given here; nothing
+        // renewed while the phone keeps no House.
         .onChange(of: session.heard) {
-            if session.phase == .keeping { parley.renew(session.parley(with: parley.id)) }
+            if session.phase == .keeping { parley.renew(session.parley(with: parley.subject)) }
         }
         .onDisappear { parley.stop() }
     }
@@ -257,19 +259,20 @@ struct ParleyView: View {
         parley.ask(said)
     }
 
-    /// An answer the envoy put to the keeper, given as any order the phone
-    /// gives: refused here if the rules wouldn't take it, else sent, the
-    /// realm's word to follow.
-    private func give(_ offer: EnvoyParleySession.Offer) {
+    /// What was put to the keeper, given as any order the phone gives:
+    /// refused here if the rules wouldn't take it, else sent, the realm's
+    /// word to follow.
+    private func give(_ offer: ParleySession.Offer) {
         guard let command = parley.give(offer) else { return }
         session.give(command, told: offer.proposal.told.prefix(1).uppercased() + offer.proposal.told.dropFirst())
     }
 }
 
-/// A parley opened from an envoy's row: the session, known by its envoy.
+/// A parley opened from an envoy's or a prisoner's row: the session, known
+/// by whom it is with.
 struct Parleying: Identifiable {
-    let id: Int
-    let parley: EnvoyParleySession
+    let id: ParleySubject
+    let parley: ParleySession
 }
 
 /// Counsel opened from the Army tab: the session, known by its commander.

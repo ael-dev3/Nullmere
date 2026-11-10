@@ -7,6 +7,7 @@ import Foundation
 /// book has lines for the House's companies and holds, and for its dealings
 /// with the other Houses: envoys of peace, of a pact or demanding tribute,
 /// gifts, offers of trade and war, and oaths the realm holds the House to;
+/// for the prisoners it holds and its own commanders held by others;
 /// and standing orders for the caretaker that keeps the House while its
 /// keeper is away.
 /// Nothing is given until the keeper has seen the orders and gives them:
@@ -42,6 +43,7 @@ public enum SpokenOrders {
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "ACCEPT THE ENVOY OF <house>", "REFUSE THE ENVOY OF <house>", "OFFER HALF THE TRIBUTE TO <house>",
+                               "QUESTION <prisoner>", "LET <prisoner> GO", "RANSOM <commander>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
                                "SWEAR PEACE WITH <house> FOR <watches> WATCHES",
                                "SWEAR TO SEND <amount> <store> TO <house> EACH WATCH FOR <watches> WATCHES",
@@ -242,6 +244,7 @@ public enum SpokenOrders {
             .map { "\($0.title) (\(state.stance(player, $0.id).standing))" }
         lines.append("Houses: " + houses.joined(separator: ", "))
         lines += envoysSaid(in: state, player: player)
+        lines += prisonersSaid(in: state, player: player)
         lines.append("Stores: " + Resource.allCases.map(\.title).joined(separator: ", "))
         let sworn = state.oaths(by: player)
         if !sworn.isEmpty {
@@ -476,6 +479,33 @@ public enum SpokenOrders {
             case .pact?: return given(.propose(.pact, to: other), "An envoy to \(title), offering a pact.")
             case let proposal?: return given(.propose(proposal, to: other), "An envoy to \(title), offering peace.")
             }
+        case "QUESTION":
+            // A prisoner the House holds questioned, by name; what they tell
+            // is the realm's to say.
+            let name = rest.joined(separator: " ")
+            guard !name.isEmpty else { return nil }
+            guard let held = prisoner(name, in: state, player: player) else {
+                return refused(text, "Your House holds no prisoner by the name \(name).")
+            }
+            return given(.question(commander: held.id), state.questionSaid(held))
+        case "LET":
+            // A prisoner let go home: LET <prisoner> GO, or GO HOME.
+            var named = rest
+            if named.count > 2, named.last?.uppercased() == "HOME" { named.removeLast() }
+            guard named.count > 1, named.last?.uppercased() == "GO" else { return nil }
+            let name = named.dropLast().joined(separator: " ")
+            guard let held = prisoner(name, in: state, player: player) else {
+                return refused(text, "Your House holds no prisoner by the name \(name).")
+            }
+            return given(.release(commander: held.id), state.letGoSaid(held))
+        case "RANSOM":
+            // The House's own commander held by another House, bought back.
+            let name = rest.joined(separator: " ")
+            guard !name.isEmpty else { return nil }
+            guard let commander = state.held(of: player).first(where: { plain($0.name) == plain(name) }) else {
+                return refused(text, "None of your House's commanders by the name \(name) is held prisoner.")
+            }
+            return given(.ransom(commander: commander.id), state.ransomSaid(commander))
         case "GIVE":
             guard let (what, to) = split("TO") else { return nil }
             guard let (amount, store) = stores(what) else { return nil }
@@ -731,6 +761,34 @@ public enum SpokenOrders {
                     ? " Half may be offered (OFFER HALF THE TRIBUTE TO \(state.houses[envoy.from].title)): \(state.halfTribute(from: player))."
                     : "")
         }.joined(separator: " ")]
+    }
+
+    /// A prisoner the House holds, by name.
+    static func prisoner(_ name: String, in state: GameState, player: Int) -> Commander? {
+        state.prisoners(heldBy: player).first { plain($0.name) == plain(name) }
+    }
+
+    /// The prisoners the House holds and its own commanders held by other
+    /// Houses, as the briefing tells them: whose each prisoner is, and
+    /// whether they may be questioned this watch; who holds each of its
+    /// own, and their ransom. Nothing where there are none.
+    static func prisonersSaid(in state: GameState, player: Int) -> [String] {
+        var lines: [String] = []
+        let held = state.prisoners(heldBy: player)
+        if !held.isEmpty {
+            lines.append("Prisoners your House holds (QUESTION, LET GO): " + held.map { prisoner in
+                "\(prisoner.name) \(state.prisonerOf(prisoner))"
+                    + (state.questionRefusal(prisoner.id, as: player) == nil ? ", who may be questioned this watch" : "")
+            }.joined(separator: "; "))
+        }
+        let ours = state.held(of: player)
+        if !ours.isEmpty {
+            lines.append("Your commanders held by other Houses (RANSOM): " + ours.map { commander in
+                let captor = commander.captive.flatMap { state.houses.indices.contains($0.by) ? state.houses[$0.by].title : nil }
+                return "\(commander.name), held by \(captor ?? "another House"), ransomed for \(GameState.ransom(for: commander))"
+            }.joined(separator: "; "))
+        }
+        return lines
     }
 
     /// The company a line names: C and its number in the briefing, the

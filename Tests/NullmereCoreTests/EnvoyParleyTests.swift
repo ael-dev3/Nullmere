@@ -32,6 +32,14 @@ final class EnvoyParleyTests: XCTestCase {
         XCTAssertEqual(parley.speaker, "The envoy of \(title)")
         XCTAssertEqual(parley.opening, "The envoy of \(title) waits on your answer. Speak with them as you would: they keep to what their "
                        + "House sent them with, and put your answer to you to give.")
+        // As every parley names whom it is with, and what its card tells.
+        XCTAssertEqual(parley.subject, .envoy(envoy.id))
+        XCTAssertEqual(parley.named, "the envoy of \(title)")
+        XCTAssertEqual(parley.addressed, "the envoy")
+        XCTAssertEqual(parley.subtitle, "\(Proposal.tribute.title) · ambitious")
+        XCTAssertEqual(parley.summary, state.terms(of: envoy, for: me))
+        XCTAssertEqual(parley.whenPut, "The keeper decides, and your House answers it.")
+        XCTAssertEqual(Parleys.parley(.envoy(envoy.id), in: state, player: me)?.subject, .envoy(envoy.id))
 
         // Who it is, what it carries, and how it puts an answer forward.
         let told = parley.instructions
@@ -82,7 +90,7 @@ final class EnvoyParleyTests: XCTestCase {
         let after = try XCTUnwrap(EnvoyParley(state: state, player: me, envoy: envoy.id), "It waits on, its demand whole")
         XCTAssertTrue(after.facts.contains("The keeper offered half your demand once, and your House held to the whole."))
         XCTAssertFalse(after.facts.contains { $0.hasPrefix("The keeper may offer half") })
-        XCTAssertEqual(after.news(since: parley), "The keeper offered half your demand, and your House held to the whole.")
+        XCTAssertEqual(after.news(since: parley), ParleyNews(told: "The keeper offered half your demand, and your House held to the whole."))
         XCTAssertNil(after.news(since: after))
         XCTAssertNil(parley.news(since: parley))
         XCTAssertEqual(after.putAnswer("half").why, RuleError.bargainedAlready.description)
@@ -91,6 +99,7 @@ final class EnvoyParleyTests: XCTestCase {
         // Answered, it goes home, and there is no parley with it.
         _ = try state.perform(.answer(envoy: envoy.id, accept: true), as: me)
         XCTAssertNil(EnvoyParley(state: state, player: me, envoy: envoy.id))
+        XCTAssertNil(Parleys.parley(.envoy(envoy.id), in: state, player: me))
     }
 
     func testAnOfferHasNoHalfToPut() throws {
@@ -121,19 +130,22 @@ final class EnvoyParleyTests: XCTestCase {
     }
 
     func testWhatWasSaidIsRecalledWhenTheParleyIsBegunAfresh() {
-        XCTAssertNil(EnvoyParley.recalled([]))
+        XCTAssertNil(Parleys.recalled([]))
         let said = (1...6).map { CounselMemory.Exchange(watch: $0, asked: "Question \($0)", answered: "Answer \($0)") }
-        XCTAssertEqual(EnvoyParley.recalled(Array(said.prefix(1))), "The keeper: Question 1\nYou: Answer 1")
-        let recalled = EnvoyParley.recalled(said)
-        XCTAssertEqual(recalled?.components(separatedBy: "\n").count, EnvoyParley.recalledExchanges * 2)
+        XCTAssertEqual(Parleys.recalled(Array(said.prefix(1))), "The keeper: Question 1\nYou: Answer 1")
+        let recalled = Parleys.recalled(said)
+        XCTAssertEqual(recalled?.components(separatedBy: "\n").count, Parleys.recalledExchanges * 2)
         XCTAssertEqual(recalled?.hasPrefix("The keeper: Question 3\n"), true, "The last four")
         XCTAssertEqual(recalled?.hasSuffix("You: Answer 6"), true)
     }
 
     func testTheFootSaysWhoSpeaksForTheEnvoy() {
-        XCTAssertEqual(EnvoyParley.foot(on: "Mac", canAsk: false), "Only Apple's on-device model speaks for an envoy, and nothing speaks in its place")
-        XCTAssertEqual(EnvoyParley.foot(on: "iPhone", canAsk: true), "Spoken by Apple's on-device model on this iPhone")
-        XCTAssertEqual(EnvoyParley.foot(on: "Mac", canAsk: true, firstWords: 0.42, whole: 2.5),
+        XCTAssertEqual(Parleys.foot(on: "Mac", canAsk: false, for: "an envoy"),
+                       "Only Apple's on-device model speaks for an envoy, and nothing speaks in its place")
+        XCTAssertEqual(Parleys.foot(on: "iPhone", canAsk: false, for: "a prisoner"),
+                       "Only Apple's on-device model speaks for a prisoner, and nothing speaks in its place")
+        XCTAssertEqual(Parleys.foot(on: "iPhone", canAsk: true, for: "an envoy"), "Spoken by Apple's on-device model on this iPhone")
+        XCTAssertEqual(Parleys.foot(on: "Mac", canAsk: true, for: "a prisoner", firstWords: 0.42, whole: 2.5),
                        "Spoken by Apple's on-device model on this Mac · first words 0.4 s, all of it 2.5 s")
     }
 }

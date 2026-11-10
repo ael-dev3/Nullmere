@@ -198,14 +198,14 @@ final class CompanionSessionTests: XCTestCase {
         let phone = CompanionSession(memory: memory) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
         let house = try XCTUnwrap(keeper.house)
         XCTAssertNil(phone.counsel(of: 1), "Speaking for no one, it asks no commander")
-        XCTAssertNil(phone.parley(with: 1), "Speaking for no one, it parleys with no envoy")
+        XCTAssertNil(phone.parley(with: .envoy(1)), "Speaking for no one, it parleys with no envoy")
         let code = try await offer(mac)
         phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
         try await until("the phone in as the keeper") { phone.phase == .keeping }
         let world = try XCTUnwrap(phone.world)
-        XCTAssertNil(phone.parley(with: (world.envoys.map(\.id).max() ?? 0) + 1), "No such envoy waits on the keeper")
+        XCTAssertNil(phone.parley(with: .envoy((world.envoys.map(\.id).max() ?? 0) + 1)), "No such envoy waits on the keeper")
         for envoy in world.envoys {
-            XCTAssertEqual(phone.parley(with: envoy.id)?.envoy, world.parleyable(envoy, for: house) ? envoy : nil,
+            XCTAssertEqual((phone.parley(with: .envoy(envoy.id)) as? EnvoyParley)?.envoy, world.parleyable(envoy, for: house) ? envoy : nil,
                            "A steward's envoy waiting on the keeper, from the keeper's view as the phone holds it")
         }
         let commander = try XCTUnwrap(phone.ledger?.commanders.first(where: \.canCounsel))
@@ -651,6 +651,49 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertNil(phone.commanderWord(of: led.id), "let go, no one is heard")
         XCTAssertNil(phone.reeveWord(of: seat.id))
         XCTAssertNil(phone.scoutWord(of: scouted))
+        mac.close()
+    }
+
+    /// A prisoner questioned from the phone: nothing is guessed at here
+    /// while the realm works out what they tell (no word told, none voiced,
+    /// the question said to wait on the realm), and what they tell is the
+    /// realm's word; the phone parleys with them from the world the realm
+    /// told it.
+    func testAPrisonerQuestionedFromThePhoneTellsWhatTheRealmSays() async throws {
+        let (db, running, mac, keeper, steward) = try await realm()
+        defer { running.cancel() }
+        let house = try XCTUnwrap(keeper.house)
+        await steward.reshape { state in
+            guard let other = state.world.houses.first(where: { $0.id != house && !$0.isPlayer })?.id,
+                  let commander = state.world.commanders(of: other).first,
+                  let index = state.world.commanderIndex(commander.id) else { return }
+            state.world.commanders![index].captive = Captivity(by: house, since: state.world.watch, questioned: 0)
+        }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        XCTAssertNil(phone.parley(with: .prisoner(1)), "Speaking for no one, it parleys with no prisoner")
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in, a prisoner held") { phone.phase == .keeping && phone.ledger?.prisoners.isEmpty == false }
+        let prisoner = try XCTUnwrap(phone.ledger?.prisoners.first)
+        let question = try XCTUnwrap(prisoner.question)
+        XCTAssertEqual((phone.parley(with: .prisoner(prisoner.id)) as? PrisonerParley)?.prisoner.id, prisoner.id)
+        let heard = phone.heard
+        phone.give(question.command, told: question.title)
+        XCTAssertEqual(phone.word?.awaited, true, "Sent, its word to come")
+        XCTAssertTrue(phone.awaits(.question(commander: prisoner.id)))
+        XCTAssertNil(phone.world?.commander(prisoner.id)?.captive?.told, "Nothing guessed at here of what they tell")
+        XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("prisoner-\(prisoner.id)-") }, "Nor voiced")
+        XCTAssertEqual(phone.heard, heard)
+        try await until("the realm's word") { phone.word?.awaited == false && phone.world?.commander(prisoner.id)?.captive?.told != nil }
+        XCTAssertFalse(phone.awaits(.question(commander: prisoner.id)))
+        let told = try XCTUnwrap(phone.world?.commander(prisoner.id)?.captive?.told?.last)
+        XCTAssertEqual(phone.ledger?.prisoners.first?.told, told, "What the realm says they told")
+        XCTAssertNil(phone.ledger?.prisoners.first?.question, "Questioned once this watch")
+        XCTAssertTrue(phone.voicedMoments.contains { $0.key.hasPrefix("prisoner-\(prisoner.id)-") }, "Voiced as the realm told it")
+        let parley = try XCTUnwrap(phone.parley(with: .prisoner(prisoner.id)) as? PrisonerParley)
+        XCTAssertTrue(parley.facts.contains("The true things you have told the keeper of your House: \(told)"), "\(parley.facts)")
+        phone.unlink()
         mac.close()
     }
 

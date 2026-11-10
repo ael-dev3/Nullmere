@@ -568,6 +568,10 @@ struct PrisonersSection: View {
         captive.leftSaid(at: watch)
     }
 
+    /// What Parley offers, on its help.
+    static let parleyHelp = "Speak with them in your own words, through Apple's on-device model on this Mac. They tell nothing "
+        + "more of their House unless you question them, and put to you what you would do with them, to give."
+
     var body: some View {
         let state = session.state
         VStack(alignment: .leading, spacing: 10) {
@@ -588,7 +592,7 @@ struct PrisonersSection: View {
                             .foregroundStyle(Palette.text(0.55))
                         if session.awaitsRealm(.question(commander: prisoner.id)) {
                             // What this copy would guess from what it sees is no true thing.
-                            Text(verbatim: "Questioned; their words are on the way.")
+                            Text(verbatim: GameState.questionAwaited)
                                 .font(.nm(10.5, weight: .light))
                                 .foregroundStyle(Palette.text(0.6))
                         } else if let last = captive.told?.last {
@@ -610,10 +614,15 @@ struct PrisonersSection: View {
                     }
                     HStack(spacing: 8) {
                         Spacer()
+                        // Words of the keeper's own with their prisoner, through this Mac's model.
+                        QuietButton(title: "Parley", size: 8.5, name: "Parley with \(prisoner.name)") {
+                            session.openParley(withPrisoner: prisoner.id)
+                        }
+                        .help(PrisonersSection.parleyHelp)
                         let refusal = state.questionRefusal(prisoner.id, as: session.player)
                         let asking = session.awaitsRealm(.question(commander: prisoner.id))
                         QuietButton(title: "Question", size: 8.5, enabled: refusal == nil && !asking, name: "Question \(prisoner.name)",
-                                    why: asking ? "Their words are on the way." : refusal?.description) {
+                                    why: asking ? GameState.questionAwaited : refusal?.description) {
                             session.perform(.question(commander: prisoner.id))
                         }
                         QuietButton(title: "Let go", size: 8.5, name: "Let \(prisoner.name) go home") {

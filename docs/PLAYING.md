@@ -1250,8 +1250,11 @@ a vote on the realm's law to cast.
   the prisoner's voice by the captor's Mac's model, the plain words
   beneath. The prisoner's House may Ransom them for ten moonsalt a level,
   twenty at the least, paid into the captor's stores; the captor may Let
-  them go; after twenty watches they slip away, and at once if their
-  captor falls. Freed, they come home to mend for four watches. While
+  them go, or Parley with them (below); after twenty watches they slip
+  away, and at once if their captor falls. What a prisoner tells is the
+  realm's alone to work out: questioned from the Mac or the phone, nothing
+  is shown or voiced in its place until its word comes ("Questioned;
+  their words are on the way."). Freed, they come home to mend for four watches. While
   held they lead no company and stand in no Ring. Stewards ransom theirs
   when they have the moonsalt twice over; only keepers take prisoners.
 - **The Ring.** Rise of Kingdoms' arena of commanders: at the foot of the
@@ -1386,6 +1389,19 @@ a vote on the realm's law to cast.
   speak, and once the realm says it has gone the parley ends, never on
   your device's own guess while the realm decides. A keeper's envoy
   carries a person's own words, and no model speaks for it.
+- **Parley with a prisoner.** A commander your House holds prisoner may be
+  spoken with in your own words too (Parley on their row in Commanders on
+  the Mac, and on the Army tab on the phone), through Apple's on-device
+  model on that device and nothing in its place. They speak from the
+  realm's own facts as your view tells them: who they are and whose, when
+  they were taken and when they slip away, what their House would pay to
+  ransom them and how it stands with yours, and what they have told you,
+  but tell you nothing more of their House: that comes out only when you
+  question them, and the realm says what they tell. When your words come
+  to questioning them or letting them go home, they put it to you to give,
+  weighed as the order book weighs it. What they tell when questioned is
+  shown in the parley as the realm's word comes, and once they are let go,
+  ransomed or slip away the parley ends.
 - **Fealty.** A steward's House that loses its seat with four holds or
   fewer left, and no vassals of its own, bends the knee to the House that
   took it, if that House is sworn to no one; and a beaten House may offer
@@ -1940,7 +1956,9 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   amount of a store TO one, TRADE an amount of a store FOR another WITH
   one, and the oaths below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO
   one, RENOUNCE THE OATH TO one; to an envoy waiting, ACCEPT or REFUSE
-  THE ENVOY OF a House, or OFFER HALF THE TRIBUTE TO a steward's; and for
+  THE ENVOY OF a House, or OFFER HALF THE TRIBUTE TO a steward's; for
+  prisoners, QUESTION one your House holds or LET one GO, and RANSOM a
+  commander of yours another House holds; and for
   the alliance, HELP an ally's works under way, TAKE THE SHARES of its
   spoils, GIVE an amount of a store TO THE STUDY, TAKE a thing FROM THE
   STALL for the House's merit, and, for its leader or
@@ -1951,7 +1969,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   been sent to do), its holds, the sites it may gather at, the rallies
   of its side gathering, the places it knows, the works, the kinds of
   company, the other Houses standing and how it stands with each, its
-  oaths, the envoys waiting on its answer, the stores, and what it may
+  oaths, the envoys waiting on its answer, the prisoners it holds and its
+  own held by others, the stores, and what it may
   do for its alliance now: the study it pursues and what the House's
   merit reaches at the stall.
   Each line is read against the keeper's own view into the order the

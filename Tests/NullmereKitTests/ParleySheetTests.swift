@@ -71,9 +71,9 @@ final class ParleySheetTests: XCTestCase {
         let (session, link, steward, keeper) = session()
         draw(EnvoyCards(session: session))
         XCTAssertTrue(PressableButtons.press("Parley"), "Among \(shown)")
-        let parley = try XCTUnwrap(session.envoyParley)
-        XCTAssertEqual(parley.id, 805)
-        XCTAssertEqual(parley.parley.house.id, steward)
+        let parley = try XCTUnwrap(session.parley)
+        XCTAssertEqual(parley.subject, .envoy(805))
+        XCTAssertEqual((parley.parley as? EnvoyParley)?.house.id, steward)
         XCTAssertEqual(parley.unavailable, .unavailable(.deviceNotEligible))
         draw(ParleySheet(session: session, parley: parley))
         XCTAssertFalse(PressableButtons.press("Speak"), "Nothing to speak through while the model can't")
@@ -90,7 +90,7 @@ final class ParleySheetTests: XCTestCase {
                        "something said: the conversation shown at its full height")
         XCTAssertTrue(link.sent.isEmpty, "A parley answers nothing of itself")
         session.closeParley()
-        XCTAssertNil(session.envoyParley)
+        XCTAssertNil(session.parley)
 
         // A keeper's envoy: no Parley on its card, and none opened.
         var demanded = session.state
@@ -99,7 +99,7 @@ final class ParleySheetTests: XCTestCase {
         draw(EnvoyCards(session: session))
         XCTAssertNil(PressableButtons.actions["Parley"], "Among \(shown)")
         session.openParley(with: 806)
-        XCTAssertNil(session.envoyParley)
+        XCTAssertNil(session.parley)
     }
 
     /// Where the model can be asked: an answer shown as it streams, with
@@ -113,7 +113,7 @@ final class ParleySheetTests: XCTestCase {
         var ready = false
         session.counselAvailability = { ready ? .available : .unavailable(.deviceNotEligible) }
         session.openParley(with: 805)
-        let parley = try XCTUnwrap(session.envoyParley)
+        let parley = try XCTUnwrap(session.parley)
         ready = true
         XCTAssertNil(parley.unavailable)
         draw(ParleySheet(session: session, parley: parley))
@@ -166,7 +166,7 @@ final class ParleySheetTests: XCTestCase {
         var held = session.state
         held.envoys = [Envoy(id: 805, from: steward, to: session.player, proposal: .tribute, arrived: held.watch, bargained: true)]
         link.onEvent?(.changed(held))
-        XCTAssertEqual(parley.parley.envoy.bargained, true)
+        XCTAssertEqual((parley.parley as? EnvoyParley)?.envoy.bargained, true)
         parley.ask("Will you not take it?")
         try await until("the third answer") { !parley.answering }
         let last = try XCTUnwrap(prompts.last)
@@ -188,6 +188,60 @@ final class ParleySheetTests: XCTestCase {
         parley.renew(nil)
         XCTAssertEqual(parley.lines.count, said, "Said once, and nothing asked")
         session.closeParley()
+    }
+
+    /// A prisoner the keeper's House holds, parleyed with from the
+    /// Commanders panel's Parley: questioning they put to the keeper given
+    /// from the sheet and sent as any order is, nothing guessed at here of
+    /// what they tell; the realm's word on it shown in the parley at once;
+    /// and let go, the parley ended.
+    func testAPrisonerIsParleyedWithFromTheCommandersPanel() async throws {
+        var state = GameState(settings: GameSettings(seedText: "a prisoner's parley sheet", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
+        let commander = try XCTUnwrap(state.commanders(of: steward).first)
+        state.commanders![try XCTUnwrap(state.commanderIndex(commander.id))].captive = Captivity(by: me, since: state.watch, questioned: 0)
+        let link = ParleyLink()
+        let session = GameSession(link: link, house: me, world: state.view(for: me),
+                                  store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)))
+        session.dismissSeatBriefing()
+        // Opened where no model is warmed, then spoken with as where one can be.
+        var ready = false
+        session.counselAvailability = { ready ? .available : .unavailable(.deviceNotEligible) }
+        draw(PrisonersSection(session: session, prisoners: session.state.prisoners(heldBy: me)))
+        XCTAssertTrue(PressableButtons.press("Parley"), "Among \(shown)")
+        let parley = try XCTUnwrap(session.parley)
+        ready = true
+        XCTAssertEqual(parley.subject, .prisoner(commander.id))
+        XCTAssertEqual(parley.parley.speaker, commander.name)
+        draw(ParleySheet(session: session, parley: parley))
+
+        // Questioning put to the keeper, given from the sheet as any order is.
+        _ = await parley.bench.putAnswer("question")
+        await parley.takeFromBench()
+        XCTAssertEqual(parley.offers.map(\.proposal.command), [.question(commander: commander.id)])
+        draw(ParleySheet(session: session, parley: parley))
+        XCTAssertTrue(PressableButtons.press("Give the order"), "Among \(shown)")
+        XCTAssertEqual(parley.offers.map(\.state), [.given])
+        XCTAssertEqual(link.sent, [.question(commander: commander.id)])
+        XCTAssertNil(session.state.commander(commander.id)?.captive?.told, "Nothing guessed at here of what they tell")
+        XCTAssertFalse(parley.lines.contains { $0.kind == .look }, "Nothing shown before the realm's word")
+
+        // The realm's word: what they told, shown in the parley at once.
+        var questioned = state
+        _ = try questioned.perform(.question(commander: commander.id), as: me)
+        let word = try XCTUnwrap(questioned.commander(commander.id)?.captive?.told?.last)
+        link.onEvent?(.changed(questioned.view(for: me)))
+        XCTAssertEqual(parley.lines.last?.text, "\(commander.name) tells you: \(word)")
+
+        // Let go, they are gone, and the parley ends.
+        var freed = questioned
+        _ = try freed.perform(.release(commander: commander.id), as: me)
+        link.onEvent?(.changed(freed.view(for: me)))
+        XCTAssertTrue(parley.gone)
+        XCTAssertEqual(parley.lines.last?.text, "\(commander.name) has gone.")
+        session.closeParley()
+        XCTAssertNil(session.parley)
     }
 }
 

@@ -142,10 +142,15 @@ public final class CompanionSession {
     private let memory: CompanionMemory
     private let makeLink: @MainActor (URL) -> NetworkRealmLink?
     private let clock: () -> Date
-    /// The orders given here the realm hasn't answered yet, as each was
+    /// The orders given here the realm hasn't answered yet, each as it was
     /// told, the first given first: the link sends them one at a time and
     /// in order, and the realm answers each, so its word is on the first.
-    private var pending: [String] = []
+    private var pending: [(told: String, command: Command)] = []
+
+    /// Whether an order given here waits on the realm's word.
+    public func awaits(_ command: Command) -> Bool {
+        pending.contains { $0.command == command }
+    }
 
     /// `makeLink` reaches a realm at an address under this phone's own
     /// identity for it; nil for an address it can't reach.
@@ -222,13 +227,14 @@ public final class CompanionSession {
         return (grounded, kept ?? CounselMemory(commander: commander, age: age))
     }
 
-    /// A parley with an envoy of a steward's House waiting on the keeper,
-    /// as this phone holds it: what the envoy is told of the realm, from the
-    /// keeper's view as this phone holds it. Nil unless the phone speaks for
-    /// the keeper and such an envoy waits on them.
-    public func parley(with envoy: Int) -> EnvoyParley? {
+    /// A parley with an envoy of a steward's House waiting on the keeper, or
+    /// a commander their House holds prisoner: what the one parleyed with is
+    /// told of the realm, from the keeper's view as the realm last told it to
+    /// this phone. Nil unless the phone speaks for the keeper and there is
+    /// one to be had.
+    public func parley(with subject: ParleySubject) -> (any Parley)? {
         guard phase == .keeping, let world = heardWorld, let house = keeper?.house else { return nil }
-        return EnvoyParley(state: world, player: house, envoy: envoy)
+        return Parleys.parley(subject, in: world, player: house)
     }
 
     /// The House's commander who led in a battle of one of its reports and
@@ -417,12 +423,19 @@ public final class CompanionSession {
     public func give(_ command: Command, told: String) {
         guard phase == .keeping, let link, let house = keeper?.house, var copy = world else { return }
         do {
-            _ = try copy.perform(command, as: house)
+            // What a prisoner tells turns wholly on what this view can't see
+            // of their House: questioned here, it is the realm's alone to
+            // say, as on the Mac, and nothing is guessed at in its place.
+            if case .question(let prisoner) = command {
+                if let refusal = copy.questionRefusal(prisoner, as: house) { throw refusal }
+            } else {
+                _ = try copy.perform(command, as: house)
+            }
         } catch {
             word = Word(text: "\(told): \(error)", refused: true, awaited: false)
             return
         }
-        pending.append(told)
+        pending.append((told, command))
         show(copy, guessed: true)
         word = Word(text: outOfReach == nil ? "\(told): sent to the realm." : "\(told): \(Self.waitsForReach)",
                     refused: false, awaited: true)
@@ -440,7 +453,7 @@ public final class CompanionSession {
     /// What was given here and not yet answered goes with the link that
     /// would have sent it: the keeper told so, where they were waiting on it.
     private func letGoOfPending() {
-        if let told = pending.last, word?.awaited == true {
+        if let told = pending.last?.told, word?.awaited == true {
             word = Word(text: "\(told): \(Self.letGo)", refused: false, awaited: false)
         }
         pending = []
@@ -535,7 +548,7 @@ public final class CompanionSession {
             carriedOut(events)
         case .orderRefused(let error, let world):
             show(world)
-            let told = pending.isEmpty ? "Your order" : pending.removeFirst()
+            let told = pending.isEmpty ? "Your order" : pending.removeFirst().told
             word = Word(text: "\(told): the realm refused it. \(error.description)", refused: true, awaited: false)
         case .changed(let world):
             show(world)
@@ -622,7 +635,7 @@ public final class CompanionSession {
     /// went.
     private func carriedOut(_ events: [GameEvent] = []) {
         guard !pending.isEmpty else { return }
-        var text = "\(pending.removeFirst()): carried out by the realm."
+        var text = "\(pending.removeFirst().told): carried out by the realm."
         if let house = keeper?.house, let world,
            let held = events.lazy.compactMap({ event -> String? in
                switch event {

@@ -13,7 +13,7 @@ import Foundation
 /// THE TRIBUTE TO <house>, and the keeper gives it or sets it aside; what
 /// comes of it is the realm's to decide, as of any answer. A keeper's envoy
 /// carries a person's own words, so no model ever speaks for it.
-public struct EnvoyParley: Sendable {
+public struct EnvoyParley: Parley {
     public let state: GameState
     public let player: Int
     public let envoy: Envoy
@@ -32,8 +32,19 @@ public struct EnvoyParley: Sendable {
     /// The House the envoy comes from.
     public var house: House { state.houses[envoy.from] }
 
+    public var subject: ParleySubject { .envoy(envoy.id) }
+
     /// Who speaks, as the parley names them: "The envoy of House Venn".
     public var speaker: String { "The envoy of \(house.title)" }
+    public var named: String { "the envoy of \(house.title)" }
+    public var addressed: String { "the envoy" }
+    public var spokenFor: String { "an envoy" }
+
+    /// What it carries and its House's temper: "Tribute · ambitious".
+    public var subtitle: String { "\(envoy.proposal.title) · \(house.temperament.title.lowercased())" }
+
+    /// Its terms, as its card tells them.
+    public var summary: String { state.terms(of: envoy, for: player) }
 
     /// What the envoy carries, as it would say it.
     var carried: String {
@@ -94,21 +105,7 @@ public struct EnvoyParley: Sendable {
     }
 
     /// The facts as the model is given them.
-    public var briefing: String {
-        "What you know:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
-    }
-
-    /// What was said earlier in the parley, for the model to recall when it
-    /// is begun afresh: the last exchanges, the keeper's words and the
-    /// envoy's; nil for none.
-    public static func recalled(_ exchanges: [CounselMemory.Exchange]) -> String? {
-        guard !exchanges.isEmpty else { return nil }
-        return exchanges.suffix(EnvoyParley.recalledExchanges).map { "The keeper: \($0.asked)\nYou: \($0.answered)" }
-            .joined(separator: "\n")
-    }
-
-    /// The most exchanges recalled when a parley is begun afresh.
-    public static let recalledExchanges = 4
+    public var briefing: String { Parleys.briefing(facts) }
 
     /// An answer the envoy puts to the keeper, weighed as the order book
     /// weighs its line, for this envoy whichever of its House's came first:
@@ -141,21 +138,15 @@ public struct EnvoyParley: Sendable {
             + "and put your answer to you to give."
     }
 
-    /// The footing of a parley on the Mac or the phone: who speaks for the
-    /// envoy and how long it took, or that nothing speaks in its place.
-    public static func foot(on device: String, canAsk: Bool, firstWords: Double? = nil, whole: Double? = nil) -> String {
-        guard canAsk else { return "Only Apple's on-device model speaks for an envoy, and nothing speaks in its place" }
-        let spoken = "Spoken by Apple's on-device model on this \(device)"
-        guard let firstWords, let whole else { return spoken }
-        return spoken + String(format: " · first words %.1f s, all of it %.1f s", firstWords, whole)
-    }
+    public var whenPut: String { "The keeper decides, and your House answers it." }
 
     /// What the envoy is told of a change in the parley's facts as the realm
     /// moves on, for it to know when the keeper next speaks: its House held
     /// to the whole demand; nil for nothing new.
-    public func news(since before: EnvoyParley) -> String? {
+    public func news(since before: any Parley) -> ParleyNews? {
+        guard let before = before as? EnvoyParley else { return nil }
         if envoy.bargained == true, before.envoy.bargained != true {
-            return "The keeper offered half your demand, and your House held to the whole."
+            return ParleyNews(told: "The keeper offered half your demand, and your House held to the whole.")
         }
         return nil
     }

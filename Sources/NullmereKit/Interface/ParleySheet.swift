@@ -2,15 +2,17 @@ import NullmereCore
 import NullmereCounsel
 import SwiftUI
 
-/// A parley with an envoy waiting on the keeper, spoken by Apple's on-device
-/// model on this Mac: who sent it and what it carries; the conversation as it
-/// goes, each answer appearing as it is spoken; the answers the envoy puts to
-/// the keeper, which the keeper gives or sets aside, the realm deciding each;
-/// and, plainly, why no parley comes when none can. Nothing here is ever
-/// answered for the model: an envoy the model can't speak for says nothing.
+/// A parley with an envoy waiting on the keeper or a commander the keeper's
+/// House holds prisoner, spoken by Apple's on-device model on this Mac: who
+/// sent the envoy and what it carries, or whose the prisoner is and how long
+/// they are held; the conversation as it goes, each answer appearing as it is
+/// spoken; what is put to the keeper, which the keeper gives or sets aside,
+/// the realm deciding each; and, plainly, why no parley comes when none can.
+/// Nothing here is ever answered for the model: one the model can't speak
+/// for says nothing.
 struct ParleySheet: View {
     let session: GameSession
-    @ObservedObject var parley: EnvoyParleySession
+    @ObservedObject var parley: ParleySession
     @State private var words = ""
     @FocusState private var typing: Bool
 
@@ -24,15 +26,14 @@ struct ParleySheet: View {
         let quiet = unavailable != nil && parley.lines.isEmpty && parley.partial == nil && parley.offers.isEmpty
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 10) {
-                // The House the envoy comes from, its seat painted in its people's way and colours.
-                Portrait(key: .keepOf(grounded.state.heritage(of: grounded.envoy.from), seat: true),
-                         colour: Portrait.colour(of: grounded.envoy.from, in: grounded.state), size: 44)
-                PanelTitle(title: speaker, subtitle: "\(grounded.envoy.proposal.title) · \(grounded.house.temperament.title.lowercased())")
+                ParleySheet.portrait(of: grounded)
+                PanelTitle(title: speaker, subtitle: grounded.subtitle)
                 Spacer()
-                CloseButton(label: "End the parley with the envoy of \(grounded.house.title)") { session.closeParley() }
+                CloseButton(label: "End the parley with \(grounded.named)") { session.closeParley() }
             }
-            // What it carries, as its card tells it.
-            Text(verbatim: grounded.state.terms(of: grounded.envoy, for: grounded.player))
+            // What the envoy carries, or how long the prisoner is held and
+            // what they last told, as the card or the panel tells it.
+            Text(verbatim: grounded.summary)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
@@ -63,7 +64,7 @@ struct ParleySheet: View {
                             }
                             ForEach(parley.offers) { offer in
                                 OfferCard(offer: offer, give: { session.giveAnswer(offer) }, setAside: { parley.setAside(offer) },
-                                          giving: "Give the answer")
+                                          giving: parley.subject.giving)
                             }
                         }
                         .padding(.vertical, 4)
@@ -77,7 +78,7 @@ struct ParleySheet: View {
                 }
             }
             HStack(spacing: 8) {
-                TextField("Speak to the envoy…", text: $words)
+                TextField("Speak to \(grounded.addressed)…", text: $words)
                     .textFieldStyle(.plain)
                     .font(.nm(11.5))
                     .foregroundStyle(Palette.ink)
@@ -87,18 +88,18 @@ struct ParleySheet: View {
                     .focused($typing)
                     .disabled(!canSpeak)
                     .onSubmit(speak)
-                    .accessibilityLabel("Your words to the envoy of \(grounded.house.title)")
+                    .accessibilityLabel("Your words to \(grounded.named)")
                 if parley.answering {
-                    QuietButton(title: "Stop", size: 9.5, name: "Stop the envoy's answer") { parley.stop() }
+                    QuietButton(title: "Stop", size: 9.5, name: "Stop \(grounded.addressed)'s answer") { parley.stop() }
                 } else {
                     QuietButton(title: "Speak", size: 9.5, prominent: true,
                                 enabled: canSpeak && !words.trimmingCharacters(in: .whitespaces).isEmpty,
-                                name: "Speak to the envoy of \(grounded.house.title)",
+                                name: "Speak to \(grounded.named)",
                                 why: unavailable?.said ?? (parley.gone ? "\(speaker) has gone." : nil), action: speak)
                 }
             }
-            Text(verbatim: EnvoyParley.foot(on: "Mac", canAsk: unavailable == nil, firstWords: parley.timing?.firstWords,
-                                            whole: parley.timing?.whole))
+            Text(verbatim: Parleys.foot(on: "Mac", canAsk: unavailable == nil, for: grounded.spokenFor, firstWords: parley.timing?.firstWords,
+                                        whole: parley.timing?.whole))
                 .font(.nm(9.5).monospacedDigit())
                 .foregroundStyle(Palette.text(0.45))
         }
@@ -113,5 +114,19 @@ struct ParleySheet: View {
         guard !said.trimmingCharacters(in: .whitespaces).isEmpty, !parley.answering, !parley.gone else { return }
         words = ""
         parley.ask(said)
+    }
+
+    /// Whom the parley is with, painted: the House an envoy comes from, its
+    /// seat in its people's way and colours; a prisoner by their kind of
+    /// commander, in their House's colours.
+    @ViewBuilder
+    static func portrait(of grounded: any Parley) -> some View {
+        if let envoy = grounded as? EnvoyParley {
+            Portrait(key: .keepOf(envoy.state.heritage(of: envoy.envoy.from), seat: true),
+                     colour: Portrait.colour(of: envoy.envoy.from, in: envoy.state), size: 44)
+        } else if let held = grounded as? PrisonerParley {
+            Portrait(key: .commander(variant: Archetype.allCases.firstIndex(of: held.prisoner.archetype) ?? 0),
+                     colour: Portrait.colour(of: held.prisoner.owner, in: held.state), size: 44)
+        }
     }
 }

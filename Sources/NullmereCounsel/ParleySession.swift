@@ -4,31 +4,32 @@ import FoundationModels
 import NullmereCore
 import os
 
-/// Where the envoy's answers are put while the model speaks: the parley as
-/// it stands (renewed as the realm moves on), and each answer put to the
+/// Where what is put to the keeper goes while the model speaks: the parley
+/// as it stands (renewed as the realm moves on), and each thing put to the
 /// keeper since the session last asked. An actor, for the model calls its
 /// tool away from the main thread.
 public actor ParleyBench {
-    public private(set) var parley: EnvoyParley
+    public private(set) var parley: any Parley
     private var looks: [String] = []
     private var proposals: [CounselProposal] = []
 
-    public init(_ parley: EnvoyParley) {
+    public init(_ parley: any Parley) {
         self.parley = parley
     }
 
     /// New facts, as the watch turns or the keeper's answers land.
-    public func renew(_ parley: EnvoyParley) {
+    public func renew(_ parley: any Parley) {
         self.parley = parley
     }
 
-    /// An answer weighed as the realm weighs every order: put to the keeper
-    /// if it can be given, and the envoy told either way.
+    /// Something put to the keeper, weighed as the realm weighs every order:
+    /// put to them if it can be given, and the one who put it told either
+    /// way.
     public func putAnswer(_ answer: String) -> String {
         let proposal = parley.putAnswer(answer)
         if proposal.isGiven {
             proposals.append(proposal)
-            return "Put to the keeper: \(proposal.told) The keeper decides, and your House answers it."
+            return "Put to the keeper: \(proposal.told) \(parley.whenPut)"
         }
         looks.append("Weighed \(proposal.told), which cannot be given: \(proposal.why ?? "the realm would not take it")")
         return "That cannot be put to the keeper: \(proposal.why ?? "the realm would not take it.")"
@@ -63,22 +64,43 @@ struct PutAnswerToKeeper: Tool {
     }
 }
 
-/// A parley with an envoy waiting on the keeper, spoken by Apple's on-device
-/// model on this device and nowhere else: a conversation the model holds
-/// while it lasts, grounded in the keeper's own view of the realm, with the
-/// one tool that puts the keeper's answer to them to give. Each answer
-/// streams as it is spoken and may be stopped; one slow to begin is given
-/// up; trouble is told plainly and never answered for; when the parley
-/// outgrows what the model holds, it is begun afresh from what was said.
-/// Once the envoy has gone, nothing more is asked of it.
+/// A prisoner's one tool: what the keeper would do with them put to the
+/// keeper to give, never given by the prisoner.
+struct PutToKeeper: Tool {
+    let bench: ParleyBench
+    let name = "putToKeeper"
+    let description = "Puts what the keeper would do with you to them, for them to give: question (they question you, and the realm "
+        + "says what true thing you tell) or let go (they let you go home). Use it only once the keeper has said it."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "What the keeper would do: question or let go")
+        var deed: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.putAnswer(arguments.deed)
+    }
+}
+
+/// A parley with an envoy waiting on the keeper or a commander the keeper's
+/// House holds prisoner, spoken by Apple's on-device model on this device
+/// and nowhere else: a conversation the model holds while it lasts, grounded
+/// in the keeper's own view of the realm, with the one tool that puts the
+/// keeper's answer, or what they would do with the prisoner, to them to
+/// give. Each answer streams as it is spoken and may be stopped; one slow to
+/// begin is given up; trouble is told plainly and never answered for; when
+/// the parley outgrows what the model holds, it is begun afresh from what
+/// was said. Once the one parleyed with has gone, nothing more is asked of
+/// them.
 @MainActor
-public final class EnvoyParleySession: ObservableObject {
+public final class ParleySession: ObservableObject {
     public typealias Line = CommanderCounselSession.Line
     public typealias Offer = CommanderCounselSession.Offer
     public typealias Timing = CommanderCounselSession.Timing
 
-    /// The envoy parleyed with.
-    public let id: Int
+    /// Whom the parley is with.
+    public let subject: ParleySubject
     @Published public private(set) var lines: [Line] = []
     @Published public private(set) var offers: [Offer] = []
     /// The answer as it is being spoken.
@@ -86,10 +108,11 @@ public final class EnvoyParleySession: ObservableObject {
     @Published public private(set) var answering = false
     @Published public private(set) var trouble: CounselTrouble?
     @Published public private(set) var timing: Timing?
-    /// Whether the envoy has gone: answered, or gone home unanswered.
+    /// Whether the one parleyed with has gone: an envoy answered or gone
+    /// home unanswered, a prisoner let go, ransomed or slipped away.
     @Published public private(set) var gone = false
-    public private(set) var parley: EnvoyParley
-    /// What was said, the keeper's words and the envoy's, for the parley to
+    public private(set) var parley: any Parley
+    /// What was said, the keeper's words and the answers, for the parley to
     /// be begun afresh from.
     public private(set) var exchanges: [CounselMemory.Exchange] = []
 
@@ -114,33 +137,41 @@ public final class EnvoyParleySession: ObservableObject {
     var speaker: ((String) -> AsyncThrowingStream<String, Error>)?
     static let logger = Logger(subsystem: "online.nullmere.game", category: "parley")
 
-    public init(parley: EnvoyParley, model: SystemLanguageModel = .default,
+    public init(parley: any Parley, model: SystemLanguageModel = .default,
                 availability: (() -> SystemLanguageModel.Availability)? = nil) {
-        id = parley.envoy.id
+        subject = parley.subject
         self.parley = parley
         self.model = model
         self.availability = availability ?? { model.availability }
         bench = ParleyBench(parley)
     }
 
-    /// Why the envoy can't be spoken with now, or nil when the model can be
-    /// asked.
+    /// Why the one parleyed with can't be spoken with now, or nil when the
+    /// model can be asked.
     public var unavailable: CounselTrouble? {
         CommanderCounselSession.trouble(for: availability())
     }
 
-    /// What the model is told: the envoy, what it knows, and what was said
-    /// so far when the parley is begun afresh.
+    /// What the model is told: who it speaks as, what they know, and what
+    /// was said so far when the parley is begun afresh.
     var instructions: String {
         var text = parley.instructions + "\n\n" + parley.briefing
-        if let recalled = EnvoyParley.recalled(exchanges) {
+        if let recalled = Parleys.recalled(exchanges) {
             text += "\n\nWhat was said so far in this parley:\n" + recalled
         }
         return text
     }
 
+    /// The one tool of whom the parley is with.
+    private var tool: any Tool {
+        switch subject {
+        case .envoy: return PutAnswerToKeeper(bench: bench)
+        case .prisoner: return PutToKeeper(bench: bench)
+        }
+    }
+
     private func makeSession() -> LanguageModelSession {
-        let made = LanguageModelSession(model: model, tools: [PutAnswerToKeeper(bench: bench)], instructions: instructions)
+        let made = LanguageModelSession(model: model, tools: [tool], instructions: instructions)
         session = made
         return made
     }
@@ -158,7 +189,7 @@ public final class EnvoyParleySession: ObservableObject {
         lines.append(Line(id: made, kind: kind, text: text))
     }
 
-    /// Speaks to the envoy, in the keeper's own words.
+    /// Speaks to the one parleyed with, in the keeper's own words.
     public func ask(_ words: String) {
         let asked = words.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !asked.isEmpty, !answering, !gone else { return }
@@ -212,7 +243,7 @@ public final class EnvoyParleySession: ObservableObject {
             let done = Date()
             let first = (firstWords ?? done).timeIntervalSince(began), whole = done.timeIntervalSince(began)
             timing = Timing(firstWords: first, whole: whole)
-            EnvoyParleySession.logger.info("The envoy answered in \(whole, format: .fixed(precision: 2)) s, first words after \(first, format: .fixed(precision: 2)) s")
+            ParleySession.logger.info("The parley answered in \(whole, format: .fixed(precision: 2)) s, first words after \(first, format: .fixed(precision: 2)) s")
         } catch {
             await takeFromBench()
             let trouble: CounselTrouble = error is CancellationError || Task.isCancelled
@@ -224,7 +255,7 @@ public final class EnvoyParleySession: ObservableObject {
                 self.trouble = trouble
                 add(.trouble, trouble.said)
             }
-            EnvoyParleySession.logger.notice("The envoy gave no answer: \(String(describing: error), privacy: .public)")
+            ParleySession.logger.notice("The parley gave no answer: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -270,24 +301,29 @@ public final class EnvoyParleySession: ObservableObject {
         task?.cancel()
     }
 
-    /// The parley as the realm now stands: the envoy told what changed when
-    /// next the keeper speaks; or, with the envoy gone, ended, said once.
-    public func renew(_ renewed: EnvoyParley?) {
-        guard let renewed else {
+    /// The parley as the realm now stands: the one parleyed with told what
+    /// changed when next the keeper speaks, and the keeper shown at once what
+    /// is theirs to see (what a prisoner questioned told); or, with them
+    /// gone, ended, said once.
+    public func renew(_ renewed: (any Parley)?) {
+        guard let renewed, renewed.subject == subject else {
             guard !gone else { return }
             gone = true
             stop()
             add(.look, "\(parley.speaker) has gone.")
             return
         }
-        if let news = renewed.news(since: parley) { since.append(news) }
+        if let news = renewed.news(since: parley) {
+            since.append(news.told)
+            if let shown = news.shown { add(.look, shown) }
+        }
         parley = renewed
         let bench = self.bench
         Task { await bench.renew(renewed) }
     }
 
-    /// The keeper gives an answer the envoy put to them: the order to carry
-    /// out, once, and the envoy told of it next they speak.
+    /// The keeper gives what was put to them: the order to carry out, once,
+    /// and the one who put it told of it next the keeper speaks.
     public func give(_ offer: Offer) -> Command? {
         guard let index = offers.firstIndex(where: { $0.id == offer.id }), offers[index].state == .waiting,
               let command = offers[index].proposal.command else { return nil }
@@ -296,7 +332,8 @@ public final class EnvoyParleySession: ObservableObject {
         return command
     }
 
-    /// The keeper sets an answer aside, and the envoy is told of it.
+    /// The keeper sets something put to them aside, and the one who put it
+    /// is told of it.
     public func setAside(_ offer: Offer) {
         guard let index = offers.firstIndex(where: { $0.id == offer.id }), offers[index].state == .waiting else { return }
         offers[index].state = .setAside

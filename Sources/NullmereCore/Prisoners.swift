@@ -129,6 +129,44 @@ extension GameState {
         return known[(prisoner.captive?.questioned ?? 0) % known.count]
     }
 
+    /// What the keeper is told while a prisoner they questioned awaits the
+    /// realm's word, on the Mac and the phone: nothing is guessed at in its
+    /// place.
+    public static let questionAwaited = "Questioned; their words are on the way."
+
+    /// The order book's lines for a prisoner held and a commander held by
+    /// another House: QUESTION <prisoner>, LET <prisoner> GO, RANSOM
+    /// <commander>.
+    public static func questionLine(_ prisoner: Commander) -> String { "QUESTION \(prisoner.name)" }
+    public static func letGoLine(_ prisoner: Commander) -> String { "LET \(prisoner.name) GO" }
+    public static func ransomLine(_ commander: Commander) -> String { "RANSOM \(commander.name)" }
+
+    /// What questioning a prisoner orders, as the order book and a parley
+    /// tell it: what they tell is the realm's to say.
+    public func questionSaid(_ prisoner: Commander) -> String {
+        let house = houses.indices.contains(prisoner.owner) ? houses[prisoner.owner].title : "a House since gone"
+        return "You question \(prisoner.name) of \(house); what true thing they tell is the realm's to say."
+    }
+
+    /// What letting a prisoner go orders, as the order book and a parley
+    /// tell it.
+    public func letGoSaid(_ prisoner: Commander) -> String {
+        let house = houses.indices.contains(prisoner.owner) ? houses[prisoner.owner].title : "a House since gone"
+        return "You let \(prisoner.name) of \(house) go home, for nothing."
+    }
+
+    /// What ransoming a commander held by another House orders, as the
+    /// order book tells it: from whom, and for what.
+    public func ransomSaid(_ commander: Commander) -> String {
+        let captor = commander.captive.flatMap { houses.indices.contains($0.by) ? houses[$0.by].title : nil } ?? "their captors"
+        return "Your House ransoms \(commander.name) from \(captor) for \(GameState.ransom(for: commander))."
+    }
+
+    /// The commanders of a House held prisoner by others.
+    public func held(of house: Int) -> [Commander] {
+        roster.filter { $0.owner == house && $0.captive != nil }
+    }
+
     /// Why a House can't ransom its commander now; nil if it can.
     public func ransomRefusal(_ commanderID: Int, as house: Int) -> RuleError? {
         guard let commander = commander(commanderID), commander.owner == house, commander.captive != nil else { return .notAPrisoner }

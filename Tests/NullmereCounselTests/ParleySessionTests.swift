@@ -26,9 +26,19 @@ final class ParleySessionTests: XCTestCase {
         return try XCTUnwrap(EnvoyParley(state: world.view(for: me), player: me, envoy: envoy.id))
     }
 
-    private func session(_ parley: EnvoyParley,
-                         availability: SystemLanguageModel.Availability = .unavailable(.deviceNotEligible)) -> EnvoyParleySession {
-        EnvoyParleySession(parley: parley, availability: { availability })
+    private func session(_ parley: any Parley,
+                         availability: SystemLanguageModel.Availability = .unavailable(.deviceNotEligible)) -> ParleySession {
+        ParleySession(parley: parley, availability: { availability })
+    }
+
+    /// A keeper's view with a steward's commander held prisoner by them.
+    private func prisoner() throws -> (world: GameState, parley: PrisonerParley) {
+        var world = GameState(settings: GameSettings(seedText: "prisoner's parley session", houseCount: 3, radius: 16, keepers: 1))
+        let me = world.player, rival = 1
+        _ = try world.perform(.declareWar(on: rival), as: me)
+        let commander = try XCTUnwrap(world.commanders(of: rival).first)
+        world.commanders![try XCTUnwrap(world.commanderIndex(commander.id))].captive = Captivity(by: me, since: world.watch, questioned: 0)
+        return (world, try XCTUnwrap(PrisonerParley(state: world.view(for: me), player: me, prisoner: commander.id)))
     }
 
     /// Streams kept open until the test is done.
@@ -91,6 +101,47 @@ final class ParleySessionTests: XCTestCase {
         XCTAssertEqual(refused, "That cannot be put to the keeper: \(RuleError.bargainedAlready.description)")
     }
 
+    /// A prisoner puts only questioning or letting go to the keeper, weighed
+    /// as the realm weighs it; questioned, what they told is shown the
+    /// keeper at once and told them when the keeper next speaks; let go,
+    /// the parley ends.
+    func testAPrisonerPutsWhatTheKeeperWouldDoAndIsToldWhatTheyTold() async throws {
+        var (world, parley) = try prisoner()
+        let me = parley.player, id = parley.prisoner.id
+        let bench = ParleyBench(parley)
+        let question = await bench.putAnswer("question")
+        XCTAssertEqual(question, "Put to the keeper: \(parley.putAnswer("question").told) "
+                       + "The keeper decides; questioned, the realm says what true thing you tell.")
+        let ransom = await bench.putAnswer("ransom")
+        XCTAssertEqual(ransom, "That cannot be put to the keeper: \(PrisonerParley.onlyTheseAnswers)")
+        let taken = await bench.taken()
+        XCTAssertEqual(taken.proposals.map(\.command), [.question(commander: id)])
+
+        let session = session(parley, availability: .available)
+        XCTAssertEqual(session.subject, .prisoner(id))
+        _ = try world.perform(.question(commander: id), as: me)
+        let word = try XCTUnwrap(world.commander(id)?.captive?.told?.last)
+        session.renew(PrisonerParley(state: world.view(for: me), player: me, prisoner: id))
+        XCTAssertEqual(session.lines.last?.kind, .look)
+        XCTAssertEqual(session.lines.last?.text, "\(parley.prisoner.name) tells you: \(word)")
+        var prompts: [String] = []
+        session.speaker = { prompt in
+            prompts.append(prompt)
+            return AsyncThrowingStream { continuation in
+                continuation.yield("You have heard it, and it is true.")
+                continuation.finish()
+            }
+        }
+        session.ask("Is it true?")
+        try await until("the answer") { !session.answering }
+        XCTAssertEqual(prompts, ["Since you last spoke: Questioned, you told the keeper this true thing: \(word)\n\nIs it true?"])
+
+        _ = try world.perform(.release(commander: id), as: me)
+        session.renew(Parleys.parley(.prisoner(id), in: world.view(for: me), player: me))
+        XCTAssertTrue(session.gone)
+        XCTAssertEqual(session.lines.last?.text, "\(parley.prisoner.name) has gone.")
+    }
+
     /// An answer put to the keeper is given once, or set aside, and never
     /// both; the envoy told of each when the keeper next speaks.
     func testAnAnswerIsGivenOnceOrSetAside() async throws {
@@ -106,7 +157,7 @@ final class ParleySessionTests: XCTestCase {
         session.setAside(second)
         XCTAssertNil(session.give(second), "Set aside, never given")
         XCTAssertEqual(session.offers.map(\.state), [.given, .setAside])
-        XCTAssertNil(session.give(EnvoyParleySession.Offer(id: 999, proposal: first.proposal)), "None such")
+        XCTAssertNil(session.give(ParleySession.Offer(id: 999, proposal: first.proposal)), "None such")
         var prompts: [String] = []
         session.speaker = { prompt in
             prompts.append(prompt)

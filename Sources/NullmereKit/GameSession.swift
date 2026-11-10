@@ -849,40 +849,52 @@ public final class GameSession {
 
     // MARK: Parley
 
-    /// The parley the keeper holds with an envoy waiting on them, spoken by
-    /// Apple's on-device model on this Mac; nil while none is open.
-    public private(set) var envoyParley: EnvoyParleySession?
+    /// The parley the keeper holds with an envoy waiting on them or a
+    /// commander their House holds prisoner, spoken by Apple's on-device
+    /// model on this Mac; nil while none is open.
+    public private(set) var parley: ParleySession?
 
     /// Opens a parley with an envoy of a steward's House waiting on the
     /// keeper; none with a keeper's envoy, which carries a person's words.
     public func openParley(with envoy: Int) {
-        guard let grounded = EnvoyParley(state: state, player: player, envoy: envoy) else { return }
-        envoyParley?.stop()
-        let opened = EnvoyParleySession(parley: grounded, availability: counselAvailability)
+        openParley(.envoy(envoy))
+    }
+
+    /// Opens a parley with a commander the keeper's House holds prisoner.
+    public func openParley(withPrisoner prisoner: Int) {
+        openParley(.prisoner(prisoner))
+    }
+
+    /// Opens a parley with whom it names, where there is one to be had.
+    public func openParley(_ subject: ParleySubject) {
+        guard let grounded = Parleys.parley(subject, in: state, player: player) else { return }
+        parley?.stop()
+        let opened = ParleySession(parley: grounded, availability: counselAvailability)
         opened.prewarm()
-        envoyParley = opened
+        parley = opened
     }
 
     public func closeParley() {
-        envoyParley?.stop()
-        envoyParley = nil
+        parley?.stop()
+        parley = nil
     }
 
-    /// The keeper gives an answer the envoy put to them: carried out as any
-    /// answer is, and the realm's word taken as final.
-    public func giveAnswer(_ offer: EnvoyParleySession.Offer) {
-        guard let command = envoyParley?.give(offer) else { return }
+    /// The keeper gives what was put to them in a parley: carried out as any
+    /// order is, and the realm's word taken as final.
+    public func giveAnswer(_ offer: ParleySession.Offer) {
+        guard let command = parley?.give(offer) else { return }
         perform(command)
     }
 
-    /// The envoy is told what changed as the realm moves on, or the parley
-    /// ends with the envoy gone; never on this copy's guess at an order the
-    /// realm decides (half offered to a steward, weighed by the true might
-    /// of both Houses), which may take the envoy home here while the realm
-    /// keeps it waiting, held to the whole. The realm's word renews it.
+    /// The one parleyed with is told what changed as the realm moves on, or
+    /// the parley ends with them gone; never on this copy's guess at an order
+    /// the realm decides (half offered to a steward, weighed by the true
+    /// might of both Houses), which may take the envoy home here while the
+    /// realm keeps it waiting, held to the whole. The realm's word renews
+    /// it, and with it what a prisoner questioned told.
     private func renewParley(guessed: Bool = false) {
-        guard !guessed, let open = envoyParley else { return }
-        open.renew(EnvoyParley(state: state, player: player, envoy: open.id))
+        guard !guessed, let open = parley else { return }
+        open.renew(Parleys.parley(open.subject, in: state, player: player))
     }
 
     /// The commander's looks tell the world as it now stands.

@@ -1709,7 +1709,7 @@ struct EnvoyRow: View {
                 .foregroundStyle(Night.ink.opacity(0.5))
             // Words of the keeper's own with a steward's envoy, through this
             // phone's model, as on the Mac.
-            if session.parley(with: envoy.id) != nil {
+            if session.parley(with: .envoy(envoy.id)) != nil {
                 Button("Parley", action: openParley)
                     .buttonStyle(.bordered)
                     .font(Night.small)
@@ -1765,10 +1765,10 @@ struct EnvoyRow: View {
 
     /// Opens a parley with the envoy, spoken by this phone's own model.
     private func openParley() {
-        guard let grounded = session.parley(with: envoy.id) else { return }
-        let opened = EnvoyParleySession(parley: grounded)
+        guard let grounded = session.parley(with: .envoy(envoy.id)) else { return }
+        let opened = ParleySession(parley: grounded)
         opened.prewarm()
-        parleying = Parleying(id: envoy.id, parley: opened)
+        parleying = Parleying(id: .envoy(envoy.id), parley: opened)
     }
 }
 
@@ -2701,10 +2701,12 @@ struct RingRows: View {
 
 /// A commander the House holds prisoner, as the Mac's Commanders list them:
 /// whose they are, how long until they slip away, the last true thing they
-/// told, plainly, and Question, once a watch, and Let go.
+/// told, plainly, and Parley, Question, once a watch, and Let go.
 struct PrisonerRows: View {
     let session: CompanionSession
     let prisoner: CompanionLedger.Prisoner
+    /// A parley with the prisoner, while it is open.
+    @State private var parleying: Parleying?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -2724,7 +2726,18 @@ struct PrisonerRows: View {
         }
         .accessibilityElement(children: .combine)
         HStack(spacing: 10) {
-            if let question = prisoner.question {
+            // Words of the keeper's own with their prisoner, through this
+            // phone's model, as on the Mac.
+            if session.parley(with: .prisoner(prisoner.id)) != nil {
+                Button("Parley", action: openParley)
+                    .accessibilityLabel("Parley with \(prisoner.name)")
+            }
+            // Questioned, their words are the realm's to tell, and nothing
+            // is guessed at here while they come, as on the Mac.
+            if session.awaits(.question(commander: prisoner.id)) {
+                Text(verbatim: GameState.questionAwaited)
+                    .foregroundStyle(Night.ink.opacity(0.6))
+            } else if let question = prisoner.question {
                 Button("Question") { session.give(question.command, told: question.title) }
                     .accessibilityLabel(question.title)
             }
@@ -2733,6 +2746,17 @@ struct PrisonerRows: View {
         }
         .buttonStyle(.bordered)
         .font(Night.small)
+        .sheet(item: $parleying, onDismiss: { parleying = nil }) { open in
+            ParleyView(session: session, parley: open.parley) { parleying = nil }
+        }
+    }
+
+    /// Opens a parley with the prisoner, spoken by this phone's own model.
+    private func openParley() {
+        guard let grounded = session.parley(with: .prisoner(prisoner.id)) else { return }
+        let opened = ParleySession(parley: grounded)
+        opened.prewarm()
+        parleying = Parleying(id: .prisoner(prisoner.id), parley: opened)
     }
 }
 
