@@ -165,11 +165,14 @@ struct CounselLineView: View {
     }
 }
 
-/// An order the commander put forward: given by the keeper, or set aside.
+/// An order the commander put forward, or an answer an envoy put to the
+/// keeper: given by the keeper, or set aside.
 struct OfferCard: View {
     let offer: CommanderCounselSession.Offer
     let give: () -> Void
     let setAside: () -> Void
+    /// What giving it is called: an order, or an answer.
+    var giving = "Give the order"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -181,7 +184,7 @@ struct OfferCard: View {
             switch offer.state {
             case .waiting:
                 HStack(spacing: 8) {
-                    QuietButton(title: "Give the order", size: 9, prominent: true, name: "Give the order: \(offer.proposal.told)", action: give)
+                    QuietButton(title: giving, size: 9, prominent: true, name: "\(giving): \(offer.proposal.told)", action: give)
                     QuietButton(title: "Set aside", size: 9, name: "Set aside: \(offer.proposal.told)", action: setAside)
                 }
             case .given:

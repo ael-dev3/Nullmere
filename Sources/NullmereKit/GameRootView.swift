@@ -380,6 +380,12 @@ struct PlayView: View {
                 CounselSheet(session: session, counsel: counsel)
             }
         }
+        // A parley with an envoy waiting on the keeper, over the map while it lasts.
+        .sheet(isPresented: Binding(get: { session.envoyParley != nil }, set: { if !$0 { session.closeParley() } })) {
+            if let parley = session.envoyParley {
+                ParleySheet(session: session, parley: parley)
+            }
+        }
     }
 }
 

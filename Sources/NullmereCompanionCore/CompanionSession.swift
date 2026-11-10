@@ -213,6 +213,15 @@ public final class CompanionSession {
         return (grounded, kept ?? CounselMemory(commander: commander, age: age))
     }
 
+    /// A parley with an envoy of a steward's House waiting on the keeper,
+    /// as this phone holds it: what the envoy is told of the realm, from the
+    /// keeper's view as this phone holds it. Nil unless the phone speaks for
+    /// the keeper and such an envoy waits on them.
+    public func parley(with envoy: Int) -> EnvoyParley? {
+        guard phase == .keeping, let world, let house = keeper?.house else { return nil }
+        return EnvoyParley(state: world, player: house, envoy: envoy)
+    }
+
     /// The House's commander who led in a battle of one of its reports and
     /// may be asked of it in counsel here, as on the Mac; nil for none.
     public func askable(of report: BattleReport) -> Commander? {

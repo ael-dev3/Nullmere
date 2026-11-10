@@ -1673,6 +1673,8 @@ struct EnvoyRow: View {
     let session: CompanionSession
     let envoy: CompanionLedger.Envoy
     @State private var askingWar = false
+    /// A parley with the envoy, while it is open.
+    @State private var parleying: Parleying?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1705,6 +1707,14 @@ struct EnvoyRow: View {
             Text(verbatim: envoy.waits)
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.5))
+            // Words of the keeper's own with a steward's envoy, through this
+            // phone's model, as on the Mac.
+            if session.parley(with: envoy.id) != nil {
+                Button("Parley", action: openParley)
+                    .buttonStyle(.bordered)
+                    .font(Night.small)
+                    .accessibilityLabel("Parley with the envoy of \(envoy.from)")
+            }
             // Half a steward's demand offered in its place, once, with the
             // rule its steward weighs it by.
             if let bargain = envoy.bargain {
@@ -1744,10 +1754,21 @@ struct EnvoyRow: View {
         } message: {
             Text(verbatim: "\(envoy.from) marches on a House that refuses its demand.")
         }
+        .sheet(item: $parleying, onDismiss: { parleying = nil }) { open in
+            ParleyView(session: session, parley: open.parley) { parleying = nil }
+        }
     }
 
     private func refuse() {
         session.give(envoy.refuse.command, told: "Refuse the \(envoy.offer.lowercased()) of \(envoy.from)")
+    }
+
+    /// Opens a parley with the envoy, spoken by this phone's own model.
+    private func openParley() {
+        guard let grounded = session.parley(with: envoy.id) else { return }
+        let opened = EnvoyParleySession(parley: grounded)
+        opened.prewarm()
+        parleying = Parleying(id: envoy.id, parley: opened)
     }
 }
 

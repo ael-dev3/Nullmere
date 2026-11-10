@@ -917,6 +917,14 @@ struct EnvoyCards: View {
                             .foregroundStyle(Palette.text(0.5))
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    // Words of the keeper's own with a steward's envoy, through
+                    // this Mac's model, on a line of its own beneath what it says.
+                    if state.parleyable(envoy, for: session.player) {
+                        QuietButton(title: "Parley", size: 8.5, name: "Parley with the envoy of \(house.title)") {
+                            session.openParley(with: envoy.id)
+                        }
+                        .help(EnvoyCards.parleyHelp)
+                    }
                     HStack(spacing: 4) {
                         Text(verbatim: left == 1 ? "Leaves after this watch" : "Waits \(left) watches")
                             .font(.nm(10))
@@ -966,6 +974,10 @@ struct EnvoyCards: View {
     static func words(for envoy: Envoy, from house: House, in state: GameState, player: Int) -> String {
         state.terms(of: envoy, for: player)
     }
+
+    /// What Parley does, as its help says it.
+    static let parleyHelp = "Speak with the envoy in your own words, through Apple's on-device model on this Mac. "
+        + "It keeps to its House's terms, and puts your answer to you to give."
 
     /// The line an envoy's card keeps once its steward held to the whole.
     static func heldToTheWhole(by house: House) -> String {

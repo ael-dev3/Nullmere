@@ -427,8 +427,7 @@ public enum SpokenOrders {
             guard let envoy = envoy(from: other, in: state, player: player) else {
                 return refused(text, "No envoy of \(title) waits on your answer.")
             }
-            return given(.bargain(envoy: envoy.id), "Your House offers \(title) half its demand: \(state.halfTribute(from: player)), "
-                         + "for \(GameState.halfTributeRespite) watches' peace.")
+            return given(.bargain(envoy: envoy.id), bargainTold(envoy, in: state, player: player))
         case "OFFER", "DEMAND", "DECLARE":
             // An envoy to another House, or war on it.
             let said = rest.joined(separator: " ")
@@ -663,6 +662,12 @@ public enum SpokenOrders {
         case (let proposal, true): return "Your House takes \(title)'s offer of \(proposal.offered)."
         case (let proposal, false): return "Your House turns away \(title)'s offer of \(proposal.offered)."
         }
+    }
+
+    /// What offering half a steward's demand orders, in the realm's words.
+    static func bargainTold(_ envoy: Envoy, in state: GameState, player: Int) -> String {
+        "Your House offers \(state.houses[envoy.from].title) half its demand: \(state.halfTribute(from: player)), "
+            + "for \(GameState.halfTributeRespite) watches' peace."
     }
 
     /// The envoys waiting on the House's answer, as the briefing tells

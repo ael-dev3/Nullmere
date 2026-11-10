@@ -1354,6 +1354,21 @@ a vote on the realm's law to cast.
   may put an answer forward. You can demand tribute too: a steward
   that refuses you is at once at war with you, the war of your making; a
   keeper who refuses you owes nothing more, and war is yours to choose.
+- **Parley.** A steward's envoy waiting on you may be spoken with in your
+  own words (Parley on its card on the Mac, and on its row on the phone),
+  through Apple's on-device model on that device and nothing in its place.
+  The envoy speaks from the realm's own facts as your view tells them:
+  whose House sent it and its temper, its terms, how your Houses stand and
+  have dealt, which is the stronger by repute, where each stands by might,
+  what came of the envoys before it, how long it waits, whether refusing
+  is war, and for a demand of tribute what half would pay. It can't change
+  its House's terms or promise what its House will do. When your words
+  come to an answer, to accept, to refuse or to offer half, it puts that
+  answer to you, weighed as the order book weighs it, and you give it or
+  set it aside; the realm decides what comes of it. It is told what you
+  gave or set aside, and that its House held to the whole, when you next
+  speak, and once it has gone the parley ends. A keeper's envoy carries a
+  person's own words, and no model speaks for it.
 - **Fealty.** A steward's House that loses its seat with four holds or
   fewer left, and no vassals of its own, bends the knee to the House that
   took it, if that House is sworn to no one; and a beaten House may offer

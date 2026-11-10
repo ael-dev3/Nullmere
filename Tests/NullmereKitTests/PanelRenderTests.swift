@@ -324,6 +324,14 @@ final class PanelRenderTests: XCTestCase {
         // As a window draws it, the sending House's seat painted, kept with CI's screenshots.
         Portraits.shared.prepareNow()
         try CardShot.keep(EnvoyCards(session: session).padding(30), as: "game-envoy.png")
+        // Its parley, as this Mac's model can or can't speak for the envoy,
+        // kept with CI's screenshots too.
+        session.openParley(with: 77)
+        let parley = try XCTUnwrap(session.envoyParley, "A steward's envoy is parleyed with")
+        XCTAssertEqual(parley.id, 77)
+        try draw(ParleySheet(session: session, parley: parley), width: 480, height: 540)
+        try CardShot.keep(ParleySheet(session: session, parley: parley).padding(30), as: "game-parley.png")
+        session.closeParley()
     }
 
     /// A chronicle's entry with the words the chronicler spoke for it,

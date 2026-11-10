@@ -195,10 +195,16 @@ final class CompanionSessionTests: XCTestCase {
         let phone = CompanionSession(memory: memory) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
         let house = try XCTUnwrap(keeper.house)
         XCTAssertNil(phone.counsel(of: 1), "Speaking for no one, it asks no commander")
+        XCTAssertNil(phone.parley(with: 1), "Speaking for no one, it parleys with no envoy")
         let code = try await offer(mac)
         phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
         try await until("the phone in as the keeper") { phone.phase == .keeping }
         let world = try XCTUnwrap(phone.world)
+        XCTAssertNil(phone.parley(with: (world.envoys.map(\.id).max() ?? 0) + 1), "No such envoy waits on the keeper")
+        for envoy in world.envoys {
+            XCTAssertEqual(phone.parley(with: envoy.id)?.envoy, world.parleyable(envoy, for: house) ? envoy : nil,
+                           "A steward's envoy waiting on the keeper, from the keeper's view as the phone holds it")
+        }
         let commander = try XCTUnwrap(phone.ledger?.commanders.first(where: \.canCounsel))
         let taken = try XCTUnwrap(phone.counsel(of: commander.id))
         XCTAssertEqual(taken.counsel.player, house)

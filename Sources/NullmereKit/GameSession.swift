@@ -847,6 +847,41 @@ public final class GameSession {
         perform(command)
     }
 
+    // MARK: Parley
+
+    /// The parley the keeper holds with an envoy waiting on them, spoken by
+    /// Apple's on-device model on this Mac; nil while none is open.
+    public private(set) var envoyParley: EnvoyParleySession?
+
+    /// Opens a parley with an envoy of a steward's House waiting on the
+    /// keeper; none with a keeper's envoy, which carries a person's words.
+    public func openParley(with envoy: Int) {
+        guard let grounded = EnvoyParley(state: state, player: player, envoy: envoy) else { return }
+        envoyParley?.stop()
+        let opened = EnvoyParleySession(parley: grounded, availability: counselAvailability)
+        opened.prewarm()
+        envoyParley = opened
+    }
+
+    public func closeParley() {
+        envoyParley?.stop()
+        envoyParley = nil
+    }
+
+    /// The keeper gives an answer the envoy put to them: carried out as any
+    /// answer is, and the realm's word taken as final.
+    public func giveAnswer(_ offer: EnvoyParleySession.Offer) {
+        guard let command = envoyParley?.give(offer) else { return }
+        perform(command)
+    }
+
+    /// The envoy is told what changed as the realm moves on, or the parley
+    /// ends with the envoy gone.
+    private func renewParley() {
+        guard let open = envoyParley else { return }
+        open.renew(EnvoyParley(state: state, player: player, envoy: open.id))
+    }
+
     /// The commander's looks tell the world as it now stands.
     private func renewCounsel() {
         guard let open = commanderCounsel,
@@ -1714,6 +1749,7 @@ public final class GameSession {
 
     private func refreshWorld() {
         renewCounsel()
+        renewParley()
         counselNewCharge()
         visible = state.visibility(for: player)
         threatened = Set(Sentinel.threats(in: state, player: player, visible: visible).map(\.hold))
