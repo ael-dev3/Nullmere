@@ -871,7 +871,22 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   elsewhere, where the fallen had lain on beside the barrow until they
   were carried off watches later (`FieldBlow.buried(at:)`; FieldDeadTests
   on Linux, WorldStagingTests on the Mac, Unverified there until a CI
-  run). CI's Mac draws the unquiet
+  run). And the dead are heard where their lights burn: two thin voices
+  keening from where they lie, each sliding from note to note of a
+  lament, swelling through a phrase and falling all but silent between,
+  never together, and now and then a whisper (`Keening`,
+  `Synth.setKeening`), the louder the brighter the lights about the
+  view's middle, over a field fallen quiet or about the Barrowkin who
+  carry them, as near as the lake's lapping is heard and only nearer the
+  view's middle than fire, silent under the stillest motion
+  (`UnquietSound`, `GameSession.hearUnquiet`). SynthTests on Linux
+  measure it (a field that will rise, close by on the eve of the dark, at
+  −33.6 dBFS beside a night of −32.9 and the fire as near at −29.5, 93%
+  of it below 1.2 kHz, its loudest quarter seconds 7.3 times its
+  quietest, thirteen glides and ten whispers in thirty seconds and as
+  many at any sample rate) and UnquietSoundTests who is heard; the sound
+  kept with CI's sounds (`unquiet.wav`) and the session's hearing held on
+  the Mac (UnquietHeardTests), Unverified there until a CI run. CI's Mac draws the unquiet
   dead as the session stages them, a field of 11,000 unburied under its
   corpse-lights, a barrow beside it and Barrowkin risen pale, measures
   that the lights brighten the field in their own cold colour, and keeps

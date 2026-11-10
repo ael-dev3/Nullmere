@@ -123,6 +123,14 @@ public final class Ambience {
         synth.setBlaze(level: level, pan: pan)
     }
 
+    /// The unquiet dead near the view: how near, and how brightly their
+    /// lights burn, from nothing (0) to a field that will rise lying close,
+    /// its lights at their brightest (1), and where across the view, from
+    /// the left (-1) to the right (1).
+    public func setKeening(level: Float, pan: Float) {
+        synth.setKeening(level: level, pan: pan)
+    }
+
     /// How much of the towns heard is sawpits at work, 0 to 1.
     public func setSawing(_ share: Float) {
         synth.setSawing(share)

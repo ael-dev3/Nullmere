@@ -369,12 +369,17 @@ public final class GameSession {
     /// Told how near the blackwood burning is to the view and where across
     /// it, as that changes: the sound's crackle and roar (`Ambience.setBlaze`).
     public var onBlaze: ((Float, Float) -> Void)?
+    /// Told how near the unquiet dead lie to the view, and how brightly
+    /// their lights burn, and where across it, as that changes: the sound's
+    /// keening (`Ambience.setKeening`).
+    public var onKeening: ((Float, Float) -> Void)?
     /// Told how the watch's wind blows as the night's air is heard, as that
     /// changes: its strength and from where across the view it comes
     /// (`Ambience.setAir`).
     public var onAir: ((Float, Float) -> Void)?
     @ObservationIgnored var shoreTold: (level: Float, pan: Float) = (0, 0)
     @ObservationIgnored var blazeTold: (level: Float, pan: Float) = (0, 0)
+    @ObservationIgnored var keeningTold: (level: Float, pan: Float) = (0, 0)
     @ObservationIgnored var airTold: (strength: Float, pan: Float) = (1, 0)
     /// The strand last found about the view's middle, and for which view:
     /// found again only as the view's middle moves to another hex, comes
@@ -2292,6 +2297,41 @@ public final class GameSession {
         guard abs(level - blazeTold.level) > 0.02 || abs(pan - blazeTold.pan) > 0.05 || (level == 0 && blazeTold.level != 0) else { return }
         blazeTold = (level, pan)
         onBlaze?(level, pan)
+    }
+
+    /// The dead the keeper knows of whose lights burn: over the fields where
+    /// they lie unburied and quiet (`UnburiedSight.kindled`), and carried by
+    /// the Barrowkin in sight, as many and as bright as hung over the field
+    /// they rose from. The world draws these lights, and the sound keens
+    /// from them.
+    func unquietSights() -> (unburied: [UnburiedSight], risen: [UnburiedSight]) {
+        let unburied = UnburiedSight.kindled(state.fieldsOfDead.filter { isExplored($0.at) }, watch: state.watch,
+                                             darkIn: state.watchesToTheDark(from: state.watch), blows: fieldBlows)
+        let walking = state.wildsStanding.filter { $0.kind == .barrowkin && isVisible($0.position) }.map {
+            UnburiedSight.risen(at: $0.position, level: $0.level)
+        }
+        return (unburied, walking)
+    }
+
+    /// The unquiet dead near the view as they are heard (`UnquietSound`),
+    /// of the lights burning in `sights`: only as the view comes down toward
+    /// the land, the brighter the lights about the view's middle the louder,
+    /// from where they lie across the view.
+    func unquietSound(_ sights: [UnburiedSight]) -> (level: Float, pan: Float)? {
+        guard camera.scale > UnquietSound.faintest, !sights.isEmpty,
+              let heard = UnquietSound.heard(sights, from: camera) else { return nil }
+        return heard.level > 0.001 ? heard : nil
+    }
+
+    /// Tells the sound the unquiet dead near the view, of the lights burning
+    /// in `sights`, when they have changed enough to hear; still under
+    /// Reduce Motion's stillest, as the fire is.
+    func hearUnquiet(_ sights: [UnburiedSight]) {
+        let dead = motion == .still ? nil : unquietSound(sights)
+        let level = dead?.level ?? 0, pan = dead?.pan ?? 0
+        guard abs(level - keeningTold.level) > 0.02 || abs(pan - keeningTold.pan) > 0.05 || (level == 0 && keeningTold.level != 0) else { return }
+        keeningTold = (level, pan)
+        onKeening?(level, pan)
     }
 
     /// How strongly the night's air blows on a still night, against 1.

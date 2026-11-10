@@ -366,17 +366,13 @@ extension GameSession {
         // the moon nears over those that will rise; still where motion is
         // reduced. None over a field still fought over: they kindle once it
         // falls quiet.
-        let darkIn = state.watchesToTheDark(from: state.watch)
-        let unquiet = stage.corpseLights(UnburiedSight.kindled(state.fieldsOfDead.filter { isExplored($0.at) }, watch: state.watch,
-                                                                darkIn: darkIn, blows: fieldBlows),
-                                         near: camera.focus, scale: camera.scale, time: t, still: !full)
+        let unquietDead = unquietSights()
+        let unquiet = stage.corpseLights(unquietDead.unburied, near: camera.focus, scale: camera.scale, time: t, still: !full)
         frame.motes += unquiet.motes
         frame.lights += unquiet.lights
         // And the Barrowkin in sight carry the lights of the field they rose
         // from, as many and as bright as hung over it on the eve of the dark.
-        let risenLights = stage.corpseLights(state.wildsStanding.filter { $0.kind == .barrowkin && isVisible($0.position) }.map {
-            UnburiedSight.risen(at: $0.position, level: $0.level)
-        }, near: camera.focus, scale: camera.scale, time: t, still: !full)
+        let risenLights = stage.corpseLights(unquietDead.risen, near: camera.focus, scale: camera.scale, time: t, still: !full)
         frame.motes += risenLights.motes
         frame.lights += risenLights.lights
         // The lights of a field just buried rising from it into the night
@@ -393,6 +389,7 @@ extension GameSession {
         hearTowns()
         hearShore()
         hearFire()
+        hearUnquiet(unquietDead.unburied + unquietDead.risen)
         hearAir()
         return frame
     }

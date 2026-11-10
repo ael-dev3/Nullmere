@@ -32,8 +32,9 @@ func wave(_ sound: (left: [Float], right: [Float]), rate: Float) -> Data {
     return data
 }
 
-/// The score's themes, every cue and the fire, kept as sound files to be listened to
-/// when NULLMERE_KEEP_RENDERS names a folder: CI keeps them with its run.
+/// The score's themes, every cue, the fire and the unquiet dead, kept as sound files
+/// to be listened to when NULLMERE_KEEP_RENDERS names a folder: CI keeps them with
+/// its run.
 final class KeptSoundsTests: XCTestCase {
     func testAWaveHoldsWhatWasRendered() {
         let data = wave(([0, 1, -1, 2], [0.5, -0.5, 0, -2]), rate: 44_100)
@@ -75,6 +76,13 @@ final class KeptSoundsTests: XCTestCase {
         fire.settle()
         fire.setBlaze(level: 1, pan: -0.3)
         try wave(rendered(fire, seconds: 10, rate: rate), rate: rate).write(to: folder.appendingPathComponent("fire.wav"))
-        print("SOUND kept \(moods.count + 2) sound files in \(folder.path)")
+        // The unquiet dead keening where they lie near the view, a little to
+        // the right, over the night.
+        let unquiet = Synth()
+        unquiet.prepare(sampleRate: rate)
+        unquiet.settle()
+        unquiet.setKeening(level: 1, pan: 0.3)
+        try wave(rendered(unquiet, seconds: 12, rate: rate), rate: rate).write(to: folder.appendingPathComponent("unquiet.wav"))
+        print("SOUND kept \(moods.count + 3) sound files in \(folder.path)")
     }
 }

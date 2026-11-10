@@ -195,6 +195,12 @@ public final class Synth: @unchecked Sendable {
     private var blazeTarget: (level: Float, pan: Float) = (0, 0)
     private var pendingBlaze: (level: Float, pan: Float)?
     private var blazes = Blaze(sampleRate: 48_000)
+    /// The unquiet dead near the view as heard, easing toward what it was
+    /// last told, and what they sound.
+    private var keen: (level: Float, pan: Float) = (0, 0)
+    private var keenTarget: (level: Float, pan: Float) = (0, 0)
+    private var pendingKeen: (level: Float, pan: Float)?
+    private var keenings = Keening(sampleRate: 48_000)
 
     /// The drone's partials.
     private static let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
@@ -262,6 +268,14 @@ public final class Synth: @unchecked Sendable {
     /// left (-1) to the right (1).
     public func setBlaze(level: Float, pan: Float) {
         lock.lock(); pendingBlaze = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
+    }
+
+    /// How near the unquiet dead lie to the view, and how bright their
+    /// lights burn (0 none, 1 a field that will rise close by, its lights
+    /// at their brightest), and where across it, from the left (-1) to the
+    /// right (1).
+    public func setKeening(level: Float, pan: Float) {
+        lock.lock(); pendingKeen = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
     }
 
     /// How much of the towns heard is sawpits at work, 0 to 1.
@@ -337,6 +351,12 @@ public final class Synth: @unchecked Sendable {
         return blaze
     }
 
+    /// The unquiet dead as they are heard, for tests.
+    var keeningHeard: (level: Float, pan: Float) {
+        lock.lock(); defer { lock.unlock() }
+        return keen
+    }
+
     /// The night's air as it is heard, for tests.
     var airHeard: (strength: Float, pan: Float) {
         lock.lock(); defer { lock.unlock() }
@@ -355,6 +375,7 @@ public final class Synth: @unchecked Sendable {
         if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
         if shores.sampleRate != sampleRate { shores = Shore(sampleRate: sampleRate) }
         if blazes.sampleRate != sampleRate { blazes = Blaze(sampleRate: sampleRate) }
+        if keenings.sampleRate != sampleRate { keenings = Keening(sampleRate: sampleRate) }
         if dinHorns.sampleRate != sampleRate { dinHorns = Horns(sampleRate: sampleRate) }
         if cueHorns.sampleRate != sampleRate { cueHorns = Horns(sampleRate: sampleRate, voices: 8) }
         if cueReeds.sampleRate != sampleRate { cueReeds = Horns(sampleRate: sampleRate, voices: 4, notes: Recordings.clarinetNotes) }
@@ -749,6 +770,10 @@ public final class Synth: @unchecked Sendable {
             blazeTarget = next
             pendingBlaze = nil
         }
+        if let next = pendingKeen {
+            keenTarget = next
+            pendingKeen = nil
+        }
         if let next = pendingAir {
             airTarget = next
             pendingAir = nil
@@ -966,6 +991,18 @@ public final class Synth: @unchecked Sendable {
                 blazeRight = fire * sin(blazeAngle) * 1.414
             }
 
+            // The unquiet dead near the view: as near as the view comes and
+            // as bright as their lights burn, from where they lie.
+            keen.level += (keenTarget.level - keen.level) * min(dt * 1.5, 1)
+            keen.pan += (keenTarget.pan - keen.pan) * min(dt * 1.5, 1)
+            var keenLeft: Float = 0, keenRight: Float = 0
+            if keen.level > 0.0005 {
+                let dead = keenings.sample(dt: dt) * Self.keeningGain * keen.level * heard.ambience * level
+                let keenAngle = (0.75 * keen.pan + 1) * .pi / 4
+                keenLeft = dead * cos(keenAngle) * 1.414
+                keenRight = dead * sin(keenAngle) * 1.414
+            }
+
             cueLeft *= heard.effects
             cueRight *= heard.effects
             drone *= heard.ambience
@@ -990,8 +1027,8 @@ public final class Synth: @unchecked Sendable {
             if hallQuiet < hall.seconds * 3 {
                 (hallLeft, hallRight) = hall.process(left: sentLeft, right: sentRight)
             }
-            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * blowing * leftEar + dinLeft + townLeft + shoreLeft + blazeLeft)
-            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * blowing * rightEar + dinRight + townRight + shoreRight + blazeRight)
+            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * blowing * leftEar + dinLeft + townLeft + shoreLeft + blazeLeft + keenLeft)
+            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * blowing * rightEar + dinRight + townRight + shoreRight + blazeRight + keenRight)
         }
         notes.removeAll { $0.age > $0.end }
     }
@@ -1023,6 +1060,9 @@ public final class Synth: @unchecked Sendable {
     /// How loud the blackwood burning is, at its nearest: louder than the
     /// night beneath it, as fire is.
     static let blazeGain: Float = 0.375
+    /// How loud the unquiet dead are, at their nearest and brightest:
+    /// quieter than fire as near, a thin sound half heard over the night.
+    static let keeningGain: Float = 0.1
     /// How loud a cue's call on the recorded horn is: as loud as the horns
     /// of overtones the war horn's and the muster's cues were.
     static let hornCueGain: Float = 0.15

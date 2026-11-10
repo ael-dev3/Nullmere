@@ -908,7 +908,12 @@ a vote on the realm's law to cast.
   where dead lie unburied, more the more lie there and brighter as the
   dark of the moon nears over a field that will rise, so you can see from
   afar which fields to bury first. They kindle once the field falls
-  quiet: not the watch its dead fall, nor while blows are struck there. The panel of a company standing on
+  quiet: not the watch its dead fall, nor while blows are struck there.
+  Bring the view down near them and you hear them too: thin voices
+  keening from where the field lies, now and then a whisper, the louder
+  the brighter its lights burn, and about the Barrowkin who carry them;
+  quieter than fire, heard only near the view's middle, and silent where
+  motion is reduced to its stillest. The panel of a company standing on
   them, or of the tile, says how many lie there and whose, and what comes
   of them, and when. Over a barrow your House raises, your Mac's own
   model gives the words cut on its standing stone, from whose dead lie

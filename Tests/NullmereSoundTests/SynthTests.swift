@@ -508,6 +508,68 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(rms(doubled), rms(sound), accuracy: rms(sound) * 0.2, "As loud at any rate")
     }
 
+    /// The unquiet dead near the view keen from where they lie: thin voices
+    /// sliding from note to note of a lament, swelling and sinking as breath
+    /// does, and now and then a whisper; heard over the night, but quieter
+    /// than fire as near, never clipped, and gone again when they are no
+    /// longer heard, the night as it was.
+    func testTheUnquietDeadNearTheViewKeenFromWhereTheyLie() {
+        let still = settled()
+        let quiet = rendered(still, seconds: 8)
+        let near = settled()
+        near.setKeening(level: 1, pan: 0.8)
+        let heard = rendered(near, seconds: 8)
+        let burning = settled()
+        burning.setBlaze(level: 1, pan: 0.8)
+        let fire = rendered(burning, seconds: 8)
+        let held = (3 * 48_000)..<(8 * 48_000)
+        // The night the same beneath, so what differs is the dead's.
+        let left = zip(heard.left[held], quiet.left[held]).map { $0 - $1 }
+        let right = zip(heard.right[held], quiet.right[held]).map { $0 - $1 }
+        let crackle = zip(fire.right[held], quiet.right[held]).map { $0 - $1 }
+        let night = rms(quiet.right[held])
+        // A voice, not a hiss: most of what is heard lies where a voice
+        // sings, below a running mean's reach of about 1.2 kHz.
+        var low: Float = 0
+        let a: Float = 1 - exp(-2 * .pi * 1_200 / 48_000)
+        let sung = right.map { low += ($0 - low) * a; return low }
+        print("SOUND unquiet \(String(format: "%.1f", decibels(rms(right)))) dBFS rms beside a night of \(String(format: "%.1f", decibels(night))) "
+            + "and fire as near at \(String(format: "%.1f", decibels(rms(crackle)))), \(String(format: "%.0f", 100 * rms(sung) / rms(right)))% of it sung")
+        XCTAssertGreaterThan(rms(right), night * 0.5, "Heard over the night")
+        XCTAssertLessThan(rms(right), rms(crackle) * 0.8, "but quieter than fire as near")
+        XCTAssertGreaterThan(rms(right), rms(left) * 1.5, "from the right, where they lie")
+        XCTAssertGreaterThan(rms(sung), rms(right) * 0.8, "A voice, not a hiss")
+        XCTAssertLessThan(max(heard.left.map(abs).max() ?? 0, heard.right.map(abs).max() ?? 0), 0.95, "and never clips")
+        XCTAssertEqual(near.keeningHeard.level, 1, accuracy: 0.05)
+        XCTAssertEqual(near.keeningHeard.pan, 0.8, accuracy: 0.05)
+        near.setKeening(level: 0, pan: 0)
+        _ = rendered(near, seconds: 6)
+        _ = rendered(still, seconds: 6)
+        XCTAssertEqual(near.keeningHeard.level, 0, accuracy: 0.01)
+        let after = rendered(near, seconds: 2), bed = rendered(still, seconds: 2)
+        let lingering = zip(after.left, bed.left).map { $0 - $1 }
+        XCTAssertLessThan(rms(lingering), rms(bed.left) * 0.05, "Gone again, the night as it was")
+
+        var keening = Keening(sampleRate: 48_000)
+        let sound = (0..<(48_000 * 30)).map { _ in keening.sample(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(keening.glides, 8, "The voices leave their notes again and again")
+        XCTAssertGreaterThanOrEqual(keening.whispers, 6, "and now and then a whisper")
+        XCTAssertFalse(sound.contains { $0.isNaN || $0.isInfinite })
+        XCTAssertLessThan(sound.map(abs).max() ?? 9, 1)
+        // Swelling through a phrase and falling all but silent between: its
+        // loudness by the quarter second far from even.
+        let breaths = stride(from: 0, to: sound.count - 12_000, by: 12_000).map { rms(sound[$0..<($0 + 12_000)]) }.sorted()
+        print("SOUND unquiet breath: its loudest quarter seconds \(String(format: "%.1f", breaths[breaths.count * 9 / 10] / breaths[breaths.count / 10])) "
+            + "times its quietest, \(keening.glides) glides and \(keening.whispers) whispers in thirty seconds")
+        XCTAssertGreaterThan(breaths[breaths.count * 9 / 10], breaths[breaths.count / 10] * 3, "Swelling and falling")
+        // The same at another rate: as loud, as many glides and whispers.
+        var faster = Keening(sampleRate: 96_000)
+        let doubled = (0..<(96_000 * 30)).map { _ in faster.sample(dt: 1 / 96_000) }
+        XCTAssertLessThanOrEqual(abs(faster.glides - keening.glides), 1)
+        XCTAssertLessThanOrEqual(abs(faster.whispers - keening.whispers), 1)
+        XCTAssertEqual(rms(doubled), rms(sound), accuracy: rms(sound) * 0.1, "As loud at any rate")
+    }
+
     /// The night's air blows as the watch's wind does: on a still night it
     /// falls to a whisper, and from the side it comes from it is louder in
     /// that ear and softer in the other; told nothing, the night sounds as
