@@ -217,11 +217,18 @@ public final class CompanionSession {
     /// (`GameState.reeveWordKey`): the hold, the watch and how it stands.
     public static func reeveKey(_ key: Int) -> String { "reeve-\(key)" }
 
+    /// The key the Lanterns' word on a hold they scouted is kept under, as
+    /// the Mac keeps it (`BattleReport.scoutWordKey`): the scouting's watch
+    /// and its report's words.
+    public static func scoutKey(_ key: Int) -> String { "scout-\(key)" }
+
     /// Whom the keeper asked to hear: the commander at the head of a company
-    /// of theirs, or the reeve of a hold of theirs.
+    /// of theirs, the reeve of a hold of theirs, or the Lanterns of a report
+    /// of a hold they scouted.
     public enum Hearing: Equatable, Sendable {
         case company(Int)
         case hold(Int)
+        case report(Int)
     }
 
     /// Whom the keeper asked to hear, if anyone.
@@ -237,6 +244,21 @@ public final class CompanionSession {
     /// asked of this phone's own model first.
     public func hear(hold: Int) {
         hearing = .hold(hold)
+    }
+
+    /// The keeper asks to hear the Lanterns back from a hold they scouted,
+    /// by their report: their word is asked of this phone's own model first.
+    public func hear(report: Int) {
+        hearing = .report(report)
+    }
+
+    /// The word of the Lanterns back from a hold they scouted, as this
+    /// phone's own model is asked for it, from their report alone and keyed
+    /// as the Mac keys it, so the same scouting is heard alike on both; nil
+    /// unless the phone speaks for the keeper and the report is a scouting.
+    public func scoutWord(of report: BattleReport) -> Voicing.Keyed? {
+        guard phase == .keeping, let key = report.scoutWordKey, let moment = report.scoutWord else { return nil }
+        return Voicing.Keyed(key: CompanionSession.scoutKey(key), moment: moment)
     }
 
     /// The word of the reeve of a hold of the House, as this phone's own
@@ -264,14 +286,15 @@ public final class CompanionSession {
     }
 
     /// The realm's characters this phone's own model gives words to, as the
-    /// ledger keys them: the commander or reeve the keeper asked to hear
-    /// first, for they look to them now, then the caretaker's word to the
-    /// keeper come back while its card stands.
+    /// ledger keys them: the commander, reeve or Lanterns the keeper asked
+    /// to hear first, for they look to them now, then the caretaker's word
+    /// to the keeper come back while its card stands.
     public var voicedMoments: [Voicing.Keyed] {
         let heard: Voicing.Keyed?
         switch hearing {
         case .company(let id)?: heard = commanderWord(of: id)
         case .hold(let id)?: heard = reeveWord(of: id)
+        case .report(let id)?: heard = reports.first { $0.id == id }.flatMap { scoutWord(of: $0) }
         case nil: heard = nil
         }
         let caretaker = away.map { [Voicing.Keyed(key: CompanionSession.caretakerKey($0), moment: $0.voiced(house: awayTitle))] } ?? []

@@ -972,12 +972,14 @@ struct ArmyTab: View {
                     if !session.reports.isEmpty {
                         Section("Reports") {
                             ForEach(session.reports.prefix(CompanionLedger.reportsOpen)) { report in
-                                ReportRow(report: report, asker: session.askable(of: report)) { ask(of: report) }
+                                ReportRow(report: report, asker: session.askable(of: report), heard: heardLanterns(of: report),
+                                          hear: hearLanterns(of: report)) { ask(of: report) }
                             }
                             if session.reports.count > CompanionLedger.reportsOpen {
                                 DisclosureGroup("Earlier reports (\(session.reports.count - CompanionLedger.reportsOpen))") {
                                     ForEach(session.reports.dropFirst(CompanionLedger.reportsOpen)) { report in
-                                        ReportRow(report: report, asker: session.askable(of: report)) { ask(of: report) }
+                                        ReportRow(report: report, asker: session.askable(of: report), heard: heardLanterns(of: report),
+                                                  hear: hearLanterns(of: report)) { ask(of: report) }
                                     }
                                 }
                                 .font(Night.small)
@@ -1085,6 +1087,19 @@ struct ArmyTab: View {
         opened.prewarm()
         counselling = Counselling(id: commander, counsel: opened)
         return opened
+    }
+
+    /// The key of the Lanterns' word on a report of a hold they scouted,
+    /// while the keeper hears them; nil else.
+    private func heardLanterns(of report: BattleReport) -> String? {
+        session.hearing == .report(report.id) ? session.scoutWord(of: report)?.key : nil
+    }
+
+    /// Hearing the Lanterns back from a hold they scouted, for a report of a
+    /// scouting; nil for any other.
+    private func hearLanterns(of report: BattleReport) -> (() -> Void)? {
+        guard report.outcome == .scouted else { return nil }
+        return { session.hear(report: report.id) }
     }
 
     /// Counsel of the commander who led in a battle, asked of it as the Mac
@@ -1690,6 +1705,12 @@ struct ReportRow: View {
     /// The commander who led the House's companies there and may be asked
     /// of it in counsel, as on the Mac; nil for none.
     var asker: Commander?
+    /// The key of the Lanterns' word on the hold they scouted while the
+    /// keeper hears them; nil else.
+    var heard: String? = nil
+    /// Asks to hear the Lanterns back from the hold they scouted; nil for a
+    /// report of anything but a scouting.
+    var hear: (() -> Void)? = nil
     var ask: () -> Void = {}
 
     var body: some View {
@@ -1711,6 +1732,15 @@ struct ReportRow: View {
                 Button("Ask \(asker.name) of it", action: ask)
                     .font(Night.small)
                     .accessibilityHint("\(asker.name) led your companies there; counsel spoken by Apple's on-device model on this phone")
+            }
+            // The Lanterns' own word on what they saw, as the Mac's hold card
+            // gives it; their report's lines above stand as the realm keeps them.
+            if let heard {
+                VoicedWords(key: heard, who: "your Lanterns")
+            } else if let hear {
+                Button("Hear your Lanterns", action: hear)
+                    .font(Night.small)
+                    .accessibilityHint("Their word on what they saw, spoken by Apple's on-device model on this phone")
             }
         } label: {
             VStack(alignment: .leading, spacing: 2) {

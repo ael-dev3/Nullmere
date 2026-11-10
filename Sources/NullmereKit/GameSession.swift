@@ -225,16 +225,20 @@ public final class GameSession {
         /// A reeve's word as the keeper turns to a hold of theirs, by
         /// `GameState.reeveWordKey`: the hold, the watch and how it stands.
         case reeve(Int)
+        /// The Lanterns' word on a hold of another House they scouted, by
+        /// `BattleReport.scoutWordKey`: the scouting's watch and its words.
+        case scout(Int)
         /// The steward's welcome to a keeper taking up their House, by the
         /// watch they took it up at.
         case steward(Int)
 
         /// A word asked as the keeper turns to what they chose, a company's
-        /// commander or a hold's reeve: not kept as asked once turned from
-        /// before it is given, so it is asked again if turned to again.
+        /// commander, a hold's reeve or the Lanterns who scouted another
+        /// House's hold: not kept as asked once turned from before it is
+        /// given, so it is asked again if turned to again.
         var isChosenWord: Bool {
             switch self {
-            case .commander, .reeve: return true
+            case .commander, .reeve, .scout: return true
             default: return false
             }
         }
@@ -272,6 +276,7 @@ public final class GameSession {
             case .caretaker(let watch): return "caretaker-\(watch)"
             case .commander(let key): return "commander-\(key)"
             case .reeve(let key): return "reeve-\(key)"
+            case .scout(let key): return "scout-\(key)"
             case .steward(let watch): return "steward-\(watch)"
             }
         }
@@ -293,6 +298,7 @@ public final class GameSession {
             case "caretaker": self = .caretaker(number)
             case "commander": self = .commander(number)
             case "reeve": self = .reeve(number)
+            case "scout": self = .scout(number)
             case "steward": self = .steward(number)
             default: return nil
             }
@@ -2732,9 +2738,13 @@ public final class GameSession {
     /// Files a report of each battle and hunt the House had a part in, each
     /// field of battle as it ends, and of each hold its Lanterns scouted.
     func fileReports(_ events: [GameEvent]) {
+        var scouted = false
         for case .holdScouted(let scouting) in events where scouting.by == player {
             scoutings[scouting.hold] = scouting
+            scouted = true
         }
+        // Back from the hold the keeper looks to, the Lanterns give their word.
+        if scouted { askChosenWord() }
         // As the phone files them: the rules' own reading of the events.
         let filed = state.reports(of: events, for: player, after: reportCounter)
         guard !filed.isEmpty else { return }
@@ -3108,10 +3118,22 @@ public final class GameSession {
         return state.reeveWordKey(of: hold.id, for: player).map(Spoken.reeve)
     }
 
+    /// The report the keeper's Lanterns last brought of the hold of another
+    /// House the keeper has turned to; nil for none.
+    private var chosenScouting: BattleReport? {
+        guard let hold = selectedHold, hold.owner != player, let seen = scoutings[hold.id] else { return nil }
+        return state.report(of: seen, id: 0, for: player)
+    }
+
+    /// The key the word of the Lanterns who scouted the hold of another
+    /// House chosen is kept under now, as its card shows it; nil for none.
+    public var scoutWord: Spoken? { chosenScouting?.scoutWordKey.map(Spoken.scout) }
+
     /// The commander of the company the keeper has turned to gives their
-    /// word first, or the reeve of the hold, for the keeper looks to them
-    /// now; asked afresh as the watch turns or the company's orders or
-    /// fortunes change, or the hold's work or danger.
+    /// word first, or the reeve of the hold, or the Lanterns who scouted
+    /// another House's hold, for the keeper looks to them now; asked afresh
+    /// as the watch turns or the company's orders or fortunes change, or the
+    /// hold's work or danger, or the Lanterns scout it again.
     private func askChosenWord() {
         guard voice != nil else { return }
         var asking: (key: Spoken, moment: VoiceMoment)?
@@ -3119,6 +3141,8 @@ public final class GameSession {
             asking = VoiceFacts.commander(counsel).map { (key: key, moment: $0) }
         } else if let key = reeveWord, let hold = selectedHold {
             asking = VoiceFacts.reeve(of: hold.id, for: player, in: state).map { (key: key, moment: $0) }
+        } else if let report = chosenScouting, let key = report.scoutWordKey.map(Spoken.scout) {
+            asking = VoiceFacts.scout(report).map { (key: key, moment: $0) }
         }
         guard let asking, !asked.contains(asking.key) else { return }
         asked.insert(asking.key)
@@ -3179,6 +3203,7 @@ public final class GameSession {
         case .caretaker(let watch): return awayReport?.watch == watch
         case .commander: return commanderWord == key
         case .reeve: return reeveWord == key
+        case .scout: return scoutWord == key
         case .steward(let watch): return seatBriefing?.watch == watch
         default: return true
         }

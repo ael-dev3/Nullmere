@@ -522,10 +522,23 @@ final class CompanionSessionTests: XCTestCase {
         for foreign in world.holds where foreign.owner != house {
             XCTAssertNil(phone.reeveWord(of: foreign.id), "another House's reeves are not the keeper's to hear")
         }
+        // The Lanterns back from a hold they scouted, heard from their report
+        // as the keeper asks, keyed as the Mac keys it; none for a battle.
+        let scouted = BattleReport(id: 77, watch: world.watch, title: "Your Lanterns scouted Corfall, a hold of House Venn",
+                                   place: "by the Reach", outcome: .scouted, lines: ["No company at its gates", "Its ward 30 of 40"])
+        let lanterns = try XCTUnwrap(phone.scoutWord(of: scouted))
+        XCTAssertEqual(lanterns.key, CompanionSession.scoutKey(try XCTUnwrap(scouted.scoutWordKey)), "kept as the Mac keeps it")
+        XCTAssertEqual(lanterns.moment, scouted.scoutWord, "from their report alone")
+        XCTAssertNil(phone.scoutWord(of: BattleReport(id: 78, watch: world.watch, title: "Your Spears struck the wilds", place: "",
+                                                      outcome: .won, lines: [])))
+        phone.hear(report: scouted.id)
+        XCTAssertEqual(phone.hearing, .report(scouted.id))
+        XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("scout-") }, "a report the phone never filed is not heard")
         phone.unlink()
         XCTAssertNil(phone.hearing)
         XCTAssertNil(phone.commanderWord(of: led.id), "let go, no one is heard")
         XCTAssertNil(phone.reeveWord(of: seat.id))
+        XCTAssertNil(phone.scoutWord(of: scouted))
         mac.close()
     }
 

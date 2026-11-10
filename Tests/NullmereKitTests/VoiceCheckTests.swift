@@ -67,6 +67,10 @@ final class VoiceCheckTests: XCTestCase {
         // seat, asked as the session asks them when the keeper turns to each.
         XCTAssertEqual(told.filter { $0.hasPrefix("a commander's word (") }.count, 1, "A commander's word asked")
         XCTAssertEqual(told.filter { $0.hasPrefix("the reeve's word (") }.count, 1, "The reeve's word asked")
+        XCTAssertEqual(told.filter { $0.hasPrefix("the Lanterns' word (") }.count, 1, "The Lanterns' word asked")
+        let lanterns = try XCTUnwrap(moments.first { $0.moment.kind == .scout }).moment
+        XCTAssertTrue(lanterns.prompt.hasPrefix(Voicing.scoutTask), lanterns.prompt)
+        XCTAssertTrue(lanterns.facts.first?.hasPrefix("Your Lanterns scouted ") == true, "\(lanterns.facts)")
         let commander = try XCTUnwrap(moments.first { $0.moment.kind == .commander }).moment
         XCTAssertTrue(commander.prompt.hasPrefix(Voicing.commanderTask), commander.prompt)
         let reeve = try XCTUnwrap(moments.first { $0.moment.kind == .reeve }).moment

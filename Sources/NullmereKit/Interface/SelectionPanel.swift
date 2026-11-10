@@ -660,6 +660,26 @@ struct ForeignHoldPanel: View {
                 }
             }
             .accessibilityElement(children: .combine)
+            // The Lanterns' word on what they saw, in their own voice: this
+            // Mac's model at work, or why it gave none. Their report's lines
+            // above stand as the realm keeps them.
+            if session.selectedHold?.id == hold.id, let word = session.scoutWord {
+                VoicingLine(session: session, key: word, who: "your Lanterns")
+                if let spoken = session.spoken[word] {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: "\"\(spoken)\"")
+                            .font(.nm(11.5, weight: .light).italic())
+                            .foregroundStyle(Palette.text(0.85))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(verbatim: "Your Lanterns, back from \(hold.name)")
+                            .font(.nm(9.5))
+                            .foregroundStyle(Palette.text(0.45))
+                    }
+                    .transition(.opacity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Your Lanterns, back from \(hold.name), say: \(spoken)")
+                }
+            }
         }
     }
 

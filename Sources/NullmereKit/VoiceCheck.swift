@@ -137,6 +137,13 @@ public enum VoiceCheck {
         if let seat = state.seat(of: state.player), let word = VoiceFacts.reeve(of: seat.id, for: state.player, in: state) {
             moments.append(("the reeve's word", word))
         }
+        // The Lanterns' word on another House's seat, as they would bring it
+        // back from scouting it now.
+        if let foe = state.holds.first(where: { $0.isSeat && $0.owner != state.player }),
+           let report = state.report(of: state.scouting(of: foe, by: state.player), id: 0, for: state.player),
+           let word = VoiceFacts.scout(report) {
+            moments.append(("the Lanterns' word", word))
+        }
         // The steward who kept the House, welcoming its keeper as they take
         // it up.
         if let welcome = VoiceFacts.steward(for: state.player, in: state) {

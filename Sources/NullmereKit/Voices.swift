@@ -104,6 +104,9 @@ public struct VoiceMoment: Sendable, Equatable {
         case commander
         /// A reeve's word to the keeper as they turn to a hold of theirs.
         case reeve
+        /// The keeper's Lanterns' word on a hold of another House they
+        /// scouted, as the keeper turns to it.
+        case scout
         /// The steward who kept the House welcoming its keeper the first
         /// time they take it up.
         case steward
@@ -152,6 +155,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = Voicing.commanderTask
         case .reeve:
             task = Voicing.reeveTask
+        case .scout:
+            task = Voicing.scoutTask
         case .steward:
             task = Voicing.stewardTask
         }
@@ -362,6 +367,13 @@ enum VoiceFacts {
     /// the keeper turns to it; nil unless the hold is the House's own.
     static func reeve(of hold: Int, for house: Int, in state: GameState) -> VoiceMoment? {
         state.reeveWord(of: hold, for: house).map { VoiceMoment(kind: .reeve, facts: $0.facts) }
+    }
+
+    /// The Lanterns' word on a hold of another House they scouted, from
+    /// their report alone, for them to give as the keeper turns to it; nil
+    /// for a report of anything but a scouting.
+    static func scout(_ report: BattleReport) -> VoiceMoment? {
+        report.scoutWord.map { VoiceMoment(kind: .scout, facts: $0.facts) }
     }
 
     /// The steward's welcome to a keeper taking up their House, from what

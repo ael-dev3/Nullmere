@@ -79,7 +79,14 @@ extension GameState {
         units[index].movesLeft = 0
         units[index].acted = true
         units[index].destination = nil
-        // Its own companies at its gates, and its allies' keeping them.
+        return [.holdScouted(scouting(of: hold, by: house)), .scoutSeen(hold: hold.id, by: house)]
+    }
+
+    /// What a House's Lanterns see of a hold from close by as it stands now:
+    /// its own companies at its gates and its allies' keeping them, who
+    /// leads each, its ward, what it raises and musters, what its taking
+    /// would carry off, and how many lie in its beds.
+    public func scouting(of hold: Hold, by house: Int) -> ScoutReport {
         let side = Set([hold.owner] + (alliance(of: hold.owner)?.members ?? []))
         let garrison = units
             .filter { $0.kind.isMilitary && side.contains($0.owner) && $0.position.distance(to: hold.position) <= 1 }
@@ -88,9 +95,8 @@ extension GameState {
                 ScoutReport.Company(kind: company.kind, tier: company.tier, health: company.health, rank: company.rank,
                                     owner: company.owner, commander: company.leader.flatMap { commander($0)?.name })
             }
-        let report = ScoutReport(hold: hold.id, owner: hold.owner, by: house, watch: watch, garrison: garrison, ward: hold.ward,
-                                 maximumWard: hold.maximumWard, project: hold.project, training: hold.training,
-                                 spoils: spoils(ofTaking: hold), wounded: hold.wounded?.count ?? 0)
-        return [.holdScouted(report), .scoutSeen(hold: hold.id, by: house)]
+        return ScoutReport(hold: hold.id, owner: hold.owner, by: house, watch: watch, garrison: garrison, ward: hold.ward,
+                           maximumWard: hold.maximumWard, project: hold.project, training: hold.training,
+                           spoils: spoils(ofTaking: hold), wounded: hold.wounded?.count ?? 0)
     }
 }
