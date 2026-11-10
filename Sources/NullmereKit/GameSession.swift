@@ -380,6 +380,9 @@ public final class GameSession {
     @ObservationIgnored var shoreTold: (level: Float, pan: Float) = (0, 0)
     @ObservationIgnored var blazeTold: (level: Float, pan: Float) = (0, 0)
     @ObservationIgnored var keeningTold: (level: Float, pan: Float) = (0, 0)
+    /// The places the keeper keeps in their book to come back to, kept by
+    /// this Mac for the age (`LocalStore.savePlaces`).
+    public private(set) var placeBook = PlaceBook()
     @ObservationIgnored var airTold: (strength: Float, pan: Float) = (1, 0)
     /// The strand last found about the view's middle, and for which view:
     /// found again only as the view's middle moves to another hex, comes
@@ -641,6 +644,7 @@ public final class GameSession {
         }
         // Words said before the keeper came count as read.
         wordsRead = world.wordsSaid.last?.id ?? 0
+        placeBook = store.loadPlaces()
         refreshWorld()
         // Back to the House last seen: what changed while away. A House new
         // to the keeper (a new age, a seat that lapsed, a free House taken
@@ -2332,6 +2336,34 @@ public final class GameSession {
         guard abs(level - keeningTold.level) > 0.02 || abs(pan - keeningTold.pan) > 0.05 || (level == 0 && keeningTold.level != 0) else { return }
         keeningTold = (level, pan)
         onKeening?(level, pan)
+    }
+
+    // MARK: Places kept
+
+    /// Keeps `hex` in the keeper's book of places (RoK's bookmarks), by
+    /// `name` if they give one or else by the name it goes by; false where
+    /// the book keeps it already or is full.
+    @discardableResult
+    public func keepPlace(_ hex: Hex, named name: String? = nil) -> Bool {
+        let called = name.flatMap(PlaceBook.kept) ?? state.keptName(of: hex)
+        guard placeBook.keep(hex, named: called, at: state.watch) else { return false }
+        store.savePlaces(placeBook)
+        return true
+    }
+
+    /// Lets the place at `hex` go from the keeper's book.
+    public func forgetPlace(_ hex: Hex) {
+        guard placeBook.place(at: hex) != nil else { return }
+        placeBook.forget(hex)
+        store.savePlaces(placeBook)
+    }
+
+    /// The view brought to a place the keeper keeps, the panel over the map
+    /// put away and the hold standing there, or else the ground, chosen.
+    public func goToPlace(_ hex: Hex) {
+        panel = nil
+        selection = state.hold(at: hex).map { Selection.hold($0.id) } ?? Selection.tile(hex)
+        glide(to: hex)
     }
 
     /// How strongly the night's air blows on a still night, against 1.

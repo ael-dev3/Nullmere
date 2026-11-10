@@ -93,4 +93,27 @@ public struct LocalStore: Sendable {
         guard let data = try? Data(contentsOf: counselURL(commander: commander)) else { return nil }
         return try? JSONDecoder().decode(CounselMemory.self, from: data)
     }
+
+    // MARK: Places kept
+
+    /// Where the places the keeper keeps in their book are kept: for the
+    /// age, as its map is.
+    var placesURL: URL {
+        directory.appendingPathComponent("places.json")
+    }
+
+    public func savePlaces(_ book: PlaceBook) {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try JSONEncoder().encode(book).write(to: placesURL, options: .atomic)
+        } catch {
+            LocalStore.logger.error("Keeping places failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// The keeper's book of places, or an empty one where none is kept.
+    public func loadPlaces() -> PlaceBook {
+        guard let data = try? Data(contentsOf: placesURL) else { return PlaceBook() }
+        return (try? JSONDecoder().decode(PlaceBook.self, from: data)) ?? PlaceBook()
+    }
 }

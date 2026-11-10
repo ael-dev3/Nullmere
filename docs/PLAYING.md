@@ -1333,6 +1333,16 @@ a vote on the realm's law to cast.
   flying the caller's banner, a war drum on its trestle and a fire. On the
   march, the host goes under the caller's war banner, borne high among its
   company nearest the target.
+- **Places kept.** Keep any place you will want to come back to in your
+  book of places, from the ground panel or the panel of a hold (Keep this
+  place…): by the name it goes by (the hold standing there, or its ground
+  by the nearest hold, "The blackwood by Wenholme") or by up to forty
+  characters of your own. Your book keeps twenty, the newest first, one
+  to a place; forget one to keep another. The Realm panel lists them
+  under Places, each with what stands there now and the watch you kept
+  it, Go to carry the view there and choose what stands there, and
+  Forget. They are yours alone, kept by your Mac for the age: the realm
+  and the other keepers know nothing of them.
 - **Alliance marks.** A keeper who leads an alliance marks ground their
   House has seen for its Houses: Gather here, Strike here, Hold this
   ground or Beware, with up to sixty characters of their own words if

@@ -52,6 +52,8 @@ struct RealmPanel: View {
                         LandSection(session: session)
                     }
                     Rule(opacity: 0.18)
+                    PlacesSection(session: session)
+                    Rule(opacity: 0.18)
                     deeds(board)
                     if !state.holySites.isEmpty {
                         Rule(opacity: 0.18)

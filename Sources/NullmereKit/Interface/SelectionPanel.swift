@@ -233,6 +233,9 @@ struct OwnHoldDetails: View {
                 Rule()
                 MarkRow(session: session, hex: hold.position)
             }
+            // The keeper's book of places: kept, or to keep.
+            Rule()
+            KeepPlaceRow(session: session, hex: hold.position)
             // What it does on the water, folded to a line until asked for:
             // what its stone heard, while it heard anything.
             let bottles = state.castingWater(beside: hold) != nil
@@ -566,6 +569,9 @@ struct ForeignHoldPanel: View {
                 Rule(opacity: 0.18)
                 MarkRow(session: session, hex: hold.position)
             }
+            // The keeper's book of places: kept, or to keep.
+            Rule(opacity: 0.18)
+            KeepPlaceRow(session: session, hex: hold.position)
             scouting
         }
         .padding(16)
@@ -1549,6 +1555,9 @@ struct TilePanel: View {
                     Rule(opacity: 0.18)
                     MarkRow(session: session, hex: hex)
                 }
+                // The keeper's book of places: kept, or to keep.
+                Rule(opacity: 0.18)
+                KeepPlaceRow(session: session, hex: hex)
                 // A watchfire burning here, or the House's means to light one.
                 if let fire = state.watchfire(at: hex) {
                     Rule(opacity: 0.18)
