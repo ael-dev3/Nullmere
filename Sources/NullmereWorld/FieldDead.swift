@@ -40,6 +40,17 @@ public struct FieldBlow: Equatable, Sendable {
 
     /// Loosed from afar, by bows or an engine: no line where two fronts met.
     public var isRanged: Bool { from.distance(to: at) > 1 }
+
+    /// The blow as its field keeps it once the dead lying on `hex` are
+    /// buried: those who fell there laid in the barrow, the side that fell
+    /// elsewhere still lying where it fell; nil once none of its dead lie
+    /// on the field at all.
+    public func buried(at hex: Hex) -> FieldBlow? {
+        var kept = self
+        if at == hex { kept.struck = nil }
+        if from == hex { kept.striker = nil }
+        return kept.struck == nil && kept.striker == nil ? nil : kept
+    }
 }
 
 extension WorldStage {

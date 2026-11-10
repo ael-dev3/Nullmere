@@ -251,6 +251,33 @@ final class FieldDeadTests: XCTestCase {
         XCTAssertTrue(stage.graves([]).isEmpty)
     }
 
+    /// A field buried takes up its dead: those who fell on it are laid in
+    /// the barrow and lie on the field no longer, the side that fell
+    /// elsewhere still lies where it fell, and a blow none of whose dead
+    /// lie on the field any longer is forgotten.
+    func testABuriedFieldsDeadAreTakenUpIntoItsBarrow() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let struck = FieldBlow.Side(kind: .figure(.spear, tier: 1), colour: Vec4(0.8, 0.1, 0.1, 1), troops: 2_000)
+        let striker = FieldBlow.Side(kind: .figure(.bow, tier: 1), colour: Vec4(0.1, 0.1, 0.8, 1), troops: 1_200)
+        let blow = FieldBlow(from: Hex(2, -6), at: Hex(3, -6), struck: struck, striker: striker, watch: 4, seed: 9)
+        XCTAssertEqual(blow.buried(at: Hex(-4, 2)), blow, "a field elsewhere buried: as it was")
+        let theirs = try XCTUnwrap(blow.buried(at: Hex(3, -6)))
+        XCTAssertNil(theirs.struck, "the struck laid in the barrow raised where they fell")
+        XCTAssertEqual(theirs.striker, striker, "the striker's dead still lying where the striker stood")
+        XCTAssertNil(blow.buried(at: Hex(2, -6))?.striker)
+        XCTAssertEqual(blow.buried(at: Hex(2, -6))?.struck, struck)
+        XCTAssertNil(theirs.buried(at: Hex(2, -6)), "once both are buried, nothing of it lies on the field")
+        // As drawn: none of the struck's dead on the buried field, the
+        // striker's as before.
+        func lying(_ blows: [FieldBlow], _ key: ModelKey) -> Int {
+            var frame = SceneFrame()
+            return stage.fieldDead(blows, watch: 4, time: 1, birds: false, into: &frame).filter { $0.key == key }.flatMap(\.instances).count
+        }
+        XCTAssertGreaterThan(lying([blow], struck.kind), 0)
+        XCTAssertEqual(lying([theirs], struck.kind), 0, "the struck taken up")
+        XCTAssertEqual(lying([theirs], striker.kind), lying([blow], striker.kind), "the striker's dead lying as before")
+    }
+
     /// A barrow the keeper sees raised is heaped up from the ground over a
     /// few seconds, its stone set up at its head over the last half, while
     /// the lights of its dead still rise; once raised it stands as every

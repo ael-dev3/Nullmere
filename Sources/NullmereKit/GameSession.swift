@@ -2444,6 +2444,10 @@ public final class GameSession {
         for case .buried(let field, let by) in events where by == player || isVisible(field.at) {
             releases.append((at: field.at, troops: field.troops, start: now))
         }
+        // The dead laid in a barrow lie on the field no longer.
+        for case .buried(let field, _) in events {
+            fieldBlows = fieldBlows.compactMap { $0.buried(at: field.at) }
+        }
         for case .skillFired(_, let house, let skill, let at) in events where house == player || isVisible(at) {
             blowCounter += 1
             furies.append(Fury(id: blowCounter, at: at, skill: skill, start: now))

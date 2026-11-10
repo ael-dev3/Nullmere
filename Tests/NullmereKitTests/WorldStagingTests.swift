@@ -781,6 +781,33 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(stones(raised), 1)
     }
 
+    /// A field the keeper sees buried takes up its dead: those who fell
+    /// there are laid in the barrow and lie on it no longer, while the
+    /// striker's dead still lie where the striker stood.
+    func testABuriedFieldsDeadLieOnItNoLonger() throws {
+        let session = try session()
+        let player = session.player, foe = (player + 1) % 3
+        let striker = try XCTUnwrap(session.state.units(of: player).first { $0.kind.isMilitary })
+        let foeAt = try XCTUnwrap(striker.position.neighbors.first { session.state.map[$0] != nil })
+        func count(_ key: ModelKey, on hex: Hex, in frame: SceneFrame) -> Int {
+            frame.batches.filter { $0.key == key }.flatMap(\.instances).filter { $0.hex == SIMD2(Int32(hex.q), Int32(hex.r)) }.count
+        }
+        let now = Date()
+        let before = session.sceneFrame(at: 40, now: now)
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: striker.kind, defender: 9_999,
+                                          defenderOwner: foe, defenderKind: .spear, hold: nil, at: foeAt, damageDealt: 30,
+                                          damageTaken: 10, attackerFell: false, defenderFell: false, slain: 2_000, lost: 450))])
+        let kept = try XCTUnwrap(session.fieldBlows.last)
+        let theirs = try XCTUnwrap(kept.struck), ours = try XCTUnwrap(kept.striker)
+        session.showBlows([.buried(FieldOfDead(at: foeAt, troops: 2_000, houses: [foe], since: session.state.watch), by: player)])
+        XCTAssertNil(session.fieldBlows.last?.struck, "laid in the barrow")
+        XCTAssertEqual(session.fieldBlows.last?.striker, ours, "the striker's dead still lying")
+        let after = session.sceneFrame(at: 70, now: now.addingTimeInterval(30))
+        XCTAssertEqual(count(theirs.kind, on: foeAt, in: after), count(theirs.kind, on: foeAt, in: before), "none lying on the buried field")
+        XCTAssertEqual(count(ours.kind, on: striker.position, in: after) - count(ours.kind, on: striker.position, in: before),
+                       WorldStage.deadLying(ours.kind, troops: 450, since: 0), "the striker's where the striker stood")
+    }
+
     func testAFieldKeepsItsDeadAFewWatches() throws {
         let session = try session()
         let player = session.player, foe = (player + 1) % 3

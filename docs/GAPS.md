@@ -861,7 +861,13 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   over the last half, standing as every barrow does once raised, whole at
   once where motion is reduced (`WorldStage.graveRaised`, `graves(_:raising:)`;
   FieldDeadTests on Linux, WorldStagingTests on the Mac, Unverified there
-  until a CI run). CI's Mac draws the unquiet
+  until a CI run). The dead laid in it lie on the field no longer: those
+  of a blow the keeper saw who fell where it is raised are taken up, the
+  striker's dead still lying where the striker stood if it stood
+  elsewhere, where the fallen had lain on beside the barrow until they
+  were carried off watches later (`FieldBlow.buried(at:)`; FieldDeadTests
+  on Linux, WorldStagingTests on the Mac, Unverified there until a CI
+  run). CI's Mac draws the unquiet
   dead as the session stages them, a field of 11,000 unburied under its
   corpse-lights, a barrow beside it and Barrowkin risen pale, measures
   that the lights brighten the field in their own cold colour, and keeps
