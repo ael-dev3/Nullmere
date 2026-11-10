@@ -499,6 +499,52 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(session.glories.count, count, "nor another House's commander")
     }
 
+    /// A seat raised anew is seen where it rises and where it stood: the
+    /// moon's light drawn down on its new ground and dust over the old, each
+    /// only where the keeper sees it, a moment, then gone; none while the
+    /// world is still. The keeper's own is seen as they give the order.
+    func testASeatRaisedAnewIsSeenWhereItRisesAndWhereItStood() throws {
+        let session = try session { state in state.houses[state.player].stock.moonsalt = 200 }
+        let player = session.player
+        let seat = try XCTUnwrap(session.state.seat(of: player))
+        func moonlit(_ motes: [Mote], about hex: Hex) -> Int {
+            let heart = Relief.centre(of: hex), hue = Happenings.seatRaisedHue
+            return motes.filter { mote in
+                mote.colour.w == 0 && mote.colour.z > 0
+                    && abs(mote.colour.x / mote.colour.z - hue.x / hue.z) < 1e-3 && abs(mote.colour.y / mote.colour.z - hue.y / hue.z) < 1e-3
+                    && ((mote.place.x - heart.x) * (mote.place.x - heart.x) + (mote.place.z - heart.z) * (mote.place.z - heart.z)).squareRoot()
+                        < Happenings.seatRaisedReach * 1.05
+            }.count
+        }
+        // The keeper's own, as they give the order.
+        XCTAssertTrue(session.seatRaisings.isEmpty)
+        let ground = try XCTUnwrap(session.state.map.hexes.first { session.state.seatMoveRefusal(to: $0, as: player) == nil })
+        XCTAssertTrue(session.perform(.raiseSeat(at: ground)))
+        let raising = try XCTUnwrap(session.seatRaisings.last)
+        XCTAssertEqual(raising.to, ground)
+        XCTAssertEqual(raising.from, seat.position)
+        XCTAssertTrue(session.isVisible(ground))
+        XCTAssertGreaterThan(moonlit(session.sceneFrame(at: 50, now: raising.start.addingTimeInterval(0.5)).motes, about: ground), 0,
+                             "the moon's light on its new ground")
+        XCTAssertEqual(moonlit(session.sceneFrame(at: 50, now: raising.start.addingTimeInterval(3.5)).motes, about: ground), 0,
+                       "gone a while after")
+        session.motion = .still
+        XCTAssertEqual(moonlit(session.sceneFrame(at: 50, now: raising.start.addingTimeInterval(0.5)).motes, about: ground), 0, "still, none")
+        session.motion = .full
+
+        // Another House's, heard of, where the keeper sees neither place:
+        // nothing drawn.
+        let other = (player + 1) % session.state.houses.count
+        let unseen = session.state.map.hexes.filter { !session.isVisible($0) }
+        if let to = unseen.first, let from = unseen.last, let theirs = session.state.seat(of: other) {
+            session.showBlows([.seatRaisedAnew(hold: theirs.id, house: other, from: from, to: to)])
+            let heard = try XCTUnwrap(session.seatRaisings.last)
+            XCTAssertEqual(heard.to, to)
+            XCTAssertEqual(moonlit(session.sceneFrame(at: 50, now: heard.start.addingTimeInterval(0.5)).motes, about: to), 0,
+                           "not where the keeper can't see")
+        }
+    }
+
     /// The hamlets and barrows the keeper's House has found are drawn where
     /// they lie, the land's growth giving way to them as it does to a site
     /// or a lair (their hearts clear, nothing tall on their ground, only

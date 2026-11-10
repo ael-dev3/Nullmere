@@ -779,6 +779,17 @@ extension GameSession {
             let at = poses.first { $0.unit == glory.unit }?.position ?? ground(glory.at)
             happenings.glories.append(Happenings.Spot(at: at, start: clock(glory.start), seed: UInt32(truncatingIfNeeded: glory.id)))
         }
+        // A seat raised anew: the moon's light on its new ground and dust
+        // where it stood, each where the player sees it.
+        for raising in seatRaisings {
+            let seed = UInt32(truncatingIfNeeded: raising.id)
+            if isVisible(raising.to) {
+                happenings.seatsRaised.append(Happenings.Spot(at: ground(raising.to), start: clock(raising.start), seed: seed))
+            }
+            if isVisible(raising.from) {
+                happenings.seatsLeft.append(Happenings.Spot(at: ground(raising.from), start: clock(raising.start), seed: seed))
+            }
+        }
         for pose in poses where pose.clip == .march {
             var riders = false
             switch pose.key {

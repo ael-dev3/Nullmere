@@ -496,6 +496,14 @@ public struct Happenings: Equatable, Sendable {
     /// commander risen a level, where each stands and when: gold rising
     /// about it and a warm light swelling over it a moment.
     public var glories: [Spot] = []
+    /// Seats raised anew, on their new ground and when: the moon's light
+    /// drawn down on it in a shaft and laid about it in rings and spokes,
+    /// a cold light swelling over it and dying away, and dust thrown up as
+    /// its walls stand.
+    public var seatsRaised: [Spot] = []
+    /// Where those seats stood, and when they left it: dust settling over
+    /// the bare ground.
+    public var seatsLeft: [Spot] = []
     /// Fields of battle going on, as strongly as companies stand in them.
     public var battles: [Spot] = []
     /// Where two throngs meet in a field of battle: steel flashing and
@@ -576,6 +584,12 @@ public struct Happenings: Equatable, Sendable {
     /// rise about it.
     public static let gloryGlow: Float = 1.6
     public static let gloryMotes = 36
+    /// How long a seat raised anew is lit by the moon's light drawn down
+    /// on it, its hue, and how far about it its rings are laid: about the
+    /// width of a hold.
+    public static let seatRaisedGlow: Float = 2.2
+    public static let seatRaisedHue = Vec3(0.72, 0.84, 1.0)
+    public static let seatRaisedReach: Float = 1.5
 
     /// The frame's motes and its own lights at `time`.
     /// What happens in sight as motes and light at a moment, leaving out
@@ -787,6 +801,25 @@ public struct Happenings: Equatable, Sendable {
                 let swell = Float(sin(Double(age / Happenings.gloryGlow) * .pi))
                 lights.append(PointLight(at: glory.at + Vec3(0, 0.7, 0), reach: 2.4, colour: Vec3(1.4, 1.0, 0.42) * swell))
             }
+        }
+        for raised in seatsRaised {
+            // The moon's light drawn down on the new ground in a shaft, laid
+            // about it in rings and spokes, and dust thrown up a moment on
+            // as its walls stand; a cold light swelling over it.
+            bursts.append(Burst(.sigil, at: raised.at, start: raised.start, count: 140, seed: raised.seed &+ 11,
+                                scale: Happenings.seatRaisedReach, tint: Happenings.seatRaisedHue))
+            bursts.append(Burst(.pillar, at: raised.at, start: raised.start, count: 72, seed: raised.seed &+ 13, scale: 1.4,
+                                tint: Happenings.seatRaisedHue))
+            bursts.append(Burst(.dust, at: raised.at, start: raised.start + 0.35, count: 36, seed: raised.seed &+ 17, scale: 2.2))
+            let age = time - raised.start
+            if age >= 0, age < Happenings.seatRaisedGlow {
+                let swell = Float(sin(Double(age / Happenings.seatRaisedGlow) * .pi))
+                lights.append(PointLight(at: raised.at + Vec3(0, 0.9, 0), reach: 3.2, colour: Vec3(0.95, 1.15, 1.7) * swell))
+            }
+        }
+        for left in seatsLeft {
+            // Where it stood: dust settling over the bare ground.
+            bursts.append(Burst(.dust, at: left.at, start: left.start, count: 30, seed: left.seed &+ 19, scale: 2))
         }
         guard !omitted.isEmpty else { return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights) }
         return (Effects.motes(bursts: bursts.filter { !omitted.contains($0.effect) }, emitters: emitters.filter { !omitted.contains($0.effect) },

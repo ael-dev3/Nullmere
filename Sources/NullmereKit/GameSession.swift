@@ -526,6 +526,17 @@ public final class GameSession {
         public let start: Date
     }
 
+    /// A seat raised anew, the player's or another heard of: the moon's
+    /// light drawn down on its new ground and dust where it stood, briefly,
+    /// each where the player sees it (`Happenings.seatsRaised`,
+    /// `Happenings.seatsLeft`).
+    public struct SeatRaising: Equatable, Identifiable {
+        public let id: Int
+        public let to: Hex
+        public let from: Hex
+        public let start: Date
+    }
+
     /// A blow the player saw land: a ring and the damage, briefly, where it fell.
     public struct Blow: Equatable, Identifiable {
         public let id: Int
@@ -655,6 +666,7 @@ public final class GameSession {
     public private(set) var sightings: [Sighting] = []
     public private(set) var springs: [Spring] = []
     public private(set) var glories: [Glory] = []
+    public private(set) var seatRaisings: [SeatRaising] = []
     /// What the House's Lanterns last saw of each hold they scouted, by hold.
     public private(set) var scoutings: [Int: ScoutReport] = [:]
     /// The House's battles and hunts as their reports tell them, the latest first.
@@ -994,6 +1006,7 @@ public final class GameSession {
             // answers: this copy's guess is never told as what happened.
             let sure = decided ? [] : events.filter { !Self.isRealmsToTell($0) }
             report(sure)
+            showSeatsRaised(sure)
             // A strike sounds as its blow lands, with the realm's answer.
             if !Self.isStrike(command) { sound(for: command, events: sure) }
             if case .found = command, let hold = events.compactMap(holdFounded).first {
@@ -2601,9 +2614,29 @@ public final class GameSession {
     /// of, however the blows of a great field fall.
     static let fieldBlowsKept = 400
 
+    /// Seats raised anew that the player raises or hears of: each drawn a
+    /// moment where they see its new ground or its old (`happenings`), then
+    /// forgotten. The player's own is shown as they give the order, which
+    /// this copy carries out as the realm will; others' as they are heard.
+    func showSeatsRaised(_ events: [GameEvent]) {
+        let now = Date()
+        var shown = false
+        for case .seatRaisedAnew(_, _, let from, let to) in events {
+            blowCounter += 1
+            seatRaisings.append(SeatRaising(id: blowCounter, to: to, from: from, start: now))
+            shown = true
+        }
+        guard shown else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
+            self?.seatRaisings.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+        }
+    }
+
     /// Draws the blows the player could see, then forgets them.
     func showBlows(_ events: [GameEvent], from before: [Int: Hex] = [:]) {
         fileReports(events)
+        showSeatsRaised(events)
         let now = Date()
         var shown = false
         for case .battle(let battle) in events {
