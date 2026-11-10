@@ -551,7 +551,8 @@ extension GameState {
     /// lying unburied and the barrows over those buried, the pleas
     /// their folk have brought them and what their folk remember of those
     /// answered, how their envoys were answered and how they answered
-    /// others', their satchel and their makings.
+    /// others', their satchel, their makings and the shares of their
+    /// alliance's spoils waiting for them.
     struct Keeps: Codable, Equatable {
         var dreams: [Dream]?
         var whispers: [Whisper]?
@@ -599,6 +600,7 @@ extension GameState {
         var storehouses: [Storehouse]?
         var satchel: [ItemStack]?
         var makings: [MakingStack]?
+        var allianceShares: [AllianceShare]?
 
         init(of world: GameState) {
             dreams = world.dreams
@@ -647,6 +649,7 @@ extension GameState {
             storehouses = world.storehouses
             satchel = world.satchel
             makings = world.makings
+            allianceShares = world.allianceShares
         }
 
         /// Into a world read from its head.
@@ -697,6 +700,7 @@ extension GameState {
             world.storehouses = storehouses
             world.satchel = satchel
             world.makings = makings
+            world.allianceShares = allianceShares
         }
 
         /// None of it.

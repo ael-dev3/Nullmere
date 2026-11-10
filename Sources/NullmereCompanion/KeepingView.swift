@@ -1183,6 +1183,29 @@ struct AllianceTab: View {
                                 .foregroundStyle(Night.ink.opacity(0.75))
                         }
                     }
+                    // The shares of the alliance's spoils waiting for the
+                    // House, as the Mac's Alliance panel shows them.
+                    if let shares = ledger.shares {
+                        Section(shares.count == 1 ? "A share of the spoils" : "\(shares.count) shares of the spoils") {
+                            ForEach(Array(shares.lines.enumerated()), id: \.offset) { line in
+                                Text(verbatim: line.element)
+                                    .font(Night.small)
+                                    .foregroundStyle(Night.ink.opacity(0.75))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Text(verbatim: shares.held)
+                                .font(Night.body)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button(shares.take.title) { session.give(shares.take.command, told: "Shares taken: \(shares.held)") }
+                                .buttonStyle(.borderedProminent)
+                                .font(Night.small)
+                                .accessibilityLabel("Take your shares of the spoils: \(shares.held)")
+                            Text(verbatim: AllianceShare.said)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.6))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     // What the alliance keeps of its own, as the Mac's Alliance
                     // panel tells it, and the House's stores laid up there.
                     if let own = ledger.allianceOwn {

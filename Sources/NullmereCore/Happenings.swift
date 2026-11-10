@@ -147,6 +147,9 @@ extension GameState {
         // And toward each keeper's labours of the watch.
         countLabours(events)
         countMonument(events)
+        // And a share of the spoils to each keeper of an alliance whose
+        // House struck down the wilds or broke a lair.
+        setAsideShares(for: events)
         guard var happening, watch < happening.ends else { return }
         var changed = false
         for event in events {

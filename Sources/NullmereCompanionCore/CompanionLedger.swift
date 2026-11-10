@@ -789,6 +789,21 @@ public struct CompanionLedger: Equatable, Sendable {
     public let castOut: [Order]
     /// What the House's alliance keeps of its own, while it is sworn to one.
     public let allianceOwn: AllianceOwn?
+    /// The shares of the alliance's spoils waiting for the House, as the
+    /// Mac's Alliance panel shows them; nil while none waits.
+    public let shares: Shares?
+
+    /// The shares of the alliance's spoils waiting for the House.
+    public struct Shares: Equatable, Sendable {
+        /// Each share's deed, the newest first, five at most, and how many more.
+        public let lines: [String]
+        /// What they hold, all told.
+        public let held: String
+        /// How many wait.
+        public let count: Int
+        /// Take them all.
+        public let take: Order
+    }
 
     /// What the House's alliance keeps of its own, as the Mac's Alliance
     /// panel tells it: its standards, hall, coffers, storehouse and yards;
@@ -926,7 +941,9 @@ public struct CompanionLedger: Equatable, Sendable {
     /// What waits on them on the Alliance tab, for its badge: invitations
     /// and Houses asking to join to answer, allies' work to help, and a
     /// vote on the realm's law to cast.
-    public var allianceWaiting: Int { invitations.count + requests.count + helps.count + (law.votes.isEmpty ? 0 : 1) }
+    public var allianceWaiting: Int {
+        invitations.count + requests.count + helps.count + (law.votes.isEmpty ? 0 : 1) + (shares == nil ? 0 : 1)
+    }
 
     /// What waits on them on the Army tab, for its badge: commanders with a
     /// talent to learn or a star to raise, the watch's venture up the Spine
@@ -1292,6 +1309,11 @@ public struct CompanionLedger: Equatable, Sendable {
                 Order(title: "Cast \(title(other)) out of \(own.name)", command: .expel(house: other))
             }
         } ?? []
+        // The shares of the alliance's spoils waiting, to take.
+        let waiting = world.shares(of: player)
+        shares = waiting.isEmpty || world.takeSharesRefusal(as: player) != nil ? nil
+            : Shares(lines: world.sharesSaid(waiting), held: world.sharesHeldSaid(by: player), count: waiting.count,
+                     take: Order(title: "Take your shares", command: .takeShares))
         allianceOwn = allied.map { own in
             let laid = world.laidUp(by: player)
             let whole = world.wholeStorehouse(for: player) != nil

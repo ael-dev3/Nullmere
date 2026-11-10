@@ -20,6 +20,8 @@ struct AlliancePanel: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    // The shares of the alliance's spoils waiting, first, while any wait.
+                    SharesOfTheSpoils(session: session)
                     if board.alliance != nil {
                         sworn(board, chosen: chosen)
                     } else {
@@ -266,6 +268,52 @@ struct AlliancePanel: View {
 
 /// A rally of the House's side: where it gathers, against what, how full,
 /// and when it sets out; the chosen company sent to it.
+/// The shares of the alliance's spoils waiting for the keeper's House: each
+/// share's deed, the newest first, what they hold all told and Take them;
+/// nothing while none waits.
+struct SharesOfTheSpoils: View {
+    let session: GameSession
+
+    /// Its title: "A share of the spoils", "3 shares of the spoils".
+    static func title(_ count: Int) -> String {
+        count == 1 ? "A share of the spoils" : "\(count) shares of the spoils"
+    }
+
+    var body: some View {
+        let state = session.state
+        let shares = state.shares(of: session.player)
+        if !shares.isEmpty {
+            let refusal = state.takeSharesRefusal(as: session.player)
+            let held = state.sharesHeldSaid(by: session.player)
+            VStack(alignment: .leading, spacing: 5) {
+                Caps(Self.title(shares.count), size: 9, weight: .medium)
+                    .foregroundStyle(Palette.glowWords)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(Array(state.sharesSaid(shares).enumerated()), id: \.offset) { _, line in
+                    Text(verbatim: line)
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(verbatim: held)
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    QuietButton(title: "Take them", size: 8.5, enabled: refusal == nil, name: "Take your shares of the spoils",
+                                why: refusal?.description) {
+                        if session.perform(.takeShares) { session.post("Your shares taken: \(held).", tone: .good) }
+                    }
+                }
+                .help(AllianceShare.said)
+            }
+            .accessibilityElement(children: .contain)
+            Rule(opacity: 0.18)
+        }
+    }
+}
+
 private struct RallyRow: View {
     let session: GameSession
     let line: RallyLine

@@ -182,6 +182,9 @@ extension GameState {
         view.armoury = armoury?.filter { $0.owner == house || $0.wornBy.map(leading.contains) == true }
         // What is in a House's satchel is its own to know.
         view.satchel = satchel?.filter { $0.house == house }
+        // The shares of its alliance's spoils waiting for it, its own to know.
+        let shares = allianceShares?.filter { $0.house == house }
+        view.allianceShares = shares?.isEmpty == false ? shares : nil
         view.makings = makings?.filter { $0.house == house }
         // The wilds in sight; the sites on ground the House has explored.
         view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }

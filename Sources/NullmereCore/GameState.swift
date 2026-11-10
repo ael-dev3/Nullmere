@@ -290,6 +290,9 @@ public struct GameState: Codable, Equatable, Sendable {
     var armoury: [Gear]?
     /// What the Houses keep in their satchels; absent before any was given.
     var satchel: [ItemStack]?
+    /// The shares of their alliances' spoils waiting for the keepers'
+    /// Houses (`AllianceShare`); absent while none waits.
+    public internal(set) var allianceShares: [AllianceShare]?
     /// The makings the Houses keep for their Forges; absent before any
     /// were found.
     var makings: [MakingStack]?

@@ -644,6 +644,39 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(state.gear(of: me).count, before + 1, "Into the armoury")
     }
 
+    /// The shares of the alliance's spoils on the phone, as the Mac's
+    /// Alliance panel shows them: none while none waits; each share's deed,
+    /// the newest first, what they hold all told and the order to take
+    /// them, taken by the rules, the Alliance tab's count waiting with them;
+    /// taken, gone.
+    func testThePhoneOffersTheSharesOfTheSpoils() throws {
+        var (state, me) = try world()
+        XCTAssertNil(CompanionLedger(world: state, player: me).shares)
+        _ = try state.perform(.foundAlliance(name: "The Salt Pact"), as: me)
+        let ally = (me + 1) % state.houses.count
+        state.houses[ally].isPlayer = true
+        let alliance = try XCTUnwrap(state.alliance(of: me)).id
+        _ = try state.perform(.inviteToAlliance(house: ally), as: me)
+        _ = try state.perform(.answerInvitation(alliance: alliance, accept: true), as: ally)
+        let quiet = CompanionLedger(world: state.view(for: me), player: me).allianceWaiting
+        state.tally([.hunted(Hunt(attacker: 1, attackerOwner: ally, attackerKind: .spear, wild: 2, wildKind: .reavers, level: 2,
+                                  at: Hex(0, 0), damageDealt: 9, damageTaken: 0, attackerFell: false, wildFell: true, spoils: Stock())),
+                     .lairAssaulted(LairAssault(rally: 1, caller: me, lair: 3, kind: .barrowkin, level: 1, at: Hex(0, 0), strikes: [],
+                                                before: 40, strength: 0, might: 30, shares: []))])
+        let view = state.view(for: me)
+        let ledger = CompanionLedger(world: view, player: me)
+        let shares = try XCTUnwrap(ledger.shares)
+        XCTAssertEqual(shares.count, 2)
+        XCTAssertEqual(shares.lines, ["Your House broke a lair of the wilds, level I",
+                                      "\(state.houses[ally].title) struck down a band of the wilds, level II"])
+        XCTAssertEqual(shares.held, "50 grain, 50 timber, 30 stone, 1 moonsalt, with a Salt Hourglass")
+        XCTAssertEqual(shares.take.command, .takeShares)
+        assertTaken([shares.take], in: view, as: me)
+        XCTAssertEqual(ledger.allianceWaiting, quiet + 1, "the Alliance tab counts them waiting")
+        _ = try state.perform(.takeShares, as: me)
+        XCTAssertNil(CompanionLedger(world: state.view(for: me), player: me).shares, "taken, gone")
+    }
+
     /// What the House's alliance keeps of its own on the phone, in the words
     /// of the Mac's Alliance panel: nothing while sworn to no alliance;
     /// sworn, its standards, hall, coffers, storehouse and yards told, and

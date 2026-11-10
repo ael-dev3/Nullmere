@@ -1424,7 +1424,22 @@ public final class GameSession {
         state = world
         if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
         if case .hold(let id) = selection, state.hold(id) == nil { selection = .none }
+        tellOfShares()
         refreshWorld()
+    }
+
+    /// How many shares of the alliance's spoils the keeper has been told of.
+    @ObservationIgnored private var sharesTold = 0
+
+    /// A share of the alliance's spoils newly set aside for the House, told
+    /// once as the realm's world brings it, never from this copy's guess at
+    /// what an order did (`AllianceShare`); shares taken or lapsed, nothing.
+    func tellOfShares() {
+        let shares = state.shares(of: player)
+        defer { sharesTold = shares.count }
+        guard shares.count > sharesTold, let newest = shares.last else { return }
+        let more = shares.count - sharesTold - 1
+        post("A share of your alliance's spoils waits: \(state.shareLine(newest))" + (more > 0 ? ", and \(more) more." : "."), tone: .good)
     }
 
     /// The watch turned in the realm: show what it brought.
@@ -1456,6 +1471,7 @@ public final class GameSession {
         }
         notices.removeAll()
         report(events)
+        tellOfShares()
         if welcomeAfterWatch {
             welcomeAfterWatch = false
             post(Self.welcome, tone: .good)

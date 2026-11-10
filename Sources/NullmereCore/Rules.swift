@@ -163,6 +163,8 @@ extension GameState {
             return try prophesy(claim, until: until, moonsalt: moonsalt, as: house)
         case let .stake(id, backs, moonsalt):
             return try stake(on: id, backs: backs, moonsalt: moonsalt, as: house)
+        case .takeShares:
+            return try takeShares(as: house)
         case .drawVeil:
             return try drawVeil(as: house)
         case let .ferry(unit, holdID):

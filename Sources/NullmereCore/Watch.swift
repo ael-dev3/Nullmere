@@ -63,6 +63,7 @@ extension GameState {
         events += landCrossings()
         events += turnEdicts()
         forgetOldGifts()
+        lapseShares()
         // An envoy unanswered is an envoy refused.
         let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }
         envoys.removeAll { watch - $0.arrived >= Envoy.patience }
