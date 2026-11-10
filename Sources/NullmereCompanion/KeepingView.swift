@@ -529,15 +529,40 @@ struct StoresRow: View {
             Text(verbatim: Resource.gainSaid(store.gain))
                 .font(Night.small.monospacedDigit())
                 .foregroundStyle(store.gain < 0 ? Night.bad : Night.good)
-            Text(verbatim: store.resource.storeName(store.amount, room: room))
-                .font(Night.small)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            // Its mark beside its name, as the Mac's top bar marks it.
+            HStack(spacing: 4) {
+                StoreMark(resource: store.resource, size: 12)
+                Text(verbatim: store.resource.storeName(store.amount, room: room))
+                    .font(Night.small)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
         .fixedSize()
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(store.resource.storeSaid(store.amount, gain: store.gain, room: room))
+    }
+}
+
+/// A store's small drawn mark, as the rules keep its outlines
+/// (`StoreMarks`) and the Mac draws them: a sheaf of grain, a fir for
+/// timber, a dressed block of stone, a crystal of moonsalt.
+struct StoreMark: View {
+    let resource: Resource
+    var size: CGFloat = 12
+
+    var body: some View {
+        Canvas { context, canvas in
+            for part in StoreMarks.drawing(of: resource) {
+                var path = Path()
+                path.addLines(part.outline.map { CGPoint(x: $0.x * canvas.width, y: $0.y * canvas.height) })
+                path.closeSubpath()
+                context.fill(path, with: .color(Color(red: part.colour.red, green: part.colour.green, blue: part.colour.blue)))
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }
 

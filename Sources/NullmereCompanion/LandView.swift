@@ -305,9 +305,9 @@ struct ChartView: View {
         .onChange(of: sought) {
             // The hex found brought to the chart's middle, as far as the
             // chart may be moved.
-            guard let chosen else { return }
+            guard let found = chosen else { return }
             let layout = HexLayout(size: 1)
-            let heart = layout.center(of: chart.center), at = layout.center(of: chosen)
+            let heart = layout.center(of: chart.center), at = layout.center(of: found)
             pan = bounded(CGSize(width: heart.x - at.x, height: heart.y - at.y))
             panned = pan
         }
