@@ -448,12 +448,14 @@ struct WorldMarks: View {
 
             // Holds the player knows of; their names drawn after them, over
             // a dark shadow a hair below, unblurred. Their small marks are
-            // gathered as they come and drawn once each after them, by what
-            // they are drawn in: a fill or stroke a mark, a few hundred a
-            // frame over a late game, was most of what the marks cost.
+            // gathered as they come, by what they are drawn in and the
+            // square of the view they stand in (`GatheredMarks`), and drawn
+            // after them: a fill or stroke a mark, a few hundred a frame
+            // over a late game, was most of what the marks cost, and one
+            // path a colour across the whole view cost more.
             var names: [(text: Text, at: CGPoint, opacity: Double)] = []
-            var threatRings = Path(), holdOwnership = Path(), wardBacks = Path()
-            var wards: [Int: Path] = [:]
+            var threatRings = GatheredMarks(), holdOwnership = GatheredMarks(), wardBacks = GatheredMarks()
+            var wards = GatheredMarks()
             var holdTokens = HoldTokens()
             for hold in state.holds where session.isExplored(hold.position) {
                 let point = session.viewPoint(of: hold.position, in: size)
@@ -461,7 +463,7 @@ struct WorldMarks: View {
                 let r = min(max(scale * 0.36, 7), 18)
                 // Enemies gather near it: a red ring, broken like a warning.
                 if session.threatened.contains(hold.id) {
-                    threatRings.addEllipse(in: CGRect(x: point.x - r * 1.9, y: point.y - r * 1.9, width: r * 3.8, height: r * 3.8))
+                    threatRings.add(at: point) { $0.addEllipse(in: CGRect(x: point.x - r * 1.9, y: point.y - r * 1.9, width: r * 3.8, height: r * 3.8)) }
                 }
                 // Its marks stand under the token, or over the keep where it is drawn.
                 var marks = point.y + r * 1.15
@@ -474,15 +476,16 @@ struct WorldMarks: View {
                 // said in shape too, as over a company: a bar over the
                 // keeper's own, a cross by a foe's.
                 if differentiate {
-                    holdOwnership.addPath(WorldMarks.ownership(hold.owner == player ? .own : state.isAtWar(player, hold.owner) ? .foe : .other,
-                                                               at: modelsDrawn ? CGPoint(x: point.x, y: marks - r * 0.9) : point, radius: r * 1.6))
+                    let mark = WorldMarks.ownership(hold.owner == player ? .own : state.isAtWar(player, hold.owner) ? .foe : .other,
+                                                    at: modelsDrawn ? CGPoint(x: point.x, y: marks - r * 0.9) : point, radius: r * 1.6)
+                    holdOwnership.add(at: point) { $0.addPath(mark) }
                 }
                 if session.isVisible(hold.position), hold.ward < hold.maximumWard {
                     let width = r * 2
                     let fraction = CGFloat(hold.ward) / CGFloat(max(hold.maximumWard, 1))
                     let bar = CGRect(x: point.x - width / 2, y: marks, width: width, height: 2)
-                    wardBacks.addRect(bar)
-                    wards[hold.owner, default: Path()].addRect(CGRect(x: bar.minX, y: bar.minY, width: width * fraction, height: 2))
+                    wardBacks.add(at: point) { $0.addRect(bar) }
+                    wards.add(hold.owner, at: point) { $0.addRect(CGRect(x: bar.minX, y: bar.minY, width: width * fraction, height: 2)) }
                 }
                 if scale >= 18 {
                     let name = Text(verbatim: hold.name.uppercased())
@@ -494,15 +497,13 @@ struct WorldMarks: View {
                 }
             }
             // The rings beneath the holds' tokens, as each was drawn alone.
-            if !threatRings.isEmpty {
-                context.stroke(threatRings, with: .color(Palette.bad.opacity(0.6)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
+            threatRings.each { _, rings in
+                context.stroke(rings, with: .color(Palette.bad.opacity(0.6)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
             }
             holdTokens.draw(in: &context) { Palette.house(state.houses[$0]) }
-            if !holdOwnership.isEmpty { context.stroke(holdOwnership, with: .color(Palette.ink), lineWidth: 1.4) }
-            if !wardBacks.isEmpty { context.fill(wardBacks, with: .color(Color.black.opacity(0.7))) }
-            for owner in wards.keys.sorted() {
-                if let ward = wards[owner] { context.fill(ward, with: .color(Palette.house(state.houses[owner]))) }
-            }
+            holdOwnership.each { _, marks in context.stroke(marks, with: .color(Palette.ink), lineWidth: 1.4) }
+            wardBacks.each { _, backs in context.fill(backs, with: .color(Color.black.opacity(0.7))) }
+            wards.each { owner, ward in context.fill(ward, with: .color(Palette.house(state.houses[owner]))) }
             for name in names {
                 // Laid out once, drawn twice.
                 var resolved = context.resolve(name.text)
@@ -517,8 +518,8 @@ struct WorldMarks: View {
             // each company's were: whose it is, its rank, ready, its health,
             // and its troops in a field of battle over them all.
             let fighting = Set(state.fieldsOfBattle.flatMap { $0.fighters.filter(\.standing).map(\.unit) })
-            var companyOwnership = Path(), readyDots = Path(), healthBacks = Path(), healthGood = Path(), healthBad = Path()
-            var ranks: [Int: Path] = [:]
+            var companyOwnership = GatheredMarks(), readyDots = GatheredMarks(), healthBacks = GatheredMarks()
+            var healthGood = GatheredMarks(), healthBad = GatheredMarks(), ranks = GatheredMarks()
             var troopsAt: [(count: String, at: CGPoint)] = []
             var companyTokens = CompanyTokens()
             for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
@@ -541,22 +542,24 @@ struct WorldMarks: View {
                                       hovered: session.hovered == unit.position && !inHold)
                 }
                 if differentiate {
-                    companyOwnership.addPath(WorldMarks.ownership(unit.owner == player ? .own : state.isAtWar(player, unit.owner) ? .foe : .other,
-                                                                  at: point, radius: r))
+                    let mark = WorldMarks.ownership(unit.owner == player ? .own : state.isAtWar(player, unit.owner) ? .foe : .other,
+                                                    at: point, radius: r)
+                    companyOwnership.add(at: point) { $0.addPath(mark) }
                 }
                 // Rank: a small chevron for each, beneath the token.
                 if unit.rank > 0 {
-                    ranks[unit.owner, default: Path()].addPath(WorldMarks.chevrons(unit.rank, under: CGPoint(x: point.x, y: point.y + r + 7)))
+                    let chevrons = WorldMarks.chevrons(unit.rank, under: CGPoint(x: point.x, y: point.y + r + 7))
+                    ranks.add(unit.owner, at: point) { $0.addPath(chevrons) }
                 }
                 if unit.owner == player, unit.movesLeft > 0, unit.destination == nil, !unit.fortified {
-                    readyDots.addEllipse(in: CGRect(x: point.x + r * 0.62, y: point.y - r * 1.02, width: 4, height: 4))
+                    readyDots.add(at: point) { $0.addEllipse(in: CGRect(x: point.x + r * 0.62, y: point.y - r * 1.02, width: 4, height: 4)) }
                 }
                 if unit.health < 100 {
                     let fraction = CGFloat(unit.health) / 100
                     let bar = CGRect(x: point.x - r, y: point.y + r + 3, width: r * 2, height: 2)
-                    healthBacks.addRect(bar)
+                    healthBacks.add(at: point) { $0.addRect(bar) }
                     let left = CGRect(x: bar.minX, y: bar.minY, width: bar.width * fraction, height: 2)
-                    if fraction > 0.5 { healthGood.addRect(left) } else { healthBad.addRect(left) }
+                    if fraction > 0.5 { healthGood.add(at: point) { $0.addRect(left) } } else { healthBad.add(at: point) { $0.addRect(left) } }
                 }
                 // In a field of battle, its troops beneath it.
                 if fighting.contains(unit.id) {
@@ -564,14 +567,12 @@ struct WorldMarks: View {
                 }
             }
             companyTokens.draw(in: &context) { Palette.house(state.houses[$0]) }
-            if !companyOwnership.isEmpty { context.stroke(companyOwnership, with: .color(Palette.ink), lineWidth: 1.4) }
-            for owner in ranks.keys.sorted() {
-                if let rank = ranks[owner] { context.stroke(rank, with: .color(Palette.house(state.houses[owner])), lineWidth: 1.1) }
-            }
-            if !readyDots.isEmpty { context.fill(readyDots, with: .color(Palette.ink)) }
-            if !healthBacks.isEmpty { context.fill(healthBacks, with: .color(Color.black.opacity(0.7))) }
-            if !healthGood.isEmpty { context.fill(healthGood, with: .color(Palette.good)) }
-            if !healthBad.isEmpty { context.fill(healthBad, with: .color(Palette.bad)) }
+            companyOwnership.each { _, marks in context.stroke(marks, with: .color(Palette.ink), lineWidth: 1.4) }
+            ranks.each { owner, rank in context.stroke(rank, with: .color(Palette.house(state.houses[owner])), lineWidth: 1.1) }
+            readyDots.each { _, dots in context.fill(dots, with: .color(Palette.ink)) }
+            healthBacks.each { _, backs in context.fill(backs, with: .color(Color.black.opacity(0.7))) }
+            healthGood.each { _, bars in context.fill(bars, with: .color(Palette.good)) }
+            healthBad.each { _, bars in context.fill(bars, with: .color(Palette.bad)) }
             for troops in troopsAt {
                 // Laid out once, drawn twice: its shadow, then itself.
                 var count = context.resolve(Text(verbatim: troops.count).font(.nm(8.5, weight: .medium)))
@@ -643,107 +644,101 @@ struct WorldMarks: View {
 /// The holds drawn flat, where no models stand, gathered and drawn at once,
 /// layer by layer as each was drawn alone: every hold's towers, then its
 /// walls as they rise, its keep, a warm window, the seat's banner and the
-/// moonspire's needle. No two holds share a hex, so none is drawn over
-/// another, and a late game's holds cost a few fills and strokes in all,
-/// not eight a hold.
+/// moonspire's needle; each layer by the squares of the view its holds
+/// stand in (`GatheredMarks`). No two holds share a hex, so none is drawn
+/// over another.
 private struct HoldTokens {
-    private var towers = Path(), walls = Path(), keeps = Path(), windows = Path(), needles = Path()
+    private var towers = GatheredMarks(), walls = GatheredMarks(), keeps = GatheredMarks(), windows = GatheredMarks()
+    private var needles = GatheredMarks()
     /// Rims by owner; the walls' by owner and height, which thickens them;
     /// the keeps' by owner and whether a seat's.
-    private var towerRims: [Int: Path] = [:], wallRims: [Int: Path] = [:], keepRims: [Int: Path] = [:]
-    private var poles: [Int: Path] = [:], pennants: [Int: Path] = [:]
+    private var towerRims = GatheredMarks(), wallRims = GatheredMarks(), keepRims = GatheredMarks()
+    private var poles = GatheredMarks(), pennants = GatheredMarks()
 
     mutating func add(_ hold: Hold, at point: CGPoint, radius r: CGFloat) {
         let count = TokenArt.towerCount(for: hold)
         if count > 0 {
             let flanks = TokenArt.towers(at: point, radius: r, count: count)
-            towers.addPath(flanks)
-            towerRims[hold.owner, default: Path()].addPath(flanks)
+            towers.add(at: point) { $0.addPath(flanks) }
+            towerRims.add(hold.owner, at: point) { $0.addPath(flanks) }
         }
         let height = hold.level(.walls)
         if height > 0 {
             let ring = TokenArt.walls(at: point, radius: r)
-            walls.addPath(ring)
-            wallRims[hold.owner * 8 + height, default: Path()].addPath(ring)
+            walls.add(at: point) { $0.addPath(ring) }
+            wallRims.add(hold.owner * 8 + height, at: point) { $0.addPath(ring) }
         }
         let keep = TokenArt.keep(at: point, radius: r, seat: hold.isSeat)
-        keeps.addPath(keep)
-        keepRims[hold.owner * 2 + (hold.isSeat ? 1 : 0), default: Path()].addPath(keep)
+        keeps.add(at: point) { $0.addPath(keep) }
+        keepRims.add(hold.owner * 2 + (hold.isSeat ? 1 : 0), at: point) { $0.addPath(keep) }
         // One warm window: someone keeps the lamp lit.
-        windows.addPath(TokenArt.window(at: point, radius: r))
+        let window = TokenArt.window(at: point, radius: r)
+        windows.add(at: point) { $0.addPath(window) }
         if hold.isSeat {
             let banner = TokenArt.banner(at: point, radius: r)
-            poles[hold.owner, default: Path()].addPath(banner.pole)
-            pennants[hold.owner, default: Path()].addPath(banner.pennant)
+            poles.add(hold.owner, at: point) { $0.addPath(banner.pole) }
+            pennants.add(hold.owner, at: point) { $0.addPath(banner.pennant) }
         }
         let spire = hold.level(.moonspire)
         if spire > 0 {
             let top = TokenArt.keepTop(at: point, radius: r, seat: hold.isSeat)
-            needles.move(to: CGPoint(x: point.x - r * 0.35, y: top))
-            needles.addLine(to: CGPoint(x: point.x - r * 0.35, y: top - r * 0.45 * CGFloat(spire)))
+            needles.add(at: point) { needle in
+                needle.move(to: CGPoint(x: point.x - r * 0.35, y: top))
+                needle.addLine(to: CGPoint(x: point.x - r * 0.35, y: top - r * 0.45 * CGFloat(spire)))
+            }
         }
     }
 
     func draw(in context: inout GraphicsContext, colour: (Int) -> Color) {
         guard !keeps.isEmpty else { return }
         let dark = Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)
-        if !towers.isEmpty { context.fill(towers, with: .color(dark)) }
-        for key in towerRims.keys.sorted() {
-            if let rim = towerRims[key] { context.stroke(rim, with: .color(colour(key).opacity(0.8)), lineWidth: 1) }
+        towers.each { _, path in context.fill(path, with: .color(dark)) }
+        towerRims.each { owner, rim in context.stroke(rim, with: .color(colour(owner).opacity(0.8)), lineWidth: 1) }
+        walls.each { _, path in context.fill(path, with: .color(Color.black.opacity(0.55))) }
+        wallRims.each { key, rim in
+            context.stroke(rim, with: .color(colour(key / 8).opacity(0.7)), lineWidth: CGFloat(key % 8) * 0.5 + 0.6)
         }
-        if !walls.isEmpty { context.fill(walls, with: .color(Color.black.opacity(0.55))) }
-        for key in wallRims.keys.sorted() {
-            if let rim = wallRims[key] {
-                context.stroke(rim, with: .color(colour(key / 8).opacity(0.7)), lineWidth: CGFloat(key % 8) * 0.5 + 0.6)
-            }
-        }
-        context.fill(keeps, with: .color(dark))
-        for key in keepRims.keys.sorted() {
-            if let rim = keepRims[key] { context.stroke(rim, with: .color(colour(key / 2)), lineWidth: key % 2 == 1 ? 1.6 : 1.2) }
-        }
-        context.fill(windows, with: .color(Color(red: 1.0, green: 0.76, blue: 0.45)))
-        for key in poles.keys.sorted() {
-            if let pole = poles[key] { context.stroke(pole, with: .color(colour(key)), lineWidth: 1.1) }
-            if let pennant = pennants[key] { context.fill(pennant, with: .color(colour(key))) }
-        }
-        if !needles.isEmpty { context.stroke(needles, with: .color(Color(red: 0.86, green: 0.9, blue: 1.0)), lineWidth: 1.6) }
+        keeps.each { _, path in context.fill(path, with: .color(dark)) }
+        keepRims.each { key, rim in context.stroke(rim, with: .color(colour(key / 2)), lineWidth: key % 2 == 1 ? 1.6 : 1.2) }
+        windows.each { _, path in context.fill(path, with: .color(Color(red: 1.0, green: 0.76, blue: 0.45))) }
+        poles.each { owner, pole in context.stroke(pole, with: .color(colour(owner)), lineWidth: 1.1) }
+        pennants.each { owner, pennant in context.fill(pennant, with: .color(colour(owner))) }
+        needles.each { _, path in context.stroke(path, with: .color(Color(red: 0.86, green: 0.9, blue: 1.0)), lineWidth: 1.6) }
     }
 }
 
 /// The companies drawn flat, where no models stand, gathered and drawn at
 /// once, layer by layer as each was drawn alone: a shield, its rim bolder
 /// dug in, a halo for the one chosen or under the pointer, and its kind's
-/// mark. No two companies share a hex, so none is drawn over another.
+/// mark; each layer by the squares of the view its companies stand in. No
+/// two companies share a hex, so none is drawn over another.
 private struct CompanyTokens {
-    private var shields = Path()
+    private var shields = GatheredMarks()
     /// Rims by owner and whether dug in; marks by owner.
-    private var rims: [Int: Path] = [:], marks: [Int: Path] = [:]
+    private var rims = GatheredMarks(), marks = GatheredMarks()
     private var halos: [(ring: Path, chosen: Bool)] = []
 
     mutating func add(_ unit: NullmereCore.Unit, at point: CGPoint, radius r: CGFloat, chosen: Bool, hovered: Bool) {
         let shield = TokenArt.shield(at: point, radius: r)
-        shields.addPath(shield)
-        rims[unit.owner * 2 + (unit.fortified ? 1 : 0), default: Path()].addPath(shield)
+        shields.add(at: point) { $0.addPath(shield) }
+        rims.add(unit.owner * 2 + (unit.fortified ? 1 : 0), at: point) { $0.addPath(shield) }
         // The chosen company wears a bright halo; the one under the
         // pointer a faint one.
         if chosen || hovered {
             halos.append((Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2)), chosen))
         }
-        marks[unit.owner, default: Path()].addPath(Path(companyMark: unit.kind, at: point, radius: r * 0.55))
+        let mark = Path(companyMark: unit.kind, at: point, radius: r * 0.55)
+        marks.add(unit.owner, at: point) { $0.addPath(mark) }
     }
 
     func draw(in context: inout GraphicsContext, colour: (Int) -> Color) {
         guard !shields.isEmpty else { return }
-        context.fill(shields, with: .color(Color(red: 0.03, green: 0.035, blue: 0.05).opacity(0.9)))
-        for key in rims.keys.sorted() {
-            if let rim = rims[key] { context.stroke(rim, with: .color(colour(key / 2)), lineWidth: key % 2 == 1 ? 2.2 : 1.3) }
-        }
+        shields.each { _, path in context.fill(path, with: .color(Color(red: 0.03, green: 0.035, blue: 0.05).opacity(0.9))) }
+        rims.each { key, rim in context.stroke(rim, with: .color(colour(key / 2)), lineWidth: key % 2 == 1 ? 2.2 : 1.3) }
         for halo in halos {
             context.stroke(halo.ring, with: .color(Palette.line(halo.chosen ? 0.9 : 0.4)), lineWidth: halo.chosen ? 1.4 : 1)
         }
-        for key in marks.keys.sorted() {
-            if let mark = marks[key] { context.stroke(mark, with: .color(colour(key)), lineWidth: 1.3) }
-        }
+        marks.each { owner, mark in context.stroke(mark, with: .color(colour(owner)), lineWidth: 1.3) }
     }
 }
 
