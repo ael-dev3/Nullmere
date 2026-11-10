@@ -1834,15 +1834,21 @@ public struct CompanionLedger: Equatable, Sendable {
         }
     }
 
-    /// The companies a hold may muster now at the first tier: none while it
-    /// musters one; those its works allow, the House able to pay.
+    /// The companies a hold may muster now: none while it musters one; each
+    /// kind its works allow, at the highest tier its Muster Hall and the
+    /// House's studies open, as the Mac's Train first chooses it, or the
+    /// highest below that the House can pay for, named as every line names
+    /// it ("Muster Spears III", a people's own name for its finest).
     static func musters(at hold: NullmereCore.Hold, in world: GameState, player: Int) -> [Order] {
         guard hold.training == nil, world.houses.indices.contains(player) else { return [] }
         let stock = world.houses[player].stock
-        return UnitKind.allCases.filter { kind in
-            world.tierRefusal(of: kind, tier: 1, at: hold, for: player) == nil && stock.covers(world.trainingCost(of: kind, tier: 1, for: player))
-        }.map { kind in
-            Order(title: "Muster \(kind.named(tier: 1))", command: .train(hold: hold.id, kind: kind, tier: 1))
+        return UnitKind.allCases.compactMap { kind in
+            let open = world.highestTier(of: kind, at: hold, for: player)
+            guard let tier = (1...open).reversed().first(where: { tier in
+                world.tierRefusal(of: kind, tier: tier, at: hold, for: player) == nil
+                    && stock.covers(world.trainingCost(of: kind, tier: tier, for: player))
+            }) else { return nil }
+            return Order(title: "Muster \(world.named(kind, tier: tier, of: player))", command: .train(hold: hold.id, kind: kind, tier: tier))
         }
     }
 

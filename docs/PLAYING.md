@@ -308,7 +308,9 @@ a vote on the realm's law to cast.
   its Infirmary while any lie in its beds (who lies there, and those being
   healed) with Heal for half what mustering them anew costs, and Raise and
   Muster: the works it may raise a level and the companies it may muster
-  at the first tier now, the House able to pay, the hold keeping the
+  now, each kind at the highest tier its Muster Hall and your studies
+  open, as the Mac's Train first chooses it, or the highest below that
+  the stores pay for ("Muster Spears III"), the hold keeping the
   House's letter to the age to come saying so; and beneath the holds, once
   each for the House, A letter to the age to come…, while it has sealed
   none this age, its words sealed under the stones of the hold chosen for

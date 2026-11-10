@@ -1474,6 +1474,44 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(bare.musters.isEmpty)
     }
 
+    /// A company mustered from the phone at the highest tier the hold's
+    /// Muster Hall and the House's studies open, as the Mac's Train first
+    /// chooses it, or the highest below that the stores can pay for; only
+    /// the first tier where nothing more is open.
+    func testThePhoneMustersAtTheHighestTierOpen() throws {
+        var (state, me) = try world()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let index = try XCTUnwrap(state.holds.firstIndex { $0.id == seat.id })
+        state.holds[index].training = nil
+        state.holds[index].levels[.musterHall] = 3
+        state.houses[me].stock = Stock(grain: 5_000, timber: 5_000, stone: 5_000, moonsalt: 500)
+        func spears(_ world: GameState) throws -> CompanionLedger.Order? {
+            try XCTUnwrap(CompanionLedger(world: world, player: me).holds.first(where: \.isSeat)).musters.first {
+                if case .train(_, .spear, _) = $0.command { return true }
+                return false
+            }
+        }
+        // Nothing studied: the first tier.
+        XCTAssertEqual(try spears(state)?.command, .train(hold: seat.id, kind: .spear, tier: 1))
+        XCTAssertEqual(try spears(state)?.title, "Muster Spears I")
+        // Drill and Iron Ranks studied, a Muster Hall of III: the third.
+        state.houses[me].research.learn(.drill, grade: 1)
+        state.houses[me].research.learn(.ironRanks, grade: 1)
+        let highest = state.highestTier(of: .spear, at: try XCTUnwrap(state.hold(seat.id)), for: me)
+        XCTAssertEqual(highest, 3)
+        let third = try XCTUnwrap(try spears(state))
+        XCTAssertEqual(third.command, .train(hold: seat.id, kind: .spear, tier: 3))
+        XCTAssertEqual(third.title, "Muster \(state.named(.spear, tier: 3, of: me))")
+        // Short of what the third asks but not the second: the second.
+        var short = state
+        short.houses[me].stock = state.trainingCost(of: .spear, tier: 2, for: me)
+        XCTAssertFalse(short.houses[me].stock.covers(state.trainingCost(of: .spear, tier: 3, for: me)))
+        XCTAssertEqual(try spears(short)?.command, .train(hold: seat.id, kind: .spear, tier: 2))
+        // Every muster offered is one the rules take.
+        assertTaken(try XCTUnwrap(CompanionLedger(world: state, player: me).holds.first(where: \.isSeat)).musters, in: state, as: me)
+        assertTaken(try XCTUnwrap(CompanionLedger(world: short, player: me).holds.first(where: \.isSeat)).musters, in: short, as: me)
+    }
+
     /// The House's commanders as the Mac's board orders them, each with
     /// how they stand; one held prisoner may not be asked for counsel.
     func testTheHousesCommandersAndHowTheyStand() throws {
