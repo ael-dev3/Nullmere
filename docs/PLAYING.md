@@ -1340,7 +1340,18 @@ a vote on the realm's law to cast.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;
-  refused or ignored, it marches. You can demand tribute too: a steward
+  refused or ignored, it marches. A keeper may offer half instead, a tenth
+  of their stores (Offer half on the envoy's card, on the Mac and the
+  phone; OFFER HALF THE TRIBUTE TO <house> in the order book; or put
+  forward by a commander in counsel). The steward weighs it at once by the
+  realm's true reckoning of both Houses' strength: it takes half where its
+  House is less than half again as strong as the keeper's (a cunning one, a
+  third again), and half the tribute keeps the peace ten watches; else it
+  holds to the whole, its envoy waiting on the keeper's answer as before,
+  never to be bargained with again. Envoys are answered in the order book
+  too (ACCEPT or REFUSE THE ENVOY OF <house>), and a commander in counsel
+  knows each envoy waiting, its House's reputed strength beside yours, and
+  may put an answer forward. You can demand tribute too: a steward
   that refuses you is at once at war with you, the war of your making; a
   keeper who refuses you owes nothing more, and war is yours to choose.
 - **Fealty.** A steward's House that loses its seat with four holds or

@@ -356,6 +356,14 @@ public struct CompanionLedger: Equatable, Sendable {
         /// What came of the envoys before it between the two Houses, as the
         /// Mac's card tells it (`GameState.remembered(_:for:)`); nil before any.
         public var remembered: String?
+        /// Half a steward's demand of tribute offered in its place, where the
+        /// rules take it: "Offer half: 12 grain, 6 timber"; nil otherwise.
+        public var bargain: Order?
+        /// The rule its steward weighs half by, beside the offer.
+        public var bargainRule: String?
+        /// Once its steward held to the whole: "Offered half, House Venn
+        /// holds to the whole."
+        public var held: String?
     }
 
     /// A plea the folk of one of the House's holds bring to the gate, in
@@ -1048,7 +1056,11 @@ public struct CompanionLedger: Equatable, Sendable {
                          refuse: Order(title: "Refuse", command: .answer(envoy: envoy.id, accept: false)),
                          refusingIsWar: world.refusingIsWar(envoy),
                          voice: houses.indices.contains(envoy.from) && !houses[envoy.from].isPlayer ? "envoy-\(envoy.id)" : nil,
-                         remembered: world.remembered(envoy, for: player))
+                         remembered: world.remembered(envoy, for: player),
+                         bargain: world.bargainRefusal(envoy.id, as: player) == nil
+                            ? Order(title: world.bargainSaid(for: player), command: .bargain(envoy: envoy.id)) : nil,
+                         bargainRule: world.bargainRefusal(envoy.id, as: player) == nil ? GameState.bargainRule : nil,
+                         held: envoy.bargained == true ? "Offered half, \(title(envoy.from)) holds to the whole." : nil)
         }
         plea = world.petition(of: player).map { petition in
             let left = max(Petition.patience - (world.watch - petition.arrived), 1)

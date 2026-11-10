@@ -467,6 +467,12 @@ extension GameState {
             case .mendingDraught: return Tidings("You share out a Mending Draught: every hurt company of yours mends.", .good)
             default: return Tidings("You open a \(kind.title): \(kind.stores) to your stores.", .good)
             }
+        case .tributeBargained(let from, let to, let paid):
+            guard to == viewer, houses.indices.contains(from) else { return nil }
+            guard let paid else {
+                return Tidings("\(houses[from].title) holds to its demand: a fifth of your stores, or it marches.", .bad)
+            }
+            return Tidings("\(houses[from].title) takes half its demand: \(paid). It keeps the peace \(GameState.halfTributeRespite) watches.", .neutral)
         case .tomeRead(let id, let house):
             guard house == viewer, let commander = commander(id) else { return nil }
             return Tidings("\(commander.name) reads a \(ItemKind.tome.title): \(GameState.tomeExperience) experience.", .good)

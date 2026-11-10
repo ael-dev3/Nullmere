@@ -1924,6 +1924,33 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(CompanionLedger(world: state, player: me).calls.isEmpty, "One rally called at a time")
     }
 
+    /// A steward's demand of tribute may be met with half, as on the Mac:
+    /// offered with what it would pay and the rule its steward weighs it by,
+    /// the rules taking it; once the steward held to the whole, offered no
+    /// more, and the row says so. No other offer has a half.
+    func testThePhoneOffersHalfAStewardsDemand() throws {
+        var (state, me) = try world()
+        let demander = try XCTUnwrap(state.houses.indices.first { $0 != me })
+        state.envoys = [Envoy(id: state.takeID(), from: demander, to: me, proposal: .tribute, arrived: state.watch)]
+        let row = try XCTUnwrap(CompanionLedger(world: state, player: me).envoys.first)
+        let bargain = try XCTUnwrap(row.bargain)
+        XCTAssertEqual(bargain.title, "Offer half: \(state.halfTribute(from: me))")
+        XCTAssertEqual(bargain.command, .bargain(envoy: row.id))
+        XCTAssertEqual(row.bargainRule, GameState.bargainRule)
+        XCTAssertNil(row.held)
+        assertTaken([bargain], in: state, as: me)
+        // Held to the whole: no second offer, and the row tells it.
+        var held = state
+        held.envoys[0].bargained = true
+        let after = try XCTUnwrap(CompanionLedger(world: held, player: me).envoys.first)
+        XCTAssertNil(after.bargain)
+        XCTAssertNil(after.bargainRule)
+        XCTAssertEqual(after.held, "Offered half, \(state.houses[demander].title) holds to the whole.")
+        var pact = state
+        pact.envoys = [Envoy(id: row.id, from: demander, to: me, proposal: .pact, arrived: state.watch)]
+        XCTAssertNil(try XCTUnwrap(CompanionLedger(world: pact, player: me).envoys.first).bargain)
+    }
+
     /// Envoys waiting on the keeper, the first come first, their terms as
     /// the Mac words them and the answers the rules take; a trade the keeper
     /// can't pay offered no acceptance; a steward's demand of tribute marked,

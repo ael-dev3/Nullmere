@@ -94,8 +94,9 @@ public struct CommanderCounsel: Sendable {
         marks and no modern words. Know only what you are told here and what your looks tell you: never invent \
         a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
         your House's affairs, at your alliance, at yourself (your talents, stars and gear), or at another House by its name. You \
-        may put an order to your keeper only by proposing it, for a company or for yourself, and you never give \
-        one yourself: say that you have put it forward, and that the keeper decides. Name companies by their \
+        may put an order to your keeper only by proposing it, for a company, for yourself or in answer to an \
+        envoy waiting on your House, and you never give one yourself: say that you have put it forward, and \
+        that the keeper decides. Name companies by their \
         handles and names as given. Never speak of games, players, turns, rules, models or tools.
         """
     }
@@ -232,6 +233,23 @@ public struct CommanderCounsel: Sendable {
         }
         if state.alliance(of: player) != nil, let alliance = state.ranking(.might, alliances: true, for: player, most: 0).standing {
             lines.append(alliance)
+        }
+        // The envoys waiting on its keeper's answer: what each carries, how
+        // the House it comes from is reputed in arms beside it, and where a
+        // steward's demand may be bargained down, what half would pay.
+        let waiting = state.envoys.filter { $0.to == player && state.houses.indices.contains($0.from) }
+            .sorted { ($0.arrived, $0.id) < ($1.arrived, $1.id) }
+        for envoy in waiting.prefix(CommanderCounsel.envoysTold) {
+            let title = state.houses[envoy.from].title
+            var line = "An envoy of \(title) waits on your keeper's answer: \(state.terms(of: envoy, for: player)) "
+                + "\(title)'s companies are reputed \(GameState.counted(state.strength(of: envoy.from))) strong "
+                + "to your House's \(GameState.counted(state.strength(of: player)))."
+            if state.bargainRefusal(envoy.id, as: player) == nil {
+                line += " Half its demand may be offered instead, \(state.halfTribute(from: player)). \(GameState.bargainRule)"
+            } else if envoy.bargained == true {
+                line += " Offered half, its steward held to the whole."
+            }
+            lines.append(line)
         }
         // The blackwood burning on its land, or lying there as ash.
         let fires = state.firesAndAsh
@@ -454,6 +472,40 @@ public struct CommanderCounsel: Sendable {
         }
         if (verb == "scout" || verb == "reinforce") && place.isEmpty {
             return CounselProposal(line: line, told: line, command: nil, why: "Scouting or keeping a hold's gates wants the hold's name.")
+        }
+        guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
+            return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")
+        }
+        return CounselProposal(line: line, told: read.told, command: read.command, why: read.why)
+    }
+
+    /// What a commander may put forward of an envoy waiting on the House.
+    public static let envoyActions = ["accept", "refuse", "bargain"]
+
+    /// The most envoys waiting the House's affairs tell, the first come
+    /// first, so the briefing leaves the model room to recall.
+    public static let envoysTold = 3
+
+    /// Why a commander can't put forward any other answer to an envoy.
+    public static let onlyTheseForEnvoys = "A commander may propose only that your keeper accept an envoy's offer, refuse it, "
+        + "or offer half a steward's demand of tribute (bargain), naming the House the envoy comes from."
+
+    /// An answer to an envoy put to the keeper, read and weighed as the
+    /// order book weighs a line: its offer accepted or refused, or half a
+    /// steward's demand of tribute offered.
+    public func proposeAnswer(_ action: String, house: String) -> CounselProposal {
+        let verb = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let name = house.trimmingCharacters(in: .whitespacesAndNewlines)
+        let line: String
+        switch verb {
+        case "accept", "pay": line = "ACCEPT THE ENVOY OF \(name)"
+        case "refuse": line = "REFUSE THE ENVOY OF \(name)"
+        case "bargain", "half", "offer half": line = "OFFER HALF THE TRIBUTE TO \(name)"
+        default:
+            return CounselProposal(line: "\(action) \(name)", told: "\(action) \(name)", command: nil, why: CommanderCounsel.onlyTheseForEnvoys)
+        }
+        guard !name.isEmpty else {
+            return CounselProposal(line: line, told: line, command: nil, why: "An answer to an envoy wants the House it comes from.")
         }
         guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
             return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")

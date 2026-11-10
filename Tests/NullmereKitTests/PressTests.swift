@@ -1118,6 +1118,45 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(session.state.stance(me, keeper), .peace, "A keeper refused chooses war or not for themselves")
     }
 
+    /// Half a steward's demand offered from its card, the order sent for
+    /// the realm to weigh; once the realm says its steward held to the
+    /// whole, the card says so and offers half no more. A keeper's demand
+    /// has no half to offer.
+    func testHalfAStewardsDemandIsOfferedFromItsCard() throws {
+        var state = GameState(settings: GameSettings(seedText: "tribute bargained", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let others = state.houses.map(\.id).filter { $0 != me }
+        let steward = others[0], keeper = others[1]
+        state.houses[keeper].isPlayer = true
+        state.envoys.append(Envoy(id: 803, from: steward, to: me, proposal: .tribute, arrived: state.watch))
+        let (session, link) = session(state)
+        draw(EnvoyCards(session: session))
+        XCTAssertTrue(PressableButtons.press("Offer half"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .bargain(envoy: 803))
+        XCTAssertTrue(GameSession.decidedByRealm(.bargain(envoy: 803), in: session.state), "Weighed by the realm's true might")
+
+        // The realm's word: its steward held to the whole.
+        var held = session.state
+        held.envoys.removeAll { $0.id == 803 }
+        held.envoys.append(Envoy(id: 803, from: steward, to: me, proposal: .tribute, arrived: held.watch, bargained: true))
+        link.onEvent?(.changed(held))
+        draw(EnvoyCards(session: session))
+        XCTAssertNil(PressableButtons.actions["Offer half"], "Bargained with once only, among \(shown)")
+        XCTAssertNotNil(PressableButtons.actions["Accept"], "The whole may still be paid, among \(shown)")
+        XCTAssertEqual(EnvoyCards.heldToTheWhole(by: session.state.houses[steward]),
+                       "Offered half, \(session.state.houses[steward].title) holds to the whole.")
+
+        // A keeper's demand is theirs to bargain over in words.
+        var demanded = session.state
+        demanded.envoys = [Envoy(id: 804, from: keeper, to: me, proposal: .tribute, arrived: demanded.watch)]
+        link.onEvent?(.changed(demanded))
+        draw(EnvoyCards(session: session))
+        XCTAssertNil(PressableButtons.actions["Offer half"], "Among \(shown)")
+        XCTAssertEqual(GameSession.cues(for: [.tributeBargained(from: steward, to: me, paid: nil)], player: me), [.refusal])
+        XCTAssertEqual(GameSession.cues(for: [.tributeBargained(from: steward, to: me, paid: Stock(grain: 10, timber: 0, stone: 0, moonsalt: 0))],
+                                        player: me), [.coin])
+    }
+
     func testATradeIsComposedAndOffered() throws {
         let state = GameState(settings: GameSettings(seedText: "pressed trade", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)

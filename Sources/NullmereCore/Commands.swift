@@ -32,6 +32,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// An offer to a House held by a keeper, with a keeper's own words.
     case proposeWithWords(Proposal, to: Int, words: String)
     case answer(envoy: Int, accept: Bool)
+    /// Half a steward's demand of tribute offered in its place: a tenth of
+    /// the House's stores, for half the respite (`GameState.bargain`).
+    case bargain(envoy: Int)
     /// Stores sent to another House, not at war with the giver.
     case gift(to: Int, resource: Resource, amount: Int)
     /// An offer of trade, with a keeper's own words if it goes to a keeper.
@@ -296,6 +299,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case alreadyStance(Stance)
     case notApplicable
     case unknownEnvoy
+    /// A bargain offered on anything but a steward's demand of tribute.
+    case notBargained
+    /// A second bargain offered to an envoy that held to its demand.
+    case bargainedAlready
     case envoyWaiting
     case invalidAmount
     /// A trade or barter of a store for the same store.
@@ -679,6 +686,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .alreadyStance(let stance): return "Already \(stance.standing)."
         case .notApplicable: return "That isn't possible now."
         case .unknownEnvoy: return "That envoy has gone."
+        case .notBargained: return "Only a steward's demand of tribute is bargained over."
+        case .bargainedAlready: return "Their envoy holds to the whole demand: pay it, or refuse."
         case .envoyWaiting: return "An envoy with that offer already waits on their answer."
         case .invalidAmount: return "Choose an amount."
         case .sameStore: return "Choose two different stores."
@@ -909,6 +918,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case gifted(from: Int, to: Int, gift: Stock)
     /// An offer of trade taken or refused, and so carried out or not.
     case tradeAnswered(trade: Trade, from: Int, to: Int, accepted: Bool)
+    /// Half a steward's demand of tribute offered by `to`: what it paid,
+    /// where `from` took it, or nil where `from` held to the whole.
+    case tributeBargained(from: Int, to: Int, paid: Stock?)
     case unitTrained(unit: Int, hold: Int)
     /// So many troops drilled into a company as the watch turned; whole
     /// when it musters as many as it can lead.

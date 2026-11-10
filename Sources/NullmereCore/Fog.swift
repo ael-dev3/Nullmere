@@ -587,7 +587,7 @@ extension GameState {
                 return by == house || visible(at)
             case .envoyArrived(let envoy):
                 return envoy.from == house || envoy.to == house
-            case .proposalAnswered(_, let from, let to, _):
+            case .proposalAnswered(_, let from, let to, _), .tributeBargained(let from, let to, _):
                 return from == house || to == house
             case .holdCaptured, .seatMoved, .holdFounded, .stanceChanged, .houseFell, .gameEnded, .shrineTaken:
                 return true

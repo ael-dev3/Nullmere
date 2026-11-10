@@ -40,6 +40,7 @@ public enum SpokenOrders {
                                "SCOUT <hold> WITH <company>", "REINFORCE <hold> WITH <company>", "RALLY AGAINST <target> WITH <company>",
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
+                               "ACCEPT THE ENVOY OF <house>", "REFUSE THE ENVOY OF <house>", "OFFER HALF THE TRIBUTE TO <house>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
                                "SWEAR PEACE WITH <house> FOR <watches> WATCHES",
                                "SWEAR TO SEND <amount> <store> TO <house> EACH WATCH FOR <watches> WATCHES",
@@ -224,6 +225,7 @@ public enum SpokenOrders {
         let houses = state.livingHouses.filter { $0.id != player }
             .map { "\($0.title) (\(state.stance(player, $0.id).standing))" }
         lines.append("Houses: " + houses.joined(separator: ", "))
+        lines += envoysSaid(in: state, player: player)
         lines.append("Stores: " + Resource.allCases.map(\.title).joined(separator: ", "))
         let sworn = state.oaths(by: player)
         if !sworn.isEmpty {
@@ -394,6 +396,30 @@ public enum SpokenOrders {
             }
             guard let kind = Self.kind(what) else { return refused(text, "No company goes by the name \(what).") }
             return given(.train(hold: hold.id, kind: kind), "\(hold.name) musters a company of \(kind.title).")
+        case "ACCEPT", "REFUSE":
+            // An answer to the envoy another House sent: its offer taken, or
+            // turned away.
+            let said = rest.joined(separator: " ")
+            guard let lead = ["THE ENVOY OF ", "ENVOY OF "].first(where: { said.uppercased().hasPrefix($0) }) else { return nil }
+            let name = String(said.dropFirst(lead.count))
+            guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+            let title = state.houses[other].title
+            guard let envoy = envoy(from: other, in: state, player: player) else {
+                return refused(text, "No envoy of \(title) waits on your answer.")
+            }
+            return given(.answer(envoy: envoy.id, accept: verb == "ACCEPT"), answerTold(envoy, accept: verb == "ACCEPT", in: state, player: player))
+        case "OFFER" where ["HALF THE TRIBUTE TO ", "HALF TO "].contains(where: { rest.joined(separator: " ").uppercased().hasPrefix($0) }):
+            // Half a steward's demand of tribute offered in its place.
+            let said = rest.joined(separator: " ")
+            let lead = said.uppercased().hasPrefix("HALF TO ") ? "HALF TO " : "HALF THE TRIBUTE TO "
+            let name = String(said.dropFirst(lead.count))
+            guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+            let title = state.houses[other].title
+            guard let envoy = envoy(from: other, in: state, player: player) else {
+                return refused(text, "No envoy of \(title) waits on your answer.")
+            }
+            return given(.bargain(envoy: envoy.id), "Your House offers \(title) half its demand: \(state.halfTribute(from: player)), "
+                         + "for \(GameState.halfTributeRespite) watches' peace.")
         case "OFFER", "DEMAND", "DECLARE":
             // An envoy to another House, or war on it.
             let said = rest.joined(separator: " ")
@@ -580,6 +606,41 @@ public enum SpokenOrders {
     static func house(_ name: String, in state: GameState, player: Int) -> Int? {
         state.houses.filter { $0.id != player && [plain($0.title), plain($0.name)].contains(plain(name)) }
             .min { ($0.isEliminated ? 1 : 0, $0.id) < ($1.isEliminated ? 1 : 0, $1.id) }?.id
+    }
+
+    /// The envoy of another House waiting on the House's answer, the one
+    /// that came first where several did.
+    static func envoy(from other: Int, in state: GameState, player: Int) -> Envoy? {
+        state.envoys.filter { $0.from == other && $0.to == player }.min { ($0.arrived, $0.id) < ($1.arrived, $1.id) }
+    }
+
+    /// What answering an envoy orders, in the realm's words.
+    static func answerTold(_ envoy: Envoy, accept: Bool, in state: GameState, player: Int) -> String {
+        let title = state.houses[envoy.from].title
+        switch (envoy.proposal, accept) {
+        case (.tribute, true): return "Your House pays \(title) its tribute: \(state.tribute(from: player))."
+        case (.tribute, false):
+            return state.refusingIsWar(envoy) ? "Your House refuses \(title) its tribute, and it marches on you."
+                : "Your House refuses \(title) its tribute."
+        case (.trade, true): return "Your House takes \(title)'s trade" + (envoy.trade.map { ": \($0.taken) of yours for \($0.given)." } ?? ".")
+        case (let proposal, true): return "Your House takes \(title)'s offer of \(proposal.offered)."
+        case (let proposal, false): return "Your House turns away \(title)'s offer of \(proposal.offered)."
+        }
+    }
+
+    /// The envoys waiting on the House's answer, as the briefing tells
+    /// them: what each carries, and where a steward's demand may be
+    /// bargained down, what half would pay.
+    static func envoysSaid(in state: GameState, player: Int) -> [String] {
+        let waiting = state.envoys.filter { $0.to == player && state.houses.indices.contains($0.from) }
+            .sorted { ($0.arrived, $0.id) < ($1.arrived, $1.id) }
+        guard !waiting.isEmpty else { return [] }
+        return ["Envoys waiting on your answer (ACCEPT or REFUSE THE ENVOY OF <house>): " + waiting.prefix(4).map { envoy in
+            state.terms(of: envoy, for: player)
+                + (state.bargainRefusal(envoy.id, as: player) == nil
+                    ? " Half may be offered (OFFER HALF THE TRIBUTE TO \(state.houses[envoy.from].title)): \(state.halfTribute(from: player))."
+                    : "")
+        }.joined(separator: " ")]
     }
 
     /// The company a line names: C and its number in the briefing, the

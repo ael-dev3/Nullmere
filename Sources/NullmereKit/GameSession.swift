@@ -1216,6 +1216,10 @@ public final class GameSession {
             return state.alliance(id).map { !state.houses[$0.leader].isPlayer } ?? false
         case .answer(let id, _):
             return state.envoys.first { $0.id == id }?.proposal == .trade
+        case .bargain:
+            // A steward weighs half its demand by the true might of both
+            // Houses, which this copy knows only by repute.
+            return true
         default:
             return false
         }
@@ -1812,6 +1816,7 @@ public final class GameSession {
         case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
             return .accord
         case .answer(_, false): return .refusal
+        case .bargain: return .parley
         case .fortify, .drill: return .dig
         case .barter, .gift, .offerTrade: return .coin
         case .propose, .proposeWithWords: return .parley
@@ -2119,6 +2124,9 @@ public final class GameSession {
                 add(.accord)
             case .tradeAnswered(_, let from, _, false) where from == player:
                 add(.refusal)
+            case .tributeBargained(_, let to, let paid) where to == player:
+                // Half paid is coin gone; the whole held to, a refusal.
+                add(paid == nil ? .refusal : .coin)
             case .envoyArrived:
                 add(.envoy)
             case .gifted(_, let to, _) where to == player:

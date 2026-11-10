@@ -14,6 +14,9 @@ public struct EnvoyAnswer: Codable, Equatable, Sendable {
         /// Left waiting until it went home: an envoy unanswered is an
         /// envoy refused.
         case unanswered
+        /// A demand of tribute met with half of it, which its steward took
+        /// (`GameState.bargain`).
+        case halved
     }
 
     /// The House the envoys came from.
@@ -43,6 +46,7 @@ public struct EnvoyAnswer: Codable, Equatable, Sendable {
     public func said(by who: String) -> String {
         switch answer {
         case .unanswered: return "\(who) sent no answer"
+        case .halved: return "\(who) paid half of it"
         case .refused: return proposal == .tribute ? "\(who) refused it" : "\(who) turned it away"
         case .accepted:
             switch proposal {
@@ -84,7 +88,7 @@ extension GameState {
         guard houses.indices.contains(from), houses.indices.contains(to),
               houses[from].isPlayer || houses[to].isPlayer else { return }
         var kept = answers ?? []
-        let turnedAway = answer == .accepted ? 0 : 1
+        let turnedAway = answer == .accepted || answer == .halved ? 0 : 1
         if let index = kept.firstIndex(where: { $0.from == from && $0.to == to }) {
             kept[index].proposal = proposal
             kept[index].watch = watch

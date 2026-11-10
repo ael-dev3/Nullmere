@@ -911,6 +911,12 @@ struct EnvoyCards: View {
                             .foregroundStyle(Palette.text(0.5))
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if envoy.bargained == true {
+                        Text(verbatim: EnvoyCards.heldToTheWhole(by: house))
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.5))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     HStack(spacing: 4) {
                         Text(verbatim: left == 1 ? "Leaves after this watch" : "Waits \(left) watches")
                             .font(.nm(10))
@@ -920,6 +926,13 @@ struct EnvoyCards: View {
                             let muted = session.mutedHouses.contains(house.name)
                             QuietButton(title: muted ? "Show words" : "Hide words", size: 8.5) { session.setMuted(!muted, house: house) }
                                 .help(muted ? "Read \(house.name)'s words again." : "Hide \(house.name)'s words from now on, on this Mac.")
+                        }
+                        // Half a steward's demand offered in its place, once.
+                        if state.bargainRefusal(envoy.id, as: session.player) == nil {
+                            QuietButton(title: "Offer half", size: 8.5, name: "Offer \(house.title) half its demand") {
+                                session.perform(.bargain(envoy: envoy.id))
+                            }
+                            .help("\(state.bargainSaid(for: session.player)). \(GameState.bargainRule)")
                         }
                         if state.refusingIsWar(envoy) {
                             // Refusing a steward's demand is war: asked twice, as war is.
@@ -952,6 +965,11 @@ struct EnvoyCards: View {
 
     static func words(for envoy: Envoy, from house: House, in state: GameState, player: Int) -> String {
         state.terms(of: envoy, for: player)
+    }
+
+    /// The line an envoy's card keeps once its steward held to the whole.
+    static func heldToTheWhole(by house: House) -> String {
+        "Offered half, \(house.title) holds to the whole."
     }
 }
 

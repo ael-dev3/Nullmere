@@ -154,8 +154,12 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
     public let words: String?
     /// The terms of an offer of trade.
     public let trade: Trade?
+    /// True once the keeper offered half a steward's demand of tribute and
+    /// the steward held to the whole: one bargain an envoy (`bargain`).
+    public var bargained: Bool?
 
-    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int, words: String? = nil, trade: Trade? = nil) {
+    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int, words: String? = nil, trade: Trade? = nil,
+                bargained: Bool? = nil) {
         self.id = id
         self.from = from
         self.to = to
@@ -163,10 +167,11 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
         self.arrived = arrived
         self.words = words
         self.trade = trade
+        self.bargained = bargained
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, from, to, proposal, arrived, words, trade
+        case id, from, to, proposal, arrived, words, trade, bargained
     }
 
     /// Longest words an envoy carries.
@@ -194,6 +199,7 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
         arrived = try container.decode(Int.self, forKey: .arrived)
         words = try container.decodeIfPresent(String.self, forKey: .words)
         trade = try container.decodeIfPresent(Trade.self, forKey: .trade)
+        bargained = try container.decodeIfPresent(Bool.self, forKey: .bargained)
     }
 
     /// Watches an envoy waits for an answer.

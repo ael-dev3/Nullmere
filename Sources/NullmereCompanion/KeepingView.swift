@@ -1664,6 +1664,12 @@ struct EnvoyRow: View {
                     .foregroundStyle(Night.ink.opacity(0.6))
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let held = envoy.held {
+                Text(verbatim: held)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             VoicedWords(key: envoy.voice, who: "the envoy")
             if let words = envoy.words {
                 Text(verbatim: "\u{201C}\(words)\u{201D}")
@@ -1675,6 +1681,20 @@ struct EnvoyRow: View {
             Text(verbatim: envoy.waits)
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.5))
+            // Half a steward's demand offered in its place, once, with the
+            // rule its steward weighs it by.
+            if let bargain = envoy.bargain {
+                Button(bargain.title) { session.give(bargain.command, told: "Offer \(envoy.from) half its demand") }
+                    .buttonStyle(.bordered)
+                    .font(Night.small)
+                    .accessibilityLabel("Offer \(envoy.from) half its demand")
+                if let rule = envoy.bargainRule {
+                    Text(verbatim: rule)
+                        .font(Night.small)
+                        .foregroundStyle(Night.ink.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             HStack(spacing: 10) {
                 if let accept = envoy.accept {
                     Button(accept.title) { session.give(accept.command, told: "Accept the \(envoy.offer.lowercased()) of \(envoy.from)") }
