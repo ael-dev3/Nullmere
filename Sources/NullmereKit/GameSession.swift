@@ -1807,7 +1807,7 @@ public final class GameSession {
         }
         if war { return .dread }
         switch command {
-        case .found, .build, .train: return .rise
+        case .found, .build, .train, .raiseTier: return .rise
         case .declareWar: return .dread
         case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
             return .accord

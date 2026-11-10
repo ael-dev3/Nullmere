@@ -2742,6 +2742,34 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(Narration.line(for: .drilled(unit: id, owner: me, troops: 1_200, whole: true), in: session.state, viewer: (me + 1) % 6))
     }
 
+    /// A company by its hall, its House having studied the next tier, is
+    /// raised a tier from its panel; told to its House as the realm's word
+    /// comes.
+    func testACompanyIsRaisedATierFromItsPanel() throws {
+        var state = world("raised from the panel")
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let hall = try XCTUnwrap(state.holds.firstIndex { $0.id == seat.id })
+        state.holds[hall].levels[.musterHall] = 2
+        state.houses[me].stock = Stock(grain: 5_000, timber: 5_000, stone: 5_000, moonsalt: 200)
+        state.houses[me].research.learn(.drill, grade: 1)
+        state.units.removeAll { $0.position == seat.position }
+        let id = state.takeID()
+        state.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: me, position: seat.position, tier: 1))
+        let (session, link) = session(state)
+        session.selection = .unit(id)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Raise to Spears II"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseTier(unit: id))
+        XCTAssertEqual(session.state.unit(id)?.tier, 2)
+        let told = Narration.line(for: .tierRaised(unit: id, owner: me, tier: 2), in: session.state, viewer: me)
+        XCTAssertEqual(told?.text, "Your Spears at \(seat.name) are raised to Spears II: \(GameState.counted(UnitKind.spear.troops(tier: 2))) troops.")
+        XCTAssertNil(Narration.line(for: .tierRaised(unit: id, owner: me, tier: 2), in: session.state, viewer: (me + 1) % 6))
+        // At its kind's next tier the House hasn't studied, it is offered but held back.
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertNil(PressableButtons.actions["Raise to Spears III"], "Not yet studied: \(shown)")
+    }
+
     func testCompaniesAndArmiesAreCountedInTroops() throws {
         var state = world("troops shown")
         let me = state.player

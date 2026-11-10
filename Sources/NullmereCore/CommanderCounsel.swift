@@ -141,6 +141,10 @@ public struct CommanderCounsel: Sendable {
             }
         }
         if unit.health < 100 { told += ", at \(unit.health) of its strength in a hundred" }
+        // A tier higher where it stands, by its House's Muster Hall, and for what.
+        if state.raiseRefusal(of: unit, as: player) == nil {
+            told += ", which may be raised to \(state.raisedName(of: unit)) where it stands for \(state.raiseCost(of: unit).listedSaid)"
+        }
         // The fire it may set where it stands, and which way it would run.
         if state.isBlackwood(unit.position) && state.kindleRefusal(unit.id, as: player) == nil {
             told += ", standing in blackwood it may set alight (\(state.windSaid))"
@@ -408,12 +412,13 @@ public struct CommanderCounsel: Sendable {
     public static let sightingsTold = 3
 
     /// What a commander may propose a company does.
-    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "gather",
+    public static let actions = ["march", "strike", "fortify", "halt", "drill", "raise", "kindle", "douse", "light", "wait", "bury", "gather",
                                  "recall", "scout", "reinforce", "rally"]
 
     /// Why a commander can't put forward anything else.
-    public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood "
-        + "alight), douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark), "
+    public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, "
+        + "raise (a tier, by a Muster Hall of your House where it stands), kindle (set the wood alight), "
+        + "douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark), "
         + "bury (the dead lying unburied where it stands), gather (a store, at the nearest site of it the company may work), "
         + "recall (from the land's work, home with its load), scout (another House's hold, with Lanterns near it), "
         + "reinforce (keep the gates of a hold of your House or an ally's) or rally (join a rally of your side still gathering)."
@@ -435,7 +440,7 @@ public struct CommanderCounsel: Sendable {
         case "gather": line = place.isEmpty ? "GATHER \(handle)" : "GATHER \(place) WITH \(handle)"
         case "scout", "reinforce": line = "\(verb.uppercased()) \(place) WITH \(handle)"
         case "rally": line = place.isEmpty ? "RALLY \(handle)" : "RALLY AGAINST \(place) WITH \(handle)"
-        case "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "recall": line = "\(verb.uppercased()) \(handle)"
+        case "fortify", "halt", "drill", "raise", "kindle", "douse", "light", "wait", "bury", "recall": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,
                                    why: CommanderCounsel.onlyThese)

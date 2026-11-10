@@ -59,7 +59,7 @@ enum Guide {
             "Two works hasten a House, and a keeper alone raises them: each level of a Wayhouse sends one more kind of your companies a step further every watch (Lanterns at I, Founders at II, Spears at III, Bows and Mangonels at IV, Riders at V), and each level of a Masons' Lodge raises every work of yours 6% sooner. Your highest of each, in any hold, counts.",
         ]),
         Section(title: "Tiers and studies", picture: .study(level: 4), housed: true, lines: [
-            "Spears, Bows, Riders and Mangonels muster in five tiers, each stronger and dearer than the last: a tier needs its study (Close Order for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",
+            "Spears, Bows, Riders and Mangonels muster in five tiers, each stronger and dearer than the last: a tier needs its study (Close Order for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train. A company standing still at or beside a hold of yours with such a hall may be raised a tier there (Raise, on its panel), for what the two tiers' musters differ by, as many times over as its whole muster is its first: it keeps its drilled troops, fills its ranks to the new tier's first muster, and spends the watch at it.",
             "Build an Archive to study, one study at a time, in four branches: Husbandry, Arms, Masonry and Lore. A study of the second circle needs an Archive of II, and so on, and the studies it builds on. The Archive (3) shows the whole tree: what each grade does, costs and takes.",
         ]),
         Section(title: "Commanders", picture: .commander(variant: 0), housed: true, lines: [

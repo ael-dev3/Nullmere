@@ -37,6 +37,8 @@ extension GameState {
             return []
         case let .drill(unitID):
             return try drill(unitID, as: house)
+        case let .raiseTier(unitID):
+            return try raiseTier(unitID, as: house)
         case let .disband(unitID):
             let index = try ownedUnit(unitID, of: house)
             let unit = units.remove(at: index)

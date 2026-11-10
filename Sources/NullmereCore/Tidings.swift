@@ -84,6 +84,11 @@ extension GameState {
             guard whole, owner == viewer, let company = unit(id) else { return nil }
             let place = drillHold(for: company)?.name ?? hold(at: company.position)?.name ?? "their hold"
             return Tidings("Your \(company.kind.title) at \(place) are drilled whole: \(GameState.counted(fullMuster(of: company))) troops.", .good)
+        case .tierRaised(let id, let owner, let tier):
+            guard owner == viewer, let company = unit(id) else { return nil }
+            let place = drillHold(for: company)?.name ?? hold(at: company.position)?.name ?? "their hold"
+            return Tidings("Your \(company.kind.title) at \(place) are raised to \(named(company.kind, tier: tier, of: owner)): "
+                           + "\(GameState.counted(fullMuster(of: company))) troops.", .good)
         case .unitHealed(let unitID, let holdID):
             guard let unit = unit(unitID), unit.owner == viewer, let hold = hold(holdID) else { return nil }
             return Tidings("Your \(unit.kind.title) rise healed at \(hold.name).", .good)

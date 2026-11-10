@@ -911,6 +911,17 @@ struct UnitPanel: View {
                         }
                         .beckoned(session.beckon == .drill && refusal == nil && !drilling)
                     }
+                    // Raised a tier where it stands, by the hall beside it, as the
+                    // House's studies allow: offered only there, below its
+                    // kind's highest tier, with what it costs.
+                    if unit.kind.hasTiers, unit.tier < unit.kind.highestTier, state.drillHold(for: unit) != nil {
+                        let raise = state.raiseRefusal(of: unit, as: session.player)
+                        QuietButton(title: "Raise to \(state.raisedName(of: unit))", enabled: raise == nil,
+                                    name: state.raiseSaid(of: unit), why: raise.map { String(describing: $0) }) {
+                            session.perform(.raiseTier(unit: unit.id))
+                        }
+                        .help("Train its troops up to the next tier here, for \(state.raiseCost(of: unit).listedSaid)")
+                    }
                     if unit.destination != nil {
                         QuietButton(title: "Halt") { session.perform(.halt(unit: unit.id)) }
                     }

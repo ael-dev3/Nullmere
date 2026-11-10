@@ -1081,11 +1081,14 @@ public struct CompanionLedger: Equatable, Sendable {
             // carrying, drill one the rules would drill, and march to the
             // House's other holds.
             let gathering: Bool = { if case .gather? = unit.errand { return true }; return unit.load != nil }()
+            // Raised a tier by the hall beside it, with what it costs, as the Mac's panel offers it.
+            let raisable = unit.kind.hasTiers && unit.tier < unit.kind.highestTier && world.raiseRefusal(of: unit, as: player) == nil
             let offered: [(String, Command, Bool)] = [
                 ("Fortify", .fortify(unit: unit.id), unit.kind.isMilitary && !unit.fortified && unit.destination == nil && unit.errand == nil),
                 ("Halt", .halt(unit: unit.id), unit.destination != nil),
                 ("Recall", .recall(unit: unit.id), gathering),
                 ("Drill", .drill(unit: unit.id), unit.kind.isMilitary && unit.drillAt == nil && world.drillRefusal(of: unit) == nil),
+                (raisable ? world.raiseSaid(of: unit) : "Raise", .raiseTier(unit: unit.id), raisable),
                 ("Set the wood alight", .kindle(unit: unit.id), world.isBlackwood(unit.position) && world.kindleRefusal(unit.id, as: player) == nil),
                 // Its torches doused to march dark, or lit again, as the Mac's panel offers it.
                 ("Douse the torches", .torches(unit: unit.id, lit: false), world.torchRefusal(unit.id, lit: false, as: player) == nil),

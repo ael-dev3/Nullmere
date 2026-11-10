@@ -811,6 +811,19 @@ a vote on the realm's law to cast.
   its report, its tidings and its notice tell them; a company's panel
   shows its troops standing, and the Realm screen the House's army, all
   its companies of war together.
+- **Raising a tier** (Rise of Kingdoms' troop upgrade). A company of war
+  standing still at or beside one of its House's holds with a Muster Hall
+  as high as its next tier, its House having studied that tier, may be
+  raised to it there (Raise to, on its panel, or from the phone's Army
+  tab), for what the next tier's muster costs over its own, as many times
+  over as its whole muster is its first. It keeps its commanders, rank,
+  health and the troops drilled into it, fills its ranks to the new tier's
+  first muster, and spends the watch at it. Not on the march, at the land's
+  work, at a rally, keeping a hold's gates or in a field of battle. The
+  order book reads RAISE <company>; the clerk's briefing names which
+  companies may be raised and for what, a commander leading one knows it,
+  and may put the raise forward. At the fifth tier of its heritage's kind
+  it becomes the House's own company, named so.
 - **Drill.** A company of war standing at or beside one of its House's
   holds with a Muster Hall drills there when ordered (Drill, on its
   panel), taking on troops as each watch turns while it stays: half its
@@ -1844,7 +1857,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   what they would have done in plain words, and their Mac's on-device
   model, as the House's clerk, reads it into at most six lines of the
   order book (MARCH C1 TO a place, STRIKE a place WITH C2, FORTIFY,
-  HALT or DRILL a company, KINDLE one to set the blackwood where it
+  HALT or DRILL a company, RAISE one a tier by its Muster Hall, KINDLE
+  one to set the blackwood where it
   stands alight, DOUSE or LIGHT its torches, WAIT in the wood, SEEK a
   hamlet or barrow, BURY the dead, GATHER a store WITH a company, RECALL
   one from the land's work, SCOUT a hold WITH Lanterns, REINFORCE a hold

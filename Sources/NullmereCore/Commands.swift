@@ -21,6 +21,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// troops taken on as each watch turns while it stays there, up to as
     /// many as it can lead.
     case drill(unit: Int)
+    /// A company raised a tier where it stands, by a Muster Hall of its
+    /// House's at or beside it (Rise of Kingdoms' troop upgrade).
+    case raiseTier(unit: Int)
     case disband(unit: Int)
     /// Forget a march in progress.
     case halt(unit: Int)
@@ -485,6 +488,15 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case drillsAtMusterHall
     /// A company that musters as many as it can lead.
     case drilledWhole
+    /// A company raised a tier anywhere but at or beside one of its House's
+    /// holds with a Muster Hall.
+    case raisedAtMusterHall
+    /// A company of its kind's highest tier already.
+    case atHighestTier
+    /// A company raised a tier while it marches or is about an errand.
+    case raisedStandingStill
+    /// A company raised a tier while it fights in a field of battle.
+    case raisedOutOfBattle
     /// A heritage taken up by a House already of it.
     case alreadyOfHeritage
     /// A crest whose charge is of its field's tincture.
@@ -784,6 +796,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noneHurt: return "None of your companies is hurt."
         case .drillsAtMusterHall: return "A company of war drills at or beside one of your holds with a Muster Hall."
         case .drilledWhole: return "That company musters as many as it can lead: raise your Muster Hall, or give it a commander, to drill it further."
+        case .raisedAtMusterHall: return "A company of war is raised a tier at or beside one of your holds with a Muster Hall."
+        case .atHighestTier: return "That company is of its kind's highest tier already."
+        case .raisedStandingStill: return "A company is raised a tier standing still: not on the march, at the land's work, at a rally or keeping a hold's gates."
+        case .raisedOutOfBattle: return "A company is raised a tier out of the fighting, not in a field of battle."
         case .alreadyOfHeritage: return "Your House is of that heritage already."
         case .crestUnreadable: return "A charge must be of another tincture than its field, to be seen."
         case .crestChosenAlready: return "Your House took its crest this age; it bears it until the age ends."
@@ -892,6 +908,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// So many troops drilled into a company as the watch turned; whole
     /// when it musters as many as it can lead.
     case drilled(unit: Int, owner: Int, troops: Int, whole: Bool)
+    /// A company raised a tier by its House's Muster Hall.
+    case tierRaised(unit: Int, owner: Int, tier: Int)
     /// A company rose in rank after a battle.
     case promoted(unit: Int, owner: Int, rank: Int)
     case ruinSearched(at: Hex, by: Int, reward: Stock)

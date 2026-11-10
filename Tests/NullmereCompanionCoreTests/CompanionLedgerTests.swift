@@ -1718,6 +1718,32 @@ final class CompanionLedgerTests: XCTestCase {
         }
     }
 
+    /// A company by its hall raised a tier from the phone, said with what it
+    /// costs as the Mac's panel says it; offered only where the rules would
+    /// take it.
+    func testThePhoneRaisesACompanyATierByItsHall() throws {
+        var state = GameState(settings: GameSettings(seedText: "raised on the phone", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let spear = try XCTUnwrap(state.placeUnit(.spear, for: me, near: seat.position))
+        if spear.position.distance(to: seat.position) > 1 {
+            state.units[try XCTUnwrap(state.unitIndex(spear.id))].position = seat.position
+        }
+        func raises() throws -> [CompanionLedger.Order] {
+            let company = try XCTUnwrap(CompanionLedger(world: state, player: me).companies.first { $0.id == spear.id })
+            return company.orders.filter { if case .raiseTier = $0.command { return true }; return false }
+        }
+        XCTAssertTrue(try raises().isEmpty, "No hall and no study: none offered")
+        state.holds[try XCTUnwrap(state.holdIndex(seat.id))].levels[.musterHall] = 2
+        state.houses[me].research.learn(.drill, grade: 1)
+        state.houses[me].stock = Stock(grain: 5_000, timber: 5_000, stone: 5_000, moonsalt: 200)
+        let offered = try raises()
+        XCTAssertEqual(offered.map(\.command), [.raiseTier(unit: spear.id)])
+        XCTAssertEqual(offered.first?.title, state.raiseSaid(of: try XCTUnwrap(state.unit(spear.id))))
+        XCTAssertTrue(offered.first?.title.hasPrefix("Raise to Spears II: ") == true)
+        assertTaken(offered, in: state, as: me)
+    }
+
     /// The House's satchel on the phone, as the Mac's panels use it: each
     /// item, how many and what one does, with the uses the rules take now:
     /// an hourglass for each hold with work to hasten and for the study, a

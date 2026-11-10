@@ -35,8 +35,8 @@ public enum SpokenOrders {
 
     /// The forms of the order book's lines.
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
-                               "DRILL <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>", "SEEK <company>",
-                               "BURY <company>", "GATHER <store> WITH <company>", "RECALL <company>",
+                               "DRILL <company>", "RAISE <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>",
+                               "SEEK <company>", "BURY <company>", "GATHER <store> WITH <company>", "RECALL <company>",
                                "SCOUT <hold> WITH <company>", "REINFORCE <hold> WITH <company>", "RALLY AGAINST <target> WITH <company>",
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
@@ -82,6 +82,13 @@ public enum SpokenOrders {
     static func burySaid(_ unit: Unit, in state: GameState, player: Int) -> String {
         guard let field = state.fieldOfDead(at: unit.position), state.burialRefusal(by: unit.id, as: player) == nil else { return "" }
         return ", where \(GameState.counted(field.troops)) troops' dead lie unburied, which it may bury (BURY)"
+    }
+
+    /// A company its House may raise a tier where it stands (RAISE), as
+    /// the briefing tells it, with what it would cost.
+    static func raisableSaid(_ unit: Unit, in state: GameState, player: Int) -> String {
+        guard state.raiseRefusal(of: unit, as: player) == nil else { return "" }
+        return ", which may be raised to \(state.raisedName(of: unit)) where it stands for \(state.raiseCost(of: unit).listedSaid) (RAISE)"
     }
 
     /// What a company has been sent to do beyond a march, as the briefing
@@ -189,6 +196,7 @@ public enum SpokenOrders {
                          + Self.seekSaid(unit, in: state, player: player)
                          + Self.scoutSaid(unit, in: state, player: player)
                          + Self.burySaid(unit, in: state, player: player)
+                         + Self.raisableSaid(unit, in: state, player: player)
                          + (state.isUnlit(unit.id) ? ", marching dark, its torches doused (LIGHT)" : "")
                          + Self.errandSaid(unit, in: state))
         }
@@ -299,7 +307,7 @@ public enum SpokenOrders {
             return verb == "MARCH"
                 ? given(.move(unit: unit.id, to: place.at), "Your \(named(unit, in: state)) march to \(place.name).")
                 : given(.attack(unit: unit.id, target: place.at), "Your \(named(unit, in: state)) strike \(place.name).")
-        case "FORTIFY", "HALT", "DRILL", "KINDLE", "DOUSE", "LIGHT", "WAIT", "SEEK", "BURY", "RECALL":
+        case "FORTIFY", "HALT", "DRILL", "RAISE", "KINDLE", "DOUSE", "LIGHT", "WAIT", "SEEK", "BURY", "RECALL":
             let handle = rest.joined(separator: " ")
             guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
             switch verb {
@@ -311,6 +319,11 @@ public enum SpokenOrders {
             case "LIGHT": return given(.torches(unit: unit.id, lit: true), "Your \(named(unit, in: state)) light their torches again.")
             case "WAIT": return given(.lieInWait(unit: unit.id, waiting: true), "Your \(named(unit, in: state)) lie in wait in the wood.")
             case "BURY": return given(.bury(unit: unit.id), "Your \(named(unit, in: state)) bury the dead that lie there under a barrow.")
+            case "RAISE":
+                // Named for the tier it would be, where there is one above it.
+                let raised = unit.kind.hasTiers && unit.tier < unit.kind.highestTier
+                return given(.raiseTier(unit: unit.id), raised ? "Your \(named(unit, in: state)) are raised to \(state.raisedName(of: unit))."
+                                                                : "Your \(named(unit, in: state)) are raised a tier.")
             case "SEEK":
                 guard let find = state.findToSeek(by: unit, as: player) else {
                     return refused(text, "Your \(named(unit, in: state)) stand by no hamlet or barrow your House has yet to seek.")
