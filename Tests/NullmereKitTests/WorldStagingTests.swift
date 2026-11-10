@@ -420,6 +420,59 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(leaves(session.sceneFrame(at: 50, now: spring.start.addingTimeInterval(0.3)).motes), 0, "still, none")
     }
 
+    /// A company of the keeper's come through the fighting a rank higher is
+    /// lit a moment where it stands, gold rising about it, gone a while
+    /// after; so is the company a commander of theirs leads as it rises a
+    /// level. Another House's out of sight is not; still, nothing is drawn.
+    func testACompanyRaisedInRankOrLedByARisenCommanderIsLitWhereItStands() throws {
+        var leader: (commander: Int, company: Int)?
+        let session = try session { state in
+            let me = state.player
+            let lead = try XCTUnwrap(state.commanders(of: me).first).id
+            let seat = try XCTUnwrap(state.seat(of: me))
+            let company = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary && $0.position.distance(to: seat.position) <= 1 })
+            _ = try state.perform(.assign(commander: lead, unit: company.id), as: me)
+            leader = (lead, company.id)
+        }
+        let player = session.player
+        let (commander, ledCompany) = try XCTUnwrap(leader)
+        let company = try XCTUnwrap(session.state.units(of: player).first { $0.kind.isMilitary })
+        func gold(_ motes: [Mote], about hex: Hex) -> Int {
+            let heart = Relief.centre(of: hex)
+            return motes.filter { mote in
+                mote.colour.w == 0 && mote.colour.x > 0
+                    && abs(mote.colour.y / mote.colour.x - 1.35 / 1.9) < 1e-3 && abs(mote.colour.z / mote.colour.x - 0.5 / 1.9) < 1e-3
+                    && ((mote.place.x - heart.x) * (mote.place.x - heart.x) + (mote.place.z - heart.z) * (mote.place.z - heart.z)).squareRoot() < 1.2
+            }.count
+        }
+        XCTAssertTrue(session.glories.isEmpty)
+        session.showBlows([.promoted(unit: company.id, owner: player, rank: 1)])
+        let glory = try XCTUnwrap(session.glories.last)
+        XCTAssertEqual(glory.unit, company.id)
+        XCTAssertEqual(glory.at, company.position)
+        XCTAssertEqual(gold(session.sceneFrame(at: 50, now: glory.start.addingTimeInterval(0.4)).motes, about: company.position),
+                       Happenings.gloryMotes, "gold rising about it")
+        XCTAssertEqual(gold(session.sceneFrame(at: 50, now: glory.start.addingTimeInterval(3)).motes, about: company.position), 0,
+                       "gone a while after")
+        session.motion = .still
+        XCTAssertEqual(gold(session.sceneFrame(at: 50, now: glory.start.addingTimeInterval(0.4)).motes, about: company.position), 0,
+                       "still, none")
+        session.motion = .full
+
+        // A commander of the keeper's risen a level: the company it leads lit.
+        session.showBlows([.commanderRose(commander: commander, house: player, level: 2)])
+        XCTAssertEqual(session.glories.last?.unit, ledCompany)
+        // Another House's company out of sight comes through unseen.
+        let count = session.glories.count
+        let foes = (player + 1) % session.state.houses.count
+        if let hidden = session.state.units(of: foes).first(where: { !session.isVisible($0.position) }) {
+            session.showBlows([.promoted(unit: hidden.id, owner: foes, rank: 1)])
+            XCTAssertEqual(session.glories.count, count, "another House's, out of sight, is not lit")
+        }
+        session.showBlows([.commanderRose(commander: commander, house: foes, level: 3)])
+        XCTAssertEqual(session.glories.count, count, "nor another House's commander")
+    }
+
     /// The hamlets and barrows the keeper's House has found are drawn where
     /// they lie, the land's growth giving way to them as it does to a site
     /// or a lair (their hearts clear, nothing tall on their ground, only

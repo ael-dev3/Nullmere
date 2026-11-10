@@ -61,6 +61,11 @@ public enum Effect: String, CaseIterable, Sendable {
     /// twigs thrown up from among the trees, dark green and brown,
     /// fluttering down as the air slows them.
     case leaves
+    /// A company come through the fighting a rank higher, or a commander
+    /// risen a level: points of gold rising in a slow spiral about it,
+    /// close as they leave the ground and widening a little as they climb,
+    /// brightest low and fading as they go.
+    case glory
 
     /// How long each mote lives, in seconds.
     public var lifetime: Float {
@@ -82,6 +87,7 @@ public enum Effect: String, CaseIterable, Sendable {
         case .pillar: return 1.5
         case .flames: return 0.55
         case .leaves: return 1.6
+        case .glory: return 1.7
         }
     }
 }
@@ -257,6 +263,16 @@ public enum Effects {
             // Dark green and brown by turns, as the wood's own leaves.
             let leaf = c < 0.55 ? Vec3(0.020, 0.036, 0.016) : Vec3(0.036, 0.027, 0.014)
             return Mote(at: at, size: (0.02 + 0.016 * b) * scale, light: leaf * show, cover: show)
+        case .glory:
+            // Climbing about the company in a slow spiral, each at its own
+            // pace and the same way round, widening a little as it rises;
+            // quick to kindle and fading as it climbs.
+            let turn = Double(angle) + Double(age) * (1.4 + 0.9 * Double(b))
+            let radius = (0.26 + 0.12 * c + 0.12 * t) * scale
+            let path = Vec3(Float(cos(turn)), 0, Float(sin(turn))) * radius
+            let rise = (0.08 + (1.0 + 0.5 * b) * t) * scale
+            let show = min(age / 0.18, 1) * (1 - t) * (0.7 + 0.3 * c)
+            return Mote(at: origin + path + Vec3(0, rise, 0), size: 0.02 * scale, light: Vec3(1.9, 1.35, 0.5) * show, cover: 0)
         case .fireflies:
             // Wandering over the reeds in slow loops, blinking on and off.
             let east: Float = Float(sin(Double(age * (0.6 + 0.5 * a) + Float(index)))) * 0.35
@@ -476,6 +492,10 @@ public struct Happenings: Equatable, Sendable {
     }
     /// Holds scouted, and when.
     public var sightings: [Spot] = []
+    /// Companies come through the fighting a rank higher, or led by a
+    /// commander risen a level, where each stands and when: gold rising
+    /// about it and a warm light swelling over it a moment.
+    public var glories: [Spot] = []
     /// Fields of battle going on, as strongly as companies stand in them.
     public var battles: [Spot] = []
     /// Where two throngs meet in a field of battle: steel flashing and
@@ -552,6 +572,10 @@ public struct Happenings: Equatable, Sendable {
     public static let sigilReach: Float = 1.15
     /// How long a scouted hold is lit by its Lanterns' light.
     public static let sightingGlow: Float = 1.6
+    /// How long a company's glory lights it, and how many points of gold
+    /// rise about it.
+    public static let gloryGlow: Float = 1.6
+    public static let gloryMotes = 36
 
     /// The frame's motes and its own lights at `time`.
     /// What happens in sight as motes and light at a moment, leaving out
@@ -752,6 +776,16 @@ public struct Happenings: Equatable, Sendable {
             if age >= 0, age < Happenings.sightingGlow {
                 let swell = Float(sin(Double(age / Happenings.sightingGlow) * .pi))
                 lights.append(PointLight(at: sighting.at + Vec3(0, 0.5, 0), reach: 2.2, colour: Vec3(0.55, 0.8, 1.4) * swell))
+            }
+        }
+        for glory in glories {
+            // Gold rising about the company, and a warm light swelling over
+            // it and dying away.
+            bursts.append(Burst(.glory, at: glory.at, start: glory.start, count: Happenings.gloryMotes, seed: glory.seed, scale: 1))
+            let age = time - glory.start
+            if age >= 0, age < Happenings.gloryGlow {
+                let swell = Float(sin(Double(age / Happenings.gloryGlow) * .pi))
+                lights.append(PointLight(at: glory.at + Vec3(0, 0.7, 0), reach: 2.4, colour: Vec3(1.4, 1.0, 0.42) * swell))
             }
         }
         guard !omitted.isEmpty else { return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights) }

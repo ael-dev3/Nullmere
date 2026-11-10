@@ -771,6 +771,12 @@ extension GameSession {
             happenings.springs.append(Happenings.Spot(at: ground(spring.at), start: clock(spring.start),
                                                       seed: UInt32(truncatingIfNeeded: spring.id)))
         }
+        // A company raised in rank, or led by a commander risen a level:
+        // lit where it is drawn, should it be on the move.
+        for glory in glories {
+            let at = poses.first { $0.unit == glory.unit }?.position ?? ground(glory.at)
+            happenings.glories.append(Happenings.Spot(at: at, start: clock(glory.start), seed: UInt32(truncatingIfNeeded: glory.id)))
+        }
         for pose in poses where pose.clip == .march {
             var riders = false
             switch pose.key {

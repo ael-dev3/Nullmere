@@ -775,7 +775,12 @@ a vote on the realm's law to cast.
   and takes longer to train. Lanterns and Founders muster in one.
   Companies that live through battles rise in rank (Blooded, Hardened,
   Sworn), each rank adding a tenth to attack and defence; chevrons over a
-  company show it. A company that wins a close fight steps onto the
+  company show it. As a company of yours, or one you can see, comes
+  through the fighting a rank higher, it is lit a moment where it stands:
+  points of gold climb about it in a slow spiral and a warm light swells
+  over it and dies away; so is the company a commander of yours leads as
+  that commander rises a level (none where motion is reduced). A company
+  that wins a close fight steps onto the
   fallen's ground, but never out of a hold, for a garrison holds its
   ground, nor into a hold it can't take. The odds shown before a strike
   say when the striker will take the ground or the hold, and never promise

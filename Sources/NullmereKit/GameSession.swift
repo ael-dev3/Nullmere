@@ -453,6 +453,18 @@ public final class GameSession {
         public let start: Date
     }
 
+    /// A company come through the fighting a rank higher, the player's or
+    /// one in sight, or one of the player's whose commander rose a level:
+    /// gold rising about it and a warm light over it, briefly, wherever it
+    /// is drawn (`Happenings.glories`).
+    public struct Glory: Equatable, Identifiable {
+        public let id: Int
+        public let unit: Int
+        /// Where it stood when it was raised, should it no longer be drawn.
+        public let at: Hex
+        public let start: Date
+    }
+
     /// A blow the player saw land: a ring and the damage, briefly, where it fell.
     public struct Blow: Equatable, Identifiable {
         public let id: Int
@@ -581,6 +593,7 @@ public final class GameSession {
     /// Holds scouted in sight, while their Lanterns' light is drawn.
     public private(set) var sightings: [Sighting] = []
     public private(set) var springs: [Spring] = []
+    public private(set) var glories: [Glory] = []
     /// What the House's Lanterns last saw of each hold they scouted, by hold.
     public private(set) var scoutings: [Int: ScoutReport] = [:]
     /// The House's battles and hunts as their reports tell them, the latest first.
@@ -2554,6 +2567,24 @@ public final class GameSession {
             springs.append(Spring(id: blowCounter, at: at, start: now))
             shown = true
         }
+        // A company come through the fighting a rank higher, the keeper's
+        // own or one in sight, and a company of the keeper's whose
+        // commander rose a level: lit a moment where it stands.
+        for event in events {
+            let raised: NullmereCore.Unit?
+            switch event {
+            case .promoted(let unit, let owner, _):
+                raised = state.unit(unit).flatMap { owner == player || isVisible($0.position) ? $0 : nil }
+            case .commanderRose(let commander, let house, _) where house == player:
+                raised = state.company(ledBy: commander)
+            default:
+                raised = nil
+            }
+            guard let raised, !glories.contains(where: { $0.unit == raised.id && $0.start == now }) else { continue }
+            blowCounter += 1
+            glories.append(Glory(id: blowCounter, unit: raised.id, at: raised.position, start: now))
+            shown = true
+        }
         guard shown else { return }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
@@ -2562,6 +2593,7 @@ public final class GameSession {
             self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.sightings.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.springs.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+            self.glories.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
         // An expedition's figures stand on the ridge a while longer.
         if !expeditionFights.isEmpty {
