@@ -365,7 +365,7 @@ struct ProposeOrder: Tool {
 
     @Generable
     struct Arguments {
-        @Guide(description: "What the company is to do: march, strike, fortify, halt, drill, raise, kindle, douse, light, wait, bury, gather, recall, scout, reinforce, rally or ferry")
+        @Guide(description: "What the company is to do: march, strike, fortify, halt, drill, raise, kindle, douse, light, wait, bury, gather, recall, scout, seek, reinforce, rally or ferry")
         var action: String
         @Guide(description: "The company's handle, such as C1")
         var company: String

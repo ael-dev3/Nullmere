@@ -988,7 +988,9 @@ a vote on the realm's law to cast.
   came of it, and your Mac's own model gives the hamlet's eldest a
   welcome, or the words cut at the barrow's mouth, from what the realm
   says came of it; on the phone, its place on the chart. The order book
-  reads SEEK <company>. Stewards seek none. Rise of Kingdoms' scouts find
+  reads SEEK <company>, and a commander in counsel, looking at Lanterns
+  that stand by a find or near another House's hold, is told what they
+  may seek or scout and may put the seeking forward. Stewards seek none. Rise of Kingdoms' scouts find
   its tribal villages and mysterious caves so.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
