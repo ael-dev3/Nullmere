@@ -620,7 +620,7 @@ public final class GameApp {
             words.filter { $0.alliance == alliance.id }.suffix(5).map { "alliance said: \($0.text)" }
         } ?? []
         let shared = words.compactMap(\.place).suffix(5).map { "shared: \($0.name) at \($0.at.q),\($0.at.r)" }
-        let marked = state.marksSeen(by: player).map { "marked: \($0.kind.title) at \($0.at.q),\($0.at.r)" }
+        let marked = state.marksSeen(by: player).map { "marked: \($0.kind.word) at \($0.at.q),\($0.at.r)" }
         let sworn = state.alliance(of: player).map { ["alliance: \($0.name)"] } ?? []
         let standing = ["standing: \(state.standingOrders(of: player).said)"]
         let ring = ["ring: " + (state.ringLine(of: player) ?? []).map(String.init).joined(separator: " ")]

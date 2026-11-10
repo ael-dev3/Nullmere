@@ -378,7 +378,7 @@ enum CompanionCheck {
                     await give(.markGround(seat.position, .gather, words: "Gather at the seat, from the phone."),
                                told: "Mark Gather at \(seat.name)", as: "Marked")
                     if await until(30, { session.world?.marksSeen(by: house).contains { $0.at == seat.position && $0.kind == .gather } == true }) {
-                        lines.append("Marked for the alliance: Gather at \(seat.position.q),\(seat.position.r)")
+                        lines.append("Marked for the alliance: \(AllianceMark.Kind.gather.word) at \(seat.position.q),\(seat.position.r)")
                     } else {
                         broken.append("the ground marked from the phone was never marked")
                     }
