@@ -548,26 +548,95 @@ struct AmountField: View {
     }
 }
 
-/// A tiny mark for each resource.
+/// A small drawn mark for each resource, in the colour the realm gives it:
+/// a sheaf of grain, a fir of the blackwood for timber, a dressed block of
+/// stone and a crystal of moonsalt, each lit from above and the left, so
+/// each is told by its shape as well as its colour at the size of a word.
 struct ResourceGlyph: View {
     let resource: Resource
-    var size: CGFloat = 7
+    var size: CGFloat = 10
 
     var body: some View {
-        Group {
-            switch resource {
-            case .grain:
-                Circle().fill(Color(red: 0.84, green: 0.76, blue: 0.52))
-            case .timber:
-                Rectangle().fill(Color(red: 0.42, green: 0.55, blue: 0.44))
-            case .stone:
-                RoundedRectangle(cornerRadius: 1).fill(Color(red: 0.62, green: 0.60, blue: 0.58)).rotationEffect(.degrees(45))
-            case .moonsalt:
-                Circle().strokeBorder(Color(red: 0.80, green: 0.86, blue: 1.0), lineWidth: 1.5)
+        Canvas { context, canvas in
+            for part in ResourceGlyph.drawing(of: resource) {
+                var path = Path()
+                path.addLines(part.outline.map { CGPoint(x: $0.x * canvas.width, y: $0.y * canvas.height) })
+                path.closeSubpath()
+                context.fill(path, with: .color(Color(red: part.colour.red, green: part.colour.green, blue: part.colour.blue)))
             }
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+
+    typealias Shade = (red: Double, green: Double, blue: Double)
+
+    /// Each resource's colour, as its stores, gains and costs are marked.
+    static func colour(of resource: Resource) -> Shade {
+        switch resource {
+        case .grain: return (0.84, 0.76, 0.52)
+        case .timber: return (0.42, 0.55, 0.44)
+        case .stone: return (0.62, 0.60, 0.58)
+        case .moonsalt: return (0.80, 0.86, 1.0)
+        }
+    }
+
+    /// A resource's mark as filled outlines in a unit square, y down, each
+    /// drawn over those before it, with its shade of the resource's colour.
+    static func drawing(of resource: Resource) -> [(outline: [CGPoint], colour: Shade)] {
+        let base = colour(of: resource)
+        func lit(_ k: Double) -> Shade { (min(base.red * k, 1), min(base.green * k, 1), min(base.blue * k, 1)) }
+        func p(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: x, y: y) }
+        switch resource {
+        case .grain:
+            // Three stalks bound at the middle, an ear at each head.
+            let tie = p(0.5, 0.64)
+            var parts: [(outline: [CGPoint], colour: Shade)] = []
+            for (head, foot) in [(p(0.24, 0.16), p(0.36, 0.97)), (p(0.76, 0.16), p(0.64, 0.97)), (p(0.5, 0.06), p(0.5, 0.99))] {
+                parts.append((stalk(from: foot, to: tie, width: 0.07), lit(0.8)))
+                parts.append((stalk(from: tie, to: head, width: 0.07), lit(0.8)))
+                let angle = atan2(Double(head.y - tie.y), Double(head.x - tie.x))
+                parts.append((ear(at: p(Double(head.x) - 0.13 * cos(angle), Double(head.y) - 0.13 * sin(angle)), along: angle), base))
+            }
+            parts.append(([p(0.36, 0.6), p(0.64, 0.6), p(0.64, 0.69), p(0.36, 0.69)], lit(0.6)))
+            return parts
+        case .timber:
+            // A fir in three tiers on its trunk, darker toward the ground.
+            return [([p(0.44, 0.8), p(0.56, 0.8), p(0.56, 1), p(0.44, 1)], (0.43, 0.35, 0.26)),
+                    ([p(0.5, 0.42), p(0.06, 0.86), p(0.94, 0.86)], lit(0.8)),
+                    ([p(0.5, 0.22), p(0.14, 0.64), p(0.86, 0.64)], lit(0.95)),
+                    ([p(0.5, 0.02), p(0.22, 0.42), p(0.78, 0.42)], lit(1.12))]
+        case .stone:
+            // A dressed block seen from above a corner: its top in the light.
+            let top = p(0.5, 0.1), right = p(0.92, 0.33), foot = p(0.5, 0.94), left = p(0.08, 0.33)
+            let heart = p(0.5, 0.56), rightFoot = p(0.92, 0.72), leftFoot = p(0.08, 0.72)
+            return [([top, right, heart, left], lit(1.18)), ([left, heart, foot, leftFoot], lit(0.95)),
+                    ([heart, right, rightFoot, foot], lit(0.72))]
+        case .moonsalt:
+            // A crystal of six faces, its crown catching the moon.
+            let top = p(0.5, 0.02), upperRight = p(0.8, 0.3), lowerRight = p(0.8, 0.72), foot = p(0.5, 0.98)
+            let lowerLeft = p(0.2, 0.72), upperLeft = p(0.2, 0.3), crown = p(0.5, 0.2), heel = p(0.5, 0.82)
+            return [([top, upperRight, crown, upperLeft], base), ([upperLeft, crown, heel, lowerLeft], lit(0.86)),
+                    ([crown, upperRight, lowerRight, heel], lit(0.68)), ([lowerLeft, heel, foot], lit(0.78)),
+                    ([heel, lowerRight, foot], lit(0.58))]
+        }
+    }
+
+    /// A stalk from `a` to `b`, `width` across.
+    private static func stalk(from a: CGPoint, to b: CGPoint, width: Double) -> [CGPoint] {
+        let dx = Double(b.x - a.x), dy = Double(b.y - a.y), length = (dx * dx + dy * dy).squareRoot()
+        let nx = -dy / length * width / 2, ny = dx / length * width / 2
+        return [CGPoint(x: Double(a.x) + nx, y: Double(a.y) + ny), CGPoint(x: Double(b.x) + nx, y: Double(b.y) + ny),
+                CGPoint(x: Double(b.x) - nx, y: Double(b.y) - ny), CGPoint(x: Double(a.x) - nx, y: Double(a.y) - ny)]
+    }
+
+    /// An ear of grain about `centre`, laid along `angle`.
+    private static func ear(at centre: CGPoint, along angle: Double) -> [CGPoint] {
+        (0..<24).map { index in
+            let t = 2 * Double.pi * Double(index) / 24
+            let x = 0.17 * cos(t), y = 0.085 * sin(t)
+            return CGPoint(x: Double(centre.x) + x * cos(angle) - y * sin(angle), y: Double(centre.y) + x * sin(angle) + y * cos(angle))
+        }
     }
 }
 

@@ -107,7 +107,7 @@ private struct ResourceReadout: View {
 
     private var readout: some View {
         HStack(spacing: 6) {
-            ResourceGlyph(resource: resource, size: 8)
+            ResourceGlyph(resource: resource, size: 12)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(verbatim: "\(amount)")
@@ -136,7 +136,7 @@ struct IncomeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                ResourceGlyph(resource: breakdown.resource, size: 8)
+                ResourceGlyph(resource: breakdown.resource, size: 11)
                 Caps(breakdown.resource.title, size: 9, weight: .medium).foregroundStyle(Palette.ink)
                 Spacer()
                 Text(verbatim: "\(breakdown.stored) of \(breakdown.room)")
