@@ -312,7 +312,9 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertTrue(told.contains("It pursues Fieldcraft I (\(AllianceStudy.fieldcraft.effect(grade: 1))); still to give: \(still)."), told)
         XCTAssertTrue(told.contains("Houses asking to join it: \(world.houses[rival].title)."), told)
         XCTAssertFalse(view.sharesHeld(by: me).items.isEmpty, "A lair's share holds an hourglass")
-        XCTAssertTrue(told.hasSuffix("A share of the alliance's spoils waits for your House to take, holding \(view.sharesHeldSaid(by: me))."), told)
+        XCTAssertTrue(told.contains("A share of the alliance's spoils waits for your House to take, holding \(view.sharesHeldSaid(by: me))."), told)
+        // Last, the House's merit with it and what the stall would take for it.
+        XCTAssertTrue(told.hasSuffix("Your merit with Reed Accord: 0. It reaches nothing at the alliance's stall yet."), told)
         XCTAssertTrue(told.contains("with a Salt Hourglass"), told)
 
         // Its leader is told it leads it, and who its officers are.

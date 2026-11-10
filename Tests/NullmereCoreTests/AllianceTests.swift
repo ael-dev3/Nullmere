@@ -563,7 +563,7 @@ final class AllianceTests: XCTestCase {
         XCTAssertEqual(said(.allianceDisbanded(alliance: id, name: "the Grey Covenant")), "The Grey Covenant is no more.",
                        "A stewards' alliance's name begins a line in capitals")
         XCTAssertEqual(said(.helpGiven(by: 1, to: me, count: 2)), "\(them) helps 2 of your works.")
-        XCTAssertEqual(said(.helpGiven(by: me, to: 1, count: 1)), "You help 1 of \(them)'s work.")
+        XCTAssertEqual(said(.helpGiven(by: me, to: 1, count: 1)), "You help 1 of \(them)'s work, for 10 merit with your alliance.")
         XCTAssertNil(said(.helpGiven(by: 1, to: 2, count: 1)))
         XCTAssertNil(said(.allianceInvited(alliance: 777, house: 1)))
         XCTAssertEqual(RuleError.atWarWithAMember(3).description, "No alliance takes in a House at war with one of its own.")

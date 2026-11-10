@@ -250,6 +250,10 @@ extension GameState {
             guard alliance(id)?.members.contains(viewer) == true else { return nil }
             let who = house == viewer ? "You give" : "\(houses[house].title) gives"
             return Tidings("\(who) \(stock) toward \(study.title) \(BuildingKind.numeral(grade)).", house == viewer ? .neutral : .good)
+        case .takenFromStall(let house, let kind, let price):
+            guard house == viewer else { return nil }
+            return Tidings("You take \(kind.counted(1)) from the alliance's stall for \(GameState.counted(price)) merit; "
+                           + "\(GameState.counted(merit(of: house))) left.", .good)
         case .allianceStudied(let id, let study, let grade):
             guard alliance(id)?.members.contains(viewer) == true else { return nil }
             return Tidings("Your alliance learns \(study.title) \(BuildingKind.numeral(grade)): \(study.effect(grade: grade)).", .good)
@@ -569,7 +573,10 @@ extension GameState {
         case .helpGiven(let by, let to, let count):
             let works = count == 1 ? "work" : "works"
             if to == viewer { return Tidings("\(houses[by].title) helps \(count) of your \(works).", .good) }
-            if by == viewer { return Tidings("You help \(count) of \(houses[to].title)'s \(works).", .neutral) }
+            if by == viewer {
+                return Tidings("You help \(count) of \(houses[to].title)'s \(works), for \(GameState.counted(count * GameState.meritPerHelp)) merit "
+                               + "with your alliance.", .neutral)
+            }
             return nil
         case .rallyCalled(let id, let caller, let targetID):
             guard let rally = rally(id), let muster = hold(rally.muster), let target = targetName(targetID) else {

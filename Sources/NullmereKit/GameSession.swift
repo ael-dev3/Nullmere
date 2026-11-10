@@ -1876,7 +1876,7 @@ public final class GameSession {
         case .raiseStar: return .honour
         case .readTome: return .lore
         case .writeLetter: return .parley
-        case .buyFromPedlar, .openInnChest: return .coin
+        case .buyFromPedlar, .openInnChest, .takeFromStall: return .coin
         case .walkTheMirror: return .lore
         case .venture, .ventureLine: return .clash
         case .castReflection: return .lore

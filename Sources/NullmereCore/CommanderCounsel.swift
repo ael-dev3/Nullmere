@@ -424,6 +424,12 @@ public struct CommanderCounsel: Sendable {
             lines.append("\(shares.count == 1 ? "A share" : "\(shares.count) shares") of the alliance's spoils "
                          + "\(shares.count == 1 ? "waits" : "wait") for your House to take, holding \(state.sharesHeldSaid(by: player)).")
         }
+        // The House's merit with it, as its stall reckons it.
+        if let merit = state.meritSaid(of: player) {
+            let affordable = GameState.stall.filter { state.stallRefusal($0, as: player) == nil }.map(\.title)
+            lines.append(merit + (affordable.isEmpty ? " It reaches nothing at the alliance's stall yet."
+                                  : " At the alliance's stall it would take any of: " + affordable.joined(separator: ", ") + "."))
+        }
         return lines.joined(separator: " ")
     }
 

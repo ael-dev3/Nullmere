@@ -162,7 +162,7 @@ enum Narration {
              .letterSealed, .letterFound, .standingOrdersGiven,
              .commanderTaken, .prisonerQuestioned, .prisonerFreed, .oathSworn, .oathRenounced, .oathEnded,
              .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken,
-             .wordReported, .wordRemoved, .barredFromWords, .tributeBargained:
+             .wordReported, .wordRemoved, .barredFromWords, .tributeBargained, .takenFromStall:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }

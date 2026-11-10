@@ -1525,6 +1525,18 @@ a vote on the realm's law to cast.
   steward that leads an alliance chooses a study by its temper, and every
   steward of one gives a tenth of what it holds beyond plenty, one watch
   in three.
+- **Merit and the alliance's stall** (Rise of Kingdoms' alliance credits
+  and shop). Helping an ally earns your House merit with its alliance, 10
+  for each work, muster or study helped, and giving toward the alliance's
+  study 1 for each 10 given in barter worth. The alliance keeps each
+  House's merit, so a House that leaves and comes back finds it as it
+  left it, and only the alliance's own Houses know it. Spend it at the
+  alliance's stall, under the Alliance screen's studies (folded to your
+  merit until shown) or on the phone's Alliance tab, on one of every kind
+  of thing a satchel holds: a Salt Hourglass for 60, a cache of grain,
+  timber or stone for 30, of moonsalt for 90, a Mending Draught for 80, a
+  Ward Stone for 120 and a Tome of Old Campaigns for 150. A commander in
+  counsel knows your merit and what it reaches there.
 - **Alliance hall.** An alliance's leader begins its hall, its fortress,
   on open ground of the alliance's own land (within reach of its
   standards), more than three tiles from any other House's hold and clear

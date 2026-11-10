@@ -247,6 +247,9 @@ public enum Command: Codable, Equatable, Sendable {
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
     case giveToAlliance(Stock)
+    /// One of what the alliance's stall keeps, taken for the House's merit
+    /// with its alliance.
+    case takeFromStall(ItemKind)
     /// An alliance's leader begins its hall on the alliance's own land.
     case raiseAllianceHall(at: Hex)
     /// A House's smiths forge a piece of gear of the Forge's sets, as fine
@@ -402,6 +405,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case inAnAlliance
     /// A House sworn to no alliance.
     case notInAlliance
+    /// A House's merit with its alliance short of a price at its stall, by
+    /// so much.
+    case shortOfMerit(Int)
     /// What only an alliance's leader may do.
     case notAllianceLeader
     /// What only an alliance's leader or one of its officers may do.
@@ -758,6 +764,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .votedAlready: return "Your House has voted on that edict."
         case .inAnAlliance: return "That House is sworn to an alliance already."
         case .notInAlliance: return "Your House is sworn to no alliance."
+        case .shortOfMerit(let short): return "Short of \(GameState.counted(short)) merit with your alliance."
         case .notAllianceLeader: return "Only the alliance's leader can do that."
         case .notAllianceOfficer: return "Only the alliance's leader or one of its officers can do that."
         case .alreadyAnOfficer: return "That House is already an officer."
@@ -1104,6 +1111,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.
     case allianceGift(house: Int, alliance: Int, stock: Stock, study: AllianceStudy, grade: Int)
+    /// One of a kind taken from the alliance's stall for so much merit.
+    case takenFromStall(house: Int, item: ItemKind, merit: Int)
     /// An alliance learns a grade of a study together.
     case allianceStudied(alliance: Int, study: AllianceStudy, grade: Int)
     /// An alliance's leader begins its hall.

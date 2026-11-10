@@ -93,6 +93,7 @@ struct AlliancePanel: View {
             AllianceMarksList(session: session, alliance: alliance)
             AllianceStores(session: session, alliance: alliance)
             StudiesTogether(session: session, alliance: alliance, isLeader: board.isLeader)
+            AllianceStall(session: session)
             Rule(opacity: 0.18)
         }
         Caps("Its Houses", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
@@ -364,6 +365,70 @@ private struct RallyRow: View {
 /// The ground the alliance's leader has marked for it, each in its hue as
 /// the world lights it and said as the Houses' ledgers say it, with the
 /// view carried there on asking; nothing while it has none.
+/// The alliance's stall (Rise of Kingdoms' alliance shop): the House's
+/// merit with its alliance, folded to that line until asked; open, each
+/// thing the stall keeps with its price, taken where the merit reaches it,
+/// and how merit is earned.
+struct AllianceStall: View {
+    let session: GameSession
+    @State private var open: Bool
+
+    init(session: GameSession, open: Bool = false) {
+        self.session = session
+        _open = State(initialValue: open)
+    }
+
+    var body: some View {
+        let state = session.state
+        if let merit = state.meritSaid(of: session.player) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Caps("The stall", size: 9, weight: .medium)
+                        .foregroundStyle(Palette.text(0.7))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 12)
+                    QuietButton(title: open ? "Fold the stall" : "Show the stall", size: 8.5,
+                                name: open ? "Fold the alliance's stall away" : "Show the alliance's stall") {
+                        open.toggle()
+                    }
+                    .fixedSize()
+                }
+                Text(verbatim: merit)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+                if open {
+                    ForEach(GameState.stall, id: \.self) { kind in
+                        let refusal = state.stallRefusal(kind, as: session.player)
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            ItemGlyph(kind: kind, size: 12)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(verbatim: kind.title).font(.nm(10.5)).foregroundStyle(Palette.text(0.85))
+                                Text(verbatim: "For \(GameState.counted(GameState.stallPrice(of: kind))) merit")
+                                    .font(.nm(9.5))
+                                    .foregroundStyle(Palette.text(0.55))
+                            }
+                            .accessibilityElement(children: .combine)
+                            Spacer()
+                            QuietButton(title: "Take", size: 8.5, enabled: refusal == nil, name: GameState.stallSaid(kind),
+                                        why: refusal?.description) {
+                                session.perform(.takeFromStall(kind))
+                            }
+                        }
+                        .help(kind.effect)
+                    }
+                    Text(verbatim: GameState.meritEarned)
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}
+
 private struct AllianceMarksList: View {
     let session: GameSession
     let alliance: Alliance

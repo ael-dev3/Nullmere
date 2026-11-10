@@ -1118,6 +1118,31 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(session.state.stance(me, keeper), .peace, "A keeper refused chooses war or not for themselves")
     }
 
+    /// The alliance's stall in the Alliance panel: folded to the House's
+    /// merit, opened, each thing taken where the merit reaches it, the
+    /// order sent; nothing shown while the House is sworn to none.
+    func testTheAlliancesStallIsOpenedAndTakenFrom() throws {
+        var state = GameState(settings: GameSettings(seedText: "the stall pressed", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let (bare, _) = session(state)
+        draw(AllianceStall(session: bare))
+        XCTAssertNil(PressableButtons.actions["Show the stall"], "Sworn to none, among \(shown)")
+        _ = try state.perform(.foundAlliance(name: "Hearthward"), as: me)
+        state.earnMerit(100, by: me)
+        let (session, link) = session(state)
+        draw(AllianceStall(session: session))
+        XCTAssertNil(PressableButtons.actions["Take"], "Folded, among \(shown)")
+        XCTAssertTrue(PressableButtons.press("Show the stall"), "Among \(shown)")
+        draw(AllianceStall(session: session, open: true))
+        XCTAssertNotNil(PressableButtons.actions["Fold the stall"], "Among \(shown)")
+        // The last the merit reaches is the Mending Draught: the ward stone
+        // and the tome are past a hundred.
+        XCTAssertTrue(PressableButtons.press("Take"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .takeFromStall(.mendingDraught))
+        XCTAssertEqual(session.state.merit(of: me), 20)
+        draw(AlliancePanel(session: session))
+    }
+
     /// Half a steward's demand offered from its card, the order sent for
     /// the realm to weigh; once the realm says its steward held to the
     /// whole, the card says so and offers half no more. A keeper's demand

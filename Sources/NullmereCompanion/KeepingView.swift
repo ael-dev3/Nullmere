@@ -1330,6 +1330,30 @@ struct AllianceTab: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    // The alliance's stall, as the Mac's Alliance panel shows
+                    // it: the House's merit, and what it may take for it.
+                    if let stall = ledger.stall {
+                        Section("The alliance's stall") {
+                            Text(verbatim: stall.merit)
+                                .font(Night.body)
+                            ForEach(stall.wares) { ware in
+                                if let take = ware.take {
+                                    Button(take.title) { session.give(take.command, told: take.title) }
+                                        .font(Night.small)
+                                        .accessibilityHint(ware.effect)
+                                } else {
+                                    Text(verbatim: ware.title)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.45))
+                                        .accessibilityHint("Your merit falls short of it.")
+                                }
+                            }
+                            Text(verbatim: stall.earned)
+                                .font(Night.small)
+                                .foregroundStyle(Night.ink.opacity(0.6))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     // What the alliance keeps of its own, as the Mac's Alliance
                     // panel tells it, and the House's stores laid up there.
                     if let own = ledger.allianceOwn {

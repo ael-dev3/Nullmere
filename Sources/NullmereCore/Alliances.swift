@@ -25,6 +25,11 @@ public struct Alliance: Codable, Equatable, Identifiable, Sendable {
     /// and admit Houses, cast out those who are not officers, and mark
     /// ground for it; absent while it has none.
     public internal(set) var officers: [Int]?
+    /// Each House's merit with it (Rise of Kingdoms' alliance credits), by
+    /// the House's id: earned helping its Houses and giving toward its
+    /// study, spent at its stall (`takeFromStall`); kept while a House is
+    /// away, should it come back. Absent before any was earned.
+    public internal(set) var merit: [String: Int]?
 
     /// The most officers an alliance may have.
     public static let mostOfficers = 3
@@ -344,6 +349,8 @@ extension GameState {
             hasten(&pursuit.helpers, &pursuit.watchesLeft)
             houses[ally].research.pursuit = pursuit
         }
+        // Merit with the alliance for each thing helped, to spend at its stall.
+        earnMerit(count * GameState.meritPerHelp, by: house)
         return [.helpGiven(by: house, to: ally, count: count)]
     }
 }

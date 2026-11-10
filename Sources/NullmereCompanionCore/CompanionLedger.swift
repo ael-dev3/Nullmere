@@ -808,6 +808,28 @@ public struct CompanionLedger: Equatable, Sendable {
     /// The shares of the alliance's spoils waiting for the House, as the
     /// Mac's Alliance panel shows them; nil while none waits.
     public let shares: Shares?
+    /// The alliance's stall, as the Mac's Alliance panel shows it; nil
+    /// while the House is sworn to no alliance.
+    public let stall: Stall?
+
+    /// The alliance's stall: the House's merit with its alliance, how merit
+    /// is earned, and each thing the stall keeps.
+    public struct Stall: Equatable, Sendable {
+        /// "Your merit with the Still Accord: 120."
+        public let merit: String
+        /// How merit is earned (`GameState.meritEarned`).
+        public let earned: String
+        public let wares: [Ware]
+
+        /// One thing the stall keeps: what taking it reads as, what it does,
+        /// and the order to take it, nil while the House's merit falls short.
+        public struct Ware: Equatable, Identifiable, Sendable {
+            public var id: String { title }
+            public let title: String
+            public let effect: String
+            public let take: Order?
+        }
+    }
 
     /// The shares of the alliance's spoils waiting for the House.
     public struct Shares: Equatable, Sendable {
@@ -1363,6 +1385,15 @@ public struct CompanionLedger: Equatable, Sendable {
         shares = waiting.isEmpty || world.takeSharesRefusal(as: player) != nil ? nil
             : Shares(lines: world.sharesSaid(waiting), held: world.sharesHeldSaid(by: player), count: waiting.count,
                      take: Order(title: "Take your shares", command: .takeShares))
+        // The alliance's stall: what the House's merit may take, each offered
+        // only where the rules would take it.
+        stall = world.meritSaid(of: player).map { merit in
+            Stall(merit: merit, earned: GameState.meritEarned, wares: GameState.stall.map { kind in
+                let said = GameState.stallSaid(kind)
+                return Stall.Ware(title: said, effect: kind.effect,
+                                  take: world.stallRefusal(kind, as: player) == nil ? Order(title: said, command: .takeFromStall(kind)) : nil)
+            })
+        }
         allianceOwn = allied.map { own in
             let laid = world.laidUp(by: player)
             let whole = world.wholeStorehouse(for: player) != nil

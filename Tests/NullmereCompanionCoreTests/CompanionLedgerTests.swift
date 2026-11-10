@@ -1924,6 +1924,27 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(CompanionLedger(world: state, player: me).calls.isEmpty, "One rally called at a time")
     }
 
+    /// The alliance's stall on the phone's Alliance tab, as on the Mac: the
+    /// House's merit, how it is earned, and one of every kind of thing to
+    /// take, offered only where the merit reaches it, every offer one the
+    /// rules take; nothing while the House is sworn to none.
+    func testThePhoneTakesFromTheAlliancesStall() throws {
+        var (state, me) = try world()
+        XCTAssertNil(CompanionLedger(world: state, player: me).stall, "Sworn to none")
+        _ = try state.perform(.foundAlliance(name: "Hearthward"), as: me)
+        state.earnMerit(100, by: me)
+        let stall = try XCTUnwrap(CompanionLedger(world: state, player: me).stall)
+        XCTAssertEqual(stall.merit, state.meritSaid(of: me))
+        XCTAssertEqual(stall.earned, GameState.meritEarned)
+        XCTAssertEqual(stall.wares.map(\.title), ItemKind.allCases.map(GameState.stallSaid))
+        XCTAssertEqual(stall.wares.map(\.effect), ItemKind.allCases.map(\.effect))
+        let offered = stall.wares.compactMap(\.take)
+        XCTAssertEqual(offered.map(\.command), [.takeFromStall(.hourglass), .takeFromStall(.grainCache), .takeFromStall(.timberCache),
+                                                .takeFromStall(.stoneCache), .takeFromStall(.moonsaltCache), .takeFromStall(.mendingDraught)],
+                       "The ward stone and the tome are past a hundred merit")
+        assertTaken(offered, in: state, as: me)
+    }
+
     /// A steward's demand of tribute may be met with half, as on the Mac:
     /// offered with what it would pay and the rule its steward weighs it by,
     /// the rules taking it; once the steward held to the whole, offered no

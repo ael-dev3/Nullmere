@@ -109,7 +109,7 @@ extension GameState {
     /// Hourglass, each time it is passed.
     public static let givenPerHourglass = 300
 
-    private func allianceIndex(of house: Int) -> Int? {
+    func allianceIndex(of house: Int) -> Int? {
         alliances?.firstIndex { $0.members.contains(house) }
     }
 
@@ -177,6 +177,9 @@ extension GameState {
                    "\(alliances![index].titled) learns \(study.title) \(BuildingKind.numeral(grade)) together.")
         }
         alliances![index].lore = lore
+        // Merit with the alliance for what was given, counted on all the
+        // House has given so none is lost to rounding.
+        earnMerit((before + worth) / GameState.worthPerMerit - before / GameState.worthPerMerit, by: house)
         let hourglasses = (before + worth) / GameState.givenPerHourglass - before / GameState.givenPerHourglass
         events += give(.hourglass, hourglasses, to: house)
         return events
