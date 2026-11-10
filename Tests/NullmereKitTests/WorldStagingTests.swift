@@ -786,6 +786,55 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(stones(raised), 1)
     }
 
+    /// A hold of the keeper's taken: their banner is lowered at its keep,
+    /// then the taker's raised, standing a while and gone; where motion is
+    /// reduced the taker's simply stands. A hold taken out of the keeper's
+    /// sight, between two other Houses, shows nothing.
+    func testAHoldTakenHasItsBannerLoweredAndTheTakersRaised() throws {
+        let session = try session()
+        let player = session.player, foe = (player + 1) % 3
+        let hold = try XCTUnwrap(session.state.holds.first { $0.owner == player })
+        let cell = SIMD2(Int32(hold.position.q), Int32(hold.position.r))
+        let ours = WorldStage.colour(WorldView.houseColours, sigil: session.state.houses[player].sigil)
+        let theirs = WorldStage.colour(WorldView.houseColours, sigil: session.state.houses[foe].sigil)
+        let heart = Relief.centre(of: hold.position)
+        let planted = (x: heart.x + WorldStage.captureOffset.x, z: heart.z + WorldStage.captureOffset.z)
+        func banners(_ frame: SceneFrame) -> [ModelInstance] {
+            frame.batches.filter { $0.key == .hostBanner }.flatMap(\.instances).filter {
+                $0.hex == cell && abs($0.model.c3.x - planted.x) < 1e-3 && abs($0.model.c3.z - planted.z) < 1e-3
+            }
+        }
+        let now = Date()
+        XCTAssertTrue(banners(session.sceneFrame(at: 40, now: now)).isEmpty, "no banners changing before it is taken")
+        session.showBlows([.holdCaptured(hold: hold.id, from: player, by: foe)])
+        let lowering = banners(session.sceneFrame(at: 40.6, now: now.addingTimeInterval(0.6)))
+        XCTAssertEqual(lowering.map(\.colour), [ours], "the keeper's banner going down")
+        let standing = banners(session.sceneFrame(at: 44, now: now.addingTimeInterval(4)))
+        XCTAssertEqual(standing.map(\.colour), [theirs], "the taker's raised in its place")
+        XCTAssertGreaterThan(try XCTUnwrap(standing.first).model.c3.y, try XCTUnwrap(lowering.first).model.c3.y, "standing on its ground")
+        XCTAssertTrue(banners(session.sceneFrame(at: 48, now: now.addingTimeInterval(Double(WorldStage.captureSeconds) + 1))).isEmpty,
+                      "gone a few seconds on")
+
+        // Between two other Houses, out of the keeper's sight: nothing.
+        let unseen = try XCTUnwrap(session.state.holds.first { $0.owner != player && !session.isVisible($0.position) })
+        let taker = try XCTUnwrap((0..<3).first { $0 != player && $0 != unseen.owner })
+        let away = Date()
+        session.showBlows([.holdCaptured(hold: unseen.id, from: unseen.owner, by: taker)])
+        XCTAssertFalse(session.holdsTaken.contains { $0.at == unseen.position }, "a hold taken out of sight is not kept")
+        let far = session.sceneFrame(at: 60.6, now: away.addingTimeInterval(0.6))
+        let farCell = SIMD2(Int32(unseen.position.q), Int32(unseen.position.r))
+        XCTAssertTrue(far.batches.filter { $0.key == .hostBanner }.flatMap(\.instances).filter { $0.hex == farCell }.isEmpty,
+                      "nor drawn")
+
+        // Where motion is reduced the taker's simply stands from the first.
+        let still = try self.session()
+        still.motion = .still
+        let stillNow = Date()
+        still.showBlows([.holdCaptured(hold: hold.id, from: player, by: foe)])
+        XCTAssertEqual(banners(still.sceneFrame(at: 40.3, now: stillNow.addingTimeInterval(0.3))).map(\.colour), [theirs],
+                       "where motion is reduced the taker's simply stands")
+    }
+
     /// A field the keeper sees buried takes up its dead: those who fell
     /// there are laid in the barrow and lie on it no longer, while the
     /// striker's dead still lie where the striker stood.

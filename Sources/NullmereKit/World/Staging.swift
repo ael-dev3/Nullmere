@@ -303,6 +303,18 @@ extension GameSession {
         let watchfires = stage.watchfires(state.watchfiresBurning.map(\.at).filter { isExplored($0) }).batches
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + markBanners + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + watchfires + flights
         frame.batches += roads + dead + barrows
+        // A hold taken lately: the old House's banner lowered at its keep,
+        // then the taker's raised. Where motion is reduced the taker's
+        // simply stands a while.
+        if !holdsTaken.isEmpty {
+            frame.batches += stage.captures(holdsTaken.compactMap { taken -> (at: Hex, from: Vec4?, by: Vec4, age: Float)? in
+                guard state.houses.indices.contains(taken.by) else { return nil }
+                let age = Float(now.timeIntervalSince(taken.start))
+                let from = state.houses.indices.contains(taken.from) ? WorldStage.colour(houses, sigil: state.houses[taken.from].sigil) : nil
+                return (at: taken.at, from: from, by: WorldStage.colour(houses, sigil: state.houses[taken.by].sigil),
+                        age: full ? age : max(age, WorldStage.captureStanding))
+            })
+        }
         if full {
             let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
             // Beside the lanterns the townsfolk carry, staged with them.

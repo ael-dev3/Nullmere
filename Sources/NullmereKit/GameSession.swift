@@ -163,6 +163,10 @@ public final class GameSession {
     /// when, so their lights are drawn rising into the night
     /// (`WorldStage.releasedLights`).
     @ObservationIgnored var releases: [(at: Hex, troops: Int, start: Date)] = []
+    /// Holds the keeper saw taken lately, or lost or took themselves: where,
+    /// from which House, by which and when, so the banners are drawn
+    /// changing at the keep (`WorldStage.captures`).
+    @ObservationIgnored var holdsTaken: [(at: Hex, from: Int, by: Int, start: Date)] = []
     /// The road along each way the carts go, as laid, by way.
     @ObservationIgnored var roadsLaid: [WorldStage.Way: [ModelInstance]] = [:]
     /// The blows seen struck lately, for the dead they left lying on their
@@ -2515,6 +2519,13 @@ public final class GameSession {
         releases.removeAll { now.timeIntervalSince($0.start) > Double(WorldStage.releaseSeconds) }
         for case .buried(let field, let by) in events where by == player || isVisible(field.at) {
             releases.append((at: field.at, troops: field.troops, start: now))
+        }
+        // A hold taken in sight, or the keeper's own lost or taken by them:
+        // the old House's banner lowered at its keep, the taker's raised.
+        holdsTaken.removeAll { now.timeIntervalSince($0.start) > Double(WorldStage.captureSeconds) }
+        for case .holdCaptured(let hold, let from, let by) in events {
+            guard let at = state.hold(hold)?.position, from == player || by == player || isVisible(at) else { continue }
+            holdsTaken.append((at: at, from: from, by: by, start: now))
         }
         // The dead laid in a barrow lie on the field no longer.
         for case .buried(let field, _) in events {
