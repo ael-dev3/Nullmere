@@ -1846,6 +1846,8 @@ struct SatchelRow: View {
 struct CompanyRows: View {
     let session: CompanionSession
     let company: CompanionLedger.Company
+    /// Asked twice before a company is disbanded, as on the Mac.
+    @State private var disbanding = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -1862,6 +1864,12 @@ struct CompanyRows: View {
             Text(verbatim: company.doing)
                 .font(Night.small)
                 .foregroundStyle(Night.ink.opacity(0.75))
+            // On the water, as the Mac's panel says it.
+            if let crossing = company.crossing {
+                Text(verbatim: crossing)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.75))
+            }
         }
         .accessibilityElement(children: .combine)
         // The commander's word on the company, as the keeper turns to it,
@@ -1911,6 +1919,26 @@ struct CompanyRows: View {
                 }
             }
             .font(Night.small)
+        }
+        // Across the lake from a shore hold of the House's, as the Mac's
+        // panel offers it; and disbanded, asked twice as on the Mac.
+        HStack(spacing: 10) {
+            OrdersMenu(title: "Ferry", orders: company.ferries,
+                       label: "Ferry the \(company.name) across the lake, for \(CompanionLedger.Company.ferryCost)") { ferry in
+                session.give(ferry.command, told: "\(ferry.title), the \(company.name)")
+            }
+            Button(company.disband.title, role: .destructive) { disbanding = true }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Disband the \(company.name)")
+        }
+        .font(Night.small)
+        .confirmationDialog("Disband the \(company.name)?", isPresented: $disbanding, titleVisibility: .visible) {
+            Button("Disband them", role: .destructive) {
+                session.give(company.disband.command, told: "Disband the \(company.name)")
+            }
+            Button("Keep them", role: .cancel) {}
+        } message: {
+            Text(verbatim: "They leave the House's service for good.")
         }
     }
 }

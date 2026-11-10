@@ -1748,7 +1748,12 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   about the shore. The barge is out on the water through the watch, seen by
   any House that sees either shore, and lands at the watch's turn; if the
   landing hold has fallen meanwhile, or a company stands on it, the barge
-  turns back.
+  turns back. On the Mac it is set on the water from the company's panel
+  (Across the lake: To <hold>); on the phone, from the company's row on
+  the Army tab (Ferry), each landing offered only where the rules take it.
+  Either says where a company on the water is bound ("On the water for
+  Farmere; they land as the watch turns."). A company may be disbanded
+  from either too, asked twice.
 
 - **Dreams of the Still.** At the dark of each moon, the fifteenth watch
   of every thirty, the lake shows each keeper's House one true thing it

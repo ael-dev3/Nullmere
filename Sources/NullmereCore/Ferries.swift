@@ -43,6 +43,12 @@ extension GameState {
         barges?.first { $0.unit == unit }
     }
 
+    /// A company on the water, as the Mac and the phone tell it: "On the
+    /// water for Farmere; they land as the watch turns."; nil ashore.
+    public func crossingSaid(of unitID: Int) -> String? {
+        crossing(of: unitID).map { "On the water for \(hold($0.to)?.name ?? "the far shore"); they land as the watch turns." }
+    }
+
     /// The holds a keeper's company may be ferried to from where it stands:
     /// the House's other holds with still water beside them.
     public func ferryLandings(for unitID: Int, as house: Int) -> [Hold] {

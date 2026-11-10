@@ -34,6 +34,17 @@ public struct CompanionLedger: Equatable, Sendable {
         public let rallies: [Order]
         /// The nearest of its allies' seats whose gates it may keep.
         public let gates: [Order]
+        /// Across the lake by barge from the shore hold it stands at to
+        /// another of the House's, as the Mac's panel offers it: each landing
+        /// the rules take now, for what the ferrymen ask (`ferryCost`).
+        public let ferries: [Order]
+        /// On the water, as the Mac's panel says it; nil ashore.
+        public let crossing: String?
+        /// Disbanded, gone from the House: asked twice, as on the Mac.
+        public let disband: Order
+
+        /// What the ferrymen ask for a crossing, said beside the offer.
+        public static var ferryCost: String { "\(GameState.ferryCost)" }
     }
 
     /// An order offered: what it says, and the command it gives.
@@ -1159,12 +1170,19 @@ public struct CompanionLedger: Equatable, Sendable {
             }.map { hold in
                 Order(title: "March to \(hold.name)", command: .move(unit: unit.id, to: hold.position))
             }
+            // Across the lake from a shore hold of the House's to another, as
+            // the Mac's panel offers it, each landing the rules take now.
+            let ferries = world.ferryLandings(for: unit.id, as: player).prefix(4)
+                .filter { world.ferryRefusal(unit.id, to: $0.id, as: player) == nil }
+                .map { Order(title: "Ferry to \($0.name)", command: .ferry(unit: unit.id, to: $0.id)) }
             return Company(id: unit.id, kind: unit.kind, name: named(unit), troops: GameState.counted(world.troops(of: unit)),
                            leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world, for: player),
                            orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
                            gathers: CompanionLedger.gathers(for: unit, in: world, player: player),
                            rallies: CompanionLedger.rallies(for: unit, in: world, player: player),
-                           gates: CompanionLedger.gates(for: unit, in: world, player: player))
+                           gates: CompanionLedger.gates(for: unit, in: world, player: player),
+                           ferries: Array(ferries), crossing: world.crossingSaid(of: unit.id),
+                           disband: Order(title: "Disband", command: .disband(unit: unit.id)))
         }
         let war = world.units(of: player).filter { $0.kind.isMilitary }.sorted { $0.id < $1.id }
         let held = world.gear(of: player)

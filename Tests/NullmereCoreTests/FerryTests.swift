@@ -37,10 +37,13 @@ final class FerryTests: XCTestCase {
         XCTAssertEqual(barge.to, to)
         XCTAssertTrue(state.unit(company)?.acted == true, "Aboard, it does nothing else this watch")
         XCTAssertEqual(state.ferryRefusal(company, to: to, as: me), .alreadyOnTheWater)
+        XCTAssertEqual(state.crossingSaid(of: company), "On the water for Farmere; they land as the watch turns.", "As the Mac and the phone tell it")
+        XCTAssertNil(state.crossingSaid(of: state.units(of: me).first { $0.id != company }?.id ?? -1), "Ashore")
         let turned = state.endWatch()
         XCTAssertTrue(turned.contains(.ferried(unit: company, house: me, to: to, landed: true)))
         XCTAssertEqual(state.unit(company)?.position, state.hold(to)?.position, "Landed across the lake")
         XCTAssertNil(state.crossing(of: company))
+        XCTAssertNil(state.crossingSaid(of: company), "Landed")
         XCTAssertEqual(state.tidings(of: .ferried(unit: company, house: me, to: to, landed: true), for: me)?.tone, .good)
         XCTAssertEqual(state.problems(), [])
     }

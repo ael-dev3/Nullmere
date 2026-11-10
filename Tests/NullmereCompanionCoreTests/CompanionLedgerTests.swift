@@ -1765,6 +1765,61 @@ final class CompanionLedgerTests: XCTestCase {
         assertTaken(offered, in: state, as: me)
     }
 
+    /// A company across the lake from the phone, as the Mac's panel offers
+    /// it: from a shore hold of the House's to another, each landing one the
+    /// rules take, for what the ferrymen ask; none where the House is short
+    /// of it; on the water, said as the Mac says it and offered no more. And
+    /// any company of the House disbanded.
+    func testThePhoneFerriesACompanyAcrossTheLakeAndDisbandsOne() throws {
+        var state = GameState(settings: GameSettings(seedText: "ferried from the phone", houseCount: 4, radius: 16, keepers: 1))
+        let me = state.player
+        state.houses[me].stock = Stock(grain: 500, timber: 100, stone: 100, moonsalt: 10)
+        let shores = state.map.hexes.filter { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && state.map.neighbors(of: hex).contains { [.still, .shallows].contains(state.map[$0]?.terrain) }
+        }
+        let first = try XCTUnwrap(shores.first)
+        let second = try XCTUnwrap(shores.max { $0.distance(to: first) < $1.distance(to: first) })
+        let from = Hold(id: state.takeID(), name: "Saltwatch", owner: me, position: first, isSeat: false, foundedWatch: 1)
+        let to = Hold(id: state.takeID(), name: "Farmere", owner: me, position: second, isSeat: false, foundedWatch: 1)
+        state.holds += [from, to]
+        let spear = try XCTUnwrap(state.placeUnit(.spear, for: me, near: first))
+        state.units[try XCTUnwrap(state.unitIndex(spear.id))].position = first
+        func row(_ world: GameState) throws -> CompanionLedger.Company {
+            try XCTUnwrap(CompanionLedger(world: world, player: me).companies.first { $0.id == spear.id })
+        }
+
+        let ashore = try row(state)
+        XCTAssertEqual(ashore.ferries.map(\.command), [.ferry(unit: spear.id, to: to.id)])
+        XCTAssertEqual(ashore.ferries.first?.title, "Ferry to Farmere")
+        XCTAssertEqual(CompanionLedger.Company.ferryCost, "\(GameState.ferryCost)")
+        XCTAssertNil(ashore.crossing)
+        assertTaken(ashore.ferries, in: state, as: me)
+        XCTAssertEqual(ashore.disband.command, .disband(unit: spear.id))
+        assertTaken([ashore.disband], in: state, as: me)
+        var poor = state
+        poor.houses[me].stock.timber = 0
+        XCTAssertEqual(try row(poor).ferries, [], "Short of what the ferrymen ask")
+        // Elsewhere than a shore hold of the House's, no barge.
+        var inland = state
+        let inner = try XCTUnwrap(inland.seat(of: me)).position
+        if inland.unit(at: inner) == nil {
+            inland.units[try XCTUnwrap(inland.unitIndex(spear.id))].position = inner
+            XCTAssertEqual(try row(inland).ferries.isEmpty, inland.ferryLandings(for: spear.id, as: me).isEmpty)
+        }
+
+        // On the water: said as the Mac's panel says it, and offered no more.
+        _ = try state.perform(.ferry(unit: spear.id, to: to.id), as: me)
+        let afloat = try row(state)
+        XCTAssertEqual(afloat.crossing, "On the water for Farmere; they land as the watch turns.")
+        XCTAssertEqual(afloat.crossing, state.crossingSaid(of: spear.id))
+        XCTAssertEqual(afloat.ferries, [])
+
+        // Disbanded, gone from the House.
+        _ = try state.perform(afloat.disband.command, as: me)
+        XCTAssertNil(CompanionLedger(world: state, player: me).companies.first { $0.id == spear.id })
+    }
+
     /// The House's satchel on the phone, as the Mac's panels use it: each
     /// item, how many and what one does, with the uses the rules take now:
     /// an hourglass for each hold with work to hasten and for the study, a

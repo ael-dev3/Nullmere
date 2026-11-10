@@ -1872,8 +1872,8 @@ struct FerryLine: View {
     var body: some View {
         let state = session.state
         VStack(alignment: .leading, spacing: 5) {
-            if let barge = state.crossing(of: unit.id) {
-                Text(verbatim: "On the water for \(state.hold(barge.to)?.name ?? "the far shore"); they land as the watch turns.")
+            if let crossing = state.crossingSaid(of: unit.id) {
+                Text(verbatim: crossing)
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.text(0.6))
                     .fixedSize(horizontal: false, vertical: true)
