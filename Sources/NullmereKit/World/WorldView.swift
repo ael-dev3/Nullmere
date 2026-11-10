@@ -274,6 +274,9 @@ struct WorldMarks: View {
             // What the marks read of the session, read once a frame rather
             // than once a mark (`MarksFrame`).
             let frame = MarksFrame(session: session, size: size)
+            // Where no models stand, each token is a stamp drawn once
+            // (`TokenStamps`), readied for the frame once.
+            var stamped = StampsOfAFrame(for: context)
 
             // A stream under the pointer followed from its spring to its
             // mouth; the land's names stand in their own layer beneath.
@@ -476,7 +479,8 @@ struct WorldMarks: View {
                 if modelsDrawn {
                     marks = frame.point(of: hold.position, lift: WorldMarks.holdLift(seat: hold.isSeat)).y
                 } else {
-                    token(of: hold, at: point, radius: r, colour: colour, in: &context)
+                    let ink = stamped.colour(of: hold.owner, colour, in: context)
+                    stamped.set(TokenStamps.shared.hold(hold, radius: r, colour: ink, scale: stamped.scale), at: point, in: &context)
                 }
                 // With "Differentiate without colour" on, whose it is is
                 // said in shape too, as over a company: a bar over the
@@ -532,8 +536,16 @@ struct WorldMarks: View {
                     if inHold {
                         point = CGPoint(x: point.x + r * 1.9, y: point.y + r * 0.9)
                     }
-                    token(of: unit, at: point, radius: r, colour: colour, selected: frame.chosen == unit.id,
-                          hovered: frame.hovered == unit.position && !inHold, in: &context)
+                    let ink = stamped.colour(of: unit.owner, colour, in: context)
+                    stamped.set(TokenStamps.shared.company(unit.kind, radius: r, colour: ink, fortified: unit.fortified, scale: stamped.scale),
+                                at: point, in: &context)
+                    // The chosen company wears a bright halo; the one under
+                    // the pointer a faint one.
+                    let selected = frame.chosen == unit.id, hovered = frame.hovered == unit.position && !inHold
+                    if selected || hovered {
+                        let halo = Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2))
+                        context.stroke(halo, with: .color(Palette.line(selected ? 0.9 : 0.4)), lineWidth: selected ? 1.4 : 1)
+                    }
                 }
                 if differentiate {
                     context.stroke(WorldMarks.ownership(unit.owner == player ? .own : state.isAtWar(player, unit.owner) ? .foe : .other,
@@ -596,57 +608,6 @@ struct WorldMarks: View {
                 }
             }
         }
-    }
-
-    /// A hold drawn flat, where no models stand: its side towers once it
-    /// has grown, its walls as they rise, its keep, a warm window, the
-    /// seat's banner and the moonspire's needle.
-    private func token(of hold: Hold, at point: CGPoint, radius r: CGFloat, colour: Color, in context: inout GraphicsContext) {
-        let towers = TokenArt.towerCount(for: hold)
-        if towers > 0 {
-            let flanks = TokenArt.towers(at: point, radius: r, count: towers)
-            context.fill(flanks, with: .color(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)))
-            context.stroke(flanks, with: .color(colour.opacity(0.8)), lineWidth: 1)
-        }
-        let keep = TokenArt.keep(at: point, radius: r, seat: hold.isSeat)
-        if hold.level(.walls) > 0 {
-            let walls = TokenArt.walls(at: point, radius: r)
-            context.fill(walls, with: .color(Color.black.opacity(0.55)))
-            context.stroke(walls, with: .color(colour.opacity(0.7)), lineWidth: CGFloat(hold.level(.walls)) * 0.5 + 0.6)
-        }
-        context.fill(keep, with: .color(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)))
-        context.stroke(keep, with: .color(colour), lineWidth: hold.isSeat ? 1.6 : 1.2)
-        // One warm window: someone keeps the lamp lit.
-        context.fill(TokenArt.window(at: point, radius: r), with: .color(Color(red: 1.0, green: 0.76, blue: 0.45)))
-        if hold.isSeat {
-            let banner = TokenArt.banner(at: point, radius: r)
-            context.stroke(banner.pole, with: .color(colour), lineWidth: 1.1)
-            context.fill(banner.pennant, with: .color(colour))
-        }
-        if hold.level(.moonspire) > 0 {
-            let spire = CGFloat(hold.level(.moonspire))
-            let top = TokenArt.keepTop(at: point, radius: r, seat: hold.isSeat)
-            var needle = Path()
-            needle.move(to: CGPoint(x: point.x - r * 0.35, y: top))
-            needle.addLine(to: CGPoint(x: point.x - r * 0.35, y: top - r * 0.45 * spire))
-            context.stroke(needle, with: .color(Color(red: 0.86, green: 0.9, blue: 1.0)), lineWidth: 1.6)
-        }
-    }
-
-    /// A company drawn flat, where no models stand: a shield with its
-    /// kind's mark, bolder dug in, and a halo chosen or under the pointer.
-    private func token(of unit: NullmereCore.Unit, at point: CGPoint, radius r: CGFloat, colour: Color, selected: Bool, hovered: Bool,
-                       in context: inout GraphicsContext) {
-        let shield = TokenArt.shield(at: point, radius: r)
-        context.fill(shield, with: .color(Color(red: 0.03, green: 0.035, blue: 0.05).opacity(0.9)))
-        context.stroke(shield, with: .color(colour), lineWidth: unit.fortified ? 2.2 : 1.3)
-        // The chosen company wears a bright halo; the one under the
-        // pointer a faint one.
-        if selected || hovered {
-            let halo = Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2))
-            context.stroke(halo, with: .color(Palette.line(selected ? 0.9 : 0.4)), lineWidth: selected ? 1.4 : 1)
-        }
-        context.stroke(glyph(for: unit.kind, at: point, radius: r * 0.55), with: .color(colour), lineWidth: 1.3)
     }
 
     enum Ownership { case own, foe, other }
