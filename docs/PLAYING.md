@@ -1116,7 +1116,9 @@ a vote on the realm's law to cast.
   by the same model on your Mac: where the company stands, how strong it
   is, what it is about (marching where, dug in, gathering, at a rally,
   keeping an ally's gates, in battle), what your House sees within two
-  tiles of it, and the fight they led it in if it was within the last two
+  tiles of it (other Houses' companies, holds, the wilds in sight and how
+  strong, lairs, holy sites, hamlets and barrows, and after all those the
+  sites to work), and the fight they led it in if it was within the last two
   watches, from what your House knows and nothing more. It is a word, not
   counsel: they put nothing to you and promise nothing; Take counsel is
   where an order may be put forward. They are asked first, as you look to
@@ -1392,6 +1394,18 @@ a vote on the realm's law to cast.
   it, Go to carry the view there and choose what stands there, and
   Forget; the small map marks each with a pale diamond. They are yours alone, kept by your Mac for the age: the realm
   and the other keepers know nothing of them.
+- **Seek on the land.** Rise of Kingdoms' search on the map. Under Seek
+  on the land in the Realm panel, choose what to seek: Wilds, a site of
+  Grain, Timber, Stone or Moonsalt, Lairs, Holy sites, or Finds (the
+  hamlets and barrows your Lanterns have yet to seek). The view is
+  carried to the nearest your House has seen to where it looks: the wilds
+  in your sight, sites on ground you have explored (your own alliance's
+  yards among them, never another's), lairs, holy sites you do not hold.
+  The line beneath names what was found, which way and how far from where
+  you looked, and how many your House has seen; Next brings the one after,
+  round to the nearest again. A company of yours chosen stays chosen, so
+  a right-click on what was found sends it there; else what stands there
+  is chosen. Your House having seen none, the line says so.
 - **Alliance marks.** A keeper who leads an alliance marks ground their
   House has seen for its Houses: Gather here, Strike here, Hold this
   ground or Beware, with up to sixty characters of their own words if

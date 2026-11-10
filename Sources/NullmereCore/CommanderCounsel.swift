@@ -495,11 +495,25 @@ extension GameState {
         for lair in lairsStanding where lair.position.distance(to: here) <= reach {
             seen.append((lair.position.distance(to: here), "\(lair.title), a lair of the wilds, \(way(lair.position))"))
         }
+        // The wilds are no House's companies, so they were never among them:
+        // those standing on ground the House has seen, as strong as they are.
+        for wild in wildsStanding where wild.position.distance(to: here) <= reach && isExplored(wild.position, by: player) {
+            let bearing = wild.keepsake.map { ", bearing a keepsake of \($0)" } ?? ""
+            seen.append((wild.position.distance(to: here), "a band of \(wild.kind.title) from the wilds, \(wild.strengthSaid)\(bearing), "
+                + way(wild.position)))
+        }
         for find in findsKnown(by: player) where find.position.distance(to: here) <= reach {
             let what = find.kind == .hamlet ? find.named : "\(find.named), an old barrow"
             let sought = hasSought(find.id, by: player) ? "sought by your Lanterns" : "which your Lanterns have yet to seek"
             seen.append((find.position.distance(to: here), "\(what), \(sought), \(way(find.position))"))
         }
-        return seen.sorted { ($0.distance, $0.told) < ($1.distance, $1.told) }.map(\.told)
+        // What the land offers to work comes after all that stands on it,
+        // the nearest first, so a look among many sites still tells its foes.
+        let sites = sitesInLand.filter { $0.position.distance(to: here) <= reach && isExplored($0.position, by: player) }.map { site in
+            (distance: site.position.distance(to: here),
+             told: "\(site.title), \(GameState.counted(site.remaining)) \(site.store.title.lowercased()) to work, \(way(site.position))")
+        }
+        return (seen.sorted { ($0.distance, $0.told) < ($1.distance, $1.told) } + sites.sorted { ($0.distance, $0.told) < ($1.distance, $1.told) })
+            .map(\.told)
     }
 }

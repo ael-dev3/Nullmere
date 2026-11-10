@@ -129,3 +129,65 @@ struct PlacesSection: View {
         }
     }
 }
+
+/// The keeper's search on the land, as Rise of Kingdoms' search on its map
+/// finds the barbarians and the resource points: a button for each kind of
+/// place, bringing the view to the nearest of it the House has seen to
+/// where the view looks, and Next for the one after; what was found said
+/// beneath, or that the House has seen none.
+struct SeekSection: View {
+    let session: GameSession
+
+    /// What the last search found, in a line: "Saltwights, level III, 4
+    /// tiles north-east of where you looked; 1 of 6 seen", or that the House
+    /// has seen none.
+    static func line(_ sought: GameSession.Sought?, in state: GameState) -> String? {
+        guard let sought else { return nil }
+        guard let at = sought.at else { return sought.seeking.noneSeen }
+        let way = at == sought.from ? "where you looked" : "\(GameState.waySaid(to: at, from: sought.from)) of where you looked"
+        let of = sought.found.count == 1 ? "the only one seen" : "\(sought.index + 1) of \(sought.found.count) seen"
+        return "\(named(at, in: state)), \(way); \(of)"
+    }
+
+    /// What stands at a place found, as the map names it.
+    static func named(_ hex: Hex, in state: GameState) -> String {
+        if let wild = state.wild(at: hex) { return HoverInfo.named(wild) }
+        if let site = state.site(at: hex) { return HoverInfo.named(site, in: state).lineBegun }
+        if let lair = state.lair(at: hex) { return lair.named.lineBegun }
+        if let shrine = state.shrine(at: hex) {
+            let holder = shrine.holder.flatMap { state.houses.indices.contains($0) ? state.houses[$0].title : nil }
+            return "The \(shrine.title), held by \(holder ?? "none")"
+        }
+        if let find = state.findsInLand.first(where: { $0.position == hex }) {
+            return find.kind == .hamlet ? find.named.lineBegun : "\(find.named), an old barrow"
+        }
+        return state.keptName(of: hex)
+    }
+
+    var body: some View {
+        let sought = session.sought
+        VStack(alignment: .leading, spacing: 6) {
+            Caps("Seek on the land", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
+            FlowLayout(spacing: 4, lineSpacing: 2) {
+                ForEach(Seeking.allCases, id: \.self) { seeking in
+                    QuietButton(title: seeking.title, size: 8.5, prominent: sought?.seeking == seeking,
+                                name: "Seek \(seeking.sought) your House has seen, the nearest first") {
+                        session.seek(seeking)
+                    }
+                }
+            }
+            if let line = SeekSection.line(sought, in: session.state) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: line)
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    if let sought, sought.found.count > 1 {
+                        QuietButton(title: "Next", size: 8.5, name: "Seek the next nearest of \(sought.seeking.sought)") { session.seekNext() }
+                    }
+                }
+            }
+        }
+    }
+}

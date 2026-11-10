@@ -2451,6 +2451,57 @@ public final class GameSession {
         glide(to: hex)
     }
 
+    // MARK: Seeking on the land
+
+    /// The keeper's last search on the land (`seek`): what they sought,
+    /// where the view looked as they did, every place of it the House had
+    /// seen, nearest there first, and which of them the view was brought to.
+    public struct Sought: Equatable {
+        public let seeking: Seeking
+        public let from: Hex
+        public let found: [Hex]
+        public let index: Int
+        /// The place the view was brought to; nil where none was seen.
+        public var at: Hex? { found.indices.contains(index) ? found[index] : nil }
+    }
+
+    /// The keeper's last search on the land, while it stands.
+    public private(set) var sought: Sought?
+
+    /// Seeks a kind of place among what the House has seen, as Rise of
+    /// Kingdoms' search on its map finds the barbarians and resource
+    /// points: the nearest to where the view looks. The view is brought
+    /// there, and the panel stays, so the next may be sought (`seekNext`).
+    /// A company of the House chosen stays chosen, so a right-click on what
+    /// was found sends it there; else what stands there is chosen. Nil
+    /// where the House has seen none.
+    @discardableResult
+    public func seek(_ seeking: Seeking) -> Hex? {
+        let from = camera.centreHex
+        sought = Sought(seeking: seeking, from: from, found: state.seek(seeking, from: from, by: player), index: 0)
+        return bringToSought()
+    }
+
+    /// The next nearest of what was last sought to where that search began,
+    /// round to the nearest again once all have been seen.
+    @discardableResult
+    public func seekNext() -> Hex? {
+        guard let last = sought, !last.found.isEmpty else { return nil }
+        sought = Sought(seeking: last.seeking, from: last.from, found: last.found, index: (last.index + 1) % last.found.count)
+        return bringToSought()
+    }
+
+    private func bringToSought() -> Hex? {
+        guard let hex = sought?.at else { return nil }
+        if case .unit(let id) = selection, state.unit(id)?.owner == player {
+            // The company stays chosen, to be sent to what was found.
+        } else {
+            selection = state.hold(at: hex).map { Selection.hold($0.id) } ?? Selection.tile(hex)
+        }
+        glide(to: hex)
+        return hex
+    }
+
     /// How strongly the night's air blows on a still night, against 1.
     static let stillAir: Float = 0.15
 

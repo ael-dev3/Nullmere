@@ -296,4 +296,10 @@ extension Wild {
         let called = "\(kind.title), level \(BuildingKind.numeral(level))"
         return keepsake.map { called + ", bearing a keepsake of \($0)" } ?? called
     }
+
+    /// How strong it is among the wilds' ten, for the voices, which keep
+    /// from saying a level: "the third of ten in strength".
+    public var strengthSaid: String {
+        "the \(ordinal(level)) of \(Wild.highestLevel == 10 ? "ten" : "\(Wild.highestLevel)") in strength"
+    }
 }
