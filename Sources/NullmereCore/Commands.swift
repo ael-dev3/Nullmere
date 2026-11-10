@@ -178,6 +178,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// that hastens a hold's work and muster, on one of its holds; caches,
     /// draughts and an hourglass naming no hold, on the House itself.
     case useItem(ItemKind, hold: Int?)
+    /// A commander of the House reads one of its tomes, for experience.
+    case readTome(commander: Int)
     /// A House takes up a heritage: the first time freely, after that for
     /// moonsalt.
     case takeHeritage(Heritage)
@@ -477,6 +479,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case standardHelped
     /// An item the House has none of.
     case noItem
+    /// A tome used as any other item, not read by a commander.
+    case readByACommander
     /// An hourglass used where nothing is under way that has a watch to lose.
     case nothingToHasten
     /// A ward stone used on a hold whose ward is whole.
@@ -794,6 +798,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .nothingToHasten: return "Nothing under way there has a watch to spare: what has one left is done as the watch turns."
         case .wardWhole: return "That hold's ward is whole."
         case .noneHurt: return "None of your companies is hurt."
+        case .readByACommander: return "A tome is read by one of your commanders: give it to one from their line."
         case .drillsAtMusterHall: return "A company of war drills at or beside one of your holds with a Muster Hall."
         case .drilledWhole: return "That company musters as many as it can lead: raise your Muster Hall, or give it a commander, to drill it further."
         case .raisedAtMusterHall: return "A company of war is raised a tier at or beside one of your holds with a Muster Hall."
@@ -978,6 +983,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case itemsGiven(house: Int, kind: ItemKind, count: Int)
     /// A House uses an item, on one of its holds or on the House.
     case itemUsed(house: Int, kind: ItemKind, hold: Int?)
+    /// A commander of a House read one of its tomes.
+    case tomeRead(commander: Int, house: Int)
     /// A House takes up a heritage.
     case heritageTaken(house: Int, heritage: Heritage)
     /// A House takes its crest.

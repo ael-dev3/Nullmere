@@ -232,7 +232,7 @@ struct RealmPanel: View {
     /// The order that uses an item on the House itself; none for one used
     /// only on a hold.
     static func use(_ kind: ItemKind) -> Command? {
-        kind.needsHold ? nil : .useItem(kind, hold: nil)
+        kind.needsHold || kind.needsCommander ? nil : .useItem(kind, hold: nil)
     }
 
     /// What an item does, and where it is used.
@@ -241,6 +241,7 @@ struct RealmPanel: View {
         switch kind {
         case .hourglass: return "\(effect). Use it from a hold's panel, or here on your study."
         case .wardStone: return "\(effect). Use it from the hold's panel."
+        case .tome: return "\(effect). Give it to a commander from their line in Commanders."
         default: return "\(effect)."
         }
     }

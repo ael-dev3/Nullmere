@@ -12,11 +12,11 @@ extension CommanderCounsel {
     public static let piecesTold = 6
 
     /// What a commander may put forward for themself.
-    public static let ownActions = ["learn", "wear", "star"]
+    public static let ownActions = ["learn", "wear", "star", "read"]
 
     /// Why a commander can't put forward anything else for themself.
     public static let onlyTheseForSelf = "A commander may propose for themself only to learn a talent (by its name), to wear a piece "
-        + "of your House's gear (by its name), or to raise a star with your House's sculptures."
+        + "of your House's gear (by its name), to raise a star with your House's sculptures, or to read one of its tomes."
 
     /// A talent as its next rank is named, as the phone offers it: "Thick
     /// Hide II", or "Moonsteel" where it has one rank.
@@ -66,6 +66,11 @@ extension CommanderCounsel {
             : "You wear: " + worn.map { "\($0.wornSaid) (\($0.effect))" }.joined(separator: "; ") + ".")
         let unworn = state.gear(of: player).filter { $0.wornBy == nil }
             .sorted { ($0.quality.rawValue, -$0.id) > ($1.quality.rawValue, -$1.id) }
+        // The House's tomes, while it keeps any: what reading one would bring.
+        let tomes = state.items(.tome, of: player)
+        if tomes > 0 {
+            lines.append("Your House keeps \(ItemKind.tome.counted(tomes)); reading one gives \(GameState.tomeExperience) experience.")
+        }
         if unworn.isEmpty {
             lines.append("Your House's armoury holds no piece unworn.")
         } else {
@@ -120,6 +125,9 @@ extension CommanderCounsel {
             let from = piece.wornBy.flatMap { $0 == commander.id ? nil : state.commander($0)?.name }.map { ", taken from \($0)" } ?? ""
             return weighed("WEAR \(piece.title)", .wear(gear: piece.id, commander: commander.id),
                            "\(commander.name) takes up the \(piece.title)\(from).")
+        case "read", "read a tome", "tome", "read tome":
+            return weighed("READ A TOME", .readTome(commander: commander.id),
+                           "\(commander.name) reads a \(ItemKind.tome.title): \(GameState.tomeExperience) experience.")
         case "star", "raise a star", "raise", "stars":
             let next = commander.starCount + 1
             let cost = Commander.sculpturesToRaise(from: commander.starCount).map { " for \($0) sculptures" } ?? ""

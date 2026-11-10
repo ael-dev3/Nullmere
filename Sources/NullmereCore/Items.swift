@@ -14,6 +14,10 @@ public enum ItemKind: String, CaseIterable, Codable, Sendable, PlainCases {
     case wardStone
     /// Every company of the House mends.
     case mendingDraught
+    /// A commander of the House reads it and gains experience (Rise of
+    /// Kingdoms' tomes of knowledge). Last of the kinds, so those before it
+    /// keep their places.
+    case tome
 
     public var title: String {
         switch self {
@@ -24,6 +28,7 @@ public enum ItemKind: String, CaseIterable, Codable, Sendable, PlainCases {
         case .moonsaltCache: return "Cache of Moonsalt"
         case .wardStone: return "Ward Stone"
         case .mendingDraught: return "Mending Draught"
+        case .tome: return "Tome of Old Campaigns"
         }
     }
 
@@ -37,6 +42,7 @@ public enum ItemKind: String, CaseIterable, Codable, Sendable, PlainCases {
         case .moonsaltCache: return "Caches of Moonsalt"
         case .wardStone: return "Ward Stones"
         case .mendingDraught: return "Mending Draughts"
+        case .tome: return "Tomes of Old Campaigns"
         }
     }
 
@@ -52,6 +58,7 @@ public enum ItemKind: String, CaseIterable, Codable, Sendable, PlainCases {
         case .grainCache, .timberCache, .stoneCache, .moonsaltCache: return "\(stores) to the House's stores"
         case .wardStone: return "a hold's ward made whole"
         case .mendingDraught: return "\(GameState.draughtMending) health to every company of the House"
+        case .tome: return "\(GameState.tomeExperience) experience to a commander of the House who reads it"
         }
     }
 
@@ -62,12 +69,15 @@ public enum ItemKind: String, CaseIterable, Codable, Sendable, PlainCases {
         case .timberCache: return Stock(timber: 120)
         case .stoneCache: return Stock(stone: 120)
         case .moonsaltCache: return Stock(moonsalt: 20)
-        case .hourglass, .wardStone, .mendingDraught: return .zero
+        case .hourglass, .wardStone, .mendingDraught, .tome: return .zero
         }
     }
 
     /// Whether it is used on one of the House's holds.
     public var needsHold: Bool { self == .wardStone }
+
+    /// Whether one of the House's commanders reads it.
+    public var needsCommander: Bool { self == .tome }
 
     /// The cache of a store.
     public static func cache(of resource: Resource) -> ItemKind {
@@ -140,14 +150,16 @@ extension GameState {
 
     /// A lair broken fills its host's satchels: its caller gains an
     /// hourglass for each of its levels, and every House of the host a
-    /// cache of the store its wilds carry most of, and makings for its
-    /// Forge, three for each of the lair's levels.
+    /// cache of the store its wilds carry most of, a tome of the campaign
+    /// for one of its commanders to read, and makings for its Forge, three
+    /// for each of the lair's levels.
     mutating func rewardLair(_ assault: LairAssault) -> [GameEvent] {
         let spoils = assault.kind.spoils
         let cache = ItemKind.cache(of: Resource.allCases.max { spoils[$0] < spoils[$1] }!)
         var events = give(.hourglass, assault.level, to: assault.caller)
         for share in assault.shares {
             events += give(cache, to: share.house)
+            events += give(.tome, to: share.house)
             events += give(makings: [Making.left(by: assault.kind): 3 * assault.level], to: share.house)
         }
         return events
@@ -186,11 +198,18 @@ extension GameState {
             for index in hurt {
                 units[index].health = min(100, units[index].health + GameState.draughtMending)
             }
+        case .tome:
+            throw .readByACommander
         }
-        let index = satchel!.firstIndex { $0.house == house && $0.kind == kind }!
+        spend(kind, of: house)
+        return [.itemUsed(house: house, kind: kind, hold: hold?.id)]
+    }
+
+    /// One of a kind of item a House keeps, spent.
+    mutating func spend(_ kind: ItemKind, of house: Int) {
+        guard let index = satchel?.firstIndex(where: { $0.house == house && $0.kind == kind }) else { return }
         satchel![index].count -= 1
         if satchel![index].count == 0 { satchel!.remove(at: index) }
-        return [.itemUsed(house: house, kind: kind, hold: hold?.id)]
     }
 
     /// What a hold has under way comes a watch nearer: its work and its

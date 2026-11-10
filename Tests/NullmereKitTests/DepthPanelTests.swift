@@ -1770,6 +1770,29 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .raiseStar(commander: commander.id), events: [], in: session.state, player: me), [.honour])
     }
 
+    /// A tome read by a commander from Commanders, while the House keeps one:
+    /// the satchel says where it is read, and offers no use of its own.
+    func testATomeIsReadFromCommanders() throws {
+        var state = world("pressed tomes")
+        let me = state.player
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        XCTAssertEqual(TomeLine.line(kept: 2), "2 Tomes of Old Campaigns kept")
+        _ = state.give(.tome, 2, to: me)
+        let (session, link) = session(state)
+        draw(TomeLine(session: session, commander: commander))
+        XCTAssertTrue(PressableButtons.press("Read a tome"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .readTome(commander: commander.id))
+        XCTAssertEqual(session.state.items(.tome, of: me), 1)
+        XCTAssertEqual(session.state.commander(commander.id)?.experience,
+                       min(commander.experience + GameState.tomeExperience, Commander.experience(forLevel: Commander.highestLevel)))
+        XCTAssertEqual(GameSession.cues(for: .readTome(commander: commander.id), events: [], in: session.state, player: me), [.lore])
+        XCTAssertNil(RealmPanel.use(.tome), "Read from a commander's line, not opened from the satchel")
+        XCTAssertEqual(RealmPanel.about(.tome),
+                       "300 experience to a commander of the House who reads it. Give it to a commander from their line in Commanders.")
+        XCTAssertFalse(ItemGlyph.drawing(of: .tome).isEmpty)
+        draw(ItemGlyph(kind: .tome, size: 28))
+    }
+
     func testWordsAreHeardSaidAndShown() throws {
         var state = world("pressed words")
         let me = state.player

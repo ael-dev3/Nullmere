@@ -467,6 +467,9 @@ extension GameState {
             case .mendingDraught: return Tidings("You share out a Mending Draught: every hurt company of yours mends.", .good)
             default: return Tidings("You open a \(kind.title): \(kind.stores) to your stores.", .good)
             }
+        case .tomeRead(let id, let house):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name) reads a \(ItemKind.tome.title): \(GameState.tomeExperience) experience.", .good)
         case .lairAssaulted(let assault):
             let lair = assault.named
             // A gate of the Crown struck by one company, and not by a host.

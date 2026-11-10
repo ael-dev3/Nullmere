@@ -204,13 +204,13 @@ struct ProposeForYourself: Tool {
     let bench: CounselBench
     let name = "proposeForYourself"
     let description = "Puts to your keeper something for yourself, who decides whether to give it: to learn a talent's next rank, "
-        + "to wear a piece of your House's gear, or to raise a star with your House's sculptures."
+        + "to wear a piece of your House's gear, to raise a star with your House's sculptures, or to read one of its tomes."
 
     @Generable
     struct Arguments {
-        @Guide(description: "What you would do: learn, wear or star")
+        @Guide(description: "What you would do: learn, wear, star or read")
         var action: String
-        @Guide(description: "For learn, the talent's name as you were told it; for wear, the piece's name as you were told it; for star, empty")
+        @Guide(description: "For learn, the talent's name as you were told it; for wear, the piece's name as you were told it; for star or read, empty")
         var what: String
     }
 

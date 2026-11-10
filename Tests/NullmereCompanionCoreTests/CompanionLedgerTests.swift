@@ -1236,6 +1236,27 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertNil(line.raiseStar)
     }
 
+    /// A tome in the phone's satchel, read by any commander of the House who
+    /// may, each offer taken by the rules; read, its commander risen and the
+    /// satchel emptied of it.
+    func testThePhoneHasACommanderReadATome() throws {
+        var (state, me) = try world()
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        _ = state.give(.tome, to: me)
+        let ledger = CompanionLedger(world: state, player: me)
+        let tome = try XCTUnwrap(ledger.satchel.first { $0.kind == .tome })
+        XCTAssertEqual(tome.count, "A Tome of Old Campaigns")
+        XCTAssertEqual(tome.effect, "300 experience to a commander of the House who reads it")
+        let read = try XCTUnwrap(tome.uses.first { $0.command == .readTome(commander: commander.id) })
+        XCTAssertEqual(read.title, "\(commander.name) reads it")
+        XCTAssertEqual(tome.uses.count, state.commanders(of: me).filter { state.tomeRefusal(for: $0.id, as: me) == nil }.count)
+        assertTaken(tome.uses, in: state, as: me)
+        let before = commander.experience
+        _ = try state.perform(read.command, as: me)
+        XCTAssertEqual(state.commander(commander.id)?.experience, before + GameState.tomeExperience)
+        XCTAssertNil(CompanionLedger(world: state, player: me).satchel.first { $0.kind == .tome }, "Read, gone from the satchel")
+    }
+
     /// The armoury and what each commander wears on the phone, in the words
     /// of the Mac's Commanders: nothing kept, told how gear comes; a piece
     /// kept, offered to every free commander and to break up, each taken by

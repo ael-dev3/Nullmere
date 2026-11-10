@@ -187,6 +187,7 @@ private struct CommanderRow: View {
                 }
             }
             StarsLine(session: session, commander: commander)
+            TomeLine(session: session, commander: commander)
             ExpeditionLine(session: session, commander: commander)
             TalentsView(session: session, commander: commander)
         }
@@ -423,6 +424,35 @@ struct StarsLine: View {
                 QuietButton(title: "Raise a star", size: 8.5, enabled: refusal == nil,
                             name: "Raise \(commander.name) to \(commander.starCount + 1) stars", why: refusal?.description) {
                     session.perform(.raiseStar(commander: commander.id))
+                }
+            }
+        }
+    }
+}
+
+/// The House's tomes of old campaigns, while it keeps any: one read by
+/// this commander for its experience, from their line.
+struct TomeLine: View {
+    let session: GameSession
+    let commander: Commander
+
+    static func line(kept: Int) -> String {
+        "\(ItemKind.tome.counted(kept).lineBegun) kept"
+    }
+
+    var body: some View {
+        let kept = session.state.items(.tome, of: session.player)
+        if kept > 0 {
+            let refusal = session.state.tomeRefusal(for: commander.id, as: session.player)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                ItemGlyph(kind: .tome, size: 11)
+                Text(verbatim: TomeLine.line(kept: kept))
+                    .font(.nm(10.5))
+                    .foregroundStyle(refusal == nil ? Palette.glowWords : Palette.text(0.6))
+                Spacer()
+                QuietButton(title: "Read a tome", size: 8.5, enabled: refusal == nil,
+                            name: session.state.tomeSaid(for: commander.id), why: refusal?.description) {
+                    session.perform(.readTome(commander: commander.id))
                 }
             }
         }

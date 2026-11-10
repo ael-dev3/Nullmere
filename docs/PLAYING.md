@@ -736,11 +736,15 @@ a vote on the realm's law to cast.
   as the watch turns); a Cache of Grain, Timber or Stone opens into 120 of
   it, a Cache of Moonsalt into 20, while the stores have room; a Ward Stone
   makes a hold's ward whole; a Mending Draught mends every hurt company of
-  the House by 30. The charges bring them, the first steps hourglasses to
+  the House by 30; a Tome of Old Campaigns (Rise of Kingdoms' tomes of
+  knowledge) gives a commander who reads it 300 experience, rising a level
+  where it reaches one, read from their line in Commanders, the phone's
+  satchel, or put forward by the commander in counsel (not by one held
+  prisoner, nor one at the highest level). The charges bring them, the first steps hourglasses to
   learn by; each mark of a happening brings an hourglass or more, and its
   three foremost more again; a lair broken gives its caller an hourglass
   for each of its levels, and every House of the host a cache of what its
-  wilds carry most of. Only its own House knows what is in a satchel. The
+  wilds carry most of and a tome. Only its own House knows what is in a satchel. The
   Realm screen lists it and uses what works on the House; a hold's panel
   offers an hourglass while it has something under way and a ward stone
   while its ward is broken. Stewards turn an hourglass a watch on their

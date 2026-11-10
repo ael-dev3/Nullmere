@@ -153,6 +153,8 @@ extension GameState {
             return try helpStandard(standard, by: house)
         case let .useItem(kind, holdID):
             return try use(kind, on: holdID, as: house)
+        case let .readTome(commanderID):
+            return try readTome(by: commanderID, as: house)
         case let .takeHeritage(heritage):
             return try takeUp(heritage, as: house)
         case let .takeCrest(crest):

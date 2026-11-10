@@ -614,6 +614,14 @@ struct ItemGlyph: View {
                     ([p(0.47, 0.24), p(0.53, 0.24), p(0.53, 0.8), p(0.47, 0.8)], rune),
                     ([p(0.5, 0.36), p(0.66, 0.5), p(0.62, 0.55), p(0.5, 0.45)], rune),
                     ([p(0.5, 0.52), p(0.34, 0.66), p(0.38, 0.71), p(0.5, 0.61)], rune)]
+        case .tome:
+            // A closed book bound in leather, its spine darker, its pages'
+            // edge pale beneath and a gilt plate on its board.
+            let leather: ResourceGlyph.Shade = (0.46, 0.29, 0.19), gilt: ResourceGlyph.Shade = (0.86, 0.72, 0.38)
+            return [([p(0.2, 0.08), p(0.82, 0.08), p(0.82, 0.84), p(0.2, 0.84)], leather),
+                    ([p(0.2, 0.08), p(0.31, 0.08), p(0.31, 0.84), p(0.2, 0.84)], (0.33, 0.2, 0.13)),
+                    ([p(0.24, 0.84), p(0.82, 0.84), p(0.78, 0.94), p(0.2, 0.94)], (0.9, 0.86, 0.74)),
+                    ([p(0.45, 0.32), p(0.69, 0.32), p(0.69, 0.52), p(0.45, 0.52)], gilt)]
         case .mendingDraught:
             // A round flask stoppered, half full of a red draught, a gleam on it.
             return [([p(0.41, 0.14), p(0.59, 0.14), p(0.59, 0.4), p(0.41, 0.4)], glass),

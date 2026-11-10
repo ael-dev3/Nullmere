@@ -1262,6 +1262,11 @@ public struct CompanionLedger: Equatable, Sendable {
                 }
             case .mendingDraught:
                 uses = hurt ? [Order(title: "Share it out", command: .useItem(.mendingDraught, hold: nil))] : []
+            case .tome:
+                // Read by any commander of the House who may, as their line on the Mac offers it.
+                uses = world.commanders(of: player).filter { world.tomeRefusal(for: $0.id, as: player) == nil }.map { commander in
+                    Order(title: "\(commander.name) reads it", command: .readTome(commander: commander.id))
+                }
             }
             let effect = stack.kind.effect
             return Item(kind: stack.kind, count: stack.kind.counted(stack.count).lineBegun, effect: effect.prefix(1).uppercased() + effect.dropFirst(),

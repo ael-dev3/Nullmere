@@ -41,7 +41,10 @@ extension GameState {
         var random = SeededRandom(seed: Seed.mix(settings.seed, 8_800, UInt64(sitting)))
         let lore: [[(title: String, effect: String)]] = [
             Study.allCases.map { ($0.title, $0.effect) },
-            ItemKind.allCases.map { ($0.title, $0.effect) },
+            // The satchel's kinds the Lyceum asked of from its first
+            // sitting: a kind come since leaves a realm's sittings as they
+            // were drawn, its questions the same on every build.
+            ItemKind.allCases.filter { $0 != .tome }.map { ($0.title, $0.effect) },
             OmenKind.allCases.map { ($0.title, $0.effect) },
         ]
         let asks = ["Which study gives this?", "Which item does this?", "Which omen brings this?"]

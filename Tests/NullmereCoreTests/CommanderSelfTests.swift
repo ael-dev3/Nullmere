@@ -95,7 +95,7 @@ final class CommanderSelfTests: XCTestCase {
         XCTAssertEqual(star.why, RuleError.needsSculptures(10).description)
         XCTAssertEqual(star.told, "\(name) is raised to 2 stars for 10 sculptures.")
         XCTAssertEqual(counsel.proposeForSelf("dance", what: "a jig").why, CommanderCounsel.onlyTheseForSelf)
-        XCTAssertEqual(CommanderCounsel.ownActions, ["learn", "wear", "star"])
+        XCTAssertEqual(CommanderCounsel.ownActions, ["learn", "wear", "star", "read"])
 
         // Given, the rules carry each out, and the commander knows it after.
         state.sculptureCounts = [me: 10]

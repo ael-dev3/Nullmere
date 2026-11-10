@@ -1869,6 +1869,7 @@ public final class GameSession {
         case .castRipple: return .lore
         case .sinkStone: return .lore
         case .raiseStar: return .honour
+        case .readTome: return .lore
         case .writeLetter: return .parley
         case .buyFromPedlar, .openInnChest: return .coin
         case .walkTheMirror: return .lore
@@ -1892,6 +1893,7 @@ public final class GameSession {
         case .grainCache, .timberCache, .stoneCache, .moonsaltCache: return .coin
         case .wardStone: return .complete
         case .mendingDraught: return .tend
+        case .tome: return .lore
         }
     }
 
@@ -1932,6 +1934,7 @@ public final class GameSession {
         case .allianceGift(let house, _, _, _, _) where house == player: return .coin
         case .allianceStudyChosen(let id, _) where state?.alliance(of: player)?.id == id: return .banner
         case .itemUsed(let house, let kind, _) where house == player: return cue(using: kind)
+        case .tomeRead(_, let house) where house == player: return .lore
         case .lairAssaulted(let assault) where assault.houses.contains(player): return assault.broken ? .triumph : .batter
         case .standardRaised(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .banner
         // The leader's mark heard by the alliance's other Houses: a horn

@@ -32,9 +32,10 @@ final class ItemTests: XCTestCase {
         XCTAssertEqual(state.tidings(of: .itemsGiven(house: me, kind: .hourglass, count: 2), for: me)?.text,
                        "Your House gains 2 Salt Hourglasses: a hold's work and muster a watch nearer, or the House's study.")
         XCTAssertEqual(ItemKind.allCases.map(\.title), ["Salt Hourglass", "Cache of Grain", "Cache of Timber", "Cache of Stone",
-                                                        "Cache of Moonsalt", "Ward Stone", "Mending Draught"])
+                                                        "Cache of Moonsalt", "Ward Stone", "Mending Draught", "Tome of Old Campaigns"])
         XCTAssertEqual(Set(ItemKind.allCases.map(\.plural)).count, ItemKind.allCases.count)
-        XCTAssertEqual(ItemKind.allCases.map { $0.needsHold }, [false, false, false, false, false, true, false])
+        XCTAssertEqual(ItemKind.allCases.map { $0.needsHold }, [false, false, false, false, false, true, false, false])
+        XCTAssertEqual(ItemKind.allCases.filter(\.needsCommander), [.tome])
         XCTAssertEqual(Resource.allCases.map(ItemKind.cache(of:)), [.grainCache, .timberCache, .stoneCache, .moonsaltCache])
         XCTAssertEqual(state.problems(), [])
         // Kept in saves.
@@ -144,7 +145,7 @@ final class ItemTests: XCTestCase {
     func testLairsMarksAndChargesFillTheSatchel() throws {
         // A lair broken: its caller gains an hourglass and a cache of what
         // the lair gave; every other House of the host, a cache; and each
-        // makings for its Forge.
+        // a tome and makings for its Forge.
         var state = Scene.world("satchel filled", houses: 3, radius: 16)
         let me = state.player
         let events = state.rewardLair(LairAssault(rally: 1, caller: me, lair: 2, kind: .reavers, level: 2, at: .origin, strikes: [],
@@ -154,7 +155,9 @@ final class ItemTests: XCTestCase {
         XCTAssertEqual(state.items(.timberCache, of: me), 1, "The Reavers' timber")
         XCTAssertEqual(state.items(.timberCache, of: 1), 1)
         XCTAssertEqual(state.items(.hourglass, of: 1), 0)
-        XCTAssertEqual(events.count, 5)
+        XCTAssertEqual(state.items(.tome, of: me), 1, "A tome of the campaign to each House of the host")
+        XCTAssertEqual(state.items(.tome, of: 1), 1)
+        XCTAssertEqual(events.count, 7)
         XCTAssertTrue(events.contains(.makingsFound(house: 1, making: .heartwood, count: 6)), "\(events)")
         // The first charges bring hourglasses, to learn by.
         XCTAssertEqual(Charge.raiseGranary.items, [.hourglass])
