@@ -350,9 +350,13 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   House's hold to scout it; REINFORCE sends a company of war to keep the
   gates of a hold of its House or an ally's; RALLY AGAINST <target> WITH
   <company> sends one to a rally of its side still gathering, or RALLY
-  <company> to the one setting out soonest. The briefing names the rallies
-  gathering, the Lanterns that may scout and where, and each company's
-  errand. The House's part in its alliance is in the book too: HELP <house>
+  <company> to the one setting out soonest. FERRY <company> TO <hold> sets
+  one at a shore hold of its House's on the water for another, for what
+  the ferrymen ask. The briefing names the rallies gathering, the Lanterns
+  that may scout and where, the companies that may cross the lake and to
+  where (or where one on the water is bound), and each company's errand; a
+  commander's look at their company tells the same, and they may put a
+  crossing forward (ferry) as any order (`FerryOrdersTests`). The House's part in its alliance is in the book too: HELP <house>
   lends a hand to an ally's works, musters and study under way; TAKE THE
   SHARES takes up the shares of the alliance's spoils waiting; and its
   leader or an officer may MARK GATHER, STRIKE, HOLD or BEWARE AT a place it

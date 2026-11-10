@@ -38,6 +38,7 @@ public enum SpokenOrders {
                                "DRILL <company>", "RAISE <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>",
                                "SEEK <company>", "BURY <company>", "GATHER <store> WITH <company>", "RECALL <company>",
                                "SCOUT <hold> WITH <company>", "REINFORCE <hold> WITH <company>", "RALLY AGAINST <target> WITH <company>",
+                               "FERRY <company> TO <hold>",
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "ACCEPT THE ENVOY OF <house>", "REFUSE THE ENVOY OF <house>", "OFFER HALF THE TRIBUTE TO <house>",
@@ -91,6 +92,19 @@ public enum SpokenOrders {
     static func raisableSaid(_ unit: Unit, in state: GameState, player: Int) -> String {
         guard state.raiseRefusal(of: unit, as: player) == nil else { return "" }
         return ", which may be raised to \(state.raisedName(of: unit)) where it stands for \(state.raiseCost(of: unit).listedSaid) (RAISE)"
+    }
+
+    /// A company on the water, or at a shore hold of the House's whence it
+    /// may be ferried across the lake now, as the briefing and counsel tell
+    /// it: where it is bound, or the holds it may land at and for what.
+    static func ferrySaid(_ unit: Unit, in state: GameState, player: Int) -> String {
+        if let crossing = state.crossingSaid(of: unit.id) {
+            return ", " + crossing.prefix(1).lowercased() + crossing.dropFirst().dropLast()
+        }
+        let landings = state.ferryLandings(for: unit.id, as: player).filter { state.ferryRefusal(unit.id, to: $0.id, as: player) == nil }
+        guard !landings.isEmpty else { return "" }
+        return ", at a shore hold whence it may be ferried across the lake to " + landings.prefix(3).map(\.name).joined(separator: " or ")
+            + " for \(GameState.ferryCost) (FERRY)"
     }
 
     /// What a company has been sent to do beyond a march, as the briefing
@@ -199,6 +213,7 @@ public enum SpokenOrders {
                          + Self.scoutSaid(unit, in: state, player: player)
                          + Self.burySaid(unit, in: state, player: player)
                          + Self.raisableSaid(unit, in: state, player: player)
+                         + Self.ferrySaid(unit, in: state, player: player)
                          + (state.isUnlit(unit.id) ? ", marching dark, its torches doused (LIGHT)" : "")
                          + Self.errandSaid(unit, in: state))
         }
@@ -378,6 +393,16 @@ public enum SpokenOrders {
             return verb == "SCOUT"
                 ? given(.scout(unit: unit.id, hold: hold.id), "Your \(named(unit, in: state)) scout \(hold.name).")
                 : given(.reinforce(unit: unit.id, hold: hold.id), "Your \(named(unit, in: state)) go to keep the gates of \(hold.name).")
+        case "FERRY":
+            // A company at a shore hold of the House's poled across the lake
+            // to another of its shore holds, for what the ferrymen ask.
+            guard let (handle, target) = split("TO") else { return nil }
+            guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
+            guard let hold = state.holds(of: player).first(where: { plain($0.name) == plain(target) }) else {
+                return refused("\(named(unit, in: state)) to \(target)", "Your House holds no hold by the name \(target).")
+            }
+            return given(.ferry(unit: unit.id, to: hold.id),
+                         "Your \(named(unit, in: state)) are poled across the lake to \(hold.name), for \(GameState.ferryCost).")
         case "RALLY":
             // RALLY AGAINST <target> WITH <company>: a rally of the House's
             // side still gathering against that hold or lair; RALLY <company>,

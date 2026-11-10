@@ -163,6 +163,8 @@ public struct CommanderCounsel: Sendable {
         }
         // Its torches doused: a tile slower, and seen by other Houses only close by.
         if state.isUnlit(unit.id) { told += ", marching dark, its torches doused" }
+        // On the water, or at a shore hold whence it may cross the lake.
+        told += SpokenOrders.ferrySaid(unit, in: state, player: player)
         return told
     }
 
@@ -442,7 +444,7 @@ public struct CommanderCounsel: Sendable {
 
     /// What a commander may propose a company does.
     public static let actions = ["march", "strike", "fortify", "halt", "drill", "raise", "kindle", "douse", "light", "wait", "bury", "gather",
-                                 "recall", "scout", "reinforce", "rally"]
+                                 "recall", "scout", "reinforce", "rally", "ferry"]
 
     /// Why a commander can't put forward anything else.
     public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, "
@@ -450,14 +452,15 @@ public struct CommanderCounsel: Sendable {
         + "douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark), "
         + "bury (the dead lying unburied where it stands), gather (a store, at the nearest site of it the company may work), "
         + "recall (from the land's work, home with its load), scout (another House's hold, with Lanterns near it), "
-        + "reinforce (keep the gates of a hold of your House or an ally's) or rally (join a rally of your side still gathering)."
+        + "reinforce (keep the gates of a hold of your House or an ally's), rally (join a rally of your side still gathering) "
+        + "or ferry (across the lake by barge, from a shore hold of your House's to another)."
 
     /// An order put to the keeper, read and weighed as the order book weighs
     /// a line: given if the realm would take it, or told why not. For
     /// gather, the place is the store to gather, or its sites' name, and
     /// empty for the nearest site of any store; for scout and reinforce,
     /// the hold; for rally, the rally's target, or empty for the one
-    /// setting out soonest.
+    /// setting out soonest; for ferry, the hold to land at.
     public func propose(_ action: String, company handle: String, place: String) -> CounselProposal {
         let verb = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let handle = handle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -469,6 +472,7 @@ public struct CommanderCounsel: Sendable {
         case "gather": line = place.isEmpty ? "GATHER \(handle)" : "GATHER \(place) WITH \(handle)"
         case "scout", "reinforce": line = "\(verb.uppercased()) \(place) WITH \(handle)"
         case "rally": line = place.isEmpty ? "RALLY \(handle)" : "RALLY AGAINST \(place) WITH \(handle)"
+        case "ferry": line = "FERRY \(handle) TO \(place)"
         case "fortify", "halt", "drill", "raise", "kindle", "douse", "light", "wait", "bury", "recall": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,
@@ -479,6 +483,9 @@ public struct CommanderCounsel: Sendable {
         }
         if (verb == "scout" || verb == "reinforce") && place.isEmpty {
             return CounselProposal(line: line, told: line, command: nil, why: "Scouting or keeping a hold's gates wants the hold's name.")
+        }
+        if verb == "ferry" && place.isEmpty {
+            return CounselProposal(line: line, told: line, command: nil, why: "A crossing of the lake wants the hold to land at.")
         }
         guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
             return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")

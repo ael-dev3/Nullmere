@@ -1914,7 +1914,8 @@ Mechanics no other game of its kind has, made of what only Nullmere has: a still
   stands alight, DOUSE or LIGHT its torches, WAIT in the wood, SEEK a
   hamlet or barrow, BURY the dead, GATHER a store WITH a company, RECALL
   one from the land's work, SCOUT a hold WITH Lanterns, REINFORCE a hold
-  WITH a company, RALLY AGAINST a target WITH one, BUILD a work AT a
+  WITH a company, RALLY AGAINST a target WITH one, FERRY one TO a shore
+  hold of the House's across the lake, BUILD a work AT a
   hold, TRAIN a kind AT a hold; with the other Houses, OFFER PEACE or A
   PACT TO a House, DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an
   amount of a store TO one, TRADE an amount of a store FOR another WITH
