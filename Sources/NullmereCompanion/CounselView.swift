@@ -241,8 +241,10 @@ struct ParleyView: View {
         }
         .tint(Night.moon)
         // The envoy told what changed as the realm moves on, or the parley
-        // ended with it gone; nothing renewed while the phone keeps no House.
-        .onChange(of: session.ledger) {
+        // ended with it gone: as the realm tells each world, never on the
+        // phone's guess at an answer given here; nothing renewed while the
+        // phone keeps no House.
+        .onChange(of: session.heard) {
             if session.phase == .keeping { parley.renew(session.parley(with: parley.id)) }
         }
         .onDisappear { parley.stop() }

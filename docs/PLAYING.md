@@ -1382,8 +1382,9 @@ a vote on the realm's law to cast.
   answer to you, weighed as the order book weighs it, and you give it or
   set it aside; the realm decides what comes of it. It is told what you
   gave or set aside, and that its House held to the whole, when you next
-  speak, and once it has gone the parley ends. A keeper's envoy carries a
-  person's own words, and no model speaks for it.
+  speak, and once the realm says it has gone the parley ends, never on
+  your device's own guess while the realm decides. A keeper's envoy
+  carries a person's own words, and no model speaks for it.
 - **Fealty.** A steward's House that loses its seat with four holds or
   fewer left, and no vassals of its own, bends the knee to the House that
   took it, if that House is sworn to no one; and a beaten House may offer

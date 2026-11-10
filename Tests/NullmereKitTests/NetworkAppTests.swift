@@ -721,7 +721,9 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(report[7], "burning: ", "No blackwood burning")
         XCTAssertEqual(report[8], "dark: ", "No company marching dark")
         XCTAssertEqual(report[9], "watchfires: ", "No watchfire lit")
-        XCTAssertEqual(Array(report.suffix(2)), ["said: Heard on the Mac", "alliance said: Heard by the accord"])
+        // The words said, then the merit the House has with the alliance it
+        // is sworn to, last, as the phone's smoke test reads them.
+        XCTAssertEqual(Array(report.suffix(3)), ["said: Heard on the Mac", "alliance said: Heard by the accord", "merit: 0"])
 
         // Out of reach: told so, both the offer and the letting go.
         mac.putPhoneLinkAway()

@@ -81,6 +81,15 @@ public final class CompanionSession {
     public private(set) var statusHeard: Date?
     public private(set) var keeper: Keeper?
     public private(set) var world: GameState?
+    /// The world as the realm last told it, apart from this phone's own
+    /// guess at an order given here and not yet answered (`world`): what
+    /// turns on the realm's own reckoning, a steward weighing half its
+    /// demand by the true might of both Houses, is told a parley only as
+    /// the realm tells it.
+    private var heardWorld: GameState?
+    /// How many worlds the realm has told this phone, a parley renewed as
+    /// each comes and never on the phone's guess.
+    public private(set) var heard = 0
     public private(set) var ledger: CompanionLedger?
     /// The House's reports while the phone is linked, the latest first, as
     /// the Mac files them: each battle and hunt it had a part in, each field
@@ -218,7 +227,7 @@ public final class CompanionSession {
     /// keeper's view as this phone holds it. Nil unless the phone speaks for
     /// the keeper and such an envoy waits on them.
     public func parley(with envoy: Int) -> EnvoyParley? {
-        guard phase == .keeping, let world, let house = keeper?.house else { return nil }
+        guard phase == .keeping, let world = heardWorld, let house = keeper?.house else { return nil }
         return EnvoyParley(state: world, player: house, envoy: envoy)
     }
 
@@ -414,7 +423,7 @@ public final class CompanionSession {
             return
         }
         pending.append(told)
-        show(copy)
+        show(copy, guessed: true)
         word = Word(text: outOfReach == nil ? "\(told): sent to the realm." : "\(told): \(Self.waitsForReach)",
                     refused: false, awaited: true)
         link.send(command)
@@ -627,9 +636,15 @@ public final class CompanionSession {
         word = Word(text: text, refused: false, awaited: false)
     }
 
-    private func show(_ world: GameState) {
+    /// The world shown: the realm's word, or this phone's guess at an order
+    /// given here, carried out at once as the realm will carry it out.
+    private func show(_ world: GameState, guessed: Bool = false) {
         self.world = world
         ledger = keeper?.house.map { CompanionLedger(world: world, player: $0) }
+        if !guessed {
+            heardWorld = world
+            heard &+= 1
+        }
     }
 
     /// Files the House's reports of what the realm told, as the Mac does.
@@ -656,6 +671,7 @@ public final class CompanionSession {
         hearing = nil
         keeper = nil
         world = nil
+        heardWorld = nil
         ledger = nil
         reports = []
         word = nil

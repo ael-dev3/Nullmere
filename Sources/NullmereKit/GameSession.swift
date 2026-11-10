@@ -876,9 +876,12 @@ public final class GameSession {
     }
 
     /// The envoy is told what changed as the realm moves on, or the parley
-    /// ends with the envoy gone.
-    private func renewParley() {
-        guard let open = envoyParley else { return }
+    /// ends with the envoy gone; never on this copy's guess at an order the
+    /// realm decides (half offered to a steward, weighed by the true might
+    /// of both Houses), which may take the envoy home here while the realm
+    /// keeps it waiting, held to the whole. The realm's word renews it.
+    private func renewParley(guessed: Bool = false) {
+        guard !guessed, let open = envoyParley else { return }
         open.renew(EnvoyParley(state: state, player: player, envoy: open.id))
     }
 
@@ -1053,7 +1056,7 @@ public final class GameSession {
             if case .found = command, let hold = events.compactMap(holdFounded).first {
                 selection = .hold(hold)
             }
-            refreshWorld()
+            refreshWorld(guessed: decided)
             return true
         } catch {
             post(String(describing: error), tone: .bad)
@@ -1747,9 +1750,12 @@ public final class GameSession {
 
     // MARK: Bookkeeping
 
-    private func refreshWorld() {
+    /// The world as it now stands, told to every part that shows it; a
+    /// world that is this copy's guess at an order the realm decides is
+    /// not told to a parley as what happened.
+    private func refreshWorld(guessed: Bool = false) {
         renewCounsel()
-        renewParley()
+        renewParley(guessed: guessed)
         counselNewCharge()
         visible = state.visibility(for: player)
         threatened = Set(Sentinel.threats(in: state, player: player, visible: visible).map(\.hold))

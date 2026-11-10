@@ -98,10 +98,13 @@ final class CompanionSessionTests: XCTestCase {
             default: break
             }
         }
+        let heard = phone.heard
         phone.give(fortify.command, told: "Fortify \(company.name)")
         XCTAssertEqual(phone.word?.awaited, true, "Sent, its word to come")
         XCTAssertEqual(phone.world?.unit(company.id)?.fortified, true, "Carried out here as the realm will")
+        XCTAssertEqual(phone.heard, heard, "The phone's guess at an order is not the realm's word")
         try await until("the realm's word") { phone.word?.awaited == false }
+        try await until("the realm's world told") { phone.heard > heard }
         XCTAssertEqual(phone.word?.refused, false)
         XCTAssertTrue(phone.word?.text.contains("carried out by the realm") == true, "\(phone.word?.text ?? "")")
         try await until("the order seen on the Mac") { macWorld?.unit(company.id)?.fortified == true }
