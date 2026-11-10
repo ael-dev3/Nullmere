@@ -127,7 +127,7 @@ final class RankingsTests: XCTestCase {
         var unblooded = state
         unblooded.foesSlain![me] = 0
         XCTAssertEqual(unblooded.rankingsSaid(for: me), "Your House stands \(briefOrdinal(place)) of 6 by might and has slain no foe this age.")
-        XCTAssertNil(state.rankingsSaid(for: -1), "a keeper of no House")
+        XCTAssertEqual(state.rankingsSaid(for: -1), "", "a keeper of no House")
         XCTAssertNil(state.ranking(.might, for: -1).standing)
 
         // The alliances, by their Houses together.
@@ -151,6 +151,32 @@ final class RankingsTests: XCTestCase {
         // Every ranking, in the Rankings' order.
         XCTAssertEqual(state.rankings(for: me).map(\.title), ["Houses by might", "Houses by foes slain", "Alliances by might", "Alliances by foes slain"])
         XCTAssertEqual(RankedBy.allCases.map(\.said), ["by might", "by foes slain"])
+    }
+
+    /// What the Rankings say when the keeper's House is ranked by neither
+    /// figure, and when it is sworn to an alliance whose Houses have slain
+    /// nothing: the might none, the foes slain alone, and each alliance's line.
+    func testTheRankingsSayWhenTheKeeperIsNotRanked() throws {
+        var state = GameState(settings: GameSettings(seedText: "unranked", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        state.reputedMight = [Int](repeating: 0, count: state.houses.count)
+        XCTAssertEqual(state.ranking(.might, for: me).standing, "Your House has no might to rank.")
+        XCTAssertEqual(state.ranking(.might, for: me).none, "No House stands.")
+        XCTAssertEqual(state.ranking(.might, alliances: true, for: me).none, "No alliance stands.")
+        XCTAssertEqual(state.rankingsSaid(for: me), "Your House is not yet ranked.")
+        // Foes slain alone: ranked by them, with no might said.
+        state.foesSlain = [Int](repeating: 0, count: state.houses.count)
+        state.foesSlain![me] = 50
+        XCTAssertEqual(state.rankingsSaid(for: me), "Your House stands first of 1 by foes slain.")
+        XCTAssertEqual(state.ranking(.slain, alliances: true, for: me).standing, "Your House is sworn to no alliance.")
+        // Sworn to an alliance whose Houses have slain nothing.
+        _ = try state.perform(.foundAlliance(name: "The Salt Pact"), as: me)
+        state.foesSlain![me] = 0
+        XCTAssertEqual(state.ranking(.slain, alliances: true, for: me).standing, "Your alliance's Houses have slain no foe this age.")
+        XCTAssertEqual(state.ranking(.slain, alliances: true, for: me).none, "No alliance's Houses have slain a foe this age.")
+        XCTAssertEqual(state.ranking(.might, alliances: true, for: me).standing, "Your alliance has no might to rank.")
+        XCTAssertEqual(RankingLine(id: 1, place: 2, name: "Orren", figure: 1_240, isOwn: false, note: "of the Salt Pact").said(.might),
+                       "2nd, Orren, of the Salt Pact: might 1,240")
     }
 
     /// Known to every keeper as the realm counts them, in the part of the

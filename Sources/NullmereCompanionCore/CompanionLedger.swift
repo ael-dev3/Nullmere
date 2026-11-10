@@ -1361,7 +1361,7 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         sundering = world.sunderingSaid(for: player)
         rankings = world.rankings(for: player)
-        rankingsSaid = world.rankingsSaid(for: player) ?? ""
+        rankingsSaid = world.rankingsSaid(for: player)
         sunderingEnds = world.sundering.flatMap { $0.settled ? nil : $0.ends }
         levy = world.units(of: player).filter(\.kind.isMilitary).count
         holySites = world.holySites.map { shrine in

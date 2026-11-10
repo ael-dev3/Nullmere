@@ -43,7 +43,7 @@ final class RankingsSectionTests: XCTestCase {
         draw(RealmPanel(session: session))
         XCTAssertNotNil(PressableButtons.actions["Show the rankings"], "Among \(PressableButtons.actions.keys.sorted())")
         XCTAssertNil(PressableButtons.actions["Foes slain"], "folded")
-        XCTAssertTrue(try XCTUnwrap(session.state.rankingsSaid(for: me)).hasSuffix("twelfth of 12 by foes slain."))
+        XCTAssertTrue(session.state.rankingsSaid(for: me).hasSuffix("twelfth of 12 by foes slain."))
 
         // Open, by foes slain: the foremost ten and the keeper's own beneath them.
         PressableButtons.isListening = true
@@ -62,7 +62,6 @@ final class RankingsSectionTests: XCTestCase {
         draw(RankingsSection(session: session, open: true, by: .might, alliances: true))
         XCTAssertEqual(session.state.ranking(.might, alliances: true, for: me).standing, "Your House is sworn to no alliance.")
         draw(RankingsSection(session: session, open: true))
-        XCTAssertEqual(RankingsSection.unranked, "Every House and alliance by might and by foes slain.")
     }
 }
 

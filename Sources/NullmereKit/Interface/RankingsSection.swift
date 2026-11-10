@@ -67,16 +67,13 @@ struct RankingsSection: View {
                     }
                 }
             } else {
-                Text(verbatim: state.rankingsSaid(for: session.player) ?? RankingsSection.unranked)
+                Text(verbatim: state.rankingsSaid(for: session.player))
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
-
-    /// Folded, for a keeper of no House.
-    static let unranked = "Every House and alliance by might and by foes slain."
 
     private var heading: some View {
         Caps("Rankings", size: 9, weight: .medium)

@@ -53,8 +53,7 @@ public struct RankingLine: Equatable, Sendable, Identifiable {
 
 /// A ranking as the Rankings show it: the foremost, and the keeper's own
 /// line beneath them where it stands lower.
-public struct Ranking: Equatable, Sendable, Identifiable {
-    public var id: String { "\(alliances ? "alliances" : "houses").\(by.rawValue)" }
+public struct Ranking: Equatable, Sendable {
     public let by: RankedBy
     /// Alliances ranked, not Houses.
     public let alliances: Bool
@@ -113,8 +112,10 @@ extension GameState {
         }
     }
 
+    /// Adds troops to the foes a House has slain; the caller's blows are
+    /// between Houses of this world.
     private mutating func countSlain(_ troops: Int, by house: Int) {
-        guard troops > 0, houses.indices.contains(house) else { return }
+        guard troops > 0 else { return }
         var counts = foesSlain ?? []
         if counts.count < houses.count { counts += [Int](repeating: 0, count: houses.count - counts.count) }
         counts[house] += troops
@@ -129,33 +130,27 @@ extension GameState {
     /// them where it stands lower. Ties go to the lower id.
     public func ranking(_ by: RankedBy, alliances: Bool = false, for house: Int, most: Int = GameState.rankingShown) -> Ranking {
         let figures = rankingFigures(by)
-        let sworn = alliance(of: house)
-        // Each ranked with its figure, foremost first.
-        var ranked: [(id: Int, figure: Int)] = []
+        // Each ranked with its figure, its name and what sits beneath it,
+        // foremost first.
+        var ranked: [(id: Int, figure: Int, name: String, note: String?)] = []
         if alliances {
             for alliance in alliancesStanding {
-                let figure = alliance.members.reduce(0) { total, member in
-                    figures.indices.contains(member) && !houses[member].isEliminated ? total + figures[member] : total
+                let members = alliance.members.filter { houses.indices.contains($0) && !houses[$0].isEliminated }
+                let figure = members.reduce(0) { $0 + figures[$1] }
+                if figure > 0 {
+                    ranked.append((alliance.id, figure, alliance.titled, members.count == 1 ? "1 House" : "\(members.count) Houses"))
                 }
-                if figure > 0 { ranked.append((alliance.id, figure)) }
             }
         } else {
-            for house in houses where !house.isEliminated && figures[house.id] > 0 {
-                ranked.append((house.id, figures[house.id]))
+            for each in houses where !each.isEliminated && figures[each.id] > 0 {
+                ranked.append((each.id, figures[each.id], each.title, alliance(of: each.id).map { "of \($0.name)" }))
             }
         }
         ranked.sort { ($1.figure, $0.id) < ($0.figure, $1.id) }
-        let ownID = alliances ? sworn?.id : (houses.indices.contains(house) ? house : nil)
+        let ownID = alliances ? alliance(of: house)?.id : (houses.indices.contains(house) ? house : nil)
         func line(_ at: Int) -> RankingLine {
-            let (id, figure) = ranked[at]
-            if alliances {
-                let named = self.alliance(id)
-                let count = named?.members.filter { houses.indices.contains($0) && !houses[$0].isEliminated }.count ?? 0
-                return RankingLine(id: id, place: at + 1, name: named?.titled ?? "An alliance", figure: figure, isOwn: id == ownID,
-                                   note: count == 1 ? "1 House" : "\(count) Houses")
-            }
-            return RankingLine(id: id, place: at + 1, name: houses[id].title, figure: figure, isOwn: id == ownID,
-                               note: alliance(of: id).map { "of \($0.name)" })
+            let entry = ranked[at]
+            return RankingLine(id: entry.id, place: at + 1, name: entry.name, figure: entry.figure, isOwn: entry.id == ownID, note: entry.note)
         }
         let shown = (0..<min(max(most, 0), ranked.count)).map(line)
         let ownAt = ownID.flatMap { id in ranked.firstIndex { $0.id == id } }
@@ -173,9 +168,9 @@ extension GameState {
 
     /// Where a keeper's House stands, in a line, as the Rankings fold to:
     /// "Your House stands fourth of 12 by might and second of 5 by foes
-    /// slain." Nil for a keeper of no House.
-    public func rankingsSaid(for house: Int) -> String? {
-        guard houses.indices.contains(house), !houses[house].isEliminated else { return nil }
+    /// slain." Nothing for a keeper of no House.
+    public func rankingsSaid(for house: Int) -> String {
+        guard houses.indices.contains(house), !houses[house].isEliminated else { return "" }
         let might = ranking(.might, for: house, most: 0), slain = ranking(.slain, for: house, most: 0)
         let byMight = might.place.map { "stands \(briefOrdinal($0)) of \(GameState.counted(might.count)) by might" }
         let bySlain = slain.place.map { "\(briefOrdinal($0)) of \(GameState.counted(slain.count)) by foes slain" }
