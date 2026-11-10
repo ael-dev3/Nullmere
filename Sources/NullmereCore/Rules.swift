@@ -128,6 +128,8 @@ extension GameState {
             return try vote(on: edictID, aye: aye, as: house)
         case let .say(words, toAlliance):
             return try say(words, toAlliance: toAlliance, as: house)
+        case let .sharePlace(hex, name, toAlliance):
+            return try share(hex, named: name, toAlliance: toAlliance, as: house)
         case let .learnTalent(commanderID, talent):
             return try learn(talent, by: commanderID, as: house)
         case let .forgetTalents(commanderID):

@@ -1789,7 +1789,7 @@ public final class GameSession {
         case .answerInvitation(_, let accept), .answerRequest(_, let accept): return accept ? .banner : .refusal
         case .expel: return .refusal
         case .callRally: return .horn
-        case .say: return .parley
+        case .say, .sharePlace: return .parley
         case .sing: return .lore
         case .castBottle: return .order
         case .keepVigil: return .lore

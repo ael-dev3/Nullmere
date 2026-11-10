@@ -64,6 +64,11 @@ struct KeepingView: View {
         .onChange(of: session.phase) {
             if session.phase == .pairing { PhoneVoices.shared.forget() }
         }
+        // A place shared in the words looked to: the chart shown, which
+        // turns to it.
+        .onChange(of: session.lookingTo) {
+            if session.lookingTo != nil { tab = .land }
+        }
     }
 }
 
@@ -2818,11 +2823,30 @@ struct SaidLine: View {
             Text(verbatim: "\(said.from) · watch \(said.watch)" + (said.reported ? " · reported" : ""))
                 .font(Night.small)
                 .foregroundStyle(said.isOwn ? Night.moon : Night.ink.opacity(0.6))
-            Text(verbatim: said.text)
+            Text(verbatim: said.place == nil ? said.text : "A place shared: \(said.text)")
                 .font(Night.body)
                 .fixedSize(horizontal: false, vertical: true)
+            // A place shared in the words: the chart turned to it, or kept
+            // in this phone's book, as the Mac's Words offer them.
+            if let place = said.place {
+                HStack(spacing: 10) {
+                    Button("Go") { session.look(to: place.at) }
+                        .accessibilityLabel("Turn the chart to \(place.name)")
+                    if session.placeBook.place(at: place.at) == nil {
+                        Button("Keep") { session.keepPlace(place.at, named: place.name) }
+                            .disabled(session.placeBook.isFull)
+                            .accessibilityLabel("Keep \(place.name) among your places")
+                    } else {
+                        Text(verbatim: "Among your places")
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.55))
+                    }
+                }
+                .font(Night.small)
+                .buttonStyle(.bordered)
+            }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: said.place == nil ? .combine : .contain)
         .contextMenu {
             if let report = said.report {
                 Button(report.title, role: .destructive) { session.give(report.command, told: report.title) }

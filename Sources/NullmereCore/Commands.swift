@@ -82,6 +82,9 @@ public enum Command: Codable, Equatable, Sendable {
     case reinforce(unit: Int, hold: Int)
     /// A keeper's words, to the whole realm or to their alliance alone.
     case say(words: String, toAlliance: Bool)
+    /// A place shared in a keeper's words, by the name they give it, to the
+    /// whole realm or to their alliance alone.
+    case sharePlace(at: Hex, named: String, toAlliance: Bool)
     /// A ballad of a Chronicle entry, made on the keeper's Mac, sung to
     /// the realm for its songbook.
     case sing(ballad: String, of: Int)

@@ -282,6 +282,24 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertFalse(phone.renamePlace(Hex(seat.position.q + 40, seat.position.r), to: "Nowhere"))
         XCTAssertEqual(memory.places?.book.place(at: ground)?.name, "The ford at dusk", "kept in the phone's memory too")
 
+        // Shared with the realm in the words, its place with them, as the
+        // Mac shares one; looked to from the words, the chart asked to turn
+        // there, once.
+        phone.give(.sharePlace(at: seat.position, named: seat.name, toAlliance: false), told: "\(seat.name), shared with the realm")
+        try await until("the place shared in the realm's words") {
+            phone.ledger?.realmWords.contains { $0.place?.at == seat.position } == true
+        }
+        let shared = try XCTUnwrap(phone.ledger?.realmWords.last { $0.place != nil })
+        XCTAssertEqual(shared.place, SharedPlace(at: seat.position, name: seat.name))
+        XCTAssertEqual(shared.text, seat.name)
+        XCTAssertTrue(shared.isOwn)
+        XCTAssertNil(phone.lookingTo)
+        phone.look(to: seat.position)
+        XCTAssertEqual(phone.lookingTo, seat.position)
+        XCTAssertEqual(phone.takeLook(), seat.position)
+        XCTAssertNil(phone.lookingTo)
+        XCTAssertNil(phone.takeLook(), "taken once")
+
         // Let go, one place; one the book doesn't keep changes nothing.
         phone.forgetPlace(ground)
         XCTAssertNil(phone.placeBook.place(at: ground))

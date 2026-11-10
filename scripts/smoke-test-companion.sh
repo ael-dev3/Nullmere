@@ -267,6 +267,15 @@ if [ -n "$ALLIED_WORDS" ]; then
     done
 fi
 echo "The Mac hears the phone's words to the alliance: $ALLIES_HEARD"
+SHARED="$(sed -n 's/^Shared with the alliance: //p' "$REPORT" | head -n 1)"
+SHARED_SEEN=no
+if [ -n "$SHARED" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "shared: $SHARED" "$MAC_REPORT" 2>/dev/null; then SHARED_SEEN=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the place the phone shared with the alliance: $SHARED_SEEN"
 STANDING="$(sed -n 's/^Standing orders: //p' "$REPORT" | head -n 1)"
 STOOD=no
 if [ -n "$STANDING" ]; then
@@ -462,6 +471,10 @@ if [ "$RAISED" != yes ]; then
 fi
 if [ "$ALLIES_HEARD" != yes ]; then
     echo "error: the Mac never heard the words said to the alliance on the phone" >&2
+    exit 1
+fi
+if [ -n "$SHARED" ] && [ "$SHARED_SEEN" != yes ]; then
+    echo "error: the Mac never saw the place shared with the alliance on the phone" >&2
     exit 1
 fi
 if [ "$STOOD" != yes ]; then

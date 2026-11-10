@@ -59,6 +59,15 @@ struct KeepPlaceRow: View {
                         .font(.nm(11))
                         .foregroundStyle(Palette.text(0.8))
                         .fixedSize(horizontal: false, vertical: true)
+                    // Shared in the words, for the alliance or the realm to
+                    // look to, as Rise of Kingdoms' places are shared.
+                    HStack(spacing: 8) {
+                        Caps("Share with", size: 8).foregroundStyle(Palette.text(0.45))
+                        if session.state.alliance(of: session.player) != nil {
+                            share(kept, toAlliance: true)
+                        }
+                        share(kept, toAlliance: false)
+                    }
                 }
             } else {
                 let called = session.state.keptName(of: hex)
@@ -86,6 +95,17 @@ struct KeepPlaceRow: View {
 }
 
 extension KeepPlaceRow {
+    /// Sharing a place kept in the words, to the keeper's alliance or the
+    /// realm; off, with the realm's reason, while it can't be said.
+    private func share(_ kept: KeptPlace, toAlliance: Bool) -> some View {
+        let refusal = session.state.shareRefusal(hex, named: kept.name, toAlliance: toAlliance, as: session.player)
+        return QuietButton(title: toAlliance ? "Your alliance" : "The realm", size: 8.5, enabled: refusal == nil,
+                           name: toAlliance ? "Share \(kept.name) with your alliance" : "Share \(kept.name) with the realm",
+                           why: refusal?.description) {
+            session.perform(.sharePlace(at: hex, named: kept.name, toAlliance: toAlliance))
+        }
+    }
+
     /// The place kept by the name given, the naming folded away once it is.
     private func rename() {
         if session.renamePlace(hex, to: name) {

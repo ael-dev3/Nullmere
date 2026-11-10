@@ -16,6 +16,8 @@ struct LandTab: View {
     /// chart to, so the chart turns to each.
     @State private var seeking = ChartSeeking()
     @State private var sought = 0
+    /// Said when a place looked to from the words lies beyond the chart.
+    @State private var beyond: String?
 
     var body: some View {
         NavigationStack {
@@ -31,6 +33,13 @@ struct LandTab: View {
                             if session.linkTold {
                                 Section {
                                     ReachLine(session: session)
+                                }
+                            }
+                            if let beyond {
+                                Section {
+                                    Text(verbatim: beyond)
+                                        .font(Night.small)
+                                        .foregroundStyle(Night.ink.opacity(0.8))
                                 }
                             }
                             // What the search found, or that the House has seen none.
@@ -108,7 +117,9 @@ struct LandTab: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
         }
+        .onChange(of: session.lookingTo) { turnToLook() }
         .onAppear {
+            turnToLook()
             #if DEBUG
             // Seen by the smoke test with the House's first company chosen,
             // and its seat kept in the phone's book, marked on the chart.
@@ -118,6 +129,24 @@ struct LandTab: View {
             }
             #endif
         }
+    }
+}
+
+extension LandTab {
+    /// The chart turned to a place looked to from elsewhere on the phone (a
+    /// place shared in the words) and the place chosen; said instead where
+    /// it lies beyond the chart about the seat.
+    private func turnToLook() {
+        guard session.lookingTo != nil, let world = session.world, let house = session.keeper?.house,
+              let hex = session.takeLook() else { return }
+        let chart = CompanionChart(world: world, player: house)
+        guard chart.contains(hex) else {
+            beyond = "That place lies beyond the chart about your seat."
+            return
+        }
+        beyond = nil
+        chosen = hex
+        sought += 1
     }
 }
 
@@ -265,6 +294,19 @@ struct KeepPlaceRow: View {
                     .buttonStyle(.bordered)
                     .accessibilityLabel("Forget \(kept.name) from your places")
             }
+            // Shared in the words, for the alliance or the realm to look to.
+            Menu("Share") {
+                if session.ledger?.alliance != nil {
+                    Button("With your alliance") {
+                        session.give(.sharePlace(at: hex, named: kept.name, toAlliance: true), told: "\(kept.name), shared with your alliance")
+                    }
+                }
+                Button("With the realm") {
+                    session.give(.sharePlace(at: hex, named: kept.name, toAlliance: false), told: "\(kept.name), shared with the realm")
+                }
+            }
+            .font(Night.small)
+            .accessibilityHint("Shares this place in the words, for your alliance or the realm to look to")
             .alert("Name this place anew", isPresented: $renaming) {
                 TextField(kept.name, text: $name)
                 Button("Rename") { session.renamePlace(hex, to: name) }

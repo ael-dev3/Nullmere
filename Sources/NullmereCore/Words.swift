@@ -12,14 +12,31 @@ public struct Word: Codable, Equatable, Identifiable, Sendable {
     public let alliance: Int?
     /// Taken away by the realm's steward: it stands where it was, its words gone.
     public let removed: Bool?
+    /// A place the keeper shared in these words, its name their words, for
+    /// those who hear them to look to; nil for words alone.
+    public let place: SharedPlace?
 
-    public init(id: Int, from: Int, watch: Int, text: String, alliance: Int?, removed: Bool? = nil) {
+    public init(id: Int, from: Int, watch: Int, text: String, alliance: Int?, removed: Bool? = nil, place: SharedPlace? = nil) {
         self.id = id
         self.from = from
         self.watch = watch
         self.text = text
         self.alliance = alliance
         self.removed = removed
+        self.place = place
+    }
+}
+
+/// A place a keeper shares in their words (Rise of Kingdoms' places
+/// shared in the alliance's words): where it lies, and the name they give
+/// it, for those who hear them to look to or keep in their own book.
+public struct SharedPlace: Codable, Equatable, Sendable {
+    public let at: Hex
+    public let name: String
+
+    public init(at: Hex, name: String) {
+        self.at = at
+        self.name = name
     }
 }
 
@@ -48,6 +65,26 @@ extension GameState {
         let said = wordsSaid.lazy.filter { $0.from == house && $0.watch == watch }.count
         guard said < GameState.wordsPerWatch else { return .saidEnough }
         return nil
+    }
+
+    /// Why a House can't share a place in its words now, if it can't: as
+    /// for any words it says, of a place on the map, by a name.
+    public func shareRefusal(_ hex: Hex, named name: String, toAlliance: Bool, as house: Int) -> RuleError? {
+        guard map[hex] != nil else { return .outsideTheWorld }
+        guard let kept = PlaceBook.kept(name) else { return .nothingToSay }
+        return sayRefusal(kept, toAlliance: toAlliance, as: house)
+    }
+
+    /// A keeper shares a place in their words, to the realm or to their
+    /// alliance alone, by the name they give it: said as their words are,
+    /// and counted with them.
+    mutating func share(_ hex: Hex, named name: String, toAlliance: Bool, as house: Int) throws(RuleError) -> [GameEvent] {
+        if let refusal = shareRefusal(hex, named: name, toAlliance: toAlliance, as: house) { throw refusal }
+        guard let kept = PlaceBook.kept(name), let said = Envoy.carried(kept) else { throw .nothingToSay }
+        let word = Word(id: takeID(), from: house, watch: watch, text: said, alliance: toAlliance ? alliance(of: house)?.id : nil,
+                        place: SharedPlace(at: hex, name: said))
+        words = Array((wordsSaid + [word]).suffix(GameState.wordsKept))
+        return [.said(word)]
     }
 
     mutating func say(_ text: String, toAlliance: Bool, as house: Int) throws(RuleError) -> [GameEvent] {

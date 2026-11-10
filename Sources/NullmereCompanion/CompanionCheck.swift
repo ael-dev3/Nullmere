@@ -364,6 +364,14 @@ enum CompanionCheck {
             let toAllies = "Sworn to \(alliance), from \(session.keeper?.name ?? "a keeper")'s phone."
             await give(.say(words: toAllies, toAlliance: true), told: "Said to your alliance", as: "Said to allies")
             lines.append("Said to the alliance: \(toAllies)")
+            // The seat shared with the alliance in its words, a place to
+            // look to, as Rise of Kingdoms' places are shared.
+            if let house = session.keeper?.house, let seat = session.world?.seat(of: house) {
+                await give(.sharePlace(at: seat.position, named: seat.name, toAlliance: true), told: "\(seat.name), shared with your alliance",
+                           as: "Shared")
+                let name = PlaceBook.kept(seat.name).flatMap(Envoy.carried) ?? seat.name
+                lines.append("Shared with the alliance: \(name) at \(seat.position.q),\(seat.position.r)")
+            }
         } else {
             lines.append("Sworn to no alliance: nothing said to one")
         }

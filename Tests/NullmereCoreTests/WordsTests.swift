@@ -125,6 +125,57 @@ final class WordsTests: XCTestCase {
         XCTAssertNil(state.tidings(of: .said(word), for: me), "one's own words are not news")
     }
 
+    /// A place shared in a keeper's words (Rise of Kingdoms' places shared
+    /// in the alliance's words): said to the realm or to the alliance alone
+    /// by the name the keeper gives it, cleaned as words are; heard by those
+    /// it was said to, its place with it; counted with the keeper's words;
+    /// none off the map nor by no name; kept with the world, and a word
+    /// kept before words carried places carries none.
+    func testAPlaceIsSharedInWordsToTheRealmOrTheAllianceAlone() throws {
+        var (state, me, other, ally, apart) = try world()
+        let ford = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain.isWater == false })
+        let events = try state.perform(.sharePlace(at: ford, named: "  The ford\n by the mill  ", toAlliance: true), as: me)
+        let shared = try XCTUnwrap(state.wordsSaid.last)
+        XCTAssertEqual(events, [.said(shared)])
+        XCTAssertEqual(shared.text, "The ford by the mill", "one line, as words are carried")
+        XCTAssertEqual(shared.place, SharedPlace(at: ford, name: "The ford by the mill"))
+        XCTAssertEqual(shared.alliance, state.alliance(of: me)?.id)
+        XCTAssertEqual(state.words(heardBy: ally).last?.place?.at, ford, "heard in the alliance, its place with it")
+        XCTAssertFalse(state.words(heardBy: other).contains { $0.place != nil }, "and by no one else")
+        XCTAssertEqual(state.view(for: ally).wordsSaid.last?.place, shared.place, "carried in the ally's view")
+        XCTAssertEqual(state.events([.said(shared)], heardBy: apart), [])
+        XCTAssertEqual(state.tidings(of: .said(shared), for: ally)?.text,
+                       "\(state.houses[me].title) shares a place to your alliance: The ford by the mill.")
+        _ = try state.perform(.sharePlace(at: ford, named: "Meet here", toAlliance: false), as: me)
+        XCTAssertEqual(state.words(heardBy: other).last?.place?.name, "Meet here", "to the realm, heard by all")
+        XCTAssertEqual(state.tidings(of: .said(try XCTUnwrap(state.wordsSaid.last)), for: other)?.text,
+                       "\(state.houses[me].title) shares a place: Meet here.")
+
+        // Refused off the map, by no name, to an alliance a House is in none
+        // of, by a House not a keeper's; and counted with the keeper's words.
+        let beyond = Hex(state.map.radius * 4, 0)
+        XCTAssertEqual(state.shareRefusal(beyond, named: "Nowhere", toAlliance: false, as: me), .outsideTheWorld)
+        XCTAssertEqual(state.shareRefusal(ford, named: " \n ", toAlliance: false, as: me), .nothingToSay)
+        XCTAssertEqual(state.shareRefusal(ford, named: "www.example.com", toAlliance: false, as: me), .nothingToSay)
+        XCTAssertEqual(state.shareRefusal(ford, named: "Here", toAlliance: true, as: other), .notInAlliance)
+        XCTAssertEqual(state.shareRefusal(ford, named: "Here", toAlliance: false, as: apart), .notAKeeper)
+        XCTAssertThrowsError(try state.perform(.sharePlace(at: beyond, named: "Nowhere", toAlliance: false), as: me))
+        for line in 0..<(GameState.wordsPerWatch - 2) {
+            _ = try state.perform(.say(words: "Line \(line)", toAlliance: false), as: me)
+        }
+        XCTAssertEqual(state.shareRefusal(ford, named: "One more", toAlliance: false, as: me), .saidEnough)
+
+        // Kept with the world and with the realm's parts.
+        let saved = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(state))
+        XCTAssertEqual(saved.wordsSaid.filter { $0.place != nil }.count, 2)
+        var realm = RealmState(name: "The Nullmere", seed: "words", seats: 6, radius: 20, watchLength: 600, now: 0)
+        realm.world = state
+        XCTAssertEqual(try RealmState(parts: realm.parts(using: JSONEncoder())).world.wordsSaid, state.wordsSaid)
+        // A word kept before words carried places carries none.
+        let plain = Data(#"{"id":4,"from":1,"watch":3,"text":"Hail","alliance":null}"#.utf8)
+        XCTAssertNil(try JSONDecoder().decode(Word.self, from: plain).place)
+    }
+
     func testOnlyAKeepersPlainWordsAreCarriedAWatchsWorthAtMost() throws {
         var (state, me, other, ally, _) = try world()
         func refusal(_ words: String, toAlliance: Bool = false, as house: Int) -> RuleError? {

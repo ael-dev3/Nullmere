@@ -549,6 +549,20 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(dark(state), "dark: ", "Lit again")
     }
 
+    /// What the Mac tells the phone's smoke test of places shared in the
+    /// words: each by its name and tile, for the test to find the place the
+    /// phone shared; none, where none was.
+    func testTheLinkReportTellsThePlacesShared() throws {
+        var state = GameState(settings: GameSettings(seedText: "linked places", houseCount: 4, radius: 12, keepers: 1))
+        func shared(_ world: GameState) -> [String] {
+            GameApp.linkReport(of: world, player: world.player).split(separator: "\n").map(String.init).filter { $0.hasPrefix("shared:") }
+        }
+        XCTAssertEqual(shared(state), [], "Nothing shared as the age begins")
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        _ = try state.perform(.sharePlace(at: seat.position, named: seat.name, toAlliance: false), as: state.player)
+        XCTAssertEqual(shared(state), ["shared: \(seat.name) at \(seat.position.q),\(seat.position.r)"])
+    }
+
     /// What the Mac tells the phone's smoke test of watchfires: each it sees
     /// burning, where it burns, for the test to find the one the phone lit;
     /// nothing, where none burns.

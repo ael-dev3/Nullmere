@@ -109,6 +109,26 @@ final class PlacesKeptTests: XCTestCase {
         XCTAssertFalse(session.renamePlace(ground, to: "  "))
         XCTAssertEqual(LocalStore(directory: dir).loadPlaces().place(at: ground)?.name, "The ford", "kept by this Mac")
 
+        // Shared with the realm from its row, its place in the words; the
+        // Words show it with Go and Keep, or that the book keeps it.
+        draw(KeepPlaceRow(session: session, hex: ground))
+        XCTAssertTrue(PressableButtons.press("The realm"), "Among \(shown)")
+        let shared = try XCTUnwrap(session.state.wordsSaid.last)
+        XCTAssertEqual(shared.place, SharedPlace(at: ground, name: "The ford"))
+        XCTAssertNil(shared.alliance)
+        var went: Hex?
+        var keptShared: SharedPlace?
+        draw(WordLine(state: session.state, word: shared, player: session.player, go: { went = $0 }, keep: { keptShared = $0 }))
+        XCTAssertTrue(PressableButtons.press("Go"), "Among \(shown)")
+        XCTAssertEqual(went, ground)
+        XCTAssertTrue(PressableButtons.press("Keep"), "Among \(shown)")
+        XCTAssertEqual(keptShared, shared.place)
+        XCTAssertEqual(WordLine.place(of: shared), shared.place)
+        let removed = Word(id: shared.id, from: shared.from, watch: shared.watch, text: shared.text, alliance: nil, removed: true,
+                           place: shared.place)
+        XCTAssertNil(WordLine.place(of: removed), "taken away, its place with it")
+        draw(WordsPanel(session: session), width: PanelWidth.rail, height: 700)
+
         // Forgotten from its row; and kept by this Mac, so a session begun
         // again has what was left.
         draw(KeepPlaceRow(session: session, hex: ground))

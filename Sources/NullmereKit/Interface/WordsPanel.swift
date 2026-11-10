@@ -38,7 +38,10 @@ struct WordsPanel: View {
                         // Another's line may be reported to the realm's steward.
                         let reportable = state.reportRefusal(word.id, as: session.player) == nil
                         WordLine(state: state, word: word, player: session.player,
-                                 report: reportable ? { session.perform(.reportWord(word: word.id)) } : nil)
+                                 report: reportable ? { session.perform(.reportWord(word: word.id)) } : nil,
+                                 go: { session.goToPlace($0) },
+                                 keep: { session.keepPlace($0.at, named: $0.name) },
+                                 kept: word.place.map { session.placeBook.place(at: $0.at) != nil } ?? false)
                     }
                     // Letters between the keeper and one other, folded to a line.
                     if !LettersSection.keepers(in: state, besides: session.player).isEmpty {
@@ -101,14 +104,27 @@ struct WordsPanel: View {
 }
 
 /// One line said: who said it, when, to whom, and the words; a line taken
-/// away by the realm's steward, as taken away; and, for another's line,
-/// reporting it to the realm's steward from its menu.
+/// away by the realm's steward, as taken away; a place shared in it, with
+/// Go to bring the view there and Keep to keep it in the keeper's book;
+/// and, for another's line, reporting it to the realm's steward from its
+/// menu.
 struct WordLine: View {
     let state: GameState
     let word: Word
     let player: Int
     /// Reports it to the realm's steward; nil where it can't be reported.
     var report: (() -> Void)?
+    /// Brings the view to a place shared in the line.
+    var go: ((Hex) -> Void)? = nil
+    /// Keeps a place shared in the line in the keeper's book.
+    var keep: ((SharedPlace) -> Void)? = nil
+    /// Whether the keeper's book keeps the place shared already.
+    var kept = false
+
+    /// The place shared in the line, while its words stand.
+    static func place(of word: Word) -> SharedPlace? {
+        word.removed == true ? nil : word.place
+    }
 
     /// The words shown: the line's, or that it was taken away.
     static func shown(_ word: Word) -> String {
@@ -137,13 +153,27 @@ struct WordLine: View {
                 .foregroundStyle(Palette.text(word.removed == true ? 0.5 : 0.9))
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
+            if let place = WordLine.place(of: word) {
+                HStack(spacing: 8) {
+                    Caps("A place shared", size: 8).foregroundStyle(Palette.glowWords)
+                    Spacer()
+                    if let go {
+                        QuietButton(title: "Go", size: 8.5, name: "Go to \(place.name)") { go(place.at) }
+                    }
+                    if kept {
+                        Caps("Among your places", size: 8).foregroundStyle(Palette.text(0.45))
+                    } else if let keep {
+                        QuietButton(title: "Keep", size: 8.5, name: "Keep \(place.name) among your places") { keep(place) }
+                    }
+                }
+            }
         }
         .contextMenu {
             if let report {
                 Button("Report to the realm's steward", action: report)
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: WordLine.place(of: word) == nil ? .combine : .contain)
         .accessibilityActions {
             if let report {
                 Button("Report to the realm's steward", action: report)

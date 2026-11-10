@@ -130,6 +130,9 @@ public struct CompanionLedger: Equatable, Sendable {
         public var report: Order? = nil
         /// Reported by the House already.
         public var reported: Bool = false
+        /// A place shared in these words, to look to or keep, as the Mac's
+        /// Words show it.
+        public var place: SharedPlace? = nil
     }
 
     /// One of the House's commanders, who may be asked for counsel: free,
@@ -1242,7 +1245,7 @@ public struct CompanionLedger: Equatable, Sendable {
                 Said(id: word.id, from: title(word.from), text: word.text, watch: word.watch, isOwn: word.from == player,
                      report: world.reportRefusal(word.id, as: player) == nil
                         ? Order(title: "Report to the realm's steward", command: .reportWord(word: word.id)) : nil,
-                     reported: world.wordReports.contains { $0.word == word.id && $0.by == player })
+                     reported: world.wordReports.contains { $0.word == word.id && $0.by == player }, place: word.place)
             }
         }
         allianceWords = allied.map { alliance in lines(said.filter { $0.alliance == alliance.id }) } ?? []

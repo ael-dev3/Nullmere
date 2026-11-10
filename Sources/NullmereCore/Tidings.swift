@@ -928,6 +928,9 @@ extension GameState {
         case .said(let word):
             guard word.from != viewer, houses.indices.contains(word.from) else { return nil }
             let channel = word.alliance == nil ? "" : " to your alliance"
+            if word.place != nil {
+                return Tidings("\(houses[word.from].title) shares a place\(channel): \(word.text).", .neutral)
+            }
             return Tidings("\(houses[word.from].title)\(channel): “\(word.text)”", .neutral)
         case .chargeDone(let house, let charge, let reward):
             guard house == viewer else { return nil }

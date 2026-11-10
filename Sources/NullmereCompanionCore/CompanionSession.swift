@@ -359,6 +359,21 @@ public final class CompanionSession {
         return true
     }
 
+    /// A place the keeper asked to see on the chart from elsewhere on the
+    /// phone (a place shared in the words), until the chart turns to it.
+    public private(set) var lookingTo: Hex?
+
+    /// Asks the chart to turn to `hex`, and the Land tab to show it.
+    public func look(to hex: Hex) {
+        lookingTo = hex
+    }
+
+    /// The place asked for, taken by the chart as it turns to it.
+    public func takeLook() -> Hex? {
+        defer { lookingTo = nil }
+        return lookingTo
+    }
+
     /// Lets the place at `hex` go from this phone's book.
     public func forgetPlace(_ hex: Hex) {
         guard let age = status?.age, placeBook.place(at: hex) != nil else { return }
