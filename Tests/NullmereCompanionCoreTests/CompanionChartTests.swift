@@ -64,7 +64,10 @@ final class CompanionChartTests: XCTestCase {
             XCTAssertEqual(mark.name, "Your \(unit.named), \(GameState.counted(state.troops(of: unit))) troops")
             // A tier only for the companies of war: never "Your Lanterns I".
             XCTAssertFalse(!unit.kind.hasTiers && mark.name.hasPrefix("Your \(unit.kind.title) I"), mark.name)
+            // Its kind, for its mark to be drawn within it when close.
+            XCTAssertEqual(mark.kind, unit.kind)
         }
+        XCTAssertTrue(chart.marks.filter { $0.thing != .company }.allSatisfy { $0.kind == nil }, "a kind for companies alone")
         for mark in chart.marks {
             XCTAssertLessThanOrEqual(mark.hex.distance(to: chart.center), chart.radius, "\(mark.name) on the chart")
         }

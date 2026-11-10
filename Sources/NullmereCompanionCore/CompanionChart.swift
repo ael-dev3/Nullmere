@@ -82,6 +82,9 @@ public struct CompanionChart: Equatable, Sendable {
         /// A company marching dark, its torches doused: drawn hollow, as
         /// the world draws it without its torches.
         public var dark = false
+        /// A company's kind, its mark (`CompanyMarks`) drawn within it once
+        /// the chart is close enough to read it.
+        public var kind: UnitKind? = nil
     }
 
     /// What lies at a hex of the chart, and what the House may do there.
@@ -307,7 +310,8 @@ public struct CompanionChart: Equatable, Sendable {
                               name: "\(CompanionChart.capitalized(whose(unit.owner))) \(world.named(unit)), "
                                 + "\(GameState.counted(world.troops(of: unit))) troops" + (dark ? ", marching dark" : "")
                                 + (world.isWaiting(unit.id) ? ", lying in wait" : ""),
-                              bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil, dark: dark))
+                              bound: unit.owner == player && unit.destination != unit.position ? unit.destination : nil, dark: dark,
+                              kind: unit.kind))
         }
         self.marks = marks
         regions = (world.atlas?.regions ?? []).filter { reached($0.heart) }.map { ($0.name, $0.heart) }

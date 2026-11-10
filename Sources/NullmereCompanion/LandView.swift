@@ -268,6 +268,10 @@ struct ChartView: View {
     /// A hex's size at the chart's opening closeness, in points: some
     /// fourteen hexes across a phone.
     static let opening: Double = 16
+    /// The radius, in points, a company's mark on the chart must reach for
+    /// its kind to be drawn within it: the chart pinched to twice its
+    /// opening closeness.
+    static let markedFrom: Double = 9.6
     /// The closest the chart is pinched.
     static let closest: CGFloat = 3
 
@@ -487,6 +491,12 @@ struct ChartView: View {
             } else {
                 context.fill(body, with: .color(tint))
                 context.stroke(body, with: .color(edge), lineWidth: 1)
+            }
+            // Its kind's mark within it, once the chart is close enough to
+            // read it, as the Mac's flat map marks a company's token.
+            if let kind = mark.kind, size * 0.3 >= ChartView.markedFrom {
+                let ink = mark.dark ? tint : edge
+                context.stroke(Path(companyMark: kind, at: at, radius: size * 0.3 * 0.62), with: .color(ink), lineWidth: 1.2)
             }
         case .wild:
             let wild = triangle(size * 0.3, up: false)
