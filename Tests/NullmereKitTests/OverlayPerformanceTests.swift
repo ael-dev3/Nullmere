@@ -33,23 +33,35 @@ final class OverlayPerformanceTests: XCTestCase {
         // 3024x1964 points (24 MB) in the timed part made it most of the
         // figure (run 914: 2.45 ms against 1.98 for a fresh image each time,
         // whose untouched pages cost nothing). Its cost is told beside the
-        // marks as marks.clear.cpu.p50. In sRGB, as the screen's layers are.
+        // marks as marks.clear.cpu.p50. In sRGB, as the screen's layers are,
+        // and in their four bytes a point, blue first and alpha last in
+        // memory (premultiplied first, in the host's order): the form
+        // CoreGraphics draws into without turning each blend about. Drawn
+        // into red-first points instead (premultiplied last), the flat marks
+        // timed 8.17 ms in run 918 while the marks over the models, as a
+        // fresh image in the renderer's own form, timed 2.87. The flat marks
+        // are timed into red-first points once more here, beside the rest
+        // (marks.flat.rgba.cpu.p50), so a run shows what that form costs.
         let pixels = CGSize(width: size.width * 2, height: size.height * 2)
+        let sRGB = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         let canvas = try XCTUnwrap(CGContext(data: nil, width: Int(pixels.width), height: Int(pixels.height), bitsPerComponent: 8,
-                                             bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
-                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                                             bytesPerRow: 0, space: sRGB,
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue))
+        let redFirst = try XCTUnwrap(CGContext(data: nil, width: Int(pixels.width), height: Int(pixels.height), bitsPerComponent: 8,
+                                               bytesPerRow: 0, space: sRGB, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         var clears: [Double] = []
-        func renderOnce(modelsDrawn: Bool) -> Double {
+        func renderOnce(modelsDrawn: Bool, into other: CGContext? = nil) -> Double {
+            let target = other ?? canvas
             let marks = ImageRenderer(content: WorldMarks(session: session, modelsDrawn: modelsDrawn).frame(width: size.width, height: size.height))
             let cleared = ThreadClock.milliseconds()
-            canvas.clear(CGRect(origin: .zero, size: pixels))
-            clears.append(ThreadClock.milliseconds() - cleared)
+            target.clear(CGRect(origin: .zero, size: pixels))
+            if other == nil { clears.append(ThreadClock.milliseconds() - cleared) }
             let start = ThreadClock.milliseconds()
             marks.render(rasterizationScale: 2) { _, draw in
-                canvas.saveGState()
-                canvas.scaleBy(x: 2, y: 2)
-                draw(canvas)
-                canvas.restoreGState()
+                target.saveGState()
+                target.scaleBy(x: 2, y: 2)
+                draw(target)
+                target.restoreGState()
             }
             return ThreadClock.milliseconds() - start
         }
@@ -108,6 +120,13 @@ final class OverlayPerformanceTests: XCTestCase {
             medians.append((name, median))
             plain()
         }
+        // The flat marks once more into red-first points, the form they were
+        // timed in until run 918: told beside them, held to nothing.
+        for _ in 0..<3 { _ = renderOnce(modelsDrawn: false, into: redFirst) }
+        let reds = (0..<25).map { _ in renderOnce(modelsDrawn: false, into: redFirst) }.sorted()
+        print("PERFMETRIC marks.flat.rgba.cpu.p50 \(String(format: "%.3f", reds[reds.count / 2]))")
+        print("PERF the flat marks into red-first points (premultiplied last), held to nothing: median "
+              + "\(String(format: "%.2f", reds[reds.count / 2])) ms")
         for _ in 0..<3 { _ = imageOnce() }
         let images = (0..<25).map { _ in imageOnce() }.sorted()
         clears.sort()
