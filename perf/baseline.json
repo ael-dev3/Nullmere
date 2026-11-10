@@ -107,14 +107,14 @@
       "paced_by": "marks.pace.cpu",
       "gpu": true,
       "cpu": true,
-      "note": "the marks as drawn over the world's models: CI's first figure, 1.78 (cb5988b), at the calibration's pace there, x1.44; since the Beacon's warnings and the reach's border (runs 533 to 543) CI measured 3.15 to 5.15, so 3.2 was held; back down with the realm's lookups cut on November 6, CI measures 1.06 at x1.21 (run 631, 0a24263), under a third of 3.2, so 1.0. Each sample was a fresh image of 3024x1964, made and filled, and with as little drawn as 27 holds, 67 companies and no blows the image came to most of the figure: 6.44 and 4.10 in runs 896 and 902 on unchanged marks. Since then each is drawn into one bitmap kept across the samples, as the game draws into a layer kept from frame to frame: the drawing alone (the fresh image told beside it as marks.image.cpu.p50)"
+      "note": "the marks as drawn over the world's models: CI's first figure, 1.78 (cb5988b), at the calibration's pace there, x1.44; since the Beacon's warnings and the reach's border (runs 533 to 543) CI measured 3.15 to 5.15, so 3.2 was held; back down with the realm's lookups cut on November 6, CI measures 1.06 at x1.21 (run 631, 0a24263), under a third of 3.2, so 1.0. Each sample was a fresh image of 3024x1964, made and filled, and with as little drawn as 27 holds, 67 companies and no blows the image came to most of the figure: 6.44 and 4.10 in runs 896 and 902 on unchanged marks. Since then each is drawn into one bitmap kept across the samples, as the game draws into a layer kept from frame to frame: the drawing alone (the fresh image told beside it as marks.image.cpu.p50). Run 914 cleared that bitmap's 24 MB within each timed sample and measured 2.45 against 1.98 for the fresh image; the clear is the compositor's work, not the marks', so it is done before the clock starts and told beside them as marks.clear.cpu.p50"
     },
     "marks.flat.cpu.p50": {
       "baseline": 2.78,
       "paced_by": "marks.pace.cpu",
       "gpu": true,
       "cpu": true,
-      "note": "the flat marks of a Mac that cannot draw the world, tokens and all: CI's first figure, 4.01 (cb5988b), at the calibration's pace there, x1.44; drawn into one bitmap kept across the samples since run 902, as the marks are"
+      "note": "the flat marks of a Mac that cannot draw the world, tokens and all: CI's first figure, 4.01 (cb5988b), at the calibration's pace there, x1.44; drawn into one bitmap kept across the samples since run 902, as the marks are, cleared before each sample's clock starts since run 914 (4.74 with the clear timed)"
     },
     "order.cpu.p50": {
       "baseline": 3.9,

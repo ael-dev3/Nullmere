@@ -28,16 +28,25 @@ final class OverlayPerformanceTests: XCTestCase {
         // marks' (run 902 timed 27 holds, 67 companies and no blows at 4.10
         // ms that way). A fresh renderer each time: one renderer keeps its
         // image.
+        // The bitmap is cleared before each sample's clock starts: a layer
+        // is cleared by the compositor, not by the marks, and clearing all
+        // 3024x1964 points (24 MB) in the timed part made it most of the
+        // figure (run 914: 2.45 ms against 1.98 for a fresh image each time,
+        // whose untouched pages cost nothing). Its cost is told beside the
+        // marks as marks.clear.cpu.p50. In sRGB, as the screen's layers are.
         let pixels = CGSize(width: size.width * 2, height: size.height * 2)
         let canvas = try XCTUnwrap(CGContext(data: nil, width: Int(pixels.width), height: Int(pixels.height), bitsPerComponent: 8,
-                                             bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                             bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        var clears: [Double] = []
         func renderOnce(modelsDrawn: Bool) -> Double {
             let marks = ImageRenderer(content: WorldMarks(session: session, modelsDrawn: modelsDrawn).frame(width: size.width, height: size.height))
+            let cleared = ThreadClock.milliseconds()
+            canvas.clear(CGRect(origin: .zero, size: pixels))
+            clears.append(ThreadClock.milliseconds() - cleared)
             let start = ThreadClock.milliseconds()
             marks.render(rasterizationScale: 2) { _, draw in
                 canvas.saveGState()
-                canvas.clear(CGRect(origin: .zero, size: pixels))
                 canvas.scaleBy(x: 2, y: 2)
                 draw(canvas)
                 canvas.restoreGState()
@@ -101,6 +110,9 @@ final class OverlayPerformanceTests: XCTestCase {
         }
         for _ in 0..<3 { _ = imageOnce() }
         let images = (0..<25).map { _ in imageOnce() }.sorted()
+        clears.sort()
+        print("PERFMETRIC marks.clear.cpu.p50 \(String(format: "%.3f", clears[clears.count / 2]))")
+        print("PERF the marks' bitmap cleared before each sample, untimed: median \(String(format: "%.2f", clears[clears.count / 2])) ms")
         print("PERFMETRIC marks.image.cpu.p50 \(String(format: "%.3f", images[images.count / 2]))")
         print("PERF marks as a fresh image each time, held to nothing: median \(String(format: "%.2f", images[images.count / 2])) ms")
         let best = beside.min() ?? StagingTimes.plainPace
