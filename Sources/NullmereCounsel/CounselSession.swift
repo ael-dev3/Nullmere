@@ -150,15 +150,17 @@ struct ProposeOrder: Tool {
         + "Only march, strike, fortify, halt, drill, kindle (set the blackwood where the company stands alight), "
         + "douse (its torches, to march dark: a tile slower, seen by other Houses only close by), light (its torches again), "
         + "wait (lie in wait in the blackwood, marching dark, and spring upon the first foe at war that comes within reach), "
-        + "bury (the dead lying unburied where the company stands) or gather (a store, at the nearest site of it the company may work)."
+        + "bury (the dead lying unburied where the company stands), gather (a store, at the nearest site of it the company may work), "
+        + "recall (from the land's work, home with its load), scout (another House's hold, with Lanterns near it), "
+        + "reinforce (keep the gates of a hold of your House or an ally's) or rally (join a rally of your side still gathering)."
 
     @Generable
     struct Arguments {
-        @Guide(description: "What the company is to do: march, strike, fortify, halt, drill, kindle, douse, light, wait, bury or gather")
+        @Guide(description: "What the company is to do: march, strike, fortify, halt, drill, kindle, douse, light, wait, bury, gather, recall, scout, reinforce or rally")
         var action: String
         @Guide(description: "The company's handle, such as C1")
         var company: String
-        @Guide(description: "For march or strike, the place by its name as you were told it; for gather, the store: grain, timber, stone or moonsalt; otherwise empty")
+        @Guide(description: "For march or strike, the place by its name as you were told it; for gather, the store: grain, timber, stone or moonsalt; for scout or reinforce, the hold; for rally, its target or empty; otherwise empty")
         var place: String
     }
 

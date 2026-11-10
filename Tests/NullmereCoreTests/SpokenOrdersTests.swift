@@ -328,6 +328,114 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertTrue(after.report(on: own).contains(", out gathering: \(work)"), after.report(on: own))
     }
 
+    /// Each commander's bent has its line: SCOUT sends Lanterns near another
+    /// House's hold to scout it, REINFORCE a company of war to keep the gates
+    /// of a hold of its House or an ally's, RALLY a company to a rally of its
+    /// side still gathering, by its target or the soonest. The briefing tells
+    /// the model which Lanterns may scout, the rallies gathering and each
+    /// company's errand; what can't be done is told why in the realm's
+    /// words; and a commander may put each forward.
+    func testScoutsReinforcementsAndRalliesFromTheBook() throws {
+        var state = Scene.world("scouts and rallies", houses: 4, radius: 18)
+        let me = state.player
+        _ = try state.declareWar(by: me, on: 2)
+        let seat = try XCTUnwrap(state.seat(of: me)), foe = try XCTUnwrap(state.seat(of: 2))
+        state.reveal(around: foe.position, range: 2, for: me)
+        let lantern = state.put(.lantern, of: me, at: try XCTUnwrap(state.freeHex(near: foe.position, within: 1...2)))
+        let spear = state.put(.spear, of: me, at: try XCTUnwrap(state.freeHex(near: seat.position, within: 1...2)))
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let lanterns = "C\(try XCTUnwrap(companies.firstIndex { $0.id == lantern }) + 1)"
+        let spears = "C\(try XCTUnwrap(companies.firstIndex { $0.id == spear }) + 1)"
+        func read(_ line: String) throws -> SpokenOrders.Line { try XCTUnwrap(SpokenOrders.read(line, in: state, player: me).first, line) }
+        func named(_ id: Int) throws -> String { SpokenOrders.named(try XCTUnwrap(state.unit(id)), in: state) }
+        XCTAssertTrue(["RECALL <company>", "SCOUT <hold> WITH <company>", "REINFORCE <hold> WITH <company>",
+                       "RALLY AGAINST <target> WITH <company>"].allSatisfy(SpokenOrders.forms.contains))
+
+        // Scouting: the Lanterns near the foe's seat, told so in the briefing.
+        let briefing = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("\(lanterns): ") && $0.contains(", near \(foe.name), which it may scout (SCOUT)") },
+                      "\(briefing)")
+        XCTAssertFalse(briefing.contains { $0.hasPrefix("\(spears): ") && $0.contains("(SCOUT)") })
+        let scout = try read("SCOUT \(foe.name) WITH \(lanterns)")
+        XCTAssertEqual(scout.command, .scout(unit: lantern, hold: foe.id))
+        XCTAssertNil(scout.why, scout.why ?? "")
+        XCTAssertEqual(scout.told, "Your \(try named(lantern)) scout \(foe.name).")
+        XCTAssertEqual(try read("SCOUT \(seat.name) WITH \(lanterns)").why, RuleError.ownHold.description)
+        XCTAssertEqual(try read("SCOUT \(foe.name) WITH \(spears)").why, RuleError.notAScout.description)
+        XCTAssertEqual(try read("SCOUT Nowhere WITH \(lanterns)").why, "Your House knows no hold by the name Nowhere.")
+
+        // Keeping gates: the House's own, never a foe's; Lanterns keep none.
+        let keep = try read("reinforce \(seat.name) with \(spears)")
+        XCTAssertEqual(keep.command, .reinforce(unit: spear, hold: seat.id))
+        XCTAssertNil(keep.why, keep.why ?? "")
+        XCTAssertEqual(keep.told, "Your \(try named(spear)) go to keep the gates of \(seat.name).")
+        XCTAssertEqual(try read("REINFORCE \(foe.name) WITH \(spears)").why, RuleError.notAnAllysHold.description)
+        XCTAssertEqual(try read("REINFORCE \(seat.name) WITH \(lanterns)").why, RuleError.cannotFight.description)
+        var keeping = state
+        _ = try keeping.perform(try XCTUnwrap(keep.command), as: me)
+        XCTAssertTrue(SpokenOrders.briefing(for: keeping, player: me).contains(", keeping the gates of \(seat.name)"))
+
+        // Rallies: none gathering, then one, told in the briefing.
+        XCTAssertEqual(try read("RALLY \(spears)").why, "Your side has no rally gathering.")
+        XCTAssertFalse(SpokenOrders.briefing(for: state, player: me).contains("Rallies of your side"))
+        let rally = Rally(id: state.takeID(), caller: me, muster: seat.id, target: foe.id, called: state.watch, setsOut: state.watch + 3)
+        state.rallies = [rally]
+        let gathering = "against \(foe.name), mustering at \(seat.name), setting out in 3 watches"
+        XCTAssertTrue(SpokenOrders.briefing(for: state, player: me).contains("\nRallies of your side gathering (RALLY): \(gathering)\n"))
+        let join = try read("RALLY AGAINST \(foe.name) WITH \(spears)")
+        XCTAssertEqual(join.command, .joinRally(rally: rally.id, unit: spear))
+        XCTAssertNil(join.why, join.why ?? "")
+        XCTAssertEqual(join.told, "Your \(try named(spear)) go to the rally \(gathering).")
+        XCTAssertEqual(try read("RALLY \(spears)").command, join.command, "the soonest")
+        XCTAssertEqual(try read("RALLY AGAINST Nowhere WITH \(spears)").why, "Your side has no rally gathering against Nowhere.")
+        XCTAssertEqual(try read("RALLY \(lanterns)").why, RuleError.cannotFight.description)
+
+        // A commander may put each forward.
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        let counsel = try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id))
+        XCTAssertEqual(counsel.propose("scout", company: lanterns, place: foe.name).command, scout.command)
+        XCTAssertEqual(counsel.propose("reinforce", company: spears, place: seat.name).command, keep.command)
+        XCTAssertEqual(counsel.propose("rally", company: spears, place: "").line, "RALLY \(spears)")
+        XCTAssertEqual(counsel.propose("rally", company: spears, place: foe.name).line, "RALLY AGAINST \(foe.name) WITH \(spears)")
+        XCTAssertTrue(counsel.propose("rally", company: spears, place: foe.name).isGiven)
+        XCTAssertEqual(counsel.propose("scout", company: lanterns, place: " ").why, "Scouting or keeping a hold's gates wants the hold's name.")
+        XCTAssertTrue(["recall", "scout", "reinforce", "rally"].allSatisfy(CommanderCounsel.actions.contains))
+
+        // Sent, the briefing and counsel tell it at the rally.
+        _ = try state.perform(try XCTUnwrap(join.command), as: me)
+        let lines = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(lines.contains { $0.hasPrefix("\(spears): ") && $0.contains(", sent to the rally against \(foe.name)") }, "\(lines)")
+        let after = try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id))
+        XCTAssertTrue(after.report(on: spears).contains(", sent to the rally against \(foe.name)"), after.report(on: spears))
+    }
+
+    /// RECALL calls a company home from the land's work with what it
+    /// carries; one not gathering is told why not; a commander may put it
+    /// forward.
+    func testACompanyIsCalledHomeFromTheBook() throws {
+        var state = Scene.world("recall from the book")
+        let me = state.player
+        state.sites = []
+        state.wilds = []
+        let ground = try XCTUnwrap(state.openGround())
+        let spear = state.put(.spear, of: me, at: ground)
+        let site = Site(id: state.takeID(), store: .grain, level: 1, position: ground + Hex.directions[0], found: state.watch)
+        state.sites = [site]
+        state.reveal(around: ground, range: 1, for: me)
+        let handle = "C\(try XCTUnwrap(SpokenOrders.companies(in: state, player: me).firstIndex { $0.id == spear }) + 1)"
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("RECALL \(handle)", in: state, player: me).first).why, RuleError.notGathering.description)
+        _ = try state.perform(.gather(unit: spear, site: site.id), as: me)
+        let recall = try XCTUnwrap(SpokenOrders.read("recall \(handle)", in: state, player: me).first)
+        XCTAssertEqual(recall.command, .recall(unit: spear))
+        XCTAssertNil(recall.why, recall.why ?? "")
+        XCTAssertEqual(recall.told, "Your \(SpokenOrders.named(try XCTUnwrap(state.unit(spear)), in: state)) "
+                       + "are called home from the land's work with what they carry.")
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        let counsel = try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id))
+        XCTAssertEqual(counsel.propose("recall", company: handle, place: "").command, .recall(unit: spear))
+        XCTAssertTrue(counsel.propose("recall", company: handle, place: "").isGiven)
+    }
+
     /// An ambush from the book: WAIT has a company marching dark in the
     /// blackwood lie in wait there, the briefing telling the model which
     /// may and which wait; out of the wood or lit, told why not.

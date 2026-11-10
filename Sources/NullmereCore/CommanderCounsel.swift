@@ -128,14 +128,17 @@ public struct CommanderCounsel: Sendable {
     /// stands, and what it is about.
     func described(_ unit: Unit) -> String {
         var told = "\(SpokenOrders.named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops"
-        if let work = state.gatheringSaid(of: unit) {
-            // Out at the land's work, as its keeper is told it.
-            told += ", out gathering: \(work)"
-        } else if let march = state.marchSaid(of: unit, for: player) {
-            // As its keeper is told it, never "marching to on the barrows".
-            told += ", " + march.prefix(1).lowercased() + march.dropFirst()
-        } else if unit.fortified {
-            told += ", dug in"
+        // What it has been sent to do: out at the land's work, at a rally or
+        // keeping a hold's gates, as the order book's briefing tells it.
+        // Out gathering, its way to its site or home is told with it.
+        told += SpokenOrders.errandSaid(unit, in: state)
+        if state.gatheringSaid(of: unit) == nil {
+            if let march = state.marchSaid(of: unit, for: player) {
+                // As its keeper is told it, never "marching to on the barrows".
+                told += ", " + march.prefix(1).lowercased() + march.dropFirst()
+            } else if unit.fortified {
+                told += ", dug in"
+            }
         }
         if unit.health < 100 { told += ", at \(unit.health) of its strength in a hundred" }
         // The fire it may set where it stands, and which way it would run.
@@ -304,17 +307,22 @@ public struct CommanderCounsel: Sendable {
     public static let sightingsTold = 3
 
     /// What a commander may propose a company does.
-    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "gather"]
+    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "gather",
+                                 "recall", "scout", "reinforce", "rally"]
 
     /// Why a commander can't put forward anything else.
     public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood "
         + "alight), douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark), "
-        + "bury (the dead lying unburied where it stands) or gather (a store, at the nearest site of it the company may work)."
+        + "bury (the dead lying unburied where it stands), gather (a store, at the nearest site of it the company may work), "
+        + "recall (from the land's work, home with its load), scout (another House's hold, with Lanterns near it), "
+        + "reinforce (keep the gates of a hold of your House or an ally's) or rally (join a rally of your side still gathering)."
 
     /// An order put to the keeper, read and weighed as the order book weighs
     /// a line: given if the realm would take it, or told why not. For
     /// gather, the place is the store to gather, or its sites' name, and
-    /// empty for the nearest site of any store.
+    /// empty for the nearest site of any store; for scout and reinforce,
+    /// the hold; for rally, the rally's target, or empty for the one
+    /// setting out soonest.
     public func propose(_ action: String, company handle: String, place: String) -> CounselProposal {
         let verb = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let handle = handle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -324,13 +332,18 @@ public struct CommanderCounsel: Sendable {
         case "march": line = "MARCH \(handle) TO \(place)"
         case "strike": line = "STRIKE \(place) WITH \(handle)"
         case "gather": line = place.isEmpty ? "GATHER \(handle)" : "GATHER \(place) WITH \(handle)"
-        case "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury": line = "\(verb.uppercased()) \(handle)"
+        case "scout", "reinforce": line = "\(verb.uppercased()) \(place) WITH \(handle)"
+        case "rally": line = place.isEmpty ? "RALLY \(handle)" : "RALLY AGAINST \(place) WITH \(handle)"
+        case "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "recall": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,
                                    why: CommanderCounsel.onlyThese)
         }
         if (verb == "march" || verb == "strike") && place.isEmpty {
             return CounselProposal(line: line, told: line, command: nil, why: "A march or a strike wants a place to go to.")
+        }
+        if (verb == "scout" || verb == "reinforce") && place.isEmpty {
+            return CounselProposal(line: line, told: line, command: nil, why: "Scouting or keeping a hold's gates wants the hold's name.")
         }
         guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
             return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")

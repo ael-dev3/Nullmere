@@ -277,8 +277,11 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertNil(burn.command)
         XCTAssertEqual(burn.why, "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood alight), "
                        + "douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark), "
-                       + "bury (the dead lying unburied where it stands) or gather (a store, at the nearest site of it the company may work).")
-        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "gather"])
+                       + "bury (the dead lying unburied where it stands), gather (a store, at the nearest site of it the company may work), "
+                       + "recall (from the land's work, home with its load), scout (another House's hold, with Lanterns near it), "
+                       + "reinforce (keep the gates of a hold of your House or an ally's) or rally (join a rally of your side still gathering).")
+        XCTAssertEqual(CommanderCounsel.actions, ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "gather",
+                                                  "recall", "scout", "reinforce", "rally"])
         // A company at the seat can set nothing alight: put forward as a
         // line, and told why in the realm's own words.
         let kindle = counsel.propose("kindle", company: handle, place: "")

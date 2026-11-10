@@ -36,7 +36,8 @@ public enum SpokenOrders {
     /// The forms of the order book's lines.
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
                                "DRILL <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>", "SEEK <company>",
-                               "BURY <company>", "GATHER <store> WITH <company>",
+                               "BURY <company>", "GATHER <store> WITH <company>", "RECALL <company>",
+                               "SCOUT <hold> WITH <company>", "REINFORCE <hold> WITH <company>", "RALLY AGAINST <target> WITH <company>",
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
@@ -82,10 +83,44 @@ public enum SpokenOrders {
         return ", where \(GameState.counted(field.troops)) troops' dead lie unburied, which it may bury (BURY)"
     }
 
-    /// A company out at the land's work, as the briefing tells it: at its
-    /// site, bound for it, or home with its load, as its keeper is told it.
-    static func gatheringSaid(_ unit: Unit, in state: GameState) -> String {
-        state.gatheringSaid(of: unit).map { ", out gathering: \($0)" } ?? ""
+    /// What a company has been sent to do beyond a march, as the briefing
+    /// and counsel tell it: out at the land's work (at its site, bound for
+    /// it, or home with its load, as its keeper is told it), sent to a
+    /// rally, or keeping the gates of a hold.
+    static func errandSaid(_ unit: Unit, in state: GameState) -> String {
+        if let work = state.gatheringSaid(of: unit) { return ", out gathering: \(work)" }
+        switch unit.errand {
+        case .rally(let id)?:
+            let said = state.rallySaid(id)
+            return ", " + said.prefix(1).lowercased() + said.dropFirst()
+        case .reinforce(let hold)?:
+            return ", keeping the gates of \(state.hold(hold)?.name ?? "a hold")"
+        case .gather?, .homeward?, nil:
+            return ""
+        }
+    }
+
+    /// Another House's hold within reach of Lanterns that they may scout
+    /// now (SCOUT), the nearest, as the briefing tells it.
+    static func scoutSaid(_ unit: Unit, in state: GameState, player: Int) -> String {
+        guard unit.kind == .lantern else { return "" }
+        let near = state.holds.filter { $0.owner != player && $0.position.distance(to: unit.position) <= GameState.scoutReach }
+            .sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        guard let hold = near.first(where: { state.refusal(of: .scout(unit: unit.id, hold: $0.id), as: player) == nil }) else { return "" }
+        return ", near \(hold.name), which it may scout (SCOUT)"
+    }
+
+    /// The rallies of the House's side still gathering, the soonest to set
+    /// out first, as the briefing tells them: "against Tirford, mustering at
+    /// Wenholme, setting out in 2 watches".
+    static func ralliesGathering(in state: GameState, player: Int) -> [Rally] {
+        state.ralliesStanding.filter { state.isOfRally(player, $0) && !$0.marching }.sorted { ($0.setsOut, $0.id) < ($1.setsOut, $1.id) }
+    }
+
+    static func rallySaid(_ rally: Rally, in state: GameState) -> String {
+        let watches = rally.setsOut - state.watch
+        return "against \(state.targetName(rally.target) ?? "a hold"), mustering at \(state.hold(rally.muster)?.name ?? "a hold"), "
+            + (watches <= 1 ? "setting out as the watch turns" : "setting out in \(watches) watches")
     }
 
     /// The sites of the land the House knows and may send its companies
@@ -151,9 +186,14 @@ public enum SpokenOrders {
                          + (alight ? ", in blackwood it may set alight (KINDLE)" : "")
                          + Self.waitSaid(unit, in: state, player: player)
                          + Self.seekSaid(unit, in: state, player: player)
+                         + Self.scoutSaid(unit, in: state, player: player)
                          + Self.burySaid(unit, in: state, player: player)
                          + (state.isUnlit(unit.id) ? ", marching dark, its torches doused (LIGHT)" : "")
-                         + Self.gatheringSaid(unit, in: state))
+                         + Self.errandSaid(unit, in: state))
+        }
+        let rallies = ralliesGathering(in: state, player: player)
+        if !rallies.isEmpty {
+            lines.append("Rallies of your side gathering (RALLY): " + rallies.map { rallySaid($0, in: state) }.joined(separator: "; "))
         }
         lines.append("This watch \(state.windSaid).")
         let holds = state.holds(of: player)
@@ -232,11 +272,12 @@ public enum SpokenOrders {
             return verb == "MARCH"
                 ? given(.move(unit: unit.id, to: place.at), "Your \(named(unit, in: state)) march to \(place.name).")
                 : given(.attack(unit: unit.id, target: place.at), "Your \(named(unit, in: state)) strike \(place.name).")
-        case "FORTIFY", "HALT", "DRILL", "KINDLE", "DOUSE", "LIGHT", "WAIT", "SEEK", "BURY":
+        case "FORTIFY", "HALT", "DRILL", "KINDLE", "DOUSE", "LIGHT", "WAIT", "SEEK", "BURY", "RECALL":
             let handle = rest.joined(separator: " ")
             guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
             switch verb {
             case "FORTIFY": return given(.fortify(unit: unit.id), "Your \(named(unit, in: state)) dig in.")
+            case "RECALL": return given(.recall(unit: unit.id), "Your \(named(unit, in: state)) are called home from the land's work with what they carry.")
             case "HALT": return given(.halt(unit: unit.id), "Your \(named(unit, in: state)) halt.")
             case "KINDLE": return given(.kindle(unit: unit.id), "Your \(named(unit, in: state)) set the wood alight.")
             case "DOUSE": return given(.torches(unit: unit.id, lit: false), "Your \(named(unit, in: state)) douse their torches and march dark.")
@@ -273,6 +314,35 @@ public enum SpokenOrders {
             return given(.gather(unit: unit.id, site: site.id),
                          "Your \(named(unit, in: state)) gather \(site.store.title.lowercased()) at \(state.siteSaid(site)), "
                             + "\(GameState.waySaid(to: site.position, from: unit.position)).")
+        case "SCOUT", "REINFORCE":
+            // Lanterns sent to scout another House's hold within their reach;
+            // a company of war sent to keep the gates of a hold of its own
+            // House or an ally's. A hold by its name, the nearest of it.
+            guard let (target, handle) = split("WITH") else { return nil }
+            guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
+            guard let hold = state.holds.filter({ plain($0.name) == plain(target) })
+                .min(by: { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }) else {
+                return refused("\(named(unit, in: state)) to \(target)", "Your House knows no hold by the name \(target).")
+            }
+            return verb == "SCOUT"
+                ? given(.scout(unit: unit.id, hold: hold.id), "Your \(named(unit, in: state)) scout \(hold.name).")
+                : given(.reinforce(unit: unit.id, hold: hold.id), "Your \(named(unit, in: state)) go to keep the gates of \(hold.name).")
+        case "RALLY":
+            // RALLY AGAINST <target> WITH <company>: a rally of the House's
+            // side still gathering against that hold or lair; RALLY <company>,
+            // the one setting out soonest that the company may join.
+            var asked: String?, handle = rest.joined(separator: " ")
+            if let (first, second) = split("WITH") {
+                asked = first.uppercased().hasPrefix("AGAINST ") ? String(first.dropFirst("AGAINST ".count)) : first
+                handle = second
+            }
+            guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
+            let gathering = ralliesGathering(in: state, player: player)
+            let matching = asked.map { against in gathering.filter { state.targetName($0.target).map(plain) == plain(against) } } ?? gathering
+            guard let rally = matching.first(where: { state.joinRallyRefusal($0.id, with: unit.id, as: player) == nil }) ?? matching.first else {
+                return refused(text, asked.map { "Your side has no rally gathering against \($0)." } ?? "Your side has no rally gathering.")
+            }
+            return given(.joinRally(rally: rally.id, unit: unit.id), "Your \(named(unit, in: state)) go to the rally \(rallySaid(rally, in: state)).")
         case "BUILD", "TRAIN":
             guard let (what, at) = split("AT") else { return nil }
             guard let hold = state.holds(of: player).first(where: { plain($0.name) == plain(at) }) else {
