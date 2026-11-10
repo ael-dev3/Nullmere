@@ -692,6 +692,8 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.rankings.map(\.title), ["Houses by might", "Houses by foes slain", "Alliances by might", "Alliances by foes slain"])
         XCTAssertEqual(ledger.rankings[1].lines.map(\.id), [foe])
         XCTAssertEqual(ledger.rankings[1].lines.map(\.figure), [900])
+        XCTAssertEqual(ledger.rankings[0].lines.map(\.at), ledger.rankings[0].lines.map { view.seat(of: $0.id)?.position },
+                       "each line leads to its House's seat, where the chart may turn")
         XCTAssertEqual(ledger.rankingsSaid, view.rankingsSaid(for: me))
         XCTAssertTrue(ledger.rankingsSaid.hasSuffix(" by might and has slain no foe this age."), ledger.rankingsSaid)
         XCTAssertEqual(ledger.rankings[2].standing, "Your House is sworn to no alliance.")

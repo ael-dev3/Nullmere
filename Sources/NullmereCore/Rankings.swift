@@ -41,6 +41,10 @@ public struct RankingLine: Equatable, Sendable, Identifiable {
     /// Beneath its name: the alliance a House is sworn to, or how many
     /// Houses an alliance has; nil for a House sworn to none.
     public let note: String?
+    /// Where it leads on the land: a House's seat; an alliance's hall, or
+    /// its leader's seat while it has none; nil where the keeper knows of
+    /// none.
+    public let at: Hex?
 
     /// As VoiceOver says it: "4th, House Orren, of the Salt Pact: might
     /// 1,240".
@@ -132,25 +136,27 @@ extension GameState {
         let figures = rankingFigures(by)
         // Each ranked with its figure, its name and what sits beneath it,
         // foremost first.
-        var ranked: [(id: Int, figure: Int, name: String, note: String?)] = []
+        var ranked: [(id: Int, figure: Int, name: String, note: String?, at: Hex?)] = []
         if alliances {
             for alliance in alliancesStanding {
                 let members = alliance.members.filter { houses.indices.contains($0) && !houses[$0].isEliminated }
                 let figure = members.reduce(0) { $0 + figures[$1] }
                 if figure > 0 {
-                    ranked.append((alliance.id, figure, alliance.titled, members.count == 1 ? "1 House" : "\(members.count) Houses"))
+                    ranked.append((alliance.id, figure, alliance.titled, members.count == 1 ? "1 House" : "\(members.count) Houses",
+                                   hall(of: alliance.id)?.position ?? seat(of: alliance.leader)?.position))
                 }
             }
         } else {
             for each in houses where !each.isEliminated && figures[each.id] > 0 {
-                ranked.append((each.id, figures[each.id], each.title, alliance(of: each.id).map { "of \($0.name)" }))
+                ranked.append((each.id, figures[each.id], each.title, alliance(of: each.id).map { "of \($0.name)" }, seat(of: each.id)?.position))
             }
         }
         ranked.sort { ($1.figure, $0.id) < ($0.figure, $1.id) }
         let ownID = alliances ? alliance(of: house)?.id : (houses.indices.contains(house) ? house : nil)
         func line(_ at: Int) -> RankingLine {
             let entry = ranked[at]
-            return RankingLine(id: entry.id, place: at + 1, name: entry.name, figure: entry.figure, isOwn: entry.id == ownID, note: entry.note)
+            return RankingLine(id: entry.id, place: at + 1, name: entry.name, figure: entry.figure, isOwn: entry.id == ownID, note: entry.note,
+                               at: entry.at)
         }
         let shown = (0..<min(max(most, 0), ranked.count)).map(line)
         let ownAt = ownID.flatMap { id in ranked.firstIndex { $0.id == id } }

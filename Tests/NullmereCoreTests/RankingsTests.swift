@@ -104,6 +104,7 @@ final class RankingsTests: XCTestCase {
         XCTAssertEqual(ranking.standing, "Your House stands \(briefOrdinal(place)) of 6 by might.")
         XCTAssertEqual(ranking.title, "Houses by might")
         XCTAssertNil(ranking.lines.first?.note, "sworn to no alliance")
+        XCTAssertEqual(ranking.lines.map(\.at), state.byMight.map { state.seat(of: $0)?.position }, "each line leads to its House's seat")
 
         // Foes slain: only those who slew any, ties to the lower id.
         let (a, b, c) = (state.houses[(me + 1) % 6].id, state.houses[(me + 2) % 6].id, state.houses[(me + 3) % 6].id)
@@ -119,7 +120,8 @@ final class RankingsTests: XCTestCase {
         XCTAssertEqual(slain.lines.map(\.id), [a, min(b, c)])
         XCTAssertEqual(slain.lines.map(\.figure), [4_000, 1_500])
         XCTAssertEqual(slain.count, 4)
-        XCTAssertEqual(slain.own, RankingLine(id: me, place: 4, name: state.houses[me].title, figure: 300, isOwn: true, note: nil),
+        XCTAssertEqual(slain.own, RankingLine(id: me, place: 4, name: state.houses[me].title, figure: 300, isOwn: true, note: nil,
+                                              at: state.seat(of: me)?.position),
                        "the keeper's own beneath the foremost shown")
         XCTAssertEqual(slain.standing, "Your House stands fourth of 4 by foes slain.")
         XCTAssertEqual(slain.lines[0].said(.slain), "1st, \(state.houses[a].title): 4,000 foes slain")
@@ -145,6 +147,11 @@ final class RankingsTests: XCTestCase {
         XCTAssertEqual(alliances.lines.map(\.isOwn), [false, true])
         XCTAssertEqual(alliances.standing, "Your alliance stands second of 2 by foes slain.")
         XCTAssertEqual(alliances.title, "Alliances by foes slain")
+        XCTAssertEqual(alliances.lines.map(\.at), [state.seat(of: a)?.position, state.seat(of: me)?.position],
+                       "an alliance's line leads to its leader's seat while it has no hall")
+        let hallAt = Hex(2, -1)
+        state.halls = [AllianceHall(id: state.takeID(), alliance: pact.id, raisedBy: me, position: hallAt, begun: state.watch)]
+        XCTAssertEqual(state.ranking(.slain, alliances: true, for: me).lines.last?.at, hallAt, "and to its hall once it has one")
         let byMight = state.ranking(.might, alliances: true, for: me)
         XCTAssertEqual(Set(byMight.lines.map(\.figure)), [might[a] + might[b], might[me]])
         XCTAssertEqual(state.ranking(.might, for: me).lines.first { $0.id == a }?.note, "of the Reed Accord", "a House's alliance beneath its name")
@@ -175,7 +182,7 @@ final class RankingsTests: XCTestCase {
         XCTAssertEqual(state.ranking(.slain, alliances: true, for: me).standing, "Your alliance's Houses have slain no foe this age.")
         XCTAssertEqual(state.ranking(.slain, alliances: true, for: me).none, "No alliance's Houses have slain a foe this age.")
         XCTAssertEqual(state.ranking(.might, alliances: true, for: me).standing, "Your alliance has no might to rank.")
-        XCTAssertEqual(RankingLine(id: 1, place: 2, name: "Orren", figure: 1_240, isOwn: false, note: "of the Salt Pact").said(.might),
+        XCTAssertEqual(RankingLine(id: 1, place: 2, name: "Orren", figure: 1_240, isOwn: false, note: "of the Salt Pact", at: nil).said(.might),
                        "2nd, Orren, of the Salt Pact: might 1,240")
     }
 

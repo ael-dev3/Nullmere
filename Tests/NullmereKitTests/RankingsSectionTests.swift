@@ -58,6 +58,18 @@ final class RankingsSectionTests: XCTestCase {
         XCTAssertEqual(own.said(.slain), "12th, \(state.houses[me].title): 50 foes slain")
         draw(RankingRow(line: own, by: .slain))
 
+        // A line brings the view to the House's seat, the panel put away.
+        let top = try XCTUnwrap(slain.lines.first)
+        let seat = try XCTUnwrap(session.state.seat(of: top.id))
+        session.panel = .realm
+        XCTAssertTrue(PressableButtons.press("Go to \(top.name)"), "Among \(PressableButtons.actions.keys.sorted())")
+        XCTAssertNil(session.panel, "the panel put away for the world")
+        XCTAssertEqual(session.selection, .hold(seat.id))
+        // Kept with CI's screenshots, open as a keeper sees it.
+        try CardShot.keep(RankingsSection(session: session, open: true)
+            .padding(16).frame(width: PanelWidth.rail).panelBackground().padding(20),
+                          as: "game-rankings.png")
+
         // The alliances, while the House is sworn to none, and by might.
         draw(RankingsSection(session: session, open: true, by: .might, alliances: true))
         XCTAssertEqual(session.state.ranking(.might, alliances: true, for: me).standing, "Your House is sworn to no alliance.")

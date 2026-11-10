@@ -725,12 +725,14 @@ struct VenturesPage: View {
 /// the House's own beneath them where it stands lower; each line one thing
 /// to VoiceOver.
 struct RankingRows: View {
+    let session: CompanionSession
     let rankings: [Ranking]
     let said: String
     @State private var alliances = false
     @State private var by: RankedBy = .might
 
-    init(rankings: [Ranking], said: String) {
+    init(session: CompanionSession, rankings: [Ranking], said: String) {
+        self.session = session
         self.rankings = rankings
         self.said = said
     }
@@ -767,11 +769,27 @@ struct RankingRows: View {
                     .foregroundStyle(Night.ink.opacity(0.6))
             }
             ForEach(ranking.lines) { line in
-                RankingLineRow(line: line, by: by)
+                row(line)
             }
             if let own = ranking.own {
-                RankingLineRow(line: own, by: by)
+                row(own)
             }
+        }
+    }
+}
+
+extension RankingRows {
+    /// A line, which turns the Land tab's chart to the House's seat or the
+    /// alliance's hall where it leads somewhere, as a place shared does.
+    @ViewBuilder func row(_ line: RankingLine) -> some View {
+        if let at = line.at {
+            Button { session.look(to: at) } label: {
+                RankingLineRow(line: line, by: by)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Turns the chart to it")
+        } else {
+            RankingLineRow(line: line, by: by)
         }
     }
 }
@@ -839,7 +857,7 @@ struct RealmPage: View {
                 // House or alliance by might or by foes slain, the foremost
                 // and the House's own beneath them.
                 Section("Rankings") {
-                    RankingRows(rankings: ledger.rankings, said: ledger.rankingsSaid)
+                    RankingRows(session: session, rankings: ledger.rankings, said: ledger.rankingsSaid)
                 }
                 // The Frontier the realm borders, as the Mac's Realm panel
                 // tells it to a keeper at home: its season, how its

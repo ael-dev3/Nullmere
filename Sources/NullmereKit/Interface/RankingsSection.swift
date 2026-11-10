@@ -1,3 +1,4 @@
+import LauncherKit
 import NullmereCore
 import SwiftUI
 
@@ -59,11 +60,11 @@ struct RankingsSection: View {
                 }
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(ranking.lines) { line in
-                        RankingRow(line: line, by: by)
+                        RankingRow(line: line, by: by, go: going(to: line))
                     }
                     if let own = ranking.own {
                         Rule(opacity: 0.12)
-                        RankingRow(line: own, by: by)
+                        RankingRow(line: own, by: by, go: going(to: own))
                     }
                 }
             } else {
@@ -73,6 +74,14 @@ struct RankingsSection: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// A line's way to where it leads: the panel put away and the view
+    /// brought to the House's seat or the alliance's hall, as a kept
+    /// place's is.
+    private func going(to line: RankingLine) -> (() -> Void)? {
+        guard let at = line.at else { return nil }
+        return { session.goToPlace(at) }
     }
 
     private var heading: some View {
@@ -94,12 +103,25 @@ struct RankingsSection: View {
 
 /// A line of a ranking: its place, whose it is with its alliance or its
 /// Houses beneath, and its figure; the keeper's own in the glow of their
-/// words, and the whole line one thing to VoiceOver.
+/// words, and the whole line one thing to VoiceOver. Where it leads
+/// somewhere on the land, the line is a button that brings the view there.
 struct RankingRow: View {
     let line: RankingLine
     let by: RankedBy
+    var go: (() -> Void)?
 
     var body: some View {
+        if let go {
+            let _ = PressableButtons.note("Go to \(line.name)", enabled: true, go)
+            Button(action: go) { row.contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .accessibilityHint("Brings the view to it")
+        } else {
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(verbatim: "\(line.place)")
                 .font(.nm(10).monospacedDigit())
