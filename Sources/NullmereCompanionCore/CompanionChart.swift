@@ -180,10 +180,29 @@ public struct CompanionChart: Equatable, Sendable {
     /// The edges of the Houses' lands within the chart: all the House's
     /// own, and another House's where the House has explored.
     public let borders: [Border]
+    /// The Houses named over their land once the chart is pinched out to
+    /// take in the country, as the Mac's map names them from afar: each
+    /// House whose seat lies on the chart and the House has seen, in the
+    /// order the rules give (`GameState.namedFromAfar`), so where names
+    /// would crowd the ones that matter most are set down first: its own,
+    /// then its alliance's, its foes' at war, the rest nearest its seat.
+    public let houseNames: [HouseName]
+
+    /// A House named over its land.
+    public struct HouseName: Equatable, Sendable {
+        public let house: Int
+        /// Its name, as the chart writes it.
+        public let name: String
+        /// Its seat, where its name stands.
+        public let seat: Hex
+        /// How it stands to the keeper's House.
+        public let side: Side
+    }
 
     public static func == (a: CompanionChart, b: CompanionChart) -> Bool {
         a.center == b.center && a.radius == b.radius && a.cells == b.cells && a.marks == b.marks
             && a.regions.map(\.name) == b.regions.map(\.name) && a.regions.map(\.hex) == b.regions.map(\.hex)
+            && a.houseNames == b.houseNames
     }
 
     /// The least reach of a chart, and the most: a House whose companies
@@ -315,6 +334,9 @@ public struct CompanionChart: Equatable, Sendable {
         }
         self.marks = marks
         regions = (world.atlas?.regions ?? []).filter { reached($0.heart) }.map { ($0.name, $0.heart) }
+        houseNames = world.namedFromAfar(by: player, around: center).filter { reached($0.seat) }.map {
+            HouseName(house: $0.house, name: houses[$0.house].name, seat: $0.seat, side: side($0.house))
+        }
     }
 
     /// Whether a hex lies on the chart.

@@ -115,6 +115,42 @@ final class CompanionChartTests: XCTestCase {
         }
     }
 
+    /// Pinched out, the chart names the Houses at their seats as the Mac's
+    /// map names them from afar: each whose seat lies on the chart and the
+    /// House has seen, its own first, in the colour of how each stands to
+    /// it; a seat it has not seen, none.
+    func testTheHousesSeatsOnTheChartAreNamedTheKeepersOwnFirst() throws {
+        var (state, me) = world()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let afield = try XCTUnwrap(state.map.hexes.first { hex in
+            hex.distance(to: seat.position) == CompanionChart.mostRadius - CompanionChart.margin
+                && state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        let index = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
+        state.units[index].position = afield
+        let early = CompanionChart(world: state.view(for: me), player: me)
+        XCTAssertEqual(early.houseNames.first, CompanionChart.HouseName(house: me, name: state.houses[me].name, seat: seat.position, side: .own))
+        let unseen = state.houses.map(\.id).filter { other in
+            other != me && state.seat(of: other).map { !state.isExplored($0.position, by: me) && $0.position.distance(to: seat.position) <= early.radius } == true
+        }
+        XCTAssertTrue(Set(early.houseNames.map(\.house)).isDisjoint(with: unseen), "a seat not seen, named")
+
+        // Every seat seen: each on the chart named, in the rules' order.
+        state.reveal(around: seat.position, range: 40, for: me)
+        let view = state.view(for: me)
+        let chart = CompanionChart(world: view, player: me)
+        let expected = view.namedFromAfar(by: me, around: chart.center).filter { $0.seat.distance(to: chart.center) <= chart.radius }
+        XCTAssertGreaterThan(expected.count, 1, "another House's seat within the chart's reach")
+        XCTAssertEqual(chart.houseNames.map(\.house), expected.map(\.house))
+        XCTAssertEqual(chart.houseNames.first?.side, .own)
+        for name in chart.houseNames {
+            XCTAssertEqual(name.name, state.houses[name.house].name)
+            XCTAssertEqual(name.seat, try XCTUnwrap(state.seat(of: name.house)).position)
+            XCTAssertTrue(chart.contains(name.seat))
+            XCTAssertEqual(chart.marks.first { $0.hex == name.seat && $0.thing == .seat }?.side, name.side, "named in its seat's colour")
+        }
+    }
+
     /// A House's companies marching far afield take the chart no further
     /// than its most, and a chart of a House of nothing lies about the lake.
     func testTheChartReachesNoFurtherThanItsMost() throws {

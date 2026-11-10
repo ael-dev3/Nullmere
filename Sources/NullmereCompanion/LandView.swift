@@ -429,8 +429,13 @@ struct ChartView: View {
             let at = point(of: chosen, canvas: canvas, size: size)
             context.stroke(cell.offsetBy(dx: at.x, dy: at.y), with: .color(Night.moon), lineWidth: 2.5)
         }
-        // The holds' names, once the chart is close enough to read them.
-        guard size >= Self.opening * 0.9 else { return }
+        // The holds' names, once the chart is close enough to read them;
+        // pinched out, where they would crowd, the Houses named at their
+        // seats instead, as the Mac's map names them from afar.
+        guard size >= Self.opening * 0.9 else {
+            Self.drawHouseNames(chart.houseNames, in: &context, within: shown) { point(of: $0, canvas: canvas, size: size) }
+            return
+        }
         for mark in chart.marks {
             guard let label = mark.label else { continue }
             let at = point(of: mark.hex, canvas: canvas, size: size)
@@ -439,6 +444,35 @@ struct ChartView: View {
                             .font(.system(size: 10, weight: mark.thing == .seat ? .semibold : .regular, design: .serif))
                             .foregroundStyle(Self.colour(of: mark.side)),
                          at: CGPoint(x: Double(at.x), y: Double(at.y) + size * 1.05))
+        }
+    }
+
+    /// The most Houses named at once on a chart pinched out.
+    static let housesNamed = 12
+
+    /// Each House's name on a dark plate beneath its seat, in the colour of
+    /// how it stands to the keeper's House, in the order the chart gives
+    /// them (its own first, then its alliance's, its foes', the rest), each
+    /// left out where it would fall on one set down before it, and no more
+    /// than `housesNamed`.
+    static func drawHouseNames(_ names: [CompanionChart.HouseName], in context: inout GraphicsContext, within shown: CGRect,
+                               point: (Hex) -> CGPoint) {
+        var taken: [CGRect] = []
+        for house in names {
+            guard taken.count < housesNamed else { break }
+            let at = point(house.seat)
+            guard shown.contains(at) else { continue }
+            let words = context.resolve(Text(verbatim: house.name.uppercased())
+                                            .font(.system(size: 9, weight: .semibold))
+                                            .tracking(1.4)
+                                            .foregroundStyle(colour(of: house.side)))
+            let measured = words.measure(in: CGSize(width: 240, height: 40))
+            let plate = CGRect(x: at.x - measured.width / 2 - 5, y: at.y + 7, width: measured.width + 10, height: measured.height + 4)
+            guard !taken.contains(where: { $0.intersects(plate) }) else { continue }
+            taken.append(plate)
+            context.fill(Path(roundedRect: plate, cornerRadius: 2), with: .color(Color.black.opacity(0.6)))
+            context.stroke(Path(roundedRect: plate, cornerRadius: 2), with: .color(colour(of: house.side).opacity(0.6)), lineWidth: 0.8)
+            context.draw(words, at: CGPoint(x: plate.midX, y: plate.midY))
         }
     }
 
