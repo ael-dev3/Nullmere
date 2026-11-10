@@ -2,6 +2,9 @@ extension GameState {
     /// What raising a seat anew costs: Rise of Kingdoms' teleport, here
     /// within a House's own land.
     public static let seatMoveCost = Stock(moonsalt: 40)
+    /// What raising it on its alliance's land beyond its own costs: Rise of
+    /// Kingdoms' teleport into the alliance's territory, to stand with allies.
+    public static let seatMoveAllianceCost = Stock(moonsalt: 80)
     /// How many watches after a seat is raised anew before it may be again.
     public static let seatMoveRest = 30
     /// How near a foe at war keeps a seat where it stands.
@@ -13,12 +16,38 @@ extension GameState {
             + "Once in \(seatMoveRest) watches, and never while it is beset."
     }
 
+    /// And on its alliance's land, beyond its own.
+    public static var seatMoveAllianceSaid: String {
+        "Raise your seat anew here, on your alliance's land beside your allies: its works, walls and ward as they stand, "
+            + "and the company at its gates with it. Once in \(seatMoveRest) watches, and never while it is beset."
+    }
+
+    /// Whether `hex` lies on the land of the House's alliance and no House's
+    /// own: where its seat may be raised beyond its own land.
+    public func isOwnAllianceGround(_ hex: Hex, for house: Int) -> Bool {
+        guard let sworn = alliance(of: house)?.id, territoryOwner(of: hex) == nil else { return false }
+        return allianceLand(at: hex) == sworn
+    }
+
+    /// What raising the House's seat on `hex` costs: within its own land,
+    /// or on its alliance's.
+    public func seatMoveCost(to hex: Hex, as house: Int) -> Stock {
+        territoryOwner(of: hex) == house ? GameState.seatMoveCost : GameState.seatMoveAllianceCost
+    }
+
+    /// What raising the House's seat on `hex` does, said beside it.
+    public func seatMoveSaid(to hex: Hex, as house: Int) -> String {
+        territoryOwner(of: hex) == house ? GameState.seatMoveSaid : GameState.seatMoveAllianceSaid
+    }
+
     /// Why a keeper can't raise their House's seat anew on a hex now, if
     /// they can't: the ground must be open and settleable, of the House's
-    /// own land, three tiles from every other hold and clear of holy sites,
-    /// alliance ground and others' companies; the seat's ward whole, no foe
+    /// own land or its alliance's that no House holds and the House has
+    /// seen, three tiles from every other hold and clear of holy sites,
+    /// alliance works and others' companies; the seat's ward whole, no foe
     /// at war within three tiles of it, rested thirty watches since it was
-    /// last raised anew, and the moonsalt for it.
+    /// last raised anew, and the moonsalt for it, more on its alliance's
+    /// land than its own.
     public func seatMoveRefusal(to hex: Hex, as house: Int) -> RuleError? {
         guard houses.indices.contains(house), houses[house].isPlayer, !houses[house].isEliminated else { return .notAKeeper }
         guard let seat = seat(of: house) else { return .unknownHold }
@@ -28,7 +57,9 @@ extension GameState {
         guard hex != seat.position else { return .notApplicable }
         guard let tile = map[hex] else { return .outsideTheWorld }
         guard tile.terrain.isSettleable else { return .cannotSettle(tile.terrain) }
-        guard territoryOwner(of: hex) == house else { return .foreignTerritory }
+        let owner = territoryOwner(of: hex)
+        if let owner, owner != house { return .foreignTerritory }
+        guard owner == house || (isOwnAllianceGround(hex, for: house) && isExplored(hex, by: house)) else { return .seatBeyondLand }
         if holds.contains(where: { $0.id != seat.id && $0.position.distance(to: hex) < 3 }) { return .tooCloseToHold }
         if shrine(at: hex) != nil { return .holySite }
         if standard(at: hex) != nil || hall(at: hex) != nil || storehouse(at: hex) != nil || site(at: hex)?.isYard == true {
@@ -39,18 +70,19 @@ extension GameState {
         if units.contains(where: { isAtWar(house, $0.owner) && $0.position.distance(to: seat.position) <= GameState.seatMoveFoeReach }) {
             return .seatBeset
         }
-        let stock = houses[house].stock
-        guard stock.covers(GameState.seatMoveCost) else { return .shortOf(stock.shortfall(for: GameState.seatMoveCost)) }
+        let stock = houses[house].stock, cost = seatMoveCost(to: hex, as: house)
+        guard stock.covers(cost) else { return .shortOf(stock.shortfall(for: cost)) }
         return nil
     }
 
-    /// A keeper raises their House's seat anew on its own land: its works,
-    /// walls, ward and wounded as they stood, and the company keeping its
-    /// gates with it, if the new ground is clear.
+    /// A keeper raises their House's seat anew on its own land, or on its
+    /// alliance's: its works, walls, ward and wounded as they stood, and the
+    /// company keeping its gates with it, if the new ground is clear.
     mutating func raiseSeatAnew(at hex: Hex, as house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = seatMoveRefusal(to: hex, as: house) { throw refusal }
         guard let seat = seat(of: house), let index = holdIndex(seat.id) else { throw .unknownHold }
-        houses[house].stock.debit(GameState.seatMoveCost)
+        let onAllianceLand = territoryOwner(of: hex) != house
+        houses[house].stock.debit(seatMoveCost(to: hex, as: house))
         let from = seat.position
         if unit(at: hex) == nil, let keeper = units.firstIndex(where: { $0.owner == house && $0.position == from }) {
             units[keeper].position = hex
@@ -60,7 +92,8 @@ extension GameState {
         holds[index].position = hex
         holds[index].raisedAnew = watch
         reveal(around: hex, range: 2, for: house)
-        record(.founding, [house], "\(houses[house].title) raises its seat, \(seat.name), anew \(placeName(of: hex)).")
+        let alliance = onAllianceLand ? self.alliance(of: house).map { " on the land of \($0.name)" } ?? "" : ""
+        record(.founding, [house], "\(houses[house].title) raises its seat, \(seat.name), anew \(placeName(of: hex))\(alliance).")
         return [.seatRaisedAnew(hold: seat.id, house: house, from: from, to: hex)]
     }
 }

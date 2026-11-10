@@ -1708,7 +1708,8 @@ struct TilePanel: View {
                     Rule(opacity: 0.18)
                     FindRow(session: session, find: find)
                 }
-                // The House's own land: its seat may be raised anew here.
+                // The House's own land, or its alliance's: its seat may be
+                // raised anew here.
                 if SeatMoveRow.offered(at: hex, in: state, player: session.player) {
                     Rule(opacity: 0.18)
                     SeatMoveRow(session: session, hex: hex)
@@ -1813,31 +1814,32 @@ struct VeilLine: View {
     }
 }
 
-/// Raising the keeper's seat anew on a tile of the House's own land, for
-/// its cost, or why it can't be raised there: Rise of Kingdoms' teleport,
-/// within the House's land.
+/// Raising the keeper's seat anew on a tile of the House's own land, or of
+/// its alliance's that no House holds, for its cost, or why it can't be
+/// raised there: Rise of Kingdoms' teleport, within the House's land or
+/// into its alliance's territory.
 struct SeatMoveRow: View {
     let session: GameSession
     let hex: Hex
 
-    /// Offered to a keeper on settleable ground of their House's own land
-    /// that no hold stands on.
+    /// Offered to a keeper on settleable ground that no hold stands on, of
+    /// their House's own land or of its alliance's that no House holds.
     static func offered(at hex: Hex, in state: GameState, player: Int) -> Bool {
         guard state.houses.indices.contains(player), state.houses[player].isPlayer, state.hold(at: hex) == nil,
               state.map[hex]?.terrain.isSettleable == true else { return false }
-        return state.territoryOwner(of: hex) == player
+        return state.territoryOwner(of: hex) == player || state.isOwnAllianceGround(hex, for: player)
     }
 
     var body: some View {
         let state = session.state
         let refusal = state.seatMoveRefusal(to: hex, as: session.player)
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: GameState.seatMoveSaid)
+            Text(verbatim: state.seatMoveSaid(to: hex, as: session.player))
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                CostLine(cost: GameState.seatMoveCost, available: session.playerHouse.stock)
+                CostLine(cost: state.seatMoveCost(to: hex, as: session.player), available: session.playerHouse.stock)
                 Spacer()
                 QuietButton(title: "Raise the seat here", size: 8.5, enabled: refusal == nil, name: "Raise your seat anew here",
                             why: refusal?.description) {

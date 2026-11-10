@@ -3,9 +3,9 @@ import XCTest
 @testable import NullmereCore
 
 /// A seat raised anew, Rise of Kingdoms' teleport within a House's own
-/// land: its works, walls and ward as they stood and the company keeping
-/// its gates with it; not while beset, and once in thirty watches.
-/// Stewards move no seat.
+/// land or into its alliance's: its works, walls and ward as they stood
+/// and the company keeping its gates with it; not while beset, and once
+/// in thirty watches. Stewards move no seat.
 final class SeatMoveTests: XCTestCase {
     private func realm(_ seed: String) throws -> (state: GameState, me: Int, seat: Hold, ground: Hex) {
         var state = GameState(settings: GameSettings(seedText: seed, houseCount: 4, radius: 18, keepers: 1))
@@ -65,6 +65,73 @@ final class SeatMoveTests: XCTestCase {
         // Once in thirty watches.
         let again = try XCTUnwrap(state.map.hexes.first { $0 != ground && state.territoryOwner(of: $0) == me && state.map[$0]?.terrain.isSettleable == true })
         XCTAssertEqual(state.seatMoveRefusal(to: again, as: me), .seatRaisedLately(until: state.watch + GameState.seatMoveRest))
+    }
+
+    /// Rise of Kingdoms' teleport into the alliance's territory: on its
+    /// alliance's land that no House holds and the House has seen, for
+    /// twice the moonsalt; never on open ground beyond it, nor on another
+    /// House's land though the alliance's standard stands over it.
+    func testAKeeperRaisesTheSeatAnewOnItsAlliancesLand() throws {
+        var (state, me, seat, home) = try realm("a seat raised on the alliance's land")
+        _ = try state.perform(.foundAlliance(name: "The Reedbound"), as: me)
+        let sworn = try XCTUnwrap(state.alliance(of: me))
+        // Open ground no House holds, far enough from every hold for the
+        // seat, with a tile beside it for the alliance's standard.
+        let territory = state.territory()
+        func open(_ hex: Hex) -> Bool {
+            state.map[hex]?.terrain.isSettleable == true && state.territoryOwner(of: hex, in: territory) == nil
+                && !state.holds.contains { $0.position.distance(to: hex) < 3 } && state.shrine(at: hex) == nil
+                && state.unit(at: hex) == nil && state.site(at: hex) == nil
+        }
+        let ground = try XCTUnwrap(state.map.hexes.first { hex in open(hex) && hex.neighbors.contains(where: open) })
+        let spot = try XCTUnwrap(ground.neighbors.first(where: open))
+        let beyond = try XCTUnwrap(state.map.hexes.first { open($0) && $0.distance(to: spot) > Standard.reach + 1 })
+        for hex in [ground, spot, beyond] { state.reveal(around: hex, range: 0, for: me) }
+        XCTAssertEqual(state.seatMoveRefusal(to: ground, as: me), .seatBeyondLand, "No alliance land there yet")
+
+        // The alliance's standard stands whole beside it: its land.
+        var standard = Standard(id: state.takeID(), alliance: sworn.id, raisedBy: me, position: spot, raised: state.watch)
+        standard.built = Standard.raising
+        state.standards = state.standardsStanding + [standard]
+        XCTAssertEqual(state.allianceLand(at: ground), sworn.id)
+        XCTAssertTrue(state.isOwnAllianceGround(ground, for: me))
+        XCTAssertNil(state.seatMoveRefusal(to: ground, as: me))
+        XCTAssertEqual(state.seatMoveRefusal(to: beyond, as: me), .seatBeyondLand, "Not beyond the alliance's land")
+        XCTAssertEqual(state.seatMoveRefusal(to: spot, as: me), .allianceGround, "Not on the standard itself")
+        XCTAssertEqual(state.seatMoveCost(to: ground, as: me), GameState.seatMoveAllianceCost)
+        XCTAssertEqual(state.seatMoveCost(to: home, as: me), GameState.seatMoveCost, "Its own land as it was")
+        XCTAssertEqual(state.seatMoveSaid(to: ground, as: me), GameState.seatMoveAllianceSaid)
+        XCTAssertEqual(state.seatMoveSaid(to: home, as: me), GameState.seatMoveSaid)
+        var unseen = state
+        unseen.houses[me].explored[try XCTUnwrap(unseen.map.index(of: ground))] = false
+        XCTAssertEqual(unseen.seatMoveRefusal(to: ground, as: me), .seatBeyondLand, "Not on alliance land the House has never seen")
+        var poor = state
+        poor.houses[me].stock.moonsalt = 50
+        XCTAssertEqual(poor.seatMoveRefusal(to: ground, as: me), .shortOf(Stock(moonsalt: 30)), "Twice the moonsalt beyond its own land")
+        let other = (me + 1) % state.houses.count
+        XCTAssertFalse(state.isOwnAllianceGround(ground, for: other), "Not the land of a House sworn to no alliance")
+
+        // Another House's land stays theirs though the standard's land
+        // reaches over it.
+        let foreign = try XCTUnwrap(state.map.hexes.first { state.territoryOwner(of: $0, in: territory) == other && state.map[$0]?.terrain.isSettleable == true })
+        var overlapping = state
+        let over = try XCTUnwrap(foreign.spiral(Standard.reach).first { $0.distance(to: foreign) == Standard.reach && overlapping.map[$0] != nil })
+        var near = Standard(id: overlapping.takeID(), alliance: sworn.id, raisedBy: me, position: over, raised: overlapping.watch)
+        near.built = Standard.raising
+        overlapping.standards = overlapping.standardsStanding + [near]
+        XCTAssertEqual(overlapping.allianceLand(at: foreign), sworn.id)
+        XCTAssertEqual(overlapping.seatMoveRefusal(to: foreign, as: me), .foreignTerritory)
+
+        // Raised there, for its moonsalt, and told so.
+        let before = state.houses[me].stock.moonsalt
+        let events = try state.perform(.raiseSeat(at: ground), as: me)
+        XCTAssertEqual(events, [.seatRaisedAnew(hold: seat.id, house: me, from: seat.position, to: ground)])
+        XCTAssertEqual(state.hold(seat.id)?.position, ground)
+        XCTAssertEqual(state.houses[me].stock.moonsalt, before - GameState.seatMoveAllianceCost.moonsalt)
+        XCTAssertEqual(state.territoryOwner(of: ground), me, "The land about it the House's own now")
+        let told = try XCTUnwrap(state.chronicle.last?.text)
+        XCTAssertTrue(told.hasSuffix(" on the land of The Reedbound."), told)
+        XCTAssertTrue(RuleError.seatBeyondLand.description.contains("alliance's land"))
     }
 
     /// Not with a foe at war within three tiles of the seat.

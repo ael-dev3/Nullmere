@@ -1334,6 +1334,38 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .raiseSeat(at: ground), events: [], in: session.state, player: me), [.rise])
     }
 
+    /// And from a tile of its alliance's land that no House holds: offered
+    /// there in the alliance's words and for its dearer cost, and raised.
+    func testTheSeatIsRaisedAnewOnItsAlliancesLand() throws {
+        var state = world("a seat moved to the alliance's land")
+        let me = state.player
+        state.houses[me].stock.moonsalt = 200
+        _ = try state.perform(.foundAlliance(name: "The Mere Pact"), as: me)
+        let alliance = try XCTUnwrap(state.alliance(of: me)).id
+        let territory = state.territory()
+        func open(_ hex: Hex) -> Bool {
+            state.map[hex]?.terrain.isSettleable == true && state.territoryOwner(of: hex, in: territory) == nil
+                && !state.holds.contains { $0.position.distance(to: hex) < 3 } && state.shrine(at: hex) == nil
+                && state.unit(at: hex) == nil && state.site(at: hex) == nil
+        }
+        let ground = try XCTUnwrap(state.map.hexes.first { hex in open(hex) && hex.neighbors.contains(where: open) })
+        let spot = try XCTUnwrap(ground.neighbors.first(where: open))
+        var standard = Standard(id: state.takeID(), alliance: alliance, raisedBy: me, position: spot, raised: state.watch)
+        standard.built = Standard.raising
+        state.standards = state.standardsStanding + [standard]
+        state.reveal(around: ground, range: 1, for: me)
+        XCTAssertNil(state.seatMoveRefusal(to: ground, as: me))
+        XCTAssertTrue(SeatMoveRow.offered(at: ground, in: state, player: me))
+        XCTAssertFalse(SeatMoveRow.offered(at: ground, in: state, player: (me + 1) % 6), "Not for a House of no alliance")
+        let (session, link) = session(state)
+        XCTAssertEqual(session.state.seatMoveSaid(to: ground, as: me), GameState.seatMoveAllianceSaid)
+        XCTAssertEqual(session.state.seatMoveCost(to: ground, as: me), GameState.seatMoveAllianceCost)
+        session.selection = .tile(ground)
+        draw(SelectionPanel(session: session), width: 330, height: 1_200)
+        XCTAssertTrue(PressableButtons.press("Raise the seat here"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseSeat(at: ground))
+    }
+
     /// The Ring at the foot of the Commanders: folded until asked for; a
     /// line chosen and stood; another keeper's line challenged, the bout
     /// shown and heard; and the full moon's honours heard by those honoured.

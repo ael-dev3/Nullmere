@@ -366,6 +366,36 @@ final class CompanionChartTests: XCTestCase {
                        "Only the leader raises the alliance's works: \(theirs)")
     }
 
+    /// On the alliance's land beyond the House's own, the seat raised anew
+    /// is offered from the chart in its own words, for its dearer moonsalt,
+    /// as the Mac's ground panel offers it.
+    func testTheSeatIsOfferedOnTheAlliancesLand() throws {
+        var (state, me) = world()
+        _ = try state.perform(.foundAlliance(name: "The Far Accord"), as: me)
+        let alliance = try XCTUnwrap(state.alliance(of: me)).id
+        let territory = state.territory()
+        let ground = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.territoryOwner(of: hex, in: territory) == nil
+                && !state.holds.contains { $0.position.distance(to: hex) < 3 } && state.shrine(at: hex) == nil
+                && state.unit(at: hex) == nil && state.site(at: hex) == nil
+                && hex.neighbors.contains { state.map[$0] != nil && state.hold(at: $0) == nil }
+        })
+        let spot = try XCTUnwrap(ground.neighbors.first { state.map[$0] != nil && state.hold(at: $0) == nil })
+        var standard = Standard(id: state.takeID(), alliance: alliance, raisedBy: me, position: spot, raised: state.watch)
+        standard.built = Standard.raising
+        state.standards = state.standardsStanding + [standard]
+        state.reveal(around: ground, range: 0, for: me)
+        XCTAssertNil(state.seatMoveRefusal(to: ground, as: me))
+        let view = state.view(for: me)
+        let raisings = CompanionChart.raisings(at: ground, in: view, player: me)
+        let raising = try XCTUnwrap(raisings.first { $0.said == GameState.seatMoveAllianceSaid }, "\(raisings.map(\.said))")
+        XCTAssertFalse(raisings.contains { $0.said == GameState.seatMoveSaid }, "Said once, in the alliance's words")
+        XCTAssertEqual(raising.orders.map(\.title), ["Raise the seat here, for \(GameState.seatMoveAllianceCost)"])
+        XCTAssertEqual(raising.orders.map(\.command), [.raiseSeat(at: ground)])
+        assertTaken(raising.orders, in: view, as: me)
+        assertTaken(raising.orders, in: state, as: me)
+    }
+
     /// At a site of the land the House has explored, its companies of war
     /// are offered to gather there as the rules would send them; and on a
     /// foe's hold, sworn to an alliance with a Muster Hall, a rally called.

@@ -191,7 +191,8 @@ public enum Command: Codable, Equatable, Sendable {
     case stake(prophecy: Int, backs: Bool, moonsalt: Int)
     /// A keeper draws the veil of the Still over their House's holds.
     case drawVeil
-    /// A keeper raises their House's seat anew on open ground of its own land.
+    /// A keeper raises their House's seat anew on open ground of its own
+    /// land, or of its alliance's.
     case raiseSeat(at: Hex)
     /// A keeper sets a company, at a shore hold of theirs, on a barge across
     /// the still water to another of their shore holds.
@@ -509,6 +510,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case occupiedGround
     /// A seat beset: its ward short of whole, or a foe at war near it.
     case seatBeset
+    /// A seat raised anew beyond the House's own land and its alliance's.
+    case seatBeyondLand
     /// A challenge in the Ring by a House with no line standing in it.
     case noLineStanding
     /// A challenge in the Ring past a House's three of the watch.
@@ -781,6 +784,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .seatRaisedLately(let until): return "Your seat was raised anew lately; it may be again at watch \(until)."
         case .occupiedGround: return "Another House's company stands there."
         case .seatBeset: return "Your seat is beset: not while its ward is short of whole, or a foe at war stands within three tiles of it."
+        case .seatBeyondLand:
+            return "Your seat is raised anew only on your own land, or on your alliance's land that no House holds and your House has seen."
         case .noLineStanding: return "Your House stands no line in the Ring: choose up to three of your commanders for it first."
         case .challengesSpent: return "Your House has made its three challenges in the Ring this watch; it may challenge again next watch."
         case .whisperedLately(let until): return "Your House let a whisper loose lately; it may whisper again at watch \(until)."

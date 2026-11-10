@@ -498,8 +498,9 @@ public struct CompanionChart: Equatable, Sendable {
             raisings.append(Raising(said: Yard.raiseSaid, orders: yards))
         }
         if world.seatMoveRefusal(to: hex, as: player) == nil {
-            raisings.append(Raising(said: GameState.seatMoveSaid,
-                                    orders: [Order(title: "Raise the seat here, for \(GameState.seatMoveCost)", command: .raiseSeat(at: hex))]))
+            raisings.append(Raising(said: world.seatMoveSaid(to: hex, as: player),
+                                    orders: [Order(title: "Raise the seat here, for \(world.seatMoveCost(to: hex, as: player))",
+                                                   command: .raiseSeat(at: hex))]))
         }
         return raisings
     }
