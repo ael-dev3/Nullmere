@@ -1085,6 +1085,7 @@ struct HoldItems: View {
         let command = Command.useItem(kind, hold: hold.id)
         let refusal = session.state.refusal(of: command, as: session.player)
         return HStack(alignment: .firstTextBaseline) {
+            ItemGlyph(kind: kind, size: 13)
             Text(verbatim: text)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))

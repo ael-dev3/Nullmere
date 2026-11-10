@@ -466,7 +466,10 @@ private struct SatchelRow: View {
         let kind = stack.kind
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: "\(kind.title) × \(stack.count)").font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                HStack(spacing: 6) {
+                    ItemGlyph(kind: kind)
+                    Text(verbatim: "\(kind.title) × \(stack.count)").font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                }
                 Text(verbatim: RealmPanel.about(kind))
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.55))

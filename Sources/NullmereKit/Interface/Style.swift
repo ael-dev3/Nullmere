@@ -557,16 +557,7 @@ struct ResourceGlyph: View {
     var size: CGFloat = 10
 
     var body: some View {
-        Canvas { context, canvas in
-            for part in ResourceGlyph.drawing(of: resource) {
-                var path = Path()
-                path.addLines(part.outline.map { CGPoint(x: $0.x * canvas.width, y: $0.y * canvas.height) })
-                path.closeSubpath()
-                context.fill(path, with: .color(Color(red: part.colour.red, green: part.colour.green, blue: part.colour.blue)))
-            }
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        DrawnMark(parts: ResourceGlyph.drawing(of: resource), size: size)
     }
 
     typealias Shade = (red: Double, green: Double, blue: Double)
@@ -637,6 +628,86 @@ struct ResourceGlyph: View {
             let x = 0.17 * cos(t), y = 0.085 * sin(t)
             return CGPoint(x: Double(centre.x) + x * cos(angle) - y * sin(angle), y: Double(centre.y) + x * sin(angle) + y * cos(angle))
         }
+    }
+}
+
+/// A small drawn mark for each thing a satchel may hold: a salt hourglass
+/// in its frame, a ward stone cut with its rune, a mending draught in its
+/// flask, and a cache by the mark of the store it holds.
+struct ItemGlyph: View {
+    let kind: ItemKind
+    var size: CGFloat = 14
+
+    var body: some View {
+        DrawnMark(parts: ItemGlyph.drawing(of: kind), size: size)
+    }
+
+    /// An item's mark as filled outlines in a unit square, y down, each
+    /// drawn over those before it.
+    static func drawing(of kind: ItemKind) -> [(outline: [CGPoint], colour: ResourceGlyph.Shade)] {
+        func p(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: x, y: y) }
+        let wood: ResourceGlyph.Shade = (0.55, 0.42, 0.28), glass: ResourceGlyph.Shade = (0.70, 0.75, 0.80)
+        switch kind {
+        case .grainCache: return ResourceGlyph.drawing(of: .grain)
+        case .timberCache: return ResourceGlyph.drawing(of: .timber)
+        case .stoneCache: return ResourceGlyph.drawing(of: .stone)
+        case .moonsaltCache: return ResourceGlyph.drawing(of: .moonsalt)
+        case .hourglass:
+            // Two bulbs of glass in a wooden frame, the salt running down.
+            let sand: ResourceGlyph.Shade = (0.86, 0.80, 0.62)
+            return [([p(0.22, 0.04), p(0.78, 0.04), p(0.78, 0.13), p(0.22, 0.13)], wood),
+                    ([p(0.22, 0.87), p(0.78, 0.87), p(0.78, 0.96), p(0.22, 0.96)], wood),
+                    ([p(0.28, 0.13), p(0.72, 0.13), p(0.53, 0.5), p(0.47, 0.5)], glass),
+                    ([p(0.47, 0.5), p(0.53, 0.5), p(0.72, 0.87), p(0.28, 0.87)], glass),
+                    ([p(0.36, 0.26), p(0.64, 0.26), p(0.52, 0.48), p(0.48, 0.48)], sand),
+                    ([p(0.4, 0.87), p(0.5, 0.66), p(0.6, 0.87)], sand),
+                    ([p(0.25, 0.13), p(0.3, 0.13), p(0.3, 0.87), p(0.25, 0.87)], wood),
+                    ([p(0.7, 0.13), p(0.75, 0.13), p(0.75, 0.87), p(0.7, 0.87)], wood)]
+        case .wardStone:
+            // A standing stone, its far side in shadow, cut with a pale rune.
+            let stone: ResourceGlyph.Shade = (0.61, 0.61, 0.63), rune: ResourceGlyph.Shade = (0.70, 0.85, 1.0)
+            return [([p(0.3, 0.98), p(0.24, 0.3), p(0.38, 0.06), p(0.62, 0.06), p(0.76, 0.3), p(0.7, 0.98)], stone),
+                    ([p(0.5, 0.06), p(0.62, 0.06), p(0.76, 0.3), p(0.7, 0.98), p(0.5, 0.98)], (0.48, 0.48, 0.49)),
+                    ([p(0.47, 0.24), p(0.53, 0.24), p(0.53, 0.8), p(0.47, 0.8)], rune),
+                    ([p(0.5, 0.36), p(0.66, 0.5), p(0.62, 0.55), p(0.5, 0.45)], rune),
+                    ([p(0.5, 0.52), p(0.34, 0.66), p(0.38, 0.71), p(0.5, 0.61)], rune)]
+        case .mendingDraught:
+            // A round flask stoppered, half full of a red draught, a gleam on it.
+            return [([p(0.41, 0.14), p(0.59, 0.14), p(0.59, 0.4), p(0.41, 0.4)], glass),
+                    (arc(about: p(0.5, 0.64), radius: 0.32, from: 0, to: 2 * .pi), glass),
+                    (arc(about: p(0.5, 0.64), radius: 0.29, from: 0, to: .pi), (0.75, 0.25, 0.30)),
+                    ([p(0.38, 0.03), p(0.62, 0.03), p(0.6, 0.16), p(0.4, 0.16)], (0.48, 0.36, 0.24)),
+                    (arc(about: p(0.38, 0.5), radius: 0.06, from: 0, to: 2 * .pi), (0.92, 0.94, 0.96))]
+        }
+    }
+
+    /// The points along a circle's arc about `centre`, from one angle to
+    /// another, y down.
+    private static func arc(about centre: CGPoint, radius: Double, from start: Double, to end: Double) -> [CGPoint] {
+        (0...24).map { index in
+            let angle = start + (end - start) * Double(index) / 24
+            return CGPoint(x: Double(centre.x) + radius * cos(angle), y: Double(centre.y) + radius * sin(angle))
+        }
+    }
+}
+
+/// Filled outlines in a unit square drawn at `size` points, each in its
+/// shade: the store and item marks.
+private struct DrawnMark: View {
+    let parts: [(outline: [CGPoint], colour: ResourceGlyph.Shade)]
+    let size: CGFloat
+
+    var body: some View {
+        Canvas { context, canvas in
+            for part in parts {
+                var path = Path()
+                path.addLines(part.outline.map { CGPoint(x: $0.x * canvas.width, y: $0.y * canvas.height) })
+                path.closeSubpath()
+                context.fill(path, with: .color(Color(red: part.colour.red, green: part.colour.green, blue: part.colour.blue)))
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }
 
