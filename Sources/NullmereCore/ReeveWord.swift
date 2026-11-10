@@ -91,6 +91,19 @@ extension GameState {
         return (id * 100_000 + watch % 100_000) * 1_000 + about % 1_000
     }
 
+    /// A hold's reeve's own name, the same for the hold's life: the reeve
+    /// who brings the folk's hands to the keeper's gate (`Petition.Plea.hands`)
+    /// and who gives the reeve's word.
+    public func reeveName(of hold: Int) -> String {
+        let count = Petition.names.count
+        return Petition.names[((hold &* 37 &+ 11) % count + count) % count]
+    }
+
+    /// A hold's reeve as a line names them: "Alder, the reeve of Wenholme".
+    public func reeveSaid(of hold: Hold) -> String {
+        "\(reeveName(of: hold.id)), the reeve of \(hold.name)"
+    }
+
     /// The hold a reeve's word's key is of.
     public static func hold(ofWord key: Int) -> Int { key / 100_000_000 }
 

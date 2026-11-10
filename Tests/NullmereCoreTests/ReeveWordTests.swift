@@ -128,4 +128,20 @@ final class ReeveWordTests: XCTestCase {
         XCTAssertNil(world.reeveWord(of: id, for: other.owner), "nor of the keeper's for another House")
         XCTAssertNil(world.reeveWord(of: 987_654, for: me), "nor of a hold that is not")
     }
+
+    /// Each hold's reeve goes by one name for its life, the name a plea
+    /// for the folk's hands is brought by (`PetitionTests`).
+    func testAHoldsReeveGoesByOneName() throws {
+        let (world, _, id, _) = try seat()
+        let name = world.reeveName(of: id)
+        XCTAssertTrue(Petition.names.contains(name))
+        var later = world
+        later.watch += 30
+        XCTAssertEqual(later.reeveName(of: id), name, "the same reeve through the age")
+        let hold = try XCTUnwrap(world.hold(id))
+        XCTAssertEqual(world.reeveSaid(of: hold), "\(name), the reeve of \(hold.name)")
+        // Not every hold's reeve is called alike.
+        XCTAssertGreaterThan(Set(world.holds.map { world.reeveName(of: $0.id) }).count, 1)
+        XCTAssertTrue(Petition.names.contains(world.reeveName(of: -5)), "any id names a reeve")
+    }
 }

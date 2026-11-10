@@ -181,6 +181,9 @@ final class PetitionTests: XCTestCase {
         _ = world.bringPetitions()
         let hands = try XCTUnwrap(world.petition(of: me))
         XCTAssertEqual(hands.plea, .hands)
+        // The reeve who brings it is the hold's own, by the name its reeve's word goes by.
+        XCTAssertEqual(hands.name, world.reeveName(of: seat.id))
+        XCTAssertEqual(world.petitioner(of: hands), world.reeveSaid(of: try XCTUnwrap(world.hold(seat.id))))
         // Granted, a watch nearer.
         var granted = world
         try granted.perform(.answerPetition(hands.id, grant: true), as: me)

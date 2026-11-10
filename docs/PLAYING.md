@@ -1141,8 +1141,11 @@ a vote on the realm's law to cast.
   folk bring, fire on its land and your dead unburied by it. Asked afresh
   each watch and whenever its work or its danger changes (work begun, its
   ward broken by a quarter, a foe come near, a plea brought), never an
-  order; another House's hold has no reeve to speak to you. On the phone,
-  each hold on the House tab offers Hear the reeve.
+  order; another House's hold has no reeve to speak to you. Each hold's
+  reeve goes by one name for its life, written beneath their word ("Alder,
+  its reeve"), and it is they who bring the folk's hands to your gate when
+  its work is long. On the phone, each hold on the House tab offers Hear
+  them by name ("Hear Alder, the reeve").
 - **Talents.** A commander gains a talent point at each level past the
   first, twenty-nine at the thirtieth, to spend a rank at a time in three
   trees of eight talents: Steel (Keen Edge, Hunter's Mark, Quarry Call,

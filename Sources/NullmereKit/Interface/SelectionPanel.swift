@@ -147,14 +147,22 @@ struct OwnHoldDetails: View {
             // The reeve's word as the keeper turns to the hold, in their own
             // voice: this Mac's model at work, or why it gave none.
             if session.selectedHold?.id == hold.id, let word = session.reeveWord {
-                VoicingLine(session: session, key: word, who: "the reeve of \(hold.name)")
+                let reeve = state.reeveSaid(of: hold)
+                VoicingLine(session: session, key: word, who: reeve)
                 if let spoken = session.spoken[word] {
-                    Text(verbatim: "\"\(spoken)\"")
-                        .font(.nm(11.5, weight: .light).italic())
-                        .foregroundStyle(Palette.text(0.85))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
-                        .accessibilityLabel("The reeve of \(hold.name) says: \(spoken)")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: "\"\(spoken)\"")
+                            .font(.nm(11.5, weight: .light).italic())
+                            .foregroundStyle(Palette.text(0.85))
+                            .fixedSize(horizontal: false, vertical: true)
+                        // Who speaks, by the name the reeve's pleas at the gate go by.
+                        Text(verbatim: "\(state.reeveName(of: hold.id)), its reeve")
+                            .font(.nm(9.5))
+                            .foregroundStyle(Palette.text(0.45))
+                    }
+                    .transition(.opacity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(reeve), says: \(spoken)")
                 }
             }
 

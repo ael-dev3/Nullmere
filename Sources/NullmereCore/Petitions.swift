@@ -186,7 +186,9 @@ extension GameState {
             if let last = petitioned?[house.id], watch - last < Petition.every { continue }
             guard let (hold, plea, price, unit) = plea(for: house.id) else { continue }
             let id = takeID()
-            let name = Petition.names[(id &* 31 &+ house.id &* 7 &+ watch) % Petition.names.count]
+            // The reeve who brings the folk's hands is the hold's own, by the
+            // name its reeve's word goes by; the rest come as they will.
+            let name = plea == .hands ? reeveName(of: hold.id) : Petition.names[(id &* 31 &+ house.id &* 7 &+ watch) % Petition.names.count]
             let petition = Petition(id: id, house: house.id, hold: hold.id, plea: plea, arrived: watch, name: name, price: price, unit: unit)
             petitions = (petitions ?? []) + [petition]
             petitioned = (petitioned ?? [:]).merging([house.id: watch]) { $1 }

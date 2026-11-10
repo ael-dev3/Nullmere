@@ -2423,11 +2423,14 @@ struct HoldRows: View {
         .accessibilityElement(children: .combine)
         // The reeve's word on the hold, as the keeper turns to it, given by
         // this phone's own model as the Mac's gives it on the hold's card.
-        Button("Hear the reeve") { session.hear(hold: hold.id) }
+        // The reeve by the name their pleas at the gate go by, as the Mac's card names them.
+        let reeveName = session.world?.reeveName(of: hold.id)
+        let reeve = reeveName.map { "\($0), the reeve of \(hold.name)" } ?? "the reeve of \(hold.name)"
+        Button(reeveName.map { "Hear \($0), the reeve" } ?? "Hear the reeve") { session.hear(hold: hold.id) }
             .font(Night.small)
-            .accessibilityHint("The reeve of \(hold.name)'s word on it, spoken by Apple's on-device model on this phone")
+            .accessibilityHint("\(reeve)'s word on it, spoken by Apple's on-device model on this phone")
         if session.hearing == .hold(hold.id) {
-            VoicedWords(key: session.reeveWord(of: hold.id)?.key, who: "the reeve of \(hold.name)")
+            VoicedWords(key: session.reeveWord(of: hold.id)?.key, who: reeve)
         }
         if let heal = hold.heal {
             Button(heal.title) { session.give(heal.command, told: "\(heal.title) at \(hold.name)") }
