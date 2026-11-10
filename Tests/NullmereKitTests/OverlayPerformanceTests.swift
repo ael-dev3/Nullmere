@@ -21,12 +21,49 @@ final class OverlayPerformanceTests: XCTestCase {
         session.camera = camera
 
         let size = CGSize(width: 1512, height: 982)
-        // A fresh renderer each time: one renderer keeps its image.
+        // Drawn into one bitmap kept across the samples, as the game draws
+        // its marks into a layer kept from frame to frame: what is timed is
+        // their drawing, not a fresh image of 3024x1964 made and filled for
+        // each, whose cost is the test process's memory's more than the
+        // marks' (run 902 timed 27 holds, 67 companies and no blows at 4.10
+        // ms that way). A fresh renderer each time: one renderer keeps its
+        // image.
+        let pixels = CGSize(width: size.width * 2, height: size.height * 2)
+        let canvas = try XCTUnwrap(CGContext(data: nil, width: Int(pixels.width), height: Int(pixels.height), bitsPerComponent: 8,
+                                             bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         func renderOnce(modelsDrawn: Bool) -> Double {
-            let renderer = ImageRenderer(content: WorldMarks(session: session, modelsDrawn: modelsDrawn).frame(width: size.width, height: size.height))
-            renderer.scale = 2
+            let marks = ImageRenderer(content: WorldMarks(session: session, modelsDrawn: modelsDrawn).frame(width: size.width, height: size.height))
             let start = ThreadClock.milliseconds()
-            let image = renderer.cgImage
+            marks.render(rasterizationScale: 2) { _, draw in
+                canvas.saveGState()
+                canvas.clear(CGRect(origin: .zero, size: pixels))
+                canvas.scaleBy(x: 2, y: 2)
+                draw(canvas)
+                canvas.restoreGState()
+            }
+            return ThreadClock.milliseconds() - start
+        }
+        /// How many of the bitmap's points the marks drew, sampled every
+        /// eighth point of every eighth row: that the drawing timed drew.
+        func drawn() -> Int {
+            guard let data = canvas.data else { return 0 }
+            let bytes = data.bindMemory(to: UInt8.self, capacity: canvas.bytesPerRow * canvas.height)
+            var count = 0
+            for y in stride(from: 0, to: canvas.height, by: 8) {
+                for x in stride(from: 0, to: canvas.width, by: 8) where bytes[y * canvas.bytesPerRow + x * 4 + 3] > 0 {
+                    count += 1
+                }
+            }
+            return count
+        }
+        // The old way too, a fresh image each time, held to nothing: told
+        // beside the drawing alone, so a run shows what the image costs.
+        func imageOnce() -> Double {
+            let marks = ImageRenderer(content: WorldMarks(session: session, modelsDrawn: true).frame(width: size.width, height: size.height))
+            marks.scale = 2
+            let start = ThreadClock.milliseconds()
+            let image = marks.cgImage
             let elapsed = ThreadClock.milliseconds() - start
             XCTAssertNotNil(image)
             return elapsed
@@ -53,6 +90,7 @@ final class OverlayPerformanceTests: XCTestCase {
             for _ in 0..<25 {
                 times.append(renderOnce(modelsDrawn: modelsDrawn))
             }
+            XCTAssertGreaterThan(drawn(), 0, "The marks drawn in the bitmap timed (\(name))")
             times.sort()
             let median = times[times.count / 2]
             print("PERFMETRIC \(name).cpu.p50 \(String(format: "%.3f", median))")
@@ -61,6 +99,10 @@ final class OverlayPerformanceTests: XCTestCase {
             medians.append((name, median))
             plain()
         }
+        for _ in 0..<3 { _ = imageOnce() }
+        let images = (0..<25).map { _ in imageOnce() }.sorted()
+        print("PERFMETRIC marks.image.cpu.p50 \(String(format: "%.3f", images[images.count / 2]))")
+        print("PERF marks as a fresh image each time, held to nothing: median \(String(format: "%.2f", images[images.count / 2])) ms")
         let best = beside.min() ?? StagingTimes.plainPace
         print("PERFMETRIC marks.pace.cpu \(String(format: "%.3f", best))")
         let pace = min(max(best / StagingTimes.plainPace, 1), 2)
