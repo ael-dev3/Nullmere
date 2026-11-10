@@ -1834,8 +1834,29 @@ extension RallyScene {
                 && earB.world?.marksSeen(by: bel).contains { $0.at == spot && $0.kind == .hold && $0.words == words } == true
         }
         await MainActor.run { b.send(.markGround(spot, .strike, words: nil)) }
+        let refused = RuleError.notAllianceOfficer.description
         try await until("Bel refused: he neither leads the alliance nor is its officer") {
-            earB.refusals.contains(RuleError.notAllianceOfficer.description)
+            earB.refusals.contains(refused)
+        }
+        // Named an officer from Ama's client (Rise of Kingdoms' R4), Bel
+        // marks the ground himself: his mark takes the place of hers there.
+        let heard: @MainActor @Sendable (Listener, (GameEvent) -> Bool) -> Bool = { ear, match in
+            ear.events.contains { event in
+                switch event {
+                case .heard(let events), .answered(let events), .watchTurned(_, let events), .settled(_, let events): return events.contains(where: match)
+                default: return false
+                }
+            }
+        }
+        await MainActor.run { a.send(.nameOfficer(house: bel, named: true)) }
+        try await until("both to see Bel named an officer, and Bel told of it") {
+            earA.world?.alliance(of: ama)?.isOfficer(bel) == true && earB.world?.alliance(of: bel)?.isOfficer(bel) == true
+                && heard(earB) { if case .officerNamed(_, bel, true) = $0 { return true } else { return false } }
+        }
+        await MainActor.run { b.send(.markGround(spot, .strike, words: nil)) }
+        try await until("Bel's mark, made as an officer, seen by both where Ama's stood") {
+            earA.world?.marksSeen(by: ama).contains { $0.at == spot && $0.kind == .strike && $0.by == bel } == true
+                && earB.world?.marksSeen(by: bel).contains { $0.at == spot && $0.kind == .strike && $0.by == bel } == true
         }
         let id = try await MainActor.run { try XCTUnwrap(earA.world?.marksSeen(by: ama).first { $0.at == spot }?.id) }
         await MainActor.run { a.send(.unmarkGround(id)) }
@@ -1843,5 +1864,12 @@ extension RallyScene {
             earA.world?.marksSeen(by: ama).contains { $0.id == id } == false
                 && earB.world?.marksSeen(by: bel).contains { $0.id == id } == false
         }
+        // Named so no longer, he is refused again.
+        await MainActor.run { a.send(.nameOfficer(house: bel, named: false)) }
+        try await until("both to see Bel an officer no longer") {
+            earA.world?.alliance(of: ama)?.isOfficer(bel) == false && earB.world?.alliance(of: bel)?.isOfficer(bel) == false
+        }
+        await MainActor.run { b.send(.markGround(spot, .strike, words: nil)) }
+        try await until("Bel refused again") { earB.refusals.filter { $0 == refused }.count >= 2 }
     }
 }
