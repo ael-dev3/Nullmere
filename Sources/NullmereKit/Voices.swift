@@ -99,6 +99,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// The caretaker who kept the House greeting its keeper on their
         /// return, telling what passed while they were away.
         case caretaker
+        /// A commander's word to the keeper as they turn to the company
+        /// the commander leads.
+        case commander
     }
 
     public let kind: Kind
@@ -140,6 +143,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = Voicing.pedlarTask
         case .caretaker:
             task = Voicing.caretakerTask
+        case .commander:
+            task = Voicing.commanderTask
         }
         return Voicing.asking(task, facts: facts)
     }
@@ -336,6 +341,12 @@ enum VoiceFacts {
     static func caretaker(_ report: AwayReport, house: Int, in state: GameState) -> VoiceMoment {
         let title = state.houses.indices.contains(house) ? state.houses[house].title : ""
         return VoiceMoment(kind: .caretaker, facts: report.voiced(house: title).facts)
+    }
+
+    /// A commander's word on the company they lead, for the commander to
+    /// give as the keeper turns to it; nil unless they lead it at its head.
+    static func commander(_ counsel: CommanderCounsel) -> VoiceMoment? {
+        counsel.word.map { VoiceMoment(kind: .commander, facts: $0.facts) }
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {

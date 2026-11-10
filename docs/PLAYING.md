@@ -1104,6 +1104,22 @@ a vote on the realm's law to cast.
   run it, Apple Intelligence turned off, the model still downloading), the
   conversation says exactly that and nothing is answered in its place;
   everything else plays as ever.
+- **A commander's word.** Choose a company of yours that a commander
+  leads and the commander speaks up on its card, in their own voice, given
+  by the same model on your Mac: where the company stands, how strong it
+  is, what it is about (marching where, dug in, gathering, at a rally,
+  keeping an ally's gates, in battle), what your House sees within two
+  tiles of it, and the fight they led it in if it was within the last two
+  watches, from what your House knows and nothing more. It is a word, not
+  counsel: they put nothing to you and promise nothing; Take counsel is
+  where an order may be put forward. They are asked first, as you look to
+  them, and afresh each watch and whenever the company's orders or
+  fortunes change (a march ordered, dug in, its strength down by a
+  quarter), but not at each pace of a march; turn to another company and
+  the asking stops. While the model is at it the card says so, with its
+  seconds; where it gave no words, why. On the phone, a company a
+  commander leads offers Hear them on the Army tab, and the phone's own
+  model gives the same word, under the same key.
 - **Talents.** A commander gains a talent point at each level past the
   first, twenty-nine at the thirtieth, to spend a rank at a time in three
   trees of eight talents: Steel (Keen Edge, Hunter's Mark, Quarry Call,

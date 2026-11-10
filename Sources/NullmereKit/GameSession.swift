@@ -82,6 +82,10 @@ public final class GameSession {
             if selection != oldValue {
                 refreshReach()
                 refreshPathPreview()
+                // The commander of a company turned to gives their word; one
+                // turned from is no longer asked.
+                stopVoiceGone()
+                askCommanderWord()
             }
         }
     }
@@ -213,6 +217,10 @@ public final class GameSession {
         /// The caretaker's word to the keeper come back, by the watch they
         /// came back to.
         case caretaker(Int)
+        /// A commander's word as the keeper turns to the company they lead,
+        /// by `CommanderCounsel.wordKey`: the commander, the watch and what
+        /// the company is about.
+        case commander(Int)
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -232,6 +240,7 @@ public final class GameSession {
             case .grave(let key): return "grave-\(key)"
             case .pedlar(let key): return "pedlar-\(key)"
             case .caretaker(let watch): return "caretaker-\(watch)"
+            case .commander(let key): return "commander-\(key)"
             }
         }
 
@@ -250,6 +259,7 @@ public final class GameSession {
             case "grave": self = .grave(number)
             case "pedlar": self = .pedlar(number)
             case "caretaker": self = .caretaker(number)
+            case "commander": self = .commander(number)
             default: return nil
             }
         }
@@ -2906,6 +2916,7 @@ public final class GameSession {
     /// that touch the player, one at a time.
     private func askVoices() {
         guard voice != nil else { return }
+        askCommanderWord()
         // The caretaker's word to the keeper come back, first: it greets
         // them as they enter.
         if let report = awayReport, !asked.contains(.caretaker(report.watch)) {
@@ -2978,12 +2989,36 @@ public final class GameSession {
         speakNext()
     }
 
+    /// Counsel of the commander at the head of the keeper's company chosen,
+    /// from what the House knows; nil for none.
+    private var chosenCommander: CommanderCounsel? {
+        guard let unit = selectedUnit, unit.owner == player, let leader = unit.leader else { return nil }
+        return CommanderCounsel(state: state, player: player, commander: leader, reports: reports)
+    }
+
+    /// The key the word of the commander at the head of the keeper's
+    /// company chosen is kept under now, as its card shows it; nil for none.
+    public var commanderWord: Spoken? { chosenCommander?.wordKey.map(Spoken.commander) }
+
+    /// The commander of the company the keeper has turned to gives their
+    /// word first, for the keeper looks to them now; asked afresh as the
+    /// watch turns or the company's orders or fortunes change.
+    private func askCommanderWord() {
+        guard voice != nil, let counsel = chosenCommander, let key = counsel.wordKey.map(Spoken.commander), !asked.contains(key),
+              let moment = VoiceFacts.commander(counsel) else { return }
+        asked.insert(key)
+        voiceQueue.insert((key, moment), at: 0)
+        speakNext()
+    }
+
     private func speakNext() {
         guard !isSpeaking, let voice, !voiceQueue.isEmpty else { return }
         let (key, moment) = voiceQueue.removeFirst()
         // An envoy answered or gone, or a plea answered or withdrawn, before
-        // its turn is not voiced.
+        // its turn is not voiced; a commander turned from before theirs may
+        // be turned to again, and asked then.
         guard stillVoiced(key) else {
+            if case .commander = key { asked.remove(key) }
             speakNext()
             return
         }
@@ -2997,12 +3032,25 @@ public final class GameSession {
             // Stopped because what it spoke for has gone: nothing of it kept.
             if !Task.isCancelled {
                 if let words = heard.words {
+                    // A commander's fresh word lets their last go, so a long
+                    // age keeps one word of each, not one of every watch.
+                    if case .commander(let fresh) = key {
+                        let who = CommanderCounsel.commander(ofWord: fresh)
+                        let last = self.spoken.keys.filter { kept in
+                            if case .commander(let old) = kept { return old != fresh && CommanderCounsel.commander(ofWord: old) == who }
+                            return false
+                        }
+                        for kept in last { self.spoken[kept] = nil }
+                    }
                     withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
                     self.unvoiced[key] = nil
                     self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
                 } else if let trouble = heard.trouble {
                     self.unvoiced[key] = trouble.unvoiced
                 }
+            } else if case .commander = key {
+                // Turned from mid-word: asked again if turned to again.
+                self.asked.remove(key)
             }
             self.isSpeaking = false
             self.speakNext()
@@ -3012,15 +3060,17 @@ public final class GameSession {
     /// Whether what a voice speaks for is still before the keeper: an
     /// envoy still waiting on its answer, a plea still at the gate, the
     /// pedlar's call while he lies off the hold with his wares as they were
-    /// when he called, the caretaker's word while their card stands; the
-    /// rest (what the Still showed, a prisoner's word, the lake's riddle,
-    /// the chronicle) stays.
+    /// when he called, the caretaker's word while their card stands, a
+    /// commander's word while the keeper looks to their company as it was
+    /// when asked; the rest (what the Still showed, a prisoner's word, the
+    /// lake's riddle, the chronicle) stays.
     func stillVoiced(_ key: Spoken) -> Bool {
         switch key {
         case .envoy(let id): return state.envoys.contains { $0.id == id }
         case .petition(let id): return state.petition(of: player)?.id == id
         case .pedlar(let key): return state.pedlar(for: player).map(GameState.voiceKey(of:)) == key
         case .caretaker(let watch): return awayReport?.watch == watch
+        case .commander: return commanderWord == key
         default: return true
         }
     }

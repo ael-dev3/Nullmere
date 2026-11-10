@@ -702,6 +702,19 @@ struct UnitPanel: View {
                     .foregroundStyle(Palette.glowWords)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // The commander's word as the keeper turns to their company, in
+            // their own voice: this Mac's model at work, or why it gave none.
+            if mine, let word = session.commanderWord, let leader = unit.leader.flatMap({ state.commander($0) }) {
+                VoicingLine(session: session, key: word, who: leader.name)
+                if let spoken = session.spoken[word] {
+                    Text(verbatim: "\"\(spoken)\"")
+                        .font(.nm(11.5, weight: .light).italic())
+                        .foregroundStyle(Palette.text(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                        .accessibilityLabel("\(leader.name) says: \(spoken)")
+                }
+            }
             if mine, let errand = UnitPanel.errand(of: unit, in: state) {
                 Text(verbatim: errand)
                     .font(.nm(10.5))

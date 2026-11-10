@@ -468,6 +468,54 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// The keeper asks to hear a commander of theirs from the phone: their
+    /// word on the company they lead is asked of the phone's own model
+    /// first, keyed as the Mac keys it, from what the House knows of the
+    /// company alone; a company no commander leads has no word; let go, no
+    /// one is heard.
+    func testTheKeeperHearsACommanderOfTheirsFirst() async throws {
+        let (db, running, mac, keeper, steward) = try await realm()
+        defer { running.cancel() }
+        let house = try XCTUnwrap(keeper.house)
+        await steward.reshape { state in
+            guard let commander = state.world.commanders(of: house).first,
+                  let index = state.world.units.firstIndex(where: { $0.owner == house && $0.kind.isMilitary }) else { return }
+            state.world.units[index].leader = commander.id
+        }
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: PassingMemory()) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in, a company of the House led") {
+            phone.phase == .keeping && phone.world?.units(of: house).contains { $0.leader != nil } == true
+        }
+        let world = try XCTUnwrap(phone.world)
+        let led = try XCTUnwrap(world.units(of: house).first { $0.leader != nil })
+        let counsel = try XCTUnwrap(CommanderCounsel(state: world, player: house, commander: try XCTUnwrap(led.leader), reports: phone.reports))
+        let key = try XCTUnwrap(counsel.wordKey)
+        let word = try XCTUnwrap(phone.commanderWord(of: led.id))
+        XCTAssertEqual(word.key, "commander-\(key)", "kept as the Mac keeps it")
+        XCTAssertEqual(word.key, CompanionSession.commanderKey(key))
+        XCTAssertEqual(word.moment, counsel.word, "from what the House knows of the company alone")
+        XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("commander-") }, "none heard until asked")
+        phone.hear(company: led.id)
+        XCTAssertEqual(phone.hearing, led.id)
+        XCTAssertEqual(phone.voicedMoments.first, word, "the commander the keeper asked to hear, first")
+        XCTAssertEqual(phone.voicedMoments.count, 1 + (phone.ledger?.voices.count ?? 0))
+        if let unled = world.units(of: house).first(where: { $0.leader == nil }) {
+            XCTAssertNil(phone.commanderWord(of: unled.id))
+            phone.hear(company: unled.id)
+            XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("commander-") }, "no commander, no word")
+        }
+        for foreign in world.units where foreign.owner != house {
+            XCTAssertNil(phone.commanderWord(of: foreign.id), "another House's commanders are not the keeper's to hear")
+        }
+        phone.unlink()
+        XCTAssertNil(phone.hearing)
+        XCTAssertNil(phone.commanderWord(of: led.id), "let go, no one is heard")
+        mac.close()
+    }
+
     /// A chest of the Lantern Inn opened from the phone: the realm's word on
     /// it says what it held, as the Mac tells it, and the key is spent.
     func testAChestOfTheInnOpenedFromThePhoneSaysWhatItHeld() async throws {

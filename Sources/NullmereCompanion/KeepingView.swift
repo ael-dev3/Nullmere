@@ -1562,6 +1562,16 @@ struct CompanyRows: View {
                 .foregroundStyle(Night.ink.opacity(0.75))
         }
         .accessibilityElement(children: .combine)
+        // The commander's word on the company, as the keeper turns to it,
+        // given by this phone's own model as the Mac's gives it on its card.
+        if let leader = company.leader {
+            Button("Hear \(leader)") { session.hear(company: company.id) }
+                .font(Night.small)
+                .accessibilityHint("\(leader)'s word on the company, spoken by Apple's on-device model on this phone")
+            if session.hearing == company.id {
+                VoicedWords(key: session.commanderWord(of: company.id)?.key, who: leader)
+            }
+        }
         if !company.orders.isEmpty || !company.marches.isEmpty {
             HStack(spacing: 10) {
                 ForEach(company.orders) { order in

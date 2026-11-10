@@ -208,12 +208,42 @@ public final class CompanionSession {
     /// as the Mac keeps it: the watch they came back to.
     public static func caretakerKey(_ away: AwayReport) -> String { "caretaker-\(away.watch)" }
 
+    /// The key a commander's word is kept under, as the Mac keeps it
+    /// (`CommanderCounsel.wordKey`): the commander, the watch and what their
+    /// company is about.
+    public static func commanderKey(_ key: Int) -> String { "commander-\(key)" }
+
+    /// The company of the House whose commander the keeper asked to hear,
+    /// if any.
+    public private(set) var hearing: Int?
+
+    /// The keeper asks to hear the commander at the head of a company of
+    /// theirs: their word is asked of this phone's own model first.
+    public func hear(company: Int) {
+        hearing = company
+    }
+
+    /// The word of the commander at the head of a company of the House, as
+    /// this phone's own model is asked for it, from what the House knows of
+    /// the company alone and keyed as the Mac keys it, so a new watch, a
+    /// new order or a turn in its fortunes calls afresh; nil unless the
+    /// phone speaks for the keeper and a commander of theirs leads it.
+    public func commanderWord(of company: Int) -> Voicing.Keyed? {
+        guard phase == .keeping, let world, let house = keeper?.house, let unit = world.unit(company), unit.owner == house,
+              let leader = unit.leader,
+              let counsel = CommanderCounsel(state: world, player: house, commander: leader, reports: reports),
+              let key = counsel.wordKey, let moment = counsel.word else { return nil }
+        return Voicing.Keyed(key: CompanionSession.commanderKey(key), moment: moment)
+    }
+
     /// The realm's characters this phone's own model gives words to, as the
-    /// ledger keys them, with the caretaker's word to the keeper come back
-    /// first while its card stands.
+    /// ledger keys them: the commander the keeper asked to hear first, for
+    /// they look to them now, then the caretaker's word to the keeper come
+    /// back while its card stands.
     public var voicedMoments: [Voicing.Keyed] {
+        let commander = hearing.flatMap { commanderWord(of: $0) }.map { [$0] } ?? []
         let caretaker = away.map { [Voicing.Keyed(key: CompanionSession.caretakerKey($0), moment: $0.voiced(house: awayTitle))] } ?? []
-        return caretaker + (ledger?.voices ?? [])
+        return commander + caretaker + (ledger?.voices ?? [])
     }
 
     public func dismissAway() {
@@ -479,6 +509,7 @@ public final class CompanionSession {
         memory.counsel = [:]
         memory.lastSeen = nil
         away = nil
+        hearing = nil
         keeper = nil
         world = nil
         ledger = nil

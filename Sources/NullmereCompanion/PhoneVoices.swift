@@ -39,11 +39,11 @@ final class PhoneVoices {
     var unavailable: String? { writer.unvoiced }
 
     /// The moments the ledger keys now: each not yet asked is asked in its
-    /// turn, where the model can be asked at all. One the ledger keys no
-    /// longer (an envoy answered or gone, a plea answered or withdrawn) is
-    /// not asked, and its asking is stopped there, the model going on at
-    /// once to what still waits, as on the Mac; keyed again, it is asked
-    /// again.
+    /// turn, in the order keyed, where the model can be asked at all. One
+    /// the ledger keys no longer (an envoy answered or gone, a plea answered
+    /// or withdrawn, a commander the keeper turned from) is not asked, and
+    /// its asking is stopped there, the model going on at once to what
+    /// still waits, as on the Mac; keyed again, it is asked again.
     func hear(_ moments: [Voicing.Keyed]) {
         guard writer.unvoiced == nil else { return }
         let keyed = Set(moments.map(\.key))
@@ -59,6 +59,10 @@ final class PhoneVoices {
             asked.insert(moment.key)
             queue.append(moment)
         }
+        // Asked in the order the ledger keys them, so one the keeper looks
+        // to now (a commander they asked to hear) goes before the rest.
+        let order = Dictionary(moments.enumerated().map { ($0.element.key, $0.offset) }, uniquingKeysWith: { first, _ in first })
+        queue.sort { order[$0.key, default: .max] < order[$1.key, default: .max] }
         next()
     }
 
