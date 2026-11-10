@@ -678,6 +678,125 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(Double(cold), 0.7 * Double(near), "in their own cold colour, no fire's")
     }
 
+    /// Points brighter in one picture than another by more than `by`
+    /// luminance levels, sampled every other pixel, within `radius` of a
+    /// point and beyond it; and how many of those within are warm, their
+    /// red risen over their blue.
+    static func brighter(_ lit: Drawn, than bare: Drawn, about point: CGPoint, within radius: Double, by: Double = 4)
+        -> (near: Int, warm: Int, beyond: Int) {
+        var near = 0, warm = 0, beyond = 0
+        for y in stride(from: 0, to: height, by: 2) {
+            for x in stride(from: 0, to: width, by: 2) where abs(lit.luminance(x, y) - bare.luminance(x, y)) > by {
+                guard hypot(Double(x) - Double(point.x), Double(y) - Double(point.y)) < radius else {
+                    beyond += 1
+                    continue
+                }
+                near += 1
+                // The pixels being BGRA: red against blue.
+                let i = (y * width + x) * 4
+                if Double(lit.pixels[i + 2]) - Double(bare.pixels[i + 2]) > 1.3 * (Double(lit.pixels[i]) - Double(bare.pixels[i])) { warm += 1 }
+            }
+        }
+        return (near, warm, beyond)
+    }
+
+    /// A hold taken, as the session stages it and the game draws it: the
+    /// keeper's banner at their seat's keep lowered into the earth, the
+    /// ground bare a moment, then the taker's raised out of it and
+    /// standing; drawn every third of a second through the seven and kept
+    /// as a moving picture at that pace (world-taken-motion.gif). Beside the
+    /// same seat drawn with nothing taken, the banners change the picture
+    /// about their ground as each stands, and not while the ground is bare.
+    @MainActor
+    func testABannerIsLoweredAndTheTakersRaisedAtAHoldTaken() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let state = WorldRenderTests.world.state
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let foe = (me + 1) % state.houses.count
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let taken = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("taken")))
+        let kept = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("kept")))
+        let centre = Relief.centre(of: seat.position)
+        let planted = (x: Double(centre.x + WorldStage.captureOffset.x), z: Double(centre.z + WorldStage.captureOffset.z))
+        let camera = Camera(centerX: planted.x, centerY: planted.z, scale: 150, tilt: 0.95, heading: 0)
+        taken.camera = camera
+        kept.camera = camera
+        taken.showBlows([.holdCaptured(hold: seat.id, from: me, by: foe)])
+        let foot = camera.viewPoint(worldX: planted.x, worldY: planted.z, height: Double(WorldRenderTests.world.relief.height(of: seat.position)),
+                                    in: WorldRenderTests.size)
+        let start = Date()
+        let step = 0.35
+        var frames: [Drawn] = [], about: [Int] = [], beyond = 0
+        for index in 0..<20 {
+            let time = 20 + Double(index) * step
+            let now = start.addingTimeInterval(time - 20)
+            let drawn = try draw(renderer, "taken \(index)", camera: camera, tiles: taken.tileBytes, scene: taken.sceneFrame(at: time, now: now),
+                                 time: Float(time))
+            let bare = try draw(renderer, "kept \(index)", camera: camera, tiles: kept.tileBytes, scene: kept.sceneFrame(at: time, now: now),
+                                time: Float(time))
+            frames.append(drawn)
+            let changed = WorldRenderTests.brighter(drawn, than: bare, about: foot, within: 220)
+            about.append(changed.near)
+            beyond += changed.beyond
+        }
+        print("RENDER taken: banner points about its ground by frame \(about); \(beyond) beyond it in all")
+        // A third of a second a frame: the keeper's standing at first, the
+        // ground bare at 1.4 s, the taker's standing from 2.8 s.
+        XCTAssertGreaterThan(about[0], 20, "the keeper's banner standing at its keep as the hold is taken")
+        XCTAssertLessThan(about[4], about[0] / 4 + 3, "the ground bare a moment between the two")
+        XCTAssertGreaterThan(about[10], 20, "the taker's raised and standing")
+        try keepMoving(frames, as: "world-taken-motion", delay: step)
+    }
+
+    /// A company of the keeper's come through the fighting a rank higher,
+    /// as the session stages it and the game draws it: gold climbing about
+    /// it and a warm light swelling over it, drawn a tenth of a second
+    /// apart for two and kept as a moving picture (world-glory-motion.gif).
+    /// Beside the same company drawn with no glory, half a second in, they
+    /// brighten its ground, warm.
+    @MainActor
+    func testACompanyRaisedInRankIsLitInGold() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let state = WorldRenderTests.world.state
+        let me = state.player
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let raised = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("raised")))
+        let plain = GameSession(state: state, store: LocalStore(directory: directory.appendingPathComponent("plain")))
+        let centre = Relief.centre(of: company.position)
+        let camera = Camera(centerX: Double(centre.x), centerY: Double(centre.z), scale: 120, tilt: 0.95, heading: 0)
+        raised.camera = camera
+        plain.camera = camera
+        raised.showBlows([.promoted(unit: company.id, owner: me, rank: 1)])
+        XCTAssertEqual(raised.glories.map(\.unit), [company.id])
+        let heart = camera.viewPoint(of: company.position, height: Double(WorldRenderTests.world.relief.height(of: company.position)),
+                                     in: WorldRenderTests.size)
+        let start = Date()
+        var frames: [Drawn] = []
+        var lit = (near: 0, warm: 0, beyond: 0)
+        for index in 0..<WorldRenderTests.motionFrames {
+            let time = 20 + Double(index) * WorldRenderTests.motionStep
+            let now = start.addingTimeInterval(time - 20)
+            let drawn = try draw(renderer, "glory \(index)", camera: camera, tiles: raised.tileBytes, scene: raised.sceneFrame(at: time, now: now),
+                                 time: Float(time))
+            frames.append(drawn)
+            // Half a second in: the gold climbing, the light swelling.
+            guard index == 5 else { continue }
+            let bare = try draw(renderer, "no glory", camera: camera, tiles: plain.tileBytes, scene: plain.sceneFrame(at: time, now: now),
+                                time: Float(time))
+            lit = WorldRenderTests.brighter(drawn, than: bare, about: heart, within: 200, by: 3)
+        }
+        print("RENDER glory: \(lit.near) points brighter about the company half a second on, \(lit.warm) of them warm; \(lit.beyond) beyond")
+        XCTAssertGreaterThan(lit.near, 30, "the gold and its light brighten the company's ground")
+        XCTAssertGreaterThan(Double(lit.warm), 0.6 * Double(lit.near), "gold, warm")
+        try keepMoving(frames, as: "world-glory-motion")
+    }
+
     /// A plea at the gate stands in the world: the seat's ward broken, one
     /// of its folk waits just beyond its gate as the seat is drawn, facing
     /// in, a lantern in hand, in the House's colour, while the plea waits on
@@ -1339,7 +1458,7 @@ final class WorldRenderTests: XCTestCase {
     /// Keeps frames in motion as a moving picture, looping, when
     /// NULLMERE_KEEP_RENDERS names a folder: the middle two thirds of
     /// each frame each way, where the scene is, at the pixels drawn.
-    func keepMoving(_ frames: [Drawn], as name: String) throws {
+    func keepMoving(_ frames: [Drawn], as name: String, delay: Double = WorldRenderTests.motionStep) throws {
         guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
         try FileManager.default.createDirectory(at: URL(fileURLWithPath: path), withIntermediateDirectories: true)
         let url = URL(fileURLWithPath: path).appendingPathComponent("\(name).gif")
@@ -1350,7 +1469,7 @@ final class WorldRenderTests: XCTestCase {
         for drawn in frames {
             let image = try XCTUnwrap(try WorldRenderTests.image(drawn).cropping(to: middle))
             CGImageDestinationAddImage(destination, image,
-                                       [kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFDelayTime as String: WorldRenderTests.motionStep]] as CFDictionary)
+                                       [kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFDelayTime as String: delay]] as CFDictionary)
         }
         XCTAssertTrue(CGImageDestinationFinalize(destination), "\(name) kept as a moving picture")
     }
