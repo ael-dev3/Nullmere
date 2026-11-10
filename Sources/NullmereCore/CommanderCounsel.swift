@@ -92,8 +92,8 @@ public struct CommanderCounsel: Sendable {
         vast black lake of still water under the moon. \(bent) Speak as yourself to your keeper: grave, spare \
         and plain, as an old soldier speaks, in at most three sentences and seventy words, with no exclamation \
         marks and no modern words. Know only what you are told here and what your looks tell you: never invent \
-        a number, a name, a place or an event. To learn more, look: at a company, about your own company, or \
-        at your House's affairs. You may put an order to your keeper only by proposing it, and you never give \
+        a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
+        your House's affairs, or at another House by its name. You may put an order to your keeper only by proposing it, and you never give \
         one yourself: say that you have put it forward, and that the keeper decides. Name companies by their \
         handles and names as given. Never speak of games, players, turns, rules, models or tools.
         """
@@ -250,6 +250,47 @@ public struct CommanderCounsel: Sendable {
                              + "\(GameState.counted(sighting.troops)) troops, marching dark \(state.placeName(of: sighting.at)).")
             }
         }
+        return lines.joined(separator: " ")
+    }
+
+    /// What the House knows of another House, asked for by its name: where
+    /// it stands by might and by foes slain, its alliance, how it stands with
+    /// the commander's House, its holds and its seat, all as the keeper's
+    /// view tells them. Found by its title or its name, case aside, else by
+    /// a title holding the words asked; the commander's own House, a name
+    /// the realm doesn't know and no name at all each said so.
+    public func report(onHouse asked: String) -> String {
+        let given = asked.trimmingCharacters(in: .whitespacesAndNewlines)
+        let wanted = given.lowercased()
+        guard !wanted.isEmpty else { return "Name the House to look at." }
+        let living = state.livingHouses
+        guard let house = living.first(where: { $0.title.lowercased() == wanted || $0.name.lowercased() == wanted })
+                ?? living.first(where: { $0.title.lowercased().contains(wanted) }) else {
+            return "Your House knows of no House called \(given)."
+        }
+        guard house.id != player else { return "That is your own House: look at its affairs." }
+        var lines: [String] = []
+        let might = state.ranking(.might, for: house.id, most: 0)
+        if let place = might.place {
+            lines.append("\(house.title) stands \(briefOrdinal(place)) of \(GameState.counted(might.count)) by might, "
+                         + "with might \(GameState.counted(state.might(of: house.id))).")
+        }
+        let slain = state.ranking(.slain, for: house.id, most: 0)
+        if let place = slain.place {
+            lines.append("It has slain \(GameState.counted(state.slain(by: house.id))) foes this age, "
+                         + "\(briefOrdinal(place)) of \(GameState.counted(slain.count)) by foes slain.")
+        } else {
+            lines.append("It has slain no foe this age.")
+        }
+        lines.append(state.alliance(of: house.id).map { "It is sworn to \($0.name)." } ?? "It is sworn to no alliance.")
+        switch state.stance(player, house.id) {
+        case .war: lines.append("Your House is at war with it.")
+        case .peace: lines.append("Your House is at peace with it.")
+        case .pact: lines.append("Your House has a pact with it.")
+        }
+        let holds = state.holds(of: house.id).count
+        lines.append("It holds \(holds == 1 ? "1 hold" : "\(holds) holds").")
+        if let seat = state.seat(of: house.id) { lines.append("Its seat is \(seat.name).") }
         return lines.joined(separator: " ")
     }
 

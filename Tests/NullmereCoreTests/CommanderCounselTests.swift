@@ -202,6 +202,51 @@ final class CommanderCounselTests: XCTestCase {
                       "\(seen.voiced(envoy).facts)")
     }
 
+    /// A commander looks at another House by its name, as the keeper's view
+    /// tells it: where it stands by might and by foes slain, its alliance,
+    /// how it stands with theirs, its holds and its seat; found by its title
+    /// or name, case aside, or a title holding the words asked; their own
+    /// House, an unknown name and no name each said so.
+    func testACommanderLooksAtAnotherHouseByItsName() throws {
+        var (counsel, world) = try counsel("another house")
+        let me = counsel.player
+        let other = (me + 1) % world.houses.count
+        let title = world.houses[other].title, name = world.houses[other].name
+        let view = world.view(for: me)
+        let place = try XCTUnwrap(view.ranking(.might, for: other, most: 0).place)
+        let report = counsel.report(onHouse: title)
+        XCTAssertTrue(report.hasPrefix("\(title) stands \(briefOrdinal(place)) of \(view.livingHouses.count) by might, "
+                                       + "with might \(GameState.counted(view.might(of: other)))."), report)
+        XCTAssertTrue(report.contains("It has slain no foe this age."), report)
+        XCTAssertTrue(report.contains("It is sworn to no alliance."), report)
+        XCTAssertTrue(report.contains("Your House is at peace with it."), report)
+        let holds = view.holds(of: other).count
+        XCTAssertTrue(report.contains("It holds \(holds == 1 ? "1 hold" : "\(holds) holds")."), report)
+        XCTAssertTrue(report.contains("Its seat is \(try XCTUnwrap(view.seat(of: other)).name)."), report)
+        XCTAssertEqual(counsel.report(onHouse: "  \(name.uppercased()) "), report, "by its name, case aside")
+        XCTAssertEqual(counsel.report(onHouse: "use \(name)"), report, "or a title holding the words asked")
+        XCTAssertEqual(counsel.report(onHouse: "the Drowned Moon"), "Your House knows of no House called the Drowned Moon.")
+        XCTAssertEqual(counsel.report(onHouse: " "), "Name the House to look at.")
+        XCTAssertEqual(counsel.report(onHouse: world.houses[me].title), "That is your own House: look at its affairs.")
+        XCTAssertTrue(counsel.instructions.contains("at another House by its name"))
+
+        // At war, having slain, and sworn to an alliance.
+        world.setStance(.war, between: me, and: other, by: me)
+        world.foesSlain = [Int](repeating: 0, count: world.houses.count)
+        world.foesSlain![other] = 1_300
+        _ = try world.perform(.foundAlliance(name: "The Reed Accord"), as: other)
+        var seen = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        var told = seen.report(onHouse: title)
+        XCTAssertTrue(told.contains("It has slain 1,300 foes this age, first of 1 by foes slain."), told)
+        XCTAssertTrue(told.contains("It is sworn to The Reed Accord."), told)
+        XCTAssertTrue(told.contains("Your House is at war with it."), told)
+        // And in a pact.
+        world.setStance(.pact, between: me, and: other, by: me)
+        seen = try XCTUnwrap(CommanderCounsel(state: world.view(for: me), player: me, commander: counsel.commander.id))
+        told = seen.report(onHouse: title)
+        XCTAssertTrue(told.contains("Your House has a pact with it."), told)
+    }
+
     /// An order is only ever proposed, read as the order book reads it: a
     /// march to a place the House knows is put forward as the realm would
     /// take it; one the realm wouldn't is told why, and nothing else is a
