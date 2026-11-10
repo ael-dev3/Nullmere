@@ -265,7 +265,8 @@ a vote on the realm's law to cast.
   what happened to the House meanwhile, as the Mac tells a keeper come back
   to it: the watches passed, the stores' change, holds won or lost, what the
   Chronicle tells of the House, and the caretaker's keeping of standing
-  orders; Done puts it away.
+  orders, with the caretaker's own greeting above it in the words the
+  phone's model gives them; Done puts it away.
 - **House.** The realm, its age and watch, the time until the watch turns
   and how many keepers are there and ready, and what still waits for
   orders, as the Mac's top bar says it ("2 companies wait · 1 hold idle"),

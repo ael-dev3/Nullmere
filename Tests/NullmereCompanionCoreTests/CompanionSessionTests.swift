@@ -429,8 +429,15 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(away.watches, 1)
         XCTAssertTrue(away.title.hasPrefix("While you were away"), away.title)
         XCTAssertFalse(away.changes.isEmpty, "The stores' change told")
+        // Its caretaker's word, given first by the phone's own model, keyed
+        // as the Mac keys it, from what the report holds.
+        let title = try XCTUnwrap(phone.world).houses[house].title
+        XCTAssertEqual(phone.voicedMoments.first?.key, "caretaker-\(away.watch)")
+        XCTAssertEqual(phone.voicedMoments.first?.moment, away.voiced(house: title))
+        XCTAssertEqual(phone.voicedMoments.count, 1 + (phone.ledger?.voices.count ?? 0))
         phone.dismissAway()
         XCTAssertNil(phone.away)
+        XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("caretaker-") }, "put away, no word wanted")
 
         phone.unlink()
         XCTAssertNil(memory.lastSeen, "Let go, it remembers nothing of the House")

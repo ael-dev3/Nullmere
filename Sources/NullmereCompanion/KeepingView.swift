@@ -53,13 +53,13 @@ struct KeepingView: View {
             #if DEBUG
             if let shown = CompanionCheck.tabShown { tab = shown }
             #endif
-            PhoneVoices.shared.hear(session.ledger?.voices ?? [])
+            PhoneVoices.shared.hear(session.voicedMoments)
         }
         // The realm's characters given words by this phone's own model as
         // they come, as the Mac gives them; forgotten when the phone is let
         // go and links to no one.
-        .onChange(of: session.ledger?.voices) {
-            PhoneVoices.shared.hear(session.ledger?.voices ?? [])
+        .onChange(of: session.voicedMoments) {
+            PhoneVoices.shared.hear(session.voicedMoments)
         }
         .onChange(of: session.phase) {
             if session.phase == .pairing { PhoneVoices.shared.forget() }
@@ -1294,6 +1294,9 @@ struct AwaySection: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(verbatim: away.title)
                     .font(Night.heading)
+                // The caretaker who kept the House greets its keeper, in the
+                // words this phone's model gives them.
+                VoicedWords(key: CompanionSession.caretakerKey(away), who: "the caretaker")
                 if !away.changes.isEmpty {
                     Text(verbatim: away.changes.map { "\($0.resource.title) \($0.delta > 0 ? "+" : "\u{2212}")\(abs($0.delta))" }
                         .joined(separator: "   "))

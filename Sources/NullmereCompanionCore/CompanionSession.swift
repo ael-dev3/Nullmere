@@ -78,6 +78,8 @@ public final class CompanionSession {
     /// What happened to the House while the phone was set aside, told as it
     /// comes in again, until the keeper puts it away.
     public private(set) var away: AwayReport?
+    /// The House the report tells of, as its caretaker names it.
+    private var awayTitle = ""
     public private(set) var isReady = false
     /// The realm can't be reached just now, and why.
     public private(set) var outOfReach: String?
@@ -202,6 +204,18 @@ public final class CompanionSession {
     }
 
     /// The report of what happened while away, put away.
+    /// The key the caretaker's word to a keeper come back is kept under,
+    /// as the Mac keeps it: the watch they came back to.
+    public static func caretakerKey(_ away: AwayReport) -> String { "caretaker-\(away.watch)" }
+
+    /// The realm's characters this phone's own model gives words to, as the
+    /// ledger keys them, with the caretaker's word to the keeper come back
+    /// first while its card stands.
+    public var voicedMoments: [Voicing.Keyed] {
+        let caretaker = away.map { [Voicing.Keyed(key: CompanionSession.caretakerKey($0), moment: $0.voiced(house: awayTitle))] } ?? []
+        return caretaker + (ledger?.voices ?? [])
+    }
+
     public func dismissAway() {
         away = nil
     }
@@ -316,6 +330,7 @@ public final class CompanionSession {
             memory.realm = realm
             if let house = keeper.house, let seen = memory.lastSeen, seen.house == house {
                 away = AwayReport(since: seen, now: world, player: house)
+                awayTitle = world.houses.indices.contains(house) ? world.houses[house].title : ""
             }
             show(world)
         case .refused(let error):
