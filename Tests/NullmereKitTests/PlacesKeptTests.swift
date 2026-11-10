@@ -80,6 +80,24 @@ final class PlacesKeptTests: XCTestCase {
         draw(MiniMap(session: session), width: MiniMap.side + 12, height: MiniMap.side + 12)
         try CardShot.keep(PlacesSection(session: session, open: true).padding(16).frame(width: 360).background(Palette.panel),
                           as: "game-places.png")
+        // And on the land itself, each by a pennant beside its hex's heart,
+        // the same size however near the view: kept with CI's screenshots
+        // over the painted land of a Mac that cannot draw the world.
+        let pennant = WorldMarks.pennant(at: CGPoint(x: 100, y: 100), scale: 50).boundingRect
+        XCTAssertEqual(pennant.minX, 121, accuracy: 0.001, "beside the hex's heart, to its right")
+        XCTAssertEqual(pennant.maxY, 96, accuracy: 0.001, "its foot a little above the heart")
+        XCTAssertEqual(pennant.width, 7, accuracy: 0.001)
+        XCTAssertEqual(pennant.height, 11, accuracy: 0.001)
+        let nearer = WorldMarks.pennant(at: CGPoint(x: 100, y: 100), scale: 20).boundingRect
+        XCTAssertEqual(nearer.width, pennant.width, accuracy: 0.001, "the same size however near")
+        XCTAssertEqual(nearer.height, pennant.height, accuracy: 0.001)
+        var camera = session.camera
+        camera.focus(on: seat.position)
+        camera.scale = 34
+        session.camera = camera
+        let size = CGSize(width: 900, height: 600)
+        try CardShot.keep(ZStack { WorldFallback(session: session); WorldMarks(session: session) }
+            .frame(width: size.width, height: size.height), as: "world-places.png", size: size)
 
         // Forgotten from its row; and kept by this Mac, so a session begun
         // again has what was left.

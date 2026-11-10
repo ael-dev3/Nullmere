@@ -167,6 +167,22 @@ struct WorldMarks: View {
         min(max((18 - scale) / 6, 0), 1)
     }
 
+    /// A place kept in the keeper's book, marked by a small pennant on its
+    /// staff beside the hex's heart (to its right, its foot a little above
+    /// the heart) so it never covers what stands there; the same size
+    /// however near the view, as the interface's own marks are.
+    static func pennant(at point: CGPoint, scale: Double) -> Path {
+        let foot = CGPoint(x: point.x + CGFloat(scale * 0.42), y: point.y - CGFloat(scale * 0.08))
+        let height: CGFloat = 11, width: CGFloat = 7
+        var path = Path()
+        path.move(to: foot)
+        path.addLine(to: CGPoint(x: foot.x, y: foot.y - height))
+        path.addLine(to: CGPoint(x: foot.x + width, y: foot.y - height * 0.72))
+        path.addLine(to: CGPoint(x: foot.x, y: foot.y - height * 0.44))
+        path.closeSubpath()
+        return path
+    }
+
     /// Where the land's names stand at a scale, as `drawLand` sets them;
     /// none while they don't show. The Houses' names from afar stand clear
     /// of them where they can (`HouseNamesAfar`).
@@ -270,6 +286,18 @@ struct WorldMarks: View {
                 WorldMarks.drawLand(atlas, hovered: session.hovered, scale: scale, size: size, in: &context) {
                     session.viewPoint(of: $0, in: size)
                 }
+            }
+
+            // The places the keeper keeps in their book, each a small pale
+            // pennant on its staff beside where it lies, as the small map
+            // marks each by a diamond and the phone's chart by a pennant.
+            let bounds = CGRect(origin: .zero, size: size).insetBy(dx: -24, dy: -24)
+            for place in session.placeBook.places {
+                let point = session.viewPoint(of: place.at, in: size)
+                guard bounds.contains(point) else { continue }
+                let pennant = WorldMarks.pennant(at: point, scale: scale)
+                context.fill(pennant, with: .color(Palette.glowWords.opacity(0.92)))
+                context.stroke(pennant, with: .color(Color.black.opacity(0.55)), lineWidth: 0.6)
             }
 
             // The route the selected company would march.
