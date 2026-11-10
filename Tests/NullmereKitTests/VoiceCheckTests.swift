@@ -71,6 +71,9 @@ final class VoiceCheckTests: XCTestCase {
         XCTAssertTrue(commander.prompt.hasPrefix(Voicing.commanderTask), commander.prompt)
         let reeve = try XCTUnwrap(moments.first { $0.moment.kind == .reeve }).moment
         XCTAssertTrue(reeve.prompt.hasPrefix(Voicing.reeveTask), reeve.prompt)
+        XCTAssertEqual(told.filter { $0.hasPrefix("the steward's welcome (") }.count, 1, "The steward's welcome asked")
+        let welcome = try XCTUnwrap(moments.first { $0.moment.kind == .steward }).moment
+        XCTAssertTrue(welcome.prompt.hasPrefix(Voicing.stewardTask), welcome.prompt)
         // A plea of each kind at the seat's gate, its petitioner heard as the
         // card asks for their words.
         for plea in Petition.Plea.allCases {

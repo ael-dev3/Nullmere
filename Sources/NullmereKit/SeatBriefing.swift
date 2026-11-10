@@ -10,10 +10,14 @@ struct SeatBriefing: Equatable {
     let facts: [String]
     /// The first things to do, in order.
     let steps: [String]
+    /// The watch the House was taken up at: the steward's welcome is kept
+    /// under it.
+    let watch: Int
 
     init(world: GameState, player: Int) {
         let house = world.houses[player]
         title = "You take up \(house.title)"
+        watch = world.watch
         var facts: [String] = []
         let holds = world.holds(of: player)
         if let seat = world.seat(of: player) {

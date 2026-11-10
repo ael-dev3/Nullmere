@@ -327,7 +327,7 @@ struct PlayView: View {
             }
 
             if let briefing = session.seatBriefing, session.state.outcome == nil {
-                SeatBriefingCard(briefing: briefing, colour: Palette.house(session.playerHouse)) { session.dismissSeatBriefing() }
+                SeatBriefingCard(briefing: briefing, colour: Palette.house(session.playerHouse), session: session) { session.dismissSeatBriefing() }
                     .transition(.opacity)
             }
 

@@ -208,8 +208,15 @@ full screen at launch as chosen.
 - **Taking your seat.** The first time you enter an age, a card tells
   you the House you take up (its seat and holds, its strength among the
   Houses, its wars and pacts, which the stewards may have chosen for you)
-  and the first three things to do. Those three then stay beside the map
-  as a checklist, ticked as you do them, until all are done.
+  and the first three things to do. Above it the steward who kept the
+  House until you came welcomes you in their own words, written on your
+  Mac by Apple's on-device model from what your House knows alone: how
+  long the stewards kept it, its seat and holds, the people it comes of,
+  how it stands in strength, its wars and pacts and any omen on the
+  realm. It is asked first of all; while the model is at it the card says
+  so, with its seconds, and where it gives none, why; begin before it
+  comes and its asking stops. Those three first things then stay beside
+  the map as a checklist, ticked as you do them, until all are done.
 - **Coming back.** Return after watches have passed, and a card tells
   what happened while you were away: your stores and holds, and the news
   that touched your House. Above it the caretaker who kept your House

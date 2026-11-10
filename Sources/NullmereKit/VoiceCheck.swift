@@ -42,7 +42,8 @@ public enum VoiceCheck {
     /// of each kind of chronicle entry sixty watches of a lake bring, the
     /// Still's dream, a prisoner, the lake's riddle, words for the fallen,
     /// a plea of each kind at the seat's gate, a commander's word on their
-    /// company and the reeve's on the seat, and a ballad.
+    /// company and the reeve's on the seat, the steward's welcome, and a
+    /// ballad.
     static func moments(in state: GameState = age()) -> [(name: String, moment: VoiceMoment)] {
         var moments: [(name: String, moment: VoiceMoment)] = []
         let other = state.livingHouses.first { $0.id != state.player }?.id ?? 1
@@ -135,6 +136,11 @@ public enum VoiceCheck {
         }
         if let seat = state.seat(of: state.player), let word = VoiceFacts.reeve(of: seat.id, for: state.player, in: state) {
             moments.append(("the reeve's word", word))
+        }
+        // The steward who kept the House, welcoming its keeper as they take
+        // it up.
+        if let welcome = VoiceFacts.steward(for: state.player, in: state) {
+            moments.append(("the steward's welcome", welcome))
         }
         // A ballad of the latest deed of arms the age brought.
         if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {

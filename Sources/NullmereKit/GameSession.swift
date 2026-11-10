@@ -224,6 +224,9 @@ public final class GameSession {
         /// A reeve's word as the keeper turns to a hold of theirs, by
         /// `GameState.reeveWordKey`: the hold, the watch and how it stands.
         case reeve(Int)
+        /// The steward's welcome to a keeper taking up their House, by the
+        /// watch they took it up at.
+        case steward(Int)
 
         /// A word asked as the keeper turns to what they chose, a company's
         /// commander or a hold's reeve: not kept as asked once turned from
@@ -268,6 +271,7 @@ public final class GameSession {
             case .caretaker(let watch): return "caretaker-\(watch)"
             case .commander(let key): return "commander-\(key)"
             case .reeve(let key): return "reeve-\(key)"
+            case .steward(let watch): return "steward-\(watch)"
             }
         }
 
@@ -288,6 +292,7 @@ public final class GameSession {
             case "caretaker": self = .caretaker(number)
             case "commander": self = .commander(number)
             case "reeve": self = .reeve(number)
+            case "steward": self = .steward(number)
             default: return nil
             }
         }
@@ -722,6 +727,8 @@ public final class GameSession {
         } else if world.houses.indices.contains(house) {
             seatBriefing = SeatBriefing(world: world, player: house)
             if store.loadFirstSteps() == nil { store.saveFirstSteps(FirstSteps()) }
+            // The steward who kept the House asked for their welcome.
+            askVoices()
         }
         firstSteps = store.loadFirstSteps().flatMap { $0.isComplete ? nil : $0 }
         noteStepsInWorld()
@@ -1261,6 +1268,8 @@ public final class GameSession {
 
     public func dismissSeatBriefing() {
         withAnimation(.easeOut(duration: 0.3)) { seatBriefing = nil }
+        // The steward's welcome, if it was still being given, is not wanted.
+        stopVoiceGone()
         // Into the world: the charge the keeper begins with, counselled.
         if let charge = state.charge(of: player) {
             counselled = .some(charge)
@@ -2945,6 +2954,13 @@ public final class GameSession {
     private func askVoices() {
         guard voice != nil else { return }
         askChosenWord()
+        // The steward's welcome to a keeper taking up their House, first:
+        // it greets them as they take it up.
+        if let briefing = seatBriefing, !asked.contains(.steward(briefing.watch)),
+           let welcome = VoiceFacts.steward(for: player, in: state) {
+            asked.insert(.steward(briefing.watch))
+            voiceQueue.insert((.steward(briefing.watch), welcome), at: 0)
+        }
         // The caretaker's word to the keeper come back, first: it greets
         // them as they enter.
         if let report = awayReport, !asked.contains(.caretaker(report.watch)) {
@@ -3109,6 +3125,7 @@ public final class GameSession {
         case .caretaker(let watch): return awayReport?.watch == watch
         case .commander: return commanderWord == key
         case .reeve: return reeveWord == key
+        case .steward(let watch): return seatBriefing?.watch == watch
         default: return true
         }
     }
