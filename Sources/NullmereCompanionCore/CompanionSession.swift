@@ -213,14 +213,41 @@ public final class CompanionSession {
     /// company is about.
     public static func commanderKey(_ key: Int) -> String { "commander-\(key)" }
 
-    /// The company of the House whose commander the keeper asked to hear,
-    /// if any.
-    public private(set) var hearing: Int?
+    /// The key a reeve's word is kept under, as the Mac keeps it
+    /// (`GameState.reeveWordKey`): the hold, the watch and how it stands.
+    public static func reeveKey(_ key: Int) -> String { "reeve-\(key)" }
+
+    /// Whom the keeper asked to hear: the commander at the head of a company
+    /// of theirs, or the reeve of a hold of theirs.
+    public enum Hearing: Equatable, Sendable {
+        case company(Int)
+        case hold(Int)
+    }
+
+    /// Whom the keeper asked to hear, if anyone.
+    public private(set) var hearing: Hearing?
 
     /// The keeper asks to hear the commander at the head of a company of
     /// theirs: their word is asked of this phone's own model first.
     public func hear(company: Int) {
-        hearing = company
+        hearing = .company(company)
+    }
+
+    /// The keeper asks to hear the reeve of a hold of theirs: their word is
+    /// asked of this phone's own model first.
+    public func hear(hold: Int) {
+        hearing = .hold(hold)
+    }
+
+    /// The word of the reeve of a hold of the House, as this phone's own
+    /// model is asked for it, from what the House knows of the hold alone
+    /// and keyed as the Mac keys it, so a new watch or a change in its work
+    /// or its danger calls afresh; nil unless the phone speaks for the
+    /// keeper and the hold is theirs.
+    public func reeveWord(of hold: Int) -> Voicing.Keyed? {
+        guard phase == .keeping, let world, let house = keeper?.house,
+              let key = world.reeveWordKey(of: hold, for: house), let moment = world.reeveWord(of: hold, for: house) else { return nil }
+        return Voicing.Keyed(key: CompanionSession.reeveKey(key), moment: moment)
     }
 
     /// The word of the commander at the head of a company of the House, as
@@ -237,13 +264,18 @@ public final class CompanionSession {
     }
 
     /// The realm's characters this phone's own model gives words to, as the
-    /// ledger keys them: the commander the keeper asked to hear first, for
-    /// they look to them now, then the caretaker's word to the keeper come
-    /// back while its card stands.
+    /// ledger keys them: the commander or reeve the keeper asked to hear
+    /// first, for they look to them now, then the caretaker's word to the
+    /// keeper come back while its card stands.
     public var voicedMoments: [Voicing.Keyed] {
-        let commander = hearing.flatMap { commanderWord(of: $0) }.map { [$0] } ?? []
+        let heard: Voicing.Keyed?
+        switch hearing {
+        case .company(let id)?: heard = commanderWord(of: id)
+        case .hold(let id)?: heard = reeveWord(of: id)
+        case nil: heard = nil
+        }
         let caretaker = away.map { [Voicing.Keyed(key: CompanionSession.caretakerKey($0), moment: $0.voiced(house: awayTitle))] } ?? []
-        return commander + caretaker + (ledger?.voices ?? [])
+        return (heard.map { [$0] } ?? []) + caretaker + (ledger?.voices ?? [])
     }
 
     public func dismissAway() {

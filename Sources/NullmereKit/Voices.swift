@@ -102,6 +102,8 @@ public struct VoiceMoment: Sendable, Equatable {
         /// A commander's word to the keeper as they turn to the company
         /// the commander leads.
         case commander
+        /// A reeve's word to the keeper as they turn to a hold of theirs.
+        case reeve
     }
 
     public let kind: Kind
@@ -145,6 +147,8 @@ public struct VoiceMoment: Sendable, Equatable {
             task = Voicing.caretakerTask
         case .commander:
             task = Voicing.commanderTask
+        case .reeve:
+            task = Voicing.reeveTask
         }
         return Voicing.asking(task, facts: facts)
     }
@@ -347,6 +351,12 @@ enum VoiceFacts {
     /// give as the keeper turns to it; nil unless they lead it at its head.
     static func commander(_ counsel: CommanderCounsel) -> VoiceMoment? {
         counsel.word.map { VoiceMoment(kind: .commander, facts: $0.facts) }
+    }
+
+    /// A reeve's word on a hold of the keeper's, for the reeve to give as
+    /// the keeper turns to it; nil unless the hold is the House's own.
+    static func reeve(of hold: Int, for house: Int, in state: GameState) -> VoiceMoment? {
+        state.reeveWord(of: hold, for: house).map { VoiceMoment(kind: .reeve, facts: $0.facts) }
     }
 
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {

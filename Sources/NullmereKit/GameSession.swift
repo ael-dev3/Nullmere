@@ -82,10 +82,10 @@ public final class GameSession {
             if selection != oldValue {
                 refreshReach()
                 refreshPathPreview()
-                // The commander of a company turned to gives their word; one
-                // turned from is no longer asked.
+                // The commander of a company turned to gives their word, or
+                // the reeve of a hold; one turned from is no longer asked.
                 stopVoiceGone()
-                askCommanderWord()
+                askChosenWord()
             }
         }
     }
@@ -221,6 +221,32 @@ public final class GameSession {
         /// by `CommanderCounsel.wordKey`: the commander, the watch and what
         /// the company is about.
         case commander(Int)
+        /// A reeve's word as the keeper turns to a hold of theirs, by
+        /// `GameState.reeveWordKey`: the hold, the watch and how it stands.
+        case reeve(Int)
+
+        /// A word asked as the keeper turns to what they chose, a company's
+        /// commander or a hold's reeve: not kept as asked once turned from
+        /// before it is given, so it is asked again if turned to again.
+        var isChosenWord: Bool {
+            switch self {
+            case .commander, .reeve: return true
+            default: return false
+            }
+        }
+
+        /// Whether two words are the same commander's, or the same hold's
+        /// reeve's, so a fresh one lets the last go.
+        func sameSpeaker(as other: Spoken) -> Bool {
+            switch (self, other) {
+            case (.commander(let one), .commander(let two)):
+                return CommanderCounsel.commander(ofWord: one) == CommanderCounsel.commander(ofWord: two)
+            case (.reeve(let one), .reeve(let two)):
+                return GameState.hold(ofWord: one) == GameState.hold(ofWord: two)
+            default:
+                return false
+            }
+        }
 
         /// The key of what a prisoner told last, in this captivity of theirs.
         static func prisonerKey(of prisoner: Commander) -> Spoken? {
@@ -241,6 +267,7 @@ public final class GameSession {
             case .pedlar(let key): return "pedlar-\(key)"
             case .caretaker(let watch): return "caretaker-\(watch)"
             case .commander(let key): return "commander-\(key)"
+            case .reeve(let key): return "reeve-\(key)"
             }
         }
 
@@ -260,6 +287,7 @@ public final class GameSession {
             case "pedlar": self = .pedlar(number)
             case "caretaker": self = .caretaker(number)
             case "commander": self = .commander(number)
+            case "reeve": self = .reeve(number)
             default: return nil
             }
         }
@@ -2916,7 +2944,7 @@ public final class GameSession {
     /// that touch the player, one at a time.
     private func askVoices() {
         guard voice != nil else { return }
-        askCommanderWord()
+        askChosenWord()
         // The caretaker's word to the keeper come back, first: it greets
         // them as they enter.
         if let report = awayReport, !asked.contains(.caretaker(report.watch)) {
@@ -3000,14 +3028,28 @@ public final class GameSession {
     /// company chosen is kept under now, as its card shows it; nil for none.
     public var commanderWord: Spoken? { chosenCommander?.wordKey.map(Spoken.commander) }
 
+    /// The key the word of the reeve of the keeper's hold chosen is kept
+    /// under now, as its card shows it; nil for none.
+    public var reeveWord: Spoken? {
+        guard let hold = selectedHold else { return nil }
+        return state.reeveWordKey(of: hold.id, for: player).map(Spoken.reeve)
+    }
+
     /// The commander of the company the keeper has turned to gives their
-    /// word first, for the keeper looks to them now; asked afresh as the
-    /// watch turns or the company's orders or fortunes change.
-    private func askCommanderWord() {
-        guard voice != nil, let counsel = chosenCommander, let key = counsel.wordKey.map(Spoken.commander), !asked.contains(key),
-              let moment = VoiceFacts.commander(counsel) else { return }
-        asked.insert(key)
-        voiceQueue.insert((key, moment), at: 0)
+    /// word first, or the reeve of the hold, for the keeper looks to them
+    /// now; asked afresh as the watch turns or the company's orders or
+    /// fortunes change, or the hold's work or danger.
+    private func askChosenWord() {
+        guard voice != nil else { return }
+        var asking: (key: Spoken, moment: VoiceMoment)?
+        if let counsel = chosenCommander, let key = counsel.wordKey.map(Spoken.commander) {
+            asking = VoiceFacts.commander(counsel).map { (key: key, moment: $0) }
+        } else if let key = reeveWord, let hold = selectedHold {
+            asking = VoiceFacts.reeve(of: hold.id, for: player, in: state).map { (key: key, moment: $0) }
+        }
+        guard let asking, !asked.contains(asking.key) else { return }
+        asked.insert(asking.key)
+        voiceQueue.insert((asking.key, asking.moment), at: 0)
         speakNext()
     }
 
@@ -3018,7 +3060,7 @@ public final class GameSession {
         // its turn is not voiced; a commander turned from before theirs may
         // be turned to again, and asked then.
         guard stillVoiced(key) else {
-            if case .commander = key { asked.remove(key) }
+            if key.isChosenWord { asked.remove(key) }
             speakNext()
             return
         }
@@ -3032,23 +3074,18 @@ public final class GameSession {
             // Stopped because what it spoke for has gone: nothing of it kept.
             if !Task.isCancelled {
                 if let words = heard.words {
-                    // A commander's fresh word lets their last go, so a long
-                    // age keeps one word of each, not one of every watch.
-                    if case .commander(let fresh) = key {
-                        let who = CommanderCounsel.commander(ofWord: fresh)
-                        let last = self.spoken.keys.filter { kept in
-                            if case .commander(let old) = kept { return old != fresh && CommanderCounsel.commander(ofWord: old) == who }
-                            return false
-                        }
-                        for kept in last { self.spoken[kept] = nil }
-                    }
+                    // A commander's or reeve's fresh word lets their last go,
+                    // so a long age keeps one word of each, not one of every
+                    // watch.
+                    let last = self.spoken.keys.filter { $0 != key && $0.sameSpeaker(as: key) }
+                    for kept in last { self.spoken[kept] = nil }
                     withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
                     self.unvoiced[key] = nil
                     self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
                 } else if let trouble = heard.trouble {
                     self.unvoiced[key] = trouble.unvoiced
                 }
-            } else if case .commander = key {
+            } else if key.isChosenWord {
                 // Turned from mid-word: asked again if turned to again.
                 self.asked.remove(key)
             }
@@ -3071,6 +3108,7 @@ public final class GameSession {
         case .pedlar(let key): return state.pedlar(for: player).map(GameState.voiceKey(of:)) == key
         case .caretaker(let watch): return awayReport?.watch == watch
         case .commander: return commanderWord == key
+        case .reeve: return reeveWord == key
         default: return true
         }
     }

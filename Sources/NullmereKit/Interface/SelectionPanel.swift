@@ -144,6 +144,19 @@ struct OwnHoldDetails: View {
                     + ", " + OwnHoldDetails.raised(hold),
                 accent: Palette.houseWords(session.playerHouse)
             )
+            // The reeve's word as the keeper turns to the hold, in their own
+            // voice: this Mac's model at work, or why it gave none.
+            if session.selectedHold?.id == hold.id, let word = session.reeveWord {
+                VoicingLine(session: session, key: word, who: "the reeve of \(hold.name)")
+                if let spoken = session.spoken[word] {
+                    Text(verbatim: "\"\(spoken)\"")
+                        .font(.nm(11.5, weight: .light).italic())
+                        .foregroundStyle(Palette.text(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                        .accessibilityLabel("The reeve of \(hold.name) says: \(spoken)")
+                }
+            }
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack {

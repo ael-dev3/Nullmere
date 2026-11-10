@@ -186,34 +186,7 @@ public struct CommanderCounsel: Sendable {
     /// holy sites and lairs, and the hamlets and barrows the House has
     /// found, each with which way and how far as every line says it.
     func seen(about unit: Unit, within reach: Int) -> [String] {
-        let here = unit.position
-        func way(_ hex: Hex) -> String { GameState.waySaid(to: hex, from: here) }
-        var seen: [(distance: Int, told: String)] = []
-        for other in state.units where other.owner != player {
-            let distance = other.position.distance(to: here)
-            guard distance <= reach else { continue }
-            let owner = state.houses.indices.contains(other.owner) ? state.houses[other.owner].title : "the wilds"
-            let stance = state.houses.indices.contains(other.owner) ? ", \(state.stance(player, other.owner).standing)" : ""
-            seen.append((distance, "\(owner)'s \(SpokenOrders.named(other, in: state)), \(GameState.counted(state.troops(of: other))) troops, "
-                + "\(way(other.position))\(stance)"))
-        }
-        for hold in state.holds where hold.position.distance(to: here) <= reach {
-            let owner = state.houses.indices.contains(hold.owner) ? state.houses[hold.owner].title : "no House"
-            let distance = hold.position.distance(to: here)
-            seen.append((distance, "\(hold.name), a hold of \(owner == houseTitle ? "your House" : owner), \(way(hold.position))"))
-        }
-        for site in state.holySites where site.position.distance(to: here) <= reach {
-            seen.append((site.position.distance(to: here), "\(site.title), a holy site, \(way(site.position))"))
-        }
-        for lair in state.lairsStanding where lair.position.distance(to: here) <= reach {
-            seen.append((lair.position.distance(to: here), "\(lair.title), a lair of the wilds, \(way(lair.position))"))
-        }
-        for find in state.findsKnown(by: player) where find.position.distance(to: here) <= reach {
-            let what = find.kind == .hamlet ? find.named : "\(find.named), an old barrow"
-            let sought = state.hasSought(find.id, by: player) ? "sought by your Lanterns" : "which your Lanterns have yet to seek"
-            seen.append((find.position.distance(to: here), "\(what), \(sought), \(way(find.position))"))
-        }
-        return seen.sorted { ($0.distance, $0.told) < ($1.distance, $1.told) }.map(\.told)
+        state.seen(around: unit.position, by: player, within: reach)
     }
 
     /// The House's affairs: its holds and companies, its stores, how it
@@ -489,5 +462,44 @@ public enum CounselBudget {
     public static func recall(context tokens: Int, instructions: String, briefing: String) -> Int {
         let brought = Int(Double(tokens) * broughtShare * charactersPerToken)
         return max(brought - instructions.count - briefing.count, 0)
+    }
+}
+
+extension GameState {
+    /// What a House sees within some tiles of a place, the nearest first:
+    /// the companies of other Houses and the wilds, the holds (but the one
+    /// left out), the holy sites and lairs, and the hamlets and barrows the
+    /// House has found, each with which way and how far as every line says
+    /// it ("2 tiles north-east", "here"); as a commander's look about their
+    /// company tells it, and a reeve's about their hold.
+    func seen(around here: Hex, by player: Int, within reach: Int, besides left: Int? = nil) -> [String] {
+        let ours = houses.indices.contains(player) ? houses[player].title : "your House"
+        func way(_ hex: Hex) -> String { GameState.waySaid(to: hex, from: here) }
+        var seen: [(distance: Int, told: String)] = []
+        for other in units where other.owner != player {
+            let distance = other.position.distance(to: here)
+            guard distance <= reach else { continue }
+            let owner = houses.indices.contains(other.owner) ? houses[other.owner].title : "the wilds"
+            let standing = houses.indices.contains(other.owner) ? ", \(stance(player, other.owner).standing)" : ""
+            seen.append((distance, "\(owner)'s \(SpokenOrders.named(other, in: self)), \(GameState.counted(troops(of: other))) troops, "
+                + "\(way(other.position))\(standing)"))
+        }
+        for hold in holds where hold.id != left && hold.position.distance(to: here) <= reach {
+            let owner = houses.indices.contains(hold.owner) ? houses[hold.owner].title : "no House"
+            let distance = hold.position.distance(to: here)
+            seen.append((distance, "\(hold.name), a hold of \(owner == ours ? "your House" : owner), \(way(hold.position))"))
+        }
+        for site in holySites where site.position.distance(to: here) <= reach {
+            seen.append((site.position.distance(to: here), "\(site.title), a holy site, \(way(site.position))"))
+        }
+        for lair in lairsStanding where lair.position.distance(to: here) <= reach {
+            seen.append((lair.position.distance(to: here), "\(lair.title), a lair of the wilds, \(way(lair.position))"))
+        }
+        for find in findsKnown(by: player) where find.position.distance(to: here) <= reach {
+            let what = find.kind == .hamlet ? find.named : "\(find.named), an old barrow"
+            let sought = hasSought(find.id, by: player) ? "sought by your Lanterns" : "which your Lanterns have yet to seek"
+            seen.append((find.position.distance(to: here), "\(what), \(sought), \(way(find.position))"))
+        }
+        return seen.sorted { ($0.distance, $0.told) < ($1.distance, $1.told) }.map(\.told)
     }
 }

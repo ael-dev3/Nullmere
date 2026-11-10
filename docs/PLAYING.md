@@ -1120,6 +1120,16 @@ a vote on the realm's law to cast.
   seconds; where it gave no words, why. On the phone, a company a
   commander leads offers Hear them on the Army tab, and the phone's own
   model gives the same word, under the same key.
+- **A reeve's word.** Choose a hold of yours and its reeve speaks up at
+  the head of its card the same way: whether it is your seat, its works
+  (the highest four), what it raises and musters and when each is done,
+  its walls and ward, the companies at its gates (yours, and allies'
+  keeping them), what your House sees within two tiles of it, a plea its
+  folk bring, fire on its land and your dead unburied by it. Asked afresh
+  each watch and whenever its work or its danger changes (work begun, its
+  ward broken by a quarter, a foe come near, a plea brought), never an
+  order; another House's hold has no reeve to speak to you. On the phone,
+  each hold on the House tab offers Hear the reeve.
 - **Talents.** A commander gains a talent point at each level past the
   first, twenty-nine at the thirtieth, to spend a rank at a time in three
   trees of eight talents: Steel (Keen Edge, Hunter's Mark, Quarry Call,

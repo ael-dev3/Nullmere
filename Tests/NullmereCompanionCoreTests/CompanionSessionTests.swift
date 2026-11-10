@@ -468,10 +468,10 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
-    /// The keeper asks to hear a commander of theirs from the phone: their
-    /// word on the company they lead is asked of the phone's own model
-    /// first, keyed as the Mac keys it, from what the House knows of the
-    /// company alone; a company no commander leads has no word; let go, no
+    /// The keeper asks to hear a commander of theirs from the phone, or a
+    /// hold's reeve: their word is asked of the phone's own model first,
+    /// keyed as the Mac keys it, from what the House knows alone; a company
+    /// no commander leads has no word, nor another House's hold; let go, no
     /// one is heard.
     func testTheKeeperHearsACommanderOfTheirsFirst() async throws {
         let (db, running, mac, keeper, steward) = try await realm()
@@ -499,7 +499,7 @@ final class CompanionSessionTests: XCTestCase {
         XCTAssertEqual(word.moment, counsel.word, "from what the House knows of the company alone")
         XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("commander-") }, "none heard until asked")
         phone.hear(company: led.id)
-        XCTAssertEqual(phone.hearing, led.id)
+        XCTAssertEqual(phone.hearing, .company(led.id))
         XCTAssertEqual(phone.voicedMoments.first, word, "the commander the keeper asked to hear, first")
         XCTAssertEqual(phone.voicedMoments.count, 1 + (phone.ledger?.voices.count ?? 0))
         if let unled = world.units(of: house).first(where: { $0.leader == nil }) {
@@ -510,9 +510,22 @@ final class CompanionSessionTests: XCTestCase {
         for foreign in world.units where foreign.owner != house {
             XCTAssertNil(phone.commanderWord(of: foreign.id), "another House's commanders are not the keeper's to hear")
         }
+        // The reeve of the keeper's seat, heard as the keeper asks.
+        let seat = try XCTUnwrap(world.seat(of: house))
+        let reeve = try XCTUnwrap(phone.reeveWord(of: seat.id))
+        XCTAssertEqual(reeve.key, CompanionSession.reeveKey(try XCTUnwrap(world.reeveWordKey(of: seat.id, for: house))), "kept as the Mac keeps it")
+        XCTAssertEqual(reeve.moment, world.reeveWord(of: seat.id, for: house))
+        phone.hear(hold: seat.id)
+        XCTAssertEqual(phone.hearing, .hold(seat.id))
+        XCTAssertEqual(phone.voicedMoments.first, reeve, "the reeve the keeper asked to hear, first")
+        XCTAssertFalse(phone.voicedMoments.contains { $0.key.hasPrefix("commander-") }, "one heard at a time")
+        for foreign in world.holds where foreign.owner != house {
+            XCTAssertNil(phone.reeveWord(of: foreign.id), "another House's reeves are not the keeper's to hear")
+        }
         phone.unlink()
         XCTAssertNil(phone.hearing)
         XCTAssertNil(phone.commanderWord(of: led.id), "let go, no one is heard")
+        XCTAssertNil(phone.reeveWord(of: seat.id))
         mac.close()
     }
 
