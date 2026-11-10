@@ -154,6 +154,7 @@ final class CorpseLightsTests: XCTestCase {
         let lastWatch = FieldBlow(from: Hex(1, 1), at: Hex(2, 1), struck: nil, striker: nil, watch: 11, seed: 1)
         XCTAssertEqual(UnburiedSight.kindled(fields, watch: 12, darkIn: 5, blows: [lastWatch]).count, 3, "kindled once it falls quiet")
         XCTAssertTrue(UnburiedSight.kindled(fields, watch: 9, darkIn: 5).isEmpty, "none before any of them have lain a watch")
+        XCTAssertTrue(UnburiedSight.kindled([], watch: 12, darkIn: 5, blows: [blow]).isEmpty, "none where none lie")
     }
 
     /// Close in, a light's glow is a halo about its flame, however near the

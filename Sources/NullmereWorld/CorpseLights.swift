@@ -33,6 +33,7 @@ public struct UnburiedSight: Equatable, Sendable {
     /// blow is struck on the field or from it (`blows`). The lights kindle
     /// once a field falls quiet, so no battle is fought under them.
     public static func kindled(_ fields: [FieldOfDead], watch: Int, darkIn: Int, blows: [FieldBlow] = []) -> [UnburiedSight] {
+        guard !fields.isEmpty else { return [] }
         let fought = Set(blows.filter { $0.watch >= watch }.flatMap { [$0.at, $0.from] })
         return fields.compactMap { field in
             guard field.since < watch, !fought.contains(field.at) else { return nil }
