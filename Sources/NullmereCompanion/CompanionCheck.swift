@@ -242,7 +242,16 @@ enum CompanionCheck {
         session.say(words, toAlliance: false)
         lines.append("Said while cut off: \(words)")
         write()
-        guard await until(120, { session.outOfReach == nil && FileManager.default.fileExists(atPath: mended.path) }) else {
+        // Mended when the smoke test mends it, after its photographs of the
+        // phone and the Mac cut off; and from the mending, the phone's time
+        // to be in reach again (run 902 judged it from the words above, the
+        // photographs' time counted against it).
+        guard await until(240, { FileManager.default.fileExists(atPath: mended.path) }) else {
+            broken.append("the line was never mended")
+            write()
+            return
+        }
+        guard await until(120, { session.outOfReach == nil }) else {
             broken.append("never in reach again once the line was mended")
             write()
             return

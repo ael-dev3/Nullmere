@@ -99,11 +99,27 @@ shot() {
     xcrun simctl io "$UDID" screenshot "build/companion-$1.png" >/dev/null 2>&1 || echo "warning: no screenshot of $1" >&2
 }
 
+# The tool that sets the Mac's screen beside the phone's, compiled once
+# here, before anything is timed. Run as a script it was compiled afresh
+# each time, the first time (its system modules too) in the middle of the
+# phone's line cut and mended, where nothing should run but the phone, the
+# Mac and the realm: in run 902 the realm stopped answering for most of a
+# minute there and the phone was judged before it came back.
+BESIDE_TOOL="build/beside"
+if ! swiftc scripts/beside.swift -o "$BESIDE_TOOL" >build/beside-build.log 2>&1; then
+    echo "warning: scripts/beside.swift didn't compile; it runs as a script instead" >&2
+    cat build/beside-build.log >&2 || true
+    rm -f "$BESIDE_TOOL"
+fi
+set_beside() {
+    if [ -x "$BESIDE_TOOL" ]; then "$BESIDE_TOOL" "$@"; else swift scripts/beside.swift "$@"; fi
+}
+
 # The Mac's own screen as the phone's screen `$1` was just taken, the two
 # set side by side in build/companion-beside-$1.png.
 beside() {
     if screencapture -x "build/companion-mac-$1.png" 2>/dev/null && [ -s "build/companion-$1.png" ]; then
-        swift scripts/beside.swift "build/companion-mac-$1.png" "build/companion-$1.png" "build/companion-beside-$1.png" \
+        set_beside "build/companion-mac-$1.png" "build/companion-$1.png" "build/companion-beside-$1.png" \
             && echo "The Mac and the phone photographed together: build/companion-beside-$1.png" \
             || echo "warning: the Mac and the phone weren't set side by side ($1)" >&2
     else
@@ -345,7 +361,10 @@ beside lost
 echo "Mending it…"
 kill -USR2 "$relay" 2>/dev/null || echo "warning: the phone's line had already gone" >&2
 touch "$DATA/Documents/line-mended"
-for _ in $(seq 1 150); do
+# The phone gives itself 120 seconds from the mending to be in reach again
+# and 60 more for the realm's word on what it said meanwhile: waited out
+# whole, so its own verdict decides.
+for _ in $(seq 1 190); do
     grep -qE "came back to the realm|^Broken" "$LOST" 2>/dev/null && break
     sleep 1
 done
@@ -379,7 +398,7 @@ for tab in house market ventures land alliance realm counsel counsel-asked words
     # side by side: one House, its watch and its stores alike on both.
     if [ "$tab" = house ]; then
         if screencapture -x build/companion-mac.png 2>/dev/null && [ -s build/companion-house.png ]; then
-            swift scripts/beside.swift build/companion-mac.png build/companion-house.png build/companion-beside-mac.png \
+            set_beside build/companion-mac.png build/companion-house.png build/companion-beside-mac.png \
                 && echo "The Mac and the phone photographed together: build/companion-beside-mac.png" \
                 || echo "warning: the Mac and the phone weren't set side by side" >&2
         else
