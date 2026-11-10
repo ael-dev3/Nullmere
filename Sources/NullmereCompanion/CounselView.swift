@@ -326,6 +326,8 @@ private struct OfferCard: View {
     let setAside: () -> Void
     /// What giving it is called: an order, or an answer.
     var giving = "Give the order"
+    /// Asked again before war is given, as the Houses list asks it.
+    @State private var asking = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -340,9 +342,18 @@ private struct OfferCard: View {
             switch offer.state {
             case .waiting:
                 HStack(spacing: 10) {
-                    Button(giving, action: give)
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityLabel("\(giving): \(offer.proposal.told)")
+                    if let asked = offer.proposal.askedFirst {
+                        Button(giving, role: .destructive) { asking = true }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityLabel("\(giving): \(offer.proposal.told)")
+                            .confirmationDialog(asked, isPresented: $asking, titleVisibility: .visible) {
+                                Button(giving, role: .destructive, action: give)
+                            }
+                    } else {
+                        Button(giving, action: give)
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityLabel("\(giving): \(offer.proposal.told)")
+                    }
                     Button("Set aside", action: setAside)
                         .buttonStyle(.bordered)
                         .accessibilityLabel("Set aside: \(offer.proposal.told)")

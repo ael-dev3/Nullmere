@@ -290,6 +290,12 @@ final class CounselSheetTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Set aside"))
         XCTAssertEqual(given, 1)
         XCTAssertEqual(setAside, 1)
+        // War put forward is asked of the keeper again, as the Houses panel asks it.
+        let war = CounselProposal(line: "DECLARE WAR ON House Venn", told: "War on House Venn.", command: .declareWar(on: 2), why: nil,
+                                  askedFirst: "War on House Venn?")
+        draw(OfferCard(offer: .init(id: 2, proposal: war), give: { given += 1 }, setAside: {}))
+        XCTAssertTrue(PressableButtons.press("Give the order"), "Among \(shown)")
+        XCTAssertEqual(given, 2)
         draw(OfferCard(offer: .init(id: 1, proposal: proposal, state: .given), give: {}, setAside: {}))
         draw(OfferCard(offer: .init(id: 1, proposal: proposal, state: .setAside), give: {}, setAside: {}))
     }

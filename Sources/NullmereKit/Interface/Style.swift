@@ -723,6 +723,8 @@ struct ConfirmButton: View {
     /// What it says once armed, such as "War on House Venn?".
     let confirm: String
     var size: CGFloat = 8.5
+    /// What VoiceOver calls it, where its title alone says too little.
+    var name: String? = nil
     let action: () -> Void
 
     @State private var id = UUID()
@@ -730,7 +732,7 @@ struct ConfirmButton: View {
     var body: some View {
         let armed = ArmedPress.shared.isArmed(id)
         let _ = PressableButtons.note(title, enabled: true, action)
-        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false, name: title) {
+        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false, name: name ?? title) {
             if ArmedPress.shared.press(id) {
                 action()
             } else {

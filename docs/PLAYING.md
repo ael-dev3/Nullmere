@@ -1124,7 +1124,12 @@ a vote on the realm's law to cast.
   marches dark),
   weighed as the order book weighs a line: only one the realm would take
   is put forward, and you give it or set it aside; the realm decides what
-  comes of it, as of any order. Answers appear
+  comes of it, as of any order. Toward another House they may put forward
+  an envoy offering peace (to a House at war with yours) or a pact (to one
+  at peace), a demand of tribute, or war, weighed the same way; war put
+  forward in counsel asks you again before it goes, as the Houses panel
+  does ("War on House Venn?", or "Betray House Venn?" where a pact stands),
+  and on the phone in a dialog. Answers appear
   as they are spoken and can be stopped; one that doesn't begin within
   twenty-five seconds is given up. A commander remembers the last dozen
   exchanges of the age, kept on your Mac, and is told what you did with

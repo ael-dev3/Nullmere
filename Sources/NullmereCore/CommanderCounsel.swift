@@ -95,7 +95,7 @@ public struct CommanderCounsel: Sendable {
         a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
         your House's affairs, at your alliance, at yourself (your talents, stars and gear), or at another House by its name. You \
         may put an order to your keeper only by proposing it, for a company, for yourself, for your House's \
-        alliance or in answer to an envoy waiting on your House, and you never give one yourself: say that you \
+        alliance, toward another House or in answer to an envoy waiting on your House, and you never give one yourself: say that you \
         have put it forward, and \
         that the keeper decides. Name companies by their \
         handles and names as given. Never speak of games, players, turns, rules, models or tools.
@@ -559,6 +559,49 @@ public struct CommanderCounsel: Sendable {
         }
         return CounselProposal(line: line, told: read.told, command: read.command, why: read.why)
     }
+
+    /// What a commander may put forward of the House's dealings with
+    /// another House.
+    public static let dealingActions = ["peace", "pact", "tribute", "war"]
+
+    /// Why a commander can't put forward any other dealing.
+    public static let onlyTheseForDealings = "A commander may propose only that your keeper send an envoy to another House "
+        + "offering peace (peace) or a pact (pact), or demanding tribute (tribute), or declare war on it (war), naming the House."
+
+    /// A dealing with another House put to the keeper, read and weighed as
+    /// the order book weighs a line: an envoy sent offering peace or a pact
+    /// or demanding tribute, or war declared. War is asked of the keeper
+    /// again before it is given, as the Houses panel asks it.
+    public func proposeDealing(_ action: String, house: String) -> CounselProposal {
+        let verb = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let name = house.trimmingCharacters(in: .whitespacesAndNewlines)
+        let line: String
+        switch verb {
+        case "peace", "offer peace": line = "OFFER PEACE TO \(name)"
+        case "pact", "a pact", "offer a pact": line = "OFFER A PACT TO \(name)"
+        case "tribute", "demand tribute": line = "DEMAND TRIBUTE FROM \(name)"
+        case "war", "declare war": line = "DECLARE WAR ON \(name)"
+        default:
+            return CounselProposal(line: "\(action) \(name)", told: "\(action) \(name)", command: nil, why: CommanderCounsel.onlyTheseForDealings)
+        }
+        guard !name.isEmpty else {
+            return CounselProposal(line: line, told: line, command: nil, why: "A dealing with another House wants the House's name.")
+        }
+        guard let read = SpokenOrders.read(line: line, in: state, player: player) else {
+            return CounselProposal(line: line, told: line, command: nil, why: "The order book has no such line.")
+        }
+        var asked: String?
+        if case let .declareWar(on: other)? = read.command, read.why == nil, state.houses.indices.contains(other) {
+            asked = Self.warAsked(on: state.houses[other].title, pact: state.stance(player, other) == .pact)
+        }
+        return CounselProposal(line: line, told: read.told, command: read.command, why: read.why, askedFirst: asked)
+    }
+
+    /// What the keeper is asked before war is given, as the Houses panel
+    /// asks it: a pact betrayed, or war.
+    public static func warAsked(on title: String, pact: Bool) -> String {
+        pact ? "Betray \(title)?" : "War on \(title)?"
+    }
 }
 
 /// An order a commander put to the keeper, as the realm would take it.
@@ -571,12 +614,16 @@ public struct CounselProposal: Equatable, Sendable {
     public let command: Command?
     /// Why it can't be given, if it can't.
     public let why: String?
+    /// What the keeper is asked again before it is given, for an order not
+    /// to be taken back: war on a House.
+    public let askedFirst: String?
 
-    public init(line: String, told: String, command: Command?, why: String?) {
+    public init(line: String, told: String, command: Command?, why: String?, askedFirst: String? = nil) {
         self.line = line
         self.told = told
         self.command = command
         self.why = why
+        self.askedFirst = askedFirst
     }
 
     /// Whether the keeper may give it as it stands.

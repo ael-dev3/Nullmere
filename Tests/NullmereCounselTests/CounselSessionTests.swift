@@ -92,17 +92,22 @@ final class CounselSessionTests: XCTestCase {
         // For themself: no star without the sculptures, said so.
         let star = await bench.proposeForSelf("star", what: "")
         XCTAssertTrue(star.hasPrefix("That cannot be ordered:"), star)
+        // Toward another House: war put forward, to be asked of the keeper again.
+        let dealt = await bench.proposeDealing("war", house: other)
+        XCTAssertEqual(dealt, "Put forward to your keeper: War on \(other). The keeper decides.")
         let taken = await bench.taken()
         XCTAssertEqual(taken.looks.count, 8, "Six looks and two orders weighed and refused: \(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked at \(other)"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked to the alliance"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked to themself"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.last?.contains("cannot be ordered") == true)
-        XCTAssertEqual(taken.proposals.map(\.command), [.fortify(unit: unit.id)])
+        let rival = (counsel.player + 1) % counsel.state.houses.count
+        XCTAssertEqual(taken.proposals.map(\.command), [.fortify(unit: unit.id), .declareWar(on: rival)])
+        XCTAssertEqual(taken.proposals.map(\.askedFirst), [nil, "War on \(other)?"])
         let again = await bench.taken()
         XCTAssertTrue(again.looks.isEmpty && again.proposals.isEmpty, "Each taken once")
         let told = await bench.told
-        XCTAssertEqual(told, [report, look, affairs, house, alliance, yourself, given, refused, star])
+        XCTAssertEqual(told, [report, look, affairs, house, alliance, yourself, given, refused, star, dealt])
         // Renewed, the looks tell the world as it now stands.
         var moved = counsel.state
         let index = try XCTUnwrap(moved.unitIndex(unit.id))

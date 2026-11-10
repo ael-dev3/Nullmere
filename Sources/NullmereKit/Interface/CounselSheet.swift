@@ -184,7 +184,12 @@ struct OfferCard: View {
             switch offer.state {
             case .waiting:
                 HStack(spacing: 8) {
-                    QuietButton(title: giving, size: 9, prominent: true, name: "\(giving): \(offer.proposal.told)", action: give)
+                    if let asked = offer.proposal.askedFirst {
+                        // War: asked again before it goes, as the Houses panel asks it.
+                        ConfirmButton(title: giving, confirm: asked, size: 9, name: "\(giving): \(offer.proposal.told)", action: give)
+                    } else {
+                        QuietButton(title: giving, size: 9, prominent: true, name: "\(giving): \(offer.proposal.told)", action: give)
+                    }
                     QuietButton(title: "Set aside", size: 9, name: "Set aside: \(offer.proposal.told)", action: setAside)
                 }
             case .given:
