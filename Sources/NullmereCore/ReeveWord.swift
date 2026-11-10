@@ -10,9 +10,9 @@ import Foundation
 extension Voicing {
     /// What the model is asked for a reeve's word on their hold
     /// (`GameState.reeveWord`).
-    public static let reeveTask = "Speak as the reeve of the keeper's hold, reporting as the keeper turns to it: what it raises and "
-        + "musters, how its walls and ward stand, who keeps its gates and what lies about it, keeping every name and number as given. "
-        + "Propose nothing and promise nothing. One or two sentences, at most 40 words."
+    public static let reeveTask = "Speak as the reeve of the keeper's hold, reporting to the keeper, who looks to it: what it raises "
+        + "and musters, how its walls and ward stand, who keeps its gates and what lies about it, keeping every name and number as "
+        + "given. Propose nothing and promise nothing. One or two sentences, at most 40 words."
 }
 
 extension GameState {
@@ -50,7 +50,7 @@ extension GameState {
         if let training = hold.training {
             facts.append("It musters \(training.kind.named(tier: training.musteredTier)), ready in \(GameState.watches(training.watchesLeft)).")
         }
-        facts.append("Its walls stand at level \(hold.level(.walls)), its ward \(hold.ward) of \(hold.maximumWard).")
+        facts.append("\(GameState.wallsSaid(hold.level(.walls))), its ward \(hold.ward) of \(hold.maximumWard).")
         let gates = units.filter { $0.position == hold.position && $0.owner == house }
             .map { "your \(SpokenOrders.named($0, in: self)), \(GameState.counted(troops(of: $0))) troops" }
         let kept = units.filter { $0.owner != house && $0.errand == .reinforce(hold: id) }
@@ -93,4 +93,15 @@ extension GameState {
 
     /// The hold a reeve's word's key is of.
     public static func hold(ofWord key: Int) -> Int { key / 100_000_000 }
+
+    /// A hold's walls as its reeve says them, by their height of the five,
+    /// never as a level: "Its walls stand at the second of their five
+    /// heights", or "It has no walls yet".
+    public static func wallsSaid(_ height: Int) -> String {
+        let heights = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh"]
+        let most = BuildingKind.walls.maxLevel
+        guard height > 0 else { return "It has no walls yet" }
+        let which = heights.indices.contains(height - 1) ? heights[height - 1] : "\(height)th"
+        return "Its walls stand at the \(which) of their \(most == 5 ? "five" : "\(most)") heights"
+    }
 }

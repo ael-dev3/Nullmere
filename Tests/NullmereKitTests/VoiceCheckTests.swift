@@ -63,6 +63,14 @@ final class VoiceCheckTests: XCTestCase {
         XCTAssertEqual(folk.map(\.moment.kind), [.find(.hamlet), .find(.barrow)])
         XCTAssertTrue(folk[0].moment.prompt.hasPrefix(Voicing.hamletTask), folk[0].moment.prompt)
         XCTAssertTrue(folk[1].moment.prompt.hasPrefix(Voicing.barrowTask), folk[1].moment.prompt)
+        // A commander's word on the company they lead, and the reeve's on the
+        // seat, asked as the session asks them when the keeper turns to each.
+        XCTAssertEqual(told.filter { $0.hasPrefix("a commander's word (") }.count, 1, "A commander's word asked")
+        XCTAssertEqual(told.filter { $0.hasPrefix("the reeve's word (") }.count, 1, "The reeve's word asked")
+        let commander = try XCTUnwrap(moments.first { $0.moment.kind == .commander }).moment
+        XCTAssertTrue(commander.prompt.hasPrefix(Voicing.commanderTask), commander.prompt)
+        let reeve = try XCTUnwrap(moments.first { $0.moment.kind == .reeve }).moment
+        XCTAssertTrue(reeve.prompt.hasPrefix(Voicing.reeveTask), reeve.prompt)
         // A plea of each kind at the seat's gate, its petitioner heard as the
         // card asks for their words.
         for plea in Petition.Plea.allCases {

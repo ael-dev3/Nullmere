@@ -31,7 +31,13 @@ final class ReeveWordTests: XCTestCase {
         XCTAssertEqual(word.task, Voicing.reeveTask)
         XCTAssertEqual(word.facts.first, "\(hold.name) is the seat of \(view.houses[me].title).")
         XCTAssertTrue(word.facts.contains("It raises no work now."), word.facts.joined(separator: "\n"))
-        XCTAssertTrue(word.facts.contains("Its walls stand at level \(hold.level(.walls)), its ward \(hold.ward) of \(hold.maximumWard)."))
+        XCTAssertTrue(word.facts.contains("\(GameState.wallsSaid(hold.level(.walls))), its ward \(hold.ward) of \(hold.maximumWard)."),
+                      word.facts.joined(separator: "\n"))
+        // Never a word the voices keep from: no level, no turns.
+        for fact in word.facts + [Voicing.reeveTask] {
+            let words = Set(fact.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init))
+            XCTAssertTrue(words.isDisjoint(with: ["level", "levels", "turn", "turns"]), fact)
+        }
         // Its works, the highest first, as the order book names them.
         let works = hold.levels.filter { $0.key != .walls && $0.value > 0 }
         if let highest = works.max(by: { ($0.value, $1.key.title) < ($1.value, $0.key.title) }) {
@@ -106,6 +112,12 @@ final class ReeveWordTests: XCTestCase {
         XCTAssertTrue(about.contains(GameState.waySaid(to: near, from: hold.position)), about)
         world.watch += 1
         XCTAssertNotEqual(world.reeveWordKey(of: id, for: me), threatened, "each watch its word")
+    }
+
+    func testWallsAreSaidByTheirHeightNeverAsALevel() {
+        XCTAssertEqual(GameState.wallsSaid(0), "It has no walls yet")
+        XCTAssertEqual(GameState.wallsSaid(2), "Its walls stand at the second of their \(BuildingKind.walls.maxLevel == 5 ? "five" : "\(BuildingKind.walls.maxLevel)") heights")
+        XCTAssertTrue(GameState.wallsSaid(BuildingKind.walls.maxLevel).hasPrefix("Its walls stand at the "))
     }
 
     func testNoWordForAnotherHousesHold() throws {

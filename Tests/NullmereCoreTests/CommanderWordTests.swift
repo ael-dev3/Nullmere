@@ -38,12 +38,19 @@ final class CommanderWordTests: XCTestCase {
         let handle = try XCTUnwrap(counsel.handle(of: unit))
         XCTAssertEqual(word.task, Voicing.commanderTask)
         let first = try XCTUnwrap(word.facts.first)
-        XCTAssertTrue(first.hasPrefix("\(commander.name), \(commander.archetype.named) of level \(commander.level), leads \(handle) of "
-                                      + "\(view.houses[me].title): "), first)
+        XCTAssertTrue(first.hasPrefix("\(commander.name), \(commander.archetype.named), leads \(handle) of \(view.houses[me].title): "), first)
+        // Never a word the voices keep from: no level, no turns.
+        for fact in word.facts + [Voicing.commanderTask] {
+            let words = Set(fact.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init))
+            XCTAssertTrue(words.isDisjoint(with: ["level", "levels", "turn", "turns"]), fact)
+        }
         XCTAssertTrue(first.contains("\(GameState.counted(view.troops(of: unit))) troops"), "its troops, counted as every line counts them")
-        XCTAssertTrue(word.facts.contains("The company stands \(view.placeName(of: unit.position))."))
-        // What lies near, as counsel's look tells it, the nearest few.
-        let near = counsel.seen(about: unit, within: CommanderCounsel.wordLooks).prefix(CommanderCounsel.wordTells)
+        XCTAssertTrue(first.contains(SpokenOrders.named(unit, in: view)), "the company as the order book names it, where it stands among it")
+        // What lies near, as counsel's look tells it, the nearest few, the
+        // hold it stands in not told again.
+        let here = view.hold(at: unit.position)
+        let near = view.seen(around: unit.position, by: me, within: CommanderCounsel.wordLooks, besides: here?.id).prefix(CommanderCounsel.wordTells)
+        if let here { XCTAssertFalse(near.contains { $0.hasPrefix("\(here.name), a hold of") }, "the hold it stands in, not near itself") }
         let told = near.isEmpty ? "Near it the House sees nothing but the land." : "Near it the House sees: " + near.joined(separator: "; ") + "."
         XCTAssertTrue(word.facts.contains(told), word.facts.joined(separator: "\n"))
         XCTAssertFalse(word.facts.contains { $0.hasPrefix("In watch") }, "no fight led, none told")

@@ -10,7 +10,7 @@ import Foundation
 extension Voicing {
     /// What the model is asked for a commander's word on their company
     /// (`CommanderCounsel.word`).
-    public static let commanderTask = "Speak as the commander, reporting to your keeper as they turn to the company you lead: where it "
+    public static let commanderTask = "Speak as the commander, reporting to your keeper, who looks to the company you lead: where it "
         + "stands, how strong it is, what it is about and what lies near, keeping every name and number as given. Propose nothing "
         + "and promise nothing. One or two sentences, at most 40 words."
 }
@@ -24,18 +24,18 @@ extension CommanderCounsel {
     public static let wordRemembers = 2
 
     /// The commander's word on the company they lead, for the device's
-    /// model to give: who leads it and the company as they would tell it,
-    /// where it stands, what it is about, what the House sees near it, and
-    /// the fight they led lately; nil unless they lead a company at its
-    /// head.
+    /// model to give: who leads it and the company as they would tell it
+    /// (where it stands among it), what it is about, what the House sees
+    /// near it, and the fight they led lately; nil unless they lead a
+    /// company at its head.
     public var word: Voicing.Moment? {
         guard let unit = company, unit.leader == commander.id, let handle = handle(of: unit) else { return nil }
-        var facts = ["\(commander.name), \(commander.archetype.named) of level \(commander.level), leads \(handle) of \(houseTitle): "
-                     + "\(described(unit))."]
-        let place = state.placeName(of: unit.position)
-        facts.append("The company stands \(place).")
+        // The company as the order book names it says where it stands, so
+        // the hold it stands in is not told again among what lies near.
+        var facts = ["\(commander.name), \(commander.archetype.named), leads \(handle) of \(houseTitle): \(described(unit))."]
         if let doing = errandSaid(unit) { facts.append(doing) }
-        let near = seen(about: unit, within: CommanderCounsel.wordLooks).prefix(CommanderCounsel.wordTells)
+        let near = state.seen(around: unit.position, by: player, within: CommanderCounsel.wordLooks, besides: state.hold(at: unit.position)?.id)
+            .prefix(CommanderCounsel.wordTells)
         facts.append(near.isEmpty ? "Near it the House sees nothing but the land."
                                   : "Near it the House sees: " + near.joined(separator: "; ") + ".")
         if let fight = battles.first, state.watch - fight.watch <= CommanderCounsel.wordRemembers {

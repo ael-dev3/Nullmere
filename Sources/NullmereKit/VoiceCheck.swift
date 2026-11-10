@@ -41,7 +41,8 @@ public enum VoiceCheck {
     /// The moments to speak: an envoy with each kind of offer, the latest
     /// of each kind of chronicle entry sixty watches of a lake bring, the
     /// Still's dream, a prisoner, the lake's riddle, words for the fallen,
-    /// a plea of each kind at the seat's gate, and a ballad.
+    /// a plea of each kind at the seat's gate, a commander's word on their
+    /// company and the reeve's on the seat, and a ballad.
     static func moments(in state: GameState = age()) -> [(name: String, moment: VoiceMoment)] {
         var moments: [(name: String, moment: VoiceMoment)] = []
         let other = state.livingHouses.first { $0.id != state.player }?.id ?? 1
@@ -127,12 +128,41 @@ public enum VoiceCheck {
                 moments.append(("petition of \(plea.trade)", VoiceFacts.petition(petition, in: world)))
             }
         }
+        // A commander's word on the company they lead, as the keeper turns
+        // to it, and the reeve's word on the keeper's seat.
+        if let word = commanderWord(in: state) {
+            moments.append(("a commander's word", word))
+        }
+        if let seat = state.seat(of: state.player), let word = VoiceFacts.reeve(of: seat.id, for: state.player, in: state) {
+            moments.append(("the reeve's word", word))
+        }
         // A ballad of the latest deed of arms the age brought.
         if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {
             let singer = entry.houses.first ?? state.player
             moments.append(("ballad of \(entry.kind.rawValue)", VoiceFacts.ballad(entry, in: state, by: singer)))
         }
         return moments
+    }
+
+    /// A commander of the keeper's House's word on the company they lead:
+    /// the first company a commander leads, or, where none does, the
+    /// House's first free commander set at the head of a company of war
+    /// beside one of its holds, in a copy of the age, as the keeper would.
+    static func commanderWord(in state: GameState) -> VoiceMoment? {
+        var world = state
+        let me = state.player
+        if !world.units(of: me).contains(where: { $0.leader != nil }) {
+            let companies = world.units(of: me).filter { $0.kind.isMilitary && $0.leader == nil }
+            outer: for commander in world.commanders(of: me) {
+                for unit in companies where world.assignRefusal(of: commander.id, to: unit.id, as: me) == nil {
+                    _ = try? world.perform(.assign(commander: commander.id, unit: unit.id), as: me)
+                    break outer
+                }
+            }
+        }
+        guard let led = world.units(of: me).first(where: { $0.leader != nil }), let leader = led.leader,
+              let counsel = CommanderCounsel(state: world.view(for: me), player: me, commander: leader) else { return nil }
+        return VoiceFacts.commander(counsel)
     }
 
     /// What a line spoken for a moment broke of the rules: nothing, if it
