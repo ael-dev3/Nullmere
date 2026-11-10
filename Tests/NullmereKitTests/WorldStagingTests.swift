@@ -420,6 +420,32 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(leaves(session.sceneFrame(at: 50, now: spring.start.addingTimeInterval(0.3)).motes), 0, "still, none")
     }
 
+    /// A hold the keeper founds has its House's banner raised at its new
+    /// keep at once, none lowered there first, standing a while and gone.
+    func testAHoldFoundedHasItsBannerRaisedAtItsKeep() throws {
+        let session = try session()
+        let player = session.player
+        let hold = try XCTUnwrap(session.state.holds.first { $0.owner == player })
+        let cell = SIMD2(Int32(hold.position.q), Int32(hold.position.r))
+        let ours = WorldStage.colour(WorldView.houseColours, sigil: session.state.houses[player].sigil)
+        let heart = Relief.centre(of: hold.position)
+        let planted = (x: heart.x + WorldStage.captureOffset.x, z: heart.z + WorldStage.captureOffset.z)
+        func banners(_ frame: SceneFrame) -> [ModelInstance] {
+            frame.batches.filter { $0.key == .hostBanner }.flatMap(\.instances).filter {
+                $0.hex == cell && abs($0.model.c3.x - planted.x) < 1e-3 && abs($0.model.c3.z - planted.z) < 1e-3
+            }
+        }
+        let now = Date()
+        session.showBlows([.holdFounded(hold: hold.id)])
+        let rising = banners(session.sceneFrame(at: 40.4, now: now.addingTimeInterval(0.4)))
+        XCTAssertEqual(rising.map(\.colour), [ours], "its own banner rising at once, none lowered")
+        let standing = banners(session.sceneFrame(at: 43, now: now.addingTimeInterval(3)))
+        XCTAssertEqual(standing.map(\.colour), [ours])
+        XCTAssertGreaterThan(try XCTUnwrap(standing.first).model.c3.y, try XCTUnwrap(rising.first).model.c3.y, "risen to stand on its ground")
+        XCTAssertTrue(banners(session.sceneFrame(at: 48, now: now.addingTimeInterval(Double(WorldStage.captureSeconds)))).isEmpty,
+                      "gone a few seconds on")
+    }
+
     /// A company of the keeper's come through the fighting a rank higher is
     /// lit a moment where it stands, gold rising about it, gone a while
     /// after; so is the company a commander of theirs leads as it rises a
@@ -873,7 +899,7 @@ final class WorldStagingTests: XCTestCase {
         let taker = try XCTUnwrap((0..<3).first { $0 != player && $0 != unseen.owner })
         let away = Date()
         session.showBlows([.holdCaptured(hold: unseen.id, from: unseen.owner, by: taker)])
-        XCTAssertFalse(session.holdsTaken.contains { $0.at == unseen.position }, "a hold taken out of sight is not kept")
+        XCTAssertFalse(session.bannersChanging.contains { $0.at == unseen.position }, "a hold taken out of sight is not kept")
         let far = session.sceneFrame(at: 60.6, now: away.addingTimeInterval(0.6))
         let farCell = SIMD2(Int32(unseen.position.q), Int32(unseen.position.r))
         XCTAssertTrue(far.batches.filter { $0.key == .hostBanner }.flatMap(\.instances).filter { $0.hex == farCell }.isEmpty,

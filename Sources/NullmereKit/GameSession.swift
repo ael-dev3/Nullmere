@@ -163,10 +163,11 @@ public final class GameSession {
     /// when, so their lights are drawn rising into the night
     /// (`WorldStage.releasedLights`).
     @ObservationIgnored var releases: [(at: Hex, troops: Int, start: Date)] = []
-    /// Holds the keeper saw taken lately, or lost or took themselves: where,
-    /// from which House, by which and when, so the banners are drawn
-    /// changing at the keep (`WorldStage.captures`).
-    @ObservationIgnored var holdsTaken: [(at: Hex, from: Int, by: Int, start: Date)] = []
+    /// Holds the keeper saw taken lately, or lost or took themselves, and
+    /// holds seen founded: where, from which House (none, -1, for a hold
+    /// new-founded), by which and when, so the banners are drawn changing
+    /// at the keep (`WorldStage.captures`).
+    @ObservationIgnored var bannersChanging: [(at: Hex, from: Int, by: Int, start: Date)] = []
     /// The road along each way the carts go, as laid, by way.
     @ObservationIgnored var roadsLaid: [WorldStage.Way: [ModelInstance]] = [:]
     /// The blows seen struck lately, for the dead they left lying on their
@@ -2540,10 +2541,16 @@ public final class GameSession {
         }
         // A hold taken in sight, or the keeper's own lost or taken by them:
         // the old House's banner lowered at its keep, the taker's raised.
-        holdsTaken.removeAll { now.timeIntervalSince($0.start) > Double(WorldStage.captureSeconds) }
+        bannersChanging.removeAll { now.timeIntervalSince($0.start) > Double(WorldStage.captureSeconds) }
         for case .holdCaptured(let hold, let from, let by) in events {
             guard let at = state.hold(hold)?.position, from == player || by == player || isVisible(at) else { continue }
-            holdsTaken.append((at: at, from: from, by: by, start: now))
+            bannersChanging.append((at: at, from: from, by: by, start: now))
+        }
+        // A hold founded in sight, or the keeper's own: its House's banner
+        // raised at its new keep, where none was lowered.
+        for case .holdFounded(let id) in events {
+            guard let hold = state.hold(id), hold.owner == player || isVisible(hold.position) else { continue }
+            bannersChanging.append((at: hold.position, from: -1, by: hold.owner, start: now))
         }
         // The dead laid in a barrow lie on the field no longer.
         for case .buried(let field, _) in events {

@@ -13,7 +13,7 @@ extension WorldStage {
     /// When the old House's banner is all lowered, when the taker's begins
     /// to rise, and when it stands.
     static let captureLowered: Float = 1.2
-    static let captureRaising: Float = 1.4
+    public static let captureRaising: Float = 1.4
     public static let captureStanding: Float = 2.8
 
     /// How much of each banner shows `age` seconds after a hold was seen

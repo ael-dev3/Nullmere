@@ -1044,8 +1044,10 @@ a vote on the realm's law to cast.
   falls, and its name passes into the chronicle. A hold taken where you can
   see it, or one of your own lost or taken, changes its banners at its keep:
   the old House's banner is lowered into the earth, then the taker's is
-  raised out of it, stands a few seconds and fades. Where motion is reduced
-  the taker's banner simply stands a while.
+  raised out of it, stands a few seconds and fades. A hold founded where
+  you can see it, or one of your own, has its House's banner raised at its
+  new keep the same way. Where motion is reduced the banner simply stands a
+  while.
 - **Watchmen.** When an enemy's companies gather near one of your holds,
   you're told, and a broken red ring marks the hold on the map.
 
