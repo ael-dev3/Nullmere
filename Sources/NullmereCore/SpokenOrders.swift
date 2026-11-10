@@ -44,6 +44,7 @@ public enum SpokenOrders {
                                "SWEAR PEACE WITH <house> FOR <watches> WATCHES",
                                "SWEAR TO SEND <amount> <store> TO <house> EACH WATCH FOR <watches> WATCHES",
                                "RENOUNCE THE OATH TO <house>",
+                               "HELP <house>", "TAKE THE SHARES", "MARK <mark> AT <place> SAYING <words>",
                                "WHILE AWAY MUSTER <kind>", "WHILE AWAY RAISE <work> FIRST", "WHILE AWAY KEEP HOME",
                                "WHILE AWAY MAKE PEACE", "WHILE AWAY MAKE NO PEACE", "WHILE AWAY PAY TRIBUTE", "WHILE AWAY PAY NO TRIBUTE",
                                "WHILE AWAY AS YOU SEE FIT"]
@@ -220,7 +221,33 @@ public enum SpokenOrders {
         if !sworn.isEmpty {
             lines.append("Your House's oaths: " + sworn.map { state.terms(of: $0) }.joined(separator: "; "))
         }
+        lines += alliance(in: state, player: player)
         return lines.joined(separator: "\n")
+    }
+
+    /// What the House may do for its alliance, as the briefing tells it:
+    /// its allies' works it may still help (HELP), the shares of the spoils
+    /// waiting for it (TAKE THE SHARES), and, for its leader or an officer,
+    /// ground it may mark (MARK). Nothing where there is nothing to do.
+    static func alliance(in state: GameState, player: Int) -> [String] {
+        guard let sworn = state.alliance(of: player) else { return [] }
+        var lines: [String] = []
+        let allies = sworn.members.filter { $0 != player && state.houses.indices.contains($0) }
+            .compactMap { ally -> String? in
+                let count = state.helpable(by: player, for: ally)
+                return count > 0 ? "\(state.houses[ally].title), \(count) under way" : nil
+            }
+        if !allies.isEmpty { lines.append("Allies' works, musters and studies your House may help (HELP): " + allies.joined(separator: "; ")) }
+        let shares = state.shares(of: player)
+        if !shares.isEmpty {
+            lines.append("Shares of the alliance's spoils waiting for your House (TAKE THE SHARES): \(shares.count), holding \(state.sharesHeldSaid(by: player))")
+        }
+        if sworn.manages(player) {
+            lines.append("Your House may mark ground for its alliance (MARK): "
+                         + AllianceMark.Kind.allCases.map(\.word).joined(separator: ", ")
+                         + ", at a place you know, SAYING a few words if you will")
+        }
+        return lines
     }
 
     /// A name as it is matched: in small letters, without "the" before it.
@@ -427,6 +454,35 @@ public enum SpokenOrders {
             }
             return given(.renounce(oath: oath.id),
                          "Your House renounces its oath to \(state.houses[other].title): \(state.terms(of: oath)); it binds three watches more.")
+        case "HELP":
+            // A hand lent to every work, muster and study of an ally's under
+            // way that the House has yet to help.
+            let name = rest.joined(separator: " ")
+            guard !name.isEmpty else { return nil }
+            guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+            return given(.help(house: other), "Your House lends a hand to the works, musters and study of \(state.houses[other].title) under way.")
+        case "TAKE":
+            guard ["THE SHARES", "SHARES", "THE SPOILS", "THE SHARES OF THE SPOILS"].contains(rest.joined(separator: " ").uppercased()) else {
+                return nil
+            }
+            let waiting = state.shares(of: player)
+            return given(.takeShares, "Your House takes up the shares of the alliance's spoils"
+                         + (waiting.isEmpty ? "." : ", holding \(state.sharesHeldSaid(by: player))."))
+        case "MARK":
+            // MARK <mark> AT <place> SAYING <words>: ground marked for the
+            // alliance, the nearest place of that name to the seat.
+            let upper = rest.map { $0.uppercased() }
+            guard upper.count >= 3, upper[1] == "AT",
+                  let kind = AllianceMark.Kind.allCases.first(where: { $0.word.uppercased() == upper[0] }) else { return nil }
+            let saying = upper.indices.dropFirst(2).first { upper[$0] == "SAYING" }
+            let named = rest[2..<(saying ?? rest.count)].joined(separator: " ")
+            guard !named.isEmpty else { return nil }
+            let words = GameState.markWords(saying.map { rest[($0 + 1)...].joined(separator: " ") })
+            guard let place = place(named, near: state.seat(of: player)?.position ?? .origin, in: state) else {
+                return refused(text, "Your House knows no place by the name \(named).")
+            }
+            return given(.markGround(place.at, kind, words: words),
+                         "\(kind.title), marked at \(place.name) for your alliance" + (words.map { ": “\($0)”." } ?? "."))
         case "WHILE":
             // A standing order, for the caretaker that keeps the House while
             // its keeper is away.

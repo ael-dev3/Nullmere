@@ -603,6 +603,69 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertTrue(SpokenOrders.briefing(for: state, player: me).contains("WHILE AWAY KEEP HOME"))
     }
 
+    /// The House's part in its alliance from the book: a hand lent to an
+    /// ally's works (HELP), the shares of the spoils taken (TAKE THE
+    /// SHARES) and ground marked by its leader or an officer (MARK), each
+    /// told in the briefing only while there is something to do, and each
+    /// weighed by the rules.
+    func testTheAlliancesOrdersFromTheBook() throws {
+        var state = world()
+        let me = state.player
+        let ally = (me + 1) % state.houses.count
+        state.houses[ally].isPlayer = true
+        let title = state.houses[ally].title
+        let mine = try XCTUnwrap(state.seat(of: me))
+        func read(_ line: String, as house: Int = -1) throws -> SpokenOrders.Line {
+            try XCTUnwrap(SpokenOrders.read(line, in: state, player: house < 0 ? me : house).first, line)
+        }
+        // Sworn to none: nothing told, and each line refused in the realm's words.
+        var briefing = SpokenOrders.briefing(for: state, player: me)
+        XCTAssertFalse(briefing.contains("(HELP)") || briefing.contains("(TAKE THE SHARES)") || briefing.contains("(MARK)"), briefing)
+        XCTAssertEqual(try read("HELP \(title)").why, RuleError.notAnAlly.description)
+        XCTAssertEqual(try read("MARK STRIKE AT \(mine.name)").why, RuleError.notInAlliance.description)
+        XCTAssertEqual(try read("TAKE THE SHARES").why, RuleError.noSharesWaiting.description)
+        XCTAssertEqual(try read("HELP House Nobody").why, "No House goes by the name House Nobody.")
+
+        // Sworn together, the ally at work: help told and given.
+        _ = try state.perform(.foundAlliance(name: "Lantern Oath"), as: me)
+        let id = try XCTUnwrap(state.alliance(of: me)).id
+        _ = try state.perform(.inviteToAlliance(house: ally), as: me)
+        _ = try state.perform(.answerInvitation(alliance: id, accept: true), as: ally)
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == ally && $0.isSeat })
+        state.holds[seat].project = Hold.Project(kind: .walls, targetLevel: 1, watchesLeft: 5)
+        briefing = SpokenOrders.briefing(for: state, player: me)
+        XCTAssertTrue(briefing.contains("Allies' works, musters and studies your House may help (HELP): \(title), 1 under way"), briefing)
+        let help = try read("HELP \(title)")
+        XCTAssertEqual(help.command, .help(house: ally))
+        XCTAssertNil(help.why)
+        XCTAssertEqual(help.told, "Your House lends a hand to the works, musters and study of \(title) under way.")
+
+        // Its leader marks ground at a place it knows, with words or none.
+        XCTAssertTrue(briefing.contains("Your House may mark ground for its alliance (MARK): Gather, Strike, Hold, Beware"), briefing)
+        let mark = try read("MARK GATHER AT \(mine.name) SAYING Bring the spears")
+        XCTAssertEqual(mark.command, .markGround(mine.position, .gather, words: "Bring the spears"))
+        XCTAssertNil(mark.why)
+        XCTAssertEqual(mark.told, "Gather here, marked at \(mine.name) for your alliance: “Bring the spears”.")
+        XCTAssertEqual(try read("MARK BEWARE AT \(mine.name)").command, .markGround(mine.position, .beware, words: nil))
+        XCTAssertEqual(try read("MARK STRIKE AT the Drowned Moon").why, "Your House knows no place by the name the Drowned Moon.")
+        XCTAssertTrue(SpokenOrders.read("MARK FEAST AT \(mine.name)\nMARK GATHER AT", in: state, player: me).isEmpty, "No such mark, no place")
+        // A House of the alliance that is no officer may not.
+        XCTAssertEqual(try read("MARK GATHER AT \(mine.name)", as: ally).why, RuleError.notAllianceOfficer.description)
+        XCTAssertFalse(SpokenOrders.briefing(for: state, player: ally).contains("(MARK)"))
+
+        // A share of the spoils waiting, told and taken.
+        state.allianceShares = [AllianceShare(house: me, from: ally, deed: .wilds, level: 2, given: state.watch)]
+        let held = state.sharesHeldSaid(by: me)
+        briefing = SpokenOrders.briefing(for: state, player: me)
+        XCTAssertTrue(briefing.contains("Shares of the alliance's spoils waiting for your House (TAKE THE SHARES): 1, holding \(held)"), briefing)
+        let take = try read("TAKE THE SHARES")
+        XCTAssertEqual(take.command, .takeShares)
+        XCTAssertNil(take.why)
+        XCTAssertEqual(take.told, "Your House takes up the shares of the alliance's spoils, holding \(held).")
+        XCTAssertEqual(try read("take the spoils").command, .takeShares)
+        XCTAssertTrue(SpokenOrders.read("TAKE THE HILL", in: state, player: me).isEmpty, "Not a line of the book")
+    }
+
     func testWhatCantBeReadIsSaidSo() throws {
         var state = world()
         let me = state.player

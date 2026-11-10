@@ -349,7 +349,14 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   <company> sends one to a rally of its side still gathering, or RALLY
   <company> to the one setting out soonest. The briefing names the rallies
   gathering, the Lanterns that may scout and where, and each company's
-  errand.
+  errand. The House's part in its alliance is in the book too: HELP <house>
+  lends a hand to an ally's works, musters and study under way; TAKE THE
+  SHARES takes up the shares of the alliance's spoils waiting; and its
+  leader or an officer may MARK GATHER, STRIKE, HOLD or BEWARE AT a place it
+  knows, SAYING a few words if it will. The briefing tells each only while
+  there is something to do: the allies' works to help and how many, the
+  shares waiting and what they hold, and the marking to those who may
+  (`testTheAlliancesOrdersFromTheBook`).
 - [x] **Marching dark.** A keeper's company may douse its torches and march
   dark: a tile less each watch, and seen by another House, and told to it
   step by step, only within a tile of what that House or its allies see
