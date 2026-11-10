@@ -66,12 +66,18 @@ final class SpokenOrdersTests: XCTestCase {
             placed += 1
         }
         state.shrines = (0..<SpokenOrders.briefedPlaces).map { Shrine(id: 900 + $0, kind: .moonwell, position: Hex($0 % 9, $0 / 9)) }
+        // More sites known than it names: the nearest the seat, so many.
+        let ground = state.map.hexes.filter { state.map[$0]?.terrain.isWater == false }.prefix(SpokenOrders.briefedSites + 4)
+        state.sites = ground.enumerated().map { Site(id: 800 + $0.offset, store: .stone, level: 1, position: $0.element, found: 0) }
+        for hex in ground { state.reveal(around: hex, range: 0, for: me) }
         let briefing = SpokenOrders.briefing(for: state, player: me)
         XCTAssertTrue(briefing.contains("\nC\(SpokenOrders.briefedCompanies): "))
         XCTAssertFalse(briefing.contains("\nC\(SpokenOrders.briefedCompanies + 1): "))
         let known = try XCTUnwrap(briefing.split(separator: "\n").first { $0.hasPrefix("Places you know: ") })
         XCTAssertLessThanOrEqual(known.components(separatedBy: ", ").count, SpokenOrders.briefedPlaces)
         XCTAssertEqual(known.components(separatedBy: "Moonwell").count - 1, 1, "Each name once")
+        let sites = try XCTUnwrap(briefing.split(separator: "\n").first { $0.hasPrefix("Sites to gather at, the nearest your seat first: ") })
+        XCTAssertEqual(sites.components(separatedBy: "; ").count, SpokenOrders.briefedSites, String(sites))
         // A company past those the briefing names may still be ordered by its number.
         let last = SpokenOrders.companies(in: state, player: me).count
         XCTAssertNotNil(SpokenOrders.company("C\(last)", in: state, player: me))
@@ -229,6 +235,97 @@ final class SpokenOrdersTests: XCTestCase {
         _ = try state.perform(.bury(unit: unit.id), as: me)
         XCTAssertFalse(SpokenOrders.briefing(for: state, player: me).contains("(BURY)"))
         XCTAssertFalse(try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id)).affairs.contains("unburied"))
+    }
+
+    /// Gathering from the book: GATHER sends a company of war to the nearest
+    /// site of the store asked that it may work, as the rules would send
+    /// it, the store named as itself or as its sites are; or to the nearest
+    /// of any. The briefing names the sites the House knows, nearest its
+    /// seat first, and the companies out gathering; what can't be gathered
+    /// is told why in the realm's own words; and a commander may put it
+    /// forward.
+    func testCompaniesAreSentToGatherFromTheBookAndCounselMayProposeIt() throws {
+        var state = Scene.world("gather from the book")
+        let me = state.player
+        state.sites = []
+        state.wilds = []
+        let ground = try XCTUnwrap(state.openGround())
+        let spear = state.put(.spear, of: me, at: ground)
+        let lantern = state.put(.lantern, of: me, at: ground)
+        let east = ground + Hex.directions[0], west = ground + Hex.directions[3]
+        let grain = Site(id: state.takeID(), store: .grain, level: 2, position: east, found: state.watch)
+        let timber = Site(id: state.takeID(), store: .timber, level: 1, position: west, found: state.watch)
+        state.sites = [grain, timber]
+        for hex in [ground, east, west] { state.houses[me].explored[try XCTUnwrap(state.map.index(of: hex))] = false }
+        let companies = SpokenOrders.companies(in: state, player: me)
+        let handle = "C\(try XCTUnwrap(companies.firstIndex { $0.id == spear }) + 1)"
+        let lanterns = "C\(try XCTUnwrap(companies.firstIndex { $0.id == lantern }) + 1)"
+        XCTAssertTrue(SpokenOrders.forms.contains("GATHER <store> WITH <company>"))
+        func read(_ line: String) throws -> SpokenOrders.Line { try XCTUnwrap(SpokenOrders.read(line, in: state, player: me).first, line) }
+
+        // Unseen, no site is the House's to send a company to.
+        XCTAssertTrue(SpokenOrders.briefing(for: state, player: me).contains("\nSites to gather at: none your House knows of.\n"))
+        XCTAssertEqual(try read("GATHER TIMBER WITH \(handle)").why, "Your House knows of no site of timber to gather at.")
+        XCTAssertEqual(try read("GATHER \(handle)").why, "Your House knows of no site of any store to gather at.")
+
+        state.reveal(around: ground, range: 1, for: me)
+        let home = try XCTUnwrap(state.seat(of: me)).position
+        let told = [grain, timber].sorted { ($0.position.distance(to: home), $0.id) < ($1.position.distance(to: home), $1.id) }
+            .map { "\(state.siteSaid($0)) (\($0.store.title.lowercased())), \(GameState.waySaid(to: $0.position, from: home))" }
+        XCTAssertTrue(SpokenOrders.briefing(for: state, player: me)
+            .contains("\nSites to gather at, the nearest your seat first: " + told.joined(separator: "; ") + "\n"))
+        XCTAssertEqual(told.filter { $0.hasPrefix("the Deadfall I (timber), ") }.count, 1, "\(told)")
+
+        let unit = try XCTUnwrap(state.unit(spear))
+        let gather = try read("gather timber with \(handle)")
+        XCTAssertEqual(gather.command, .gather(unit: spear, site: timber.id))
+        XCTAssertNil(gather.why)
+        XCTAssertEqual(gather.told, "Your \(SpokenOrders.named(unit, in: state)) gather timber at the Deadfall I, "
+                       + "\(GameState.waySaid(to: west, from: ground)).")
+        // The store by its sites' name, or its alliance's yards'; without
+        // WITH, the last word is the company.
+        XCTAssertEqual(try read("GATHER THE DEADFALL WITH \(handle)").command, gather.command)
+        XCTAssertEqual(try read("GATHER the Timber Yard WITH \(handle)").command, gather.command)
+        XCTAssertEqual(try read("GATHER Fallow Field II WITH \(handle)").command, .gather(unit: spear, site: grain.id))
+        XCTAssertEqual(try read("GATHER TIMBER \(handle)").command, gather.command)
+        // Of any store, the nearest; between two as near, the older site.
+        XCTAssertEqual(try read("GATHER \(handle)").command, .gather(unit: spear, site: grain.id))
+        XCTAssertEqual(state.sitesToGather(by: unit, as: me, most: 5).map(\.id), [grain.id, timber.id])
+        XCTAssertEqual(state.sitesToGather(by: unit, as: me, store: .timber, most: 5).map(\.id), [timber.id])
+        XCTAssertEqual(state.sitesToGather(by: unit, as: me, most: 0), [])
+
+        // What can't be gathered, told why.
+        XCTAssertEqual(try read("GATHER GOLD WITH \(handle)").why, "No store goes by the name GOLD.")
+        XCTAssertEqual(try read("GATHER TIMBER WITH C99").why, "Your House has no company C99.")
+        XCTAssertEqual(try read("GATHER GRAIN WITH \(lanterns)").why, RuleError.cannotGather(.lantern).description)
+        var laden = state
+        laden.units[try XCTUnwrap(laden.units.firstIndex { $0.id == spear })].load = Stock(grain: 10)
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("GATHER TIMBER WITH \(handle)", in: laden, player: me).first).why,
+                       RuleError.loadFull.description, "it carries grain")
+        XCTAssertEqual(try XCTUnwrap(SpokenOrders.read("GATHER \(handle)", in: laden, player: me).first).command,
+                       .gather(unit: spear, site: grain.id), "more grain it may carry")
+
+        // A commander may put it forward, by the store or for the nearest.
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        let counsel = try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id))
+        let own = try XCTUnwrap(counsel.handle(of: unit))
+        let proposed = counsel.propose(" Gather ", company: own, place: "timber")
+        XCTAssertEqual(proposed.line, "GATHER timber WITH \(own)")
+        XCTAssertTrue(proposed.isGiven, proposed.why ?? "")
+        XCTAssertEqual(proposed.command, gather.command)
+        XCTAssertEqual(counsel.propose("gather", company: own, place: "").line, "GATHER \(own)")
+        XCTAssertEqual(counsel.propose("gather", company: own, place: "").command, .gather(unit: spear, site: grain.id))
+        XCTAssertTrue(CommanderCounsel.actions.contains("gather"))
+        XCTAssertTrue(CommanderCounsel.onlyThese.contains("gather (a store, at the nearest site of it the company may work)"))
+
+        // Sent, the briefing and counsel tell it out gathering.
+        _ = try state.perform(try XCTUnwrap(gather.command), as: me)
+        let sent = try XCTUnwrap(state.unit(spear))
+        let work = try XCTUnwrap(state.gatheringSaid(of: sent))
+        let lines = SpokenOrders.briefing(for: state, player: me).split(separator: "\n").map(String.init)
+        XCTAssertTrue(lines.contains { $0.hasPrefix("\(handle): ") && $0.hasSuffix(", out gathering: \(work)") }, "\(lines)")
+        let after = try XCTUnwrap(CommanderCounsel(state: state, player: me, commander: commander.id))
+        XCTAssertTrue(after.report(on: own).contains(", out gathering: \(work)"), after.report(on: own))
     }
 
     /// An ambush from the book: WAIT has a company marching dark in the

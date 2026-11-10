@@ -128,7 +128,10 @@ public struct CommanderCounsel: Sendable {
     /// stands, and what it is about.
     func described(_ unit: Unit) -> String {
         var told = "\(SpokenOrders.named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops"
-        if let march = state.marchSaid(of: unit, for: player) {
+        if let work = state.gatheringSaid(of: unit) {
+            // Out at the land's work, as its keeper is told it.
+            told += ", out gathering: \(work)"
+        } else if let march = state.marchSaid(of: unit, for: player) {
             // As its keeper is told it, never "marching to on the barrows".
             told += ", " + march.prefix(1).lowercased() + march.dropFirst()
         } else if unit.fortified {
@@ -301,15 +304,17 @@ public struct CommanderCounsel: Sendable {
     public static let sightingsTold = 3
 
     /// What a commander may propose a company does.
-    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury"]
+    public static let actions = ["march", "strike", "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury", "gather"]
 
     /// Why a commander can't put forward anything else.
     public static let onlyThese = "A commander may propose only that a company march, strike, fortify, halt, drill, kindle (set the wood "
-        + "alight), douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark) "
-        + "or bury (the dead lying unburied where it stands)."
+        + "alight), douse (its torches, to march dark), light (its torches again), wait (lie in wait in the blackwood, marching dark), "
+        + "bury (the dead lying unburied where it stands) or gather (a store, at the nearest site of it the company may work)."
 
     /// An order put to the keeper, read and weighed as the order book weighs
-    /// a line: given if the realm would take it, or told why not.
+    /// a line: given if the realm would take it, or told why not. For
+    /// gather, the place is the store to gather, or its sites' name, and
+    /// empty for the nearest site of any store.
     public func propose(_ action: String, company handle: String, place: String) -> CounselProposal {
         let verb = action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let handle = handle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -318,6 +323,7 @@ public struct CommanderCounsel: Sendable {
         switch verb {
         case "march": line = "MARCH \(handle) TO \(place)"
         case "strike": line = "STRIKE \(place) WITH \(handle)"
+        case "gather": line = place.isEmpty ? "GATHER \(handle)" : "GATHER \(place) WITH \(handle)"
         case "fortify", "halt", "drill", "kindle", "douse", "light", "wait", "bury": line = "\(verb.uppercased()) \(handle)"
         default:
             return CounselProposal(line: "\(action) \(handle) \(place)", told: "\(action) \(handle)", command: nil,

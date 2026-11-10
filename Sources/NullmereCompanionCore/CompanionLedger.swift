@@ -1716,8 +1716,7 @@ public struct CompanionLedger: Equatable, Sendable {
     /// rules would send it.
     static func gathers(for unit: Unit, in world: GameState, player: Int) -> [Order] {
         guard unit.kind.isMilitary, unit.errand == nil else { return [] }
-        let nearest = world.sitesInLand.sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
-        return nearest.lazy.filter { world.gatherRefusal(unit.id, at: $0.id, as: player) == nil }.prefix(sitesOffered).map { site in
+        return world.sitesToGather(by: unit, as: player, most: sitesOffered).map { site in
             // The site by its name, which way and how far from the company,
             // never "at on the blackwood by" a hold.
             Order(title: "Gather \(site.store.title.lowercased()) at \(world.siteSaid(site)), \(GameState.waySaid(to: site.position, from: unit.position))",

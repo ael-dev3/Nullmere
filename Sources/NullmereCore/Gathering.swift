@@ -173,6 +173,16 @@ extension GameState {
         return nil
     }
 
+    /// The sites a House may send a company to gather at now, as the rules
+    /// would send it: of one store, or of any, the nearest the company
+    /// first, at most `most` of them. Weighed one by one, the nearest
+    /// first, so no way is sought beyond the sites wanted.
+    public func sitesToGather(by unit: Unit, as house: Int, store: Resource? = nil, most: Int) -> [Site] {
+        let nearest = sitesInLand.filter { store == nil || $0.store == store }
+            .sorted { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        return Array(nearest.lazy.filter { gatherRefusal(unit.id, at: $0.id, as: house) == nil }.prefix(max(most, 0)))
+    }
+
     /// The most watches a company may be sent to work a site for.
     public static let longestGathering = 20
 

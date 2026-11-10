@@ -36,7 +36,7 @@ public enum SpokenOrders {
     /// The forms of the order book's lines.
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
                                "DRILL <company>", "KINDLE <company>", "DOUSE <company>", "LIGHT <company>", "WAIT <company>", "SEEK <company>",
-                               "BURY <company>",
+                               "BURY <company>", "GATHER <store> WITH <company>",
                                "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
@@ -52,6 +52,9 @@ public enum SpokenOrders {
     /// seat first, so it stays within what the model reads at once.
     public static let briefedCompanies = 40
     public static let briefedPlaces = 80
+    /// The most sites to gather at the briefing names, the nearest the
+    /// seat first.
+    public static let briefedSites = 8
 
     /// The House's companies, in the order the briefing numbers them.
     public static func companies(in state: GameState, player: Int) -> [Unit] {
@@ -77,6 +80,25 @@ public enum SpokenOrders {
     static func burySaid(_ unit: Unit, in state: GameState, player: Int) -> String {
         guard let field = state.fieldOfDead(at: unit.position), state.burialRefusal(by: unit.id, as: player) == nil else { return "" }
         return ", where \(GameState.counted(field.troops)) troops' dead lie unburied, which it may bury (BURY)"
+    }
+
+    /// A company out at the land's work, as the briefing tells it: at its
+    /// site, bound for it, or home with its load, as its keeper is told it.
+    static func gatheringSaid(_ unit: Unit, in state: GameState) -> String {
+        state.gatheringSaid(of: unit).map { ", out gathering: \($0)" } ?? ""
+    }
+
+    /// The sites of the land the House knows and may send its companies
+    /// to gather at (GATHER), the nearest its seat first, each with its
+    /// store and which way and how far from the seat: "the Deadfall II
+    /// (timber), 3 tiles north-east"; an alliance's yards only for its own.
+    static func sitesKnown(in state: GameState, player: Int) -> [String] {
+        let home = state.seat(of: player)?.position ?? .origin
+        let ours = state.alliance(of: player)?.id
+        return state.sitesInLand.filter { state.isExplored($0.position, by: player) && ($0.alliance == nil || $0.alliance == ours) }
+            .sorted { ($0.position.distance(to: home), $0.id) < ($1.position.distance(to: home), $1.id) }
+            .prefix(briefedSites)
+            .map { "\(state.siteSaid($0)) (\($0.store.title.lowercased())), \(GameState.waySaid(to: $0.position, from: home))" }
     }
 
     /// A company as the briefing and the orders name it.
@@ -130,11 +152,17 @@ public enum SpokenOrders {
                          + Self.waitSaid(unit, in: state, player: player)
                          + Self.seekSaid(unit, in: state, player: player)
                          + Self.burySaid(unit, in: state, player: player)
-                         + (state.isUnlit(unit.id) ? ", marching dark, its torches doused (LIGHT)" : ""))
+                         + (state.isUnlit(unit.id) ? ", marching dark, its torches doused (LIGHT)" : "")
+                         + Self.gatheringSaid(unit, in: state))
         }
         lines.append("This watch \(state.windSaid).")
         let holds = state.holds(of: player)
         lines.append("Your holds: " + holds.map(\.name).joined(separator: ", "))
+        // Where the land's stores lie to be worked: a company sent to gather
+        // a store goes to the nearest site of it that it may work.
+        let sites = sitesKnown(in: state, player: player)
+        lines.append(sites.isEmpty ? "Sites to gather at: none your House knows of."
+                     : "Sites to gather at, the nearest your seat first: " + sites.joined(separator: "; "))
         // Each name once, the nearest the seat first.
         let home = state.seat(of: player)?.position ?? .origin
         var named = Set(holds.map(\.name))
@@ -223,6 +251,28 @@ public enum SpokenOrders {
                     ? "Your \(named(unit, in: state)) seek out \(find.named)." : "Your \(named(unit, in: state)) go down into \(find.named).")
             default: return given(.drill(unit: unit.id), "Your \(named(unit, in: state)) drill.")
             }
+        case "GATHER":
+            // GATHER <store> WITH <company>: the nearest site of the store the
+            // company may work, as the rules would send it; GATHER <company>,
+            // the nearest of any store.
+            let asked: String, handle: String
+            if let (first, second) = split("WITH") {
+                (asked, handle) = (first, second)
+            } else {
+                (asked, handle) = (rest.dropLast().joined(separator: " "), rest.last ?? "")
+            }
+            guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
+            var store: Resource?
+            if !asked.isEmpty {
+                guard let named = Self.store(asked) else { return refused(text, "No store goes by the name \(asked).") }
+                store = named
+            }
+            guard let site = state.sitesToGather(by: unit, as: player, store: store, most: 1).first else {
+                return refused(text, gatherRefused(unit, store: store, in: state, player: player))
+            }
+            return given(.gather(unit: unit.id, site: site.id),
+                         "Your \(named(unit, in: state)) gather \(site.store.title.lowercased()) at \(state.siteSaid(site)), "
+                            + "\(GameState.waySaid(to: site.position, from: unit.position)).")
         case "BUILD", "TRAIN":
             guard let (what, at) = split("AT") else { return nil }
             guard let hold = state.holds(of: player).first(where: { plain($0.name) == plain(at) }) else {
@@ -364,6 +414,26 @@ public enum SpokenOrders {
     /// The store a line names.
     static func resource(_ name: String) -> Resource? {
         Resource.allCases.first { plain($0.title) == plain(name) }
+    }
+
+    /// The store a GATHER line names: by its own name, or by the name of
+    /// its sites or its alliance's yards, as a look tells them ("Deadfall",
+    /// "the Deadfall II", "the Timber Yard").
+    static func store(_ name: String) -> Resource? {
+        let asked = plain(name)
+        return resource(name) ?? Resource.allCases.first { store in
+            [Site.title(of: store), Yard.title(of: store)].map(plain).contains { asked == $0 || asked.hasPrefix($0 + " ") }
+        }
+    }
+
+    /// Why a company can't be sent to gather, as the nearest site of the
+    /// store asked that the House knows tells it, or that the House knows
+    /// of none.
+    static func gatherRefused(_ unit: Unit, store: Resource?, in state: GameState, player: Int) -> String {
+        let known = state.sitesInLand.filter { (store == nil || $0.store == store) && state.isExplored($0.position, by: player) }
+            .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        if let known, let refusal = state.gatherRefusal(unit.id, at: known.id, as: player) { return refusal.description }
+        return "Your House knows of no site of \(store.map { $0.title.lowercased() } ?? "any store") to gather at."
     }
 
     /// Another House a line names, by its title or its name alone; one
