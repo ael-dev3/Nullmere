@@ -615,14 +615,28 @@ jobs:
           NULLMERE_SOAK_WATCHES: "200"
         run: swift test --enable-code-coverage 2>&1 | tee realm-test.log
 
+      # A mirror caught mid-sync fails `apt-get update` for one index while
+      # the rest are fetched (run 933: "File has unexpected size ... Mirror
+      # sync in progress?"), and chaining the install on it left python3
+      # uninstalled and the coverage unmeasured though every test had
+      # passed. The install is tried on what was fetched, and the whole
+      # asked again a little later, before the step fails on what's missing.
       - name: Coverage
         run: |
-          apt-get update -qq && apt-get install -y -qq python3 >/dev/null
+          for attempt in 1 2 3; do
+            apt-get update -qq || echo "apt-get update failed (attempt $attempt): installing from the index it fetched"
+            apt-get install -y -qq python3 >/dev/null && break
+            sleep 15
+          done
           python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereModels=97 NullmereWorld=97 NullmereSound=97 NullmereRealm=97 LauncherCore=97
 
       - name: Install Rust and SpacetimeDB
         run: |
-          apt-get update -qq && apt-get install -y -qq curl build-essential >/dev/null
+          for attempt in 1 2 3; do
+            apt-get update -qq || echo "apt-get update failed (attempt $attempt): installing from the index it fetched"
+            apt-get install -y -qq curl build-essential >/dev/null && break
+            sleep 15
+          done
           curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --target wasm32-unknown-unknown
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
