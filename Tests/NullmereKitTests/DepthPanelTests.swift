@@ -1268,13 +1268,19 @@ final class DepthPanelTests: XCTestCase {
         let seat = try XCTUnwrap(state.seat(of: me))
         let (session, link) = session(state)
         XCTAssertTrue(VeilLine.words(session.state, house: me).hasPrefix("The veil of the Still, for 30 moonsalt"))
+        // One line on the seat's record, what it does said under the pointer.
+        XCTAssertEqual(VeilLine.brief(session.state, house: me), "Veil of the Still · 30 moonsalt")
+        XCTAssertTrue(VeilLine.offered(session.state, house: me))
         session.selection = .hold(seat.id)
         draw(SelectionPanel(session: session), width: 330, height: 1200)
         XCTAssertTrue(PressableButtons.press("Draw the veil"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .drawVeil)
         XCTAssertTrue(session.state.isVeiled(me))
         XCTAssertTrue(VeilLine.words(session.state, house: me).hasPrefix("Veiled until watch \(session.state.watch + GameState.veilLasts)"))
+        XCTAssertEqual(VeilLine.brief(session.state, house: me), "Veiled until watch \(session.state.watch + GameState.veilLasts)")
+        XCTAssertFalse(VeilLine.offered(session.state, house: me), "not offered while it lies")
         draw(SelectionPanel(session: session), width: 330, height: 1200)
+        XCTAssertFalse(PressableButtons.press("Draw the veil"), "Among \(shown)")
 
         // Another's, on its hold's record and under the pointer.
         session.selection = .hold(theirs.id)
@@ -1287,6 +1293,8 @@ final class DepthPanelTests: XCTestCase {
         _ = lifted.liftVeil(of: me)
         XCTAssertTrue(VeilLine.words(lifted, house: me).hasPrefix("The mist gathers again"))
         XCTAssertNil(VeilLine.short(lifted, house: me))
+        XCTAssertEqual(VeilLine.brief(lifted, house: me), "The veil may be drawn anew at watch \(lifted.watch + GameState.veilRest)")
+        XCTAssertFalse(VeilLine.offered(lifted, house: me), "not offered while the mist gathers again: its line says when")
         XCTAssertEqual(GameSession.cues(for: .drawVeil, events: [], in: session.state, player: me), [.stand])
         XCTAssertEqual(GameSession.cue(forDepth: .veilLifted(house: me, struck: true), in: session.state, player: me), .horn)
         XCTAssertNil(GameSession.cue(forDepth: .veilLifted(house: other, struck: false), in: session.state, player: me))

@@ -1661,31 +1661,54 @@ struct VeilLine: View {
     /// when it may be drawn again.
     static func short(_ state: GameState, house: Int) -> String? { state.veilShortSaid(of: house) }
 
+    /// The veil as the seat's record shows it, in a line: "Veiled until
+    /// watch 58", "The veil may be drawn anew at watch 70" while the mist
+    /// gathers again, or what it costs while it may be drawn. What it does
+    /// is in its words (`words`), said under the pointer and to VoiceOver.
+    static func brief(_ state: GameState, house: Int) -> String {
+        if state.isVeiled(house), let veil = state.veil(of: house) { return "Veiled until watch \(veil.until)" }
+        if let veil = state.veil(of: house), state.watch < veil.until + GameState.veilRest {
+            return "The veil may be drawn anew at watch \(veil.until + GameState.veilRest)"
+        }
+        return "Veil of the Still · \(GameState.veilCost)"
+    }
+
+    /// Whether the record offers to draw it: not while it lies, nor while
+    /// the mist gathers again, when its line says when it may be.
+    static func offered(_ state: GameState, house: Int) -> Bool {
+        guard let veil = state.veil(of: house) else { return true }
+        return state.watch >= veil.until + GameState.veilRest
+    }
+
     var body: some View {
         let state = session.state, me = session.player
         let refusal = state.veilRefusal(as: me)
-        // The words across the record, the button beneath them: beside it
-        // they ran four lines down a narrow column.
-        VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: VeilLine.words(state, house: me))
-                .font(.nm(10))
-                .foregroundStyle(state.isVeiled(me) ? Palette.glowWords : Palette.text(0.55))
-                .fixedSize(horizontal: false, vertical: true)
-            if !state.isVeiled(me) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    if let short = VeilLine.short(state, house: me) {
-                        Text(verbatim: short)
-                            .font(.nm(9))
-                            .foregroundStyle(Palette.text(0.45))
-                    }
-                    Spacer(minLength: 4)
+        let words = VeilLine.words(state, house: me)
+        // One line on the seat's record, its button beside it: told whole,
+        // the veil ran four lines across the record whenever the seat was
+        // chosen, above its yield, though seldom drawn.
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(verbatim: VeilLine.brief(state, house: me))
+                    .font(.nm(10))
+                    .foregroundStyle(state.isVeiled(me) ? Palette.glowWords : Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(words)
+                Spacer(minLength: 4)
+                if VeilLine.offered(state, house: me) {
                     QuietButton(title: "Draw the veil", size: 8.5, enabled: refusal == nil, name: "Draw the veil of the Still over your holds",
                                 why: refusal?.description) {
                         session.perform(.drawVeil)
                     }
                 }
             }
+            if let short = VeilLine.short(state, house: me) {
+                Text(verbatim: short)
+                    .font(.nm(9))
+                    .foregroundStyle(Palette.text(0.45))
+            }
         }
+        .help(words)
         .padding(.top, 2)
     }
 }
