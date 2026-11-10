@@ -720,6 +720,11 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(figures(rising).allSatisfy { abs($0.params.y - 0.5) < 0.05 }, "coming up out of it")
         let whole = session.sceneFrame(at: 43, now: now.addingTimeInterval(Double(WorldStage.risingSeconds) * 2))
         XCTAssertTrue(figures(whole).allSatisfy { $0.params.y == 1 }, "whole")
+        // Up out of the earth: first seen deep in it, then standing on it.
+        XCTAssertEqual(figures(first).count, figures(whole).count)
+        for (under, standing) in zip(figures(first), figures(whole)) {
+            XCTAssertEqual(standing.model.c3.y - under.model.c3.y, WorldStage.risenDepth, accuracy: 0.01, "first seen under the ground")
+        }
         // Their field's lights about them.
         let heart = Relief.centre(of: at)
         let cold = whole.motes.filter { mote in

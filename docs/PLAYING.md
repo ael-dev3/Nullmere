@@ -900,7 +900,8 @@ a vote on the realm's law to cast.
   and each field your House buries adds two to your renown as the age
   ends (five fields at most). Left unburied where 6,000 troops or more
   lie, at the dark of the moon (when the Houses dream, once in each moon
-  of thirty watches) they rise as Barrowkin, the stronger the
+  of thirty watches) they rise as Barrowkin (you see them climb pale up
+  out of the earth), the stronger the
   more of them, and stand there as the wilds do, every House's foe, until
   some House strikes them down; a field where fewer lie the land takes
   back then. Pale, cold corpse-lights hang over every field you know

@@ -639,14 +639,16 @@ extension GameSession {
                                      heading: headings[GameSession.wildPoseBase - wild.id] ?? Float(wild.id % 6) * .pi / 3,
                                      clipTime: resting, emphasis: hovered == wild.position ? 0.5 : 0, isOwn: false))
             // The dead risen as Barrowkin, pale and cold, no House's; those
-            // risen this watch come up out of the dark from when the keeper
-            // first sees them (whole at once where motion is reduced).
+            // risen this watch come up out of the dark and the earth from when
+            // the keeper first sees them (whole at once where motion is reduced).
             if wild.kind == .barrowkin {
                 poses[poses.count - 1].colour = WorldStage.barrowkinColour
                 if wild.raised == state.watch {
                     let seen = risenSeen[wild.id] ?? now
                     risenSeen[wild.id] = seen
-                    poses[poses.count - 1].opacity = WorldStage.risenShowing(age: Float(now.timeIntervalSince(seen)), still: !animated)
+                    let showing = WorldStage.risenShowing(age: Float(now.timeIntervalSince(seen)), still: !animated)
+                    poses[poses.count - 1].opacity = showing
+                    poses[poses.count - 1].sink = WorldStage.risenSink(showing: showing)
                 }
             }
         }

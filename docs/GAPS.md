@@ -841,7 +841,11 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   many and as bright as hung over it on the eve of the dark
   (`UnburiedSight.risen`), and those risen this watch come up out of the
   dark over two and a half seconds from when the keeper first sees them,
-  whole at once where motion is reduced (`WorldStage.risenShowing`);
+  whole at once where motion is reduced (`WorldStage.risenShowing`), and
+  up out of the earth with it, first seen standing deep in it, head and
+  shoulders showing, then on it once whole (`WorldStage.risenSink`, a
+  pose's `sink`; CorpseLightsTests on Linux, WorldStagingTests on the Mac,
+  Unverified there until a CI run);
   CorpseLightsTests on Linux, WorldStagingTests passing on the Mac in
   run 895. The order book reads BURY <company>, so a keeper
   may bury the dead in their own words on the Mac or the phone and leave

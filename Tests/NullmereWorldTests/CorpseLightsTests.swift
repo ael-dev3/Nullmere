@@ -110,6 +110,19 @@ final class CorpseLightsTests: XCTestCase {
         let risen = stage.companies([pose], houses: [red], into: &frame).flatMap(\.instances)
         XCTAssertEqual(risen.count, plain.count)
         XCTAssertTrue(risen.allSatisfy { $0.colour == WorldStage.barrowkinColour }, "the risen dead pale and cold")
+        // And they come up out of the earth as they show: deep at the first,
+        // standing on it once whole.
+        XCTAssertEqual(WorldStage.risenSink(showing: 0), WorldStage.risenDepth)
+        XCTAssertEqual(WorldStage.risenSink(showing: 0.5), WorldStage.risenDepth / 2, accuracy: 1e-5)
+        XCTAssertEqual(WorldStage.risenSink(showing: 1), 0)
+        XCTAssertEqual(WorldStage.risenSink(showing: 3), 0)
+        pose.sink = WorldStage.risenSink(showing: 0.25)
+        let sunk = stage.companies([pose], houses: [red], into: &frame).flatMap(\.instances)
+        XCTAssertEqual(sunk.count, risen.count)
+        for (standing, under) in zip(risen, sunk) {
+            XCTAssertEqual(standing.model.c3.y - under.model.c3.y, pose.sink, accuracy: 1e-4, "that far under the ground")
+            XCTAssertEqual(standing.model.c3.x, under.model.c3.x, accuracy: 1e-5)
+        }
     }
 
     /// A field buried releases its dead: its lights rise from it into the

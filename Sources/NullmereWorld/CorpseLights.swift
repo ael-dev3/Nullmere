@@ -61,6 +61,17 @@ extension WorldStage {
         let t = min(max(age / risingSeconds, 0), 1)
         return t * t * (3 - 2 * t)
     }
+
+    /// How deep under the ground Barrowkin risen this watch stand when the
+    /// keeper first sees them: deep enough that what shows is head and
+    /// shoulders, coming up out of the earth.
+    public static let risenDepth: Float = 0.4
+
+    /// How far under the ground they stand, as much of them shows as
+    /// `showing` (0 to 1) says: all that depth at the first, none once whole.
+    public static func risenSink(showing: Float) -> Float {
+        risenDepth * (1 - min(max(showing, 0), 1))
+    }
     /// The most fields lit at once, nearest the view first, and the most
     /// lights over one.
     static let corpseFieldsMost = 24

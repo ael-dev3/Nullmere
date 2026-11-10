@@ -51,6 +51,9 @@ public struct CompanyPose: Equatable, Sendable {
     /// Its own colour, in place of its House's by its sigil: the Barrowkin's
     /// pale cold, the dead risen (`WorldStage.barrowkinColour`).
     public var colour: Vec4? = nil
+    /// How far under the ground its figures stand: the dead risen this
+    /// watch climbing up out of it (`WorldStage.risenSink`).
+    public var sink: Float = 0
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -1634,7 +1637,7 @@ public final class WorldStage: @unchecked Sendable {
             let offset = Float(company.unit % 7) * 0.53
             func stand(_ key: ModelKey, _ place: Vec3, _ index: Int) {
                 let at = company.position + turn.transformDirection(place * (company.spread * WorldStage.figureScale))
-                let ground = ground(atX: at.x, z: at.z)
+                let ground = ground(atX: at.x, z: at.z) - company.sink
                 // A throng's figures share a few steps between them, each step's
                 // pose worked out once, not one pose for every man in it.
                 let step = company.throng > 0 ? index % WorldStage.throngSteps : index
