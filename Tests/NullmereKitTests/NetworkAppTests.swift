@@ -563,6 +563,21 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertEqual(shared(state), ["shared: \(seat.name) at \(seat.position.q),\(seat.position.r)"])
     }
 
+    /// What the Mac tells the phone's smoke test of the ground its alliance
+    /// has marked: each mark by what it bids and its tile, for the test to
+    /// find the one the phone made; none, sworn to no alliance.
+    func testTheLinkReportTellsTheGroundTheAllianceMarked() throws {
+        var state = GameState(settings: GameSettings(seedText: "linked marks", houseCount: 4, radius: 12, keepers: 1))
+        func marked(_ world: GameState) -> [String] {
+            GameApp.linkReport(of: world, player: world.player).split(separator: "\n").map(String.init).filter { $0.hasPrefix("marked:") }
+        }
+        XCTAssertEqual(marked(state), [], "Sworn to none, nothing marked")
+        _ = try state.perform(.foundAlliance(name: "The Linked Accord"), as: state.player)
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        _ = try state.perform(.markGround(seat.position, .gather, words: "Gather at the seat."), as: state.player)
+        XCTAssertEqual(marked(state), ["marked: Gather at \(seat.position.q),\(seat.position.r)"])
+    }
+
     /// What the Mac tells the phone's smoke test of watchfires: each it sees
     /// burning, where it burns, for the test to find the one the phone lit;
     /// nothing, where none burns.

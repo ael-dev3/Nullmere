@@ -332,7 +332,7 @@ enum CompanionCheck {
         /// An order given from the phone, the realm's word on it heard and
         /// written under `what`: never a name the smoke test reads a line by
         /// (Fortified company, Said to the realm, Raised the banner of, Said
-        /// to the alliance, Standing orders, Watch, Fire set at, Torches
+        /// to the alliance, Marked for the alliance, Standing orders, Watch, Fire set at, Torches
         /// doused, Watchfire lit at, At work), or
         /// it reads the realm's word for what was done.
         func give(_ command: Command, told: String, as what: String) async {
@@ -371,6 +371,20 @@ enum CompanionCheck {
                            as: "Shared")
                 let name = PlaceBook.kept(seat.name).flatMap(Envoy.carried) ?? seat.name
                 lines.append("Shared with the alliance: \(name) at \(seat.position.q),\(seat.position.r)")
+                // Ground marked for the alliance from the phone, by its
+                // leader or an officer: the seat's own, which the House has
+                // seen. The Mac must see the mark stand.
+                if let world = session.world, world.markRefusal(at: seat.position, as: house) == nil {
+                    await give(.markGround(seat.position, .gather, words: "Gather at the seat, from the phone."),
+                               told: "Mark Gather at \(seat.name)", as: "Marked")
+                    if await until(30, { session.world?.marksSeen(by: house).contains { $0.at == seat.position && $0.kind == .gather } == true }) {
+                        lines.append("Marked for the alliance: Gather at \(seat.position.q),\(seat.position.r)")
+                    } else {
+                        broken.append("the ground marked from the phone was never marked")
+                    }
+                } else {
+                    lines.append("No ground to mark for the alliance: the House neither leads it nor is one of its officers")
+                }
             }
         } else {
             lines.append("Sworn to no alliance: nothing said to one")

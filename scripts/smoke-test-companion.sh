@@ -4,13 +4,13 @@
 # offers a link; Nullmere Companion, built for the iOS Simulator by
 # scripts/build-companion.sh and run in one, takes the link as the phone's
 # camera would, comes in as the keeper, keeps their House from the phone (a
-# company dug in, words said to the realm, an alliance raised and words
-# said to it, the caretaker's standing orders given, a line of its
+# company dug in, words said to the realm, an alliance raised, words
+# said to it and ground marked for it, the caretaker's standing orders given, a line of its
 # commanders stood in the Ring, the keeper made ready so the watch turns,
 # a hold set to work), each
 # carried out by the realm, is set aside and comes in again by its own key;
 # and the Mac sees the company dug in, hears the words, sees the alliance
-# raised, the line in the Ring, the watch turned and the hold at work, and
+# raised and the ground marked, the line in the Ring, the watch turned and the hold at work, and
 # its phone in the realm with it; and, seeing the company dug
 # in, the Mac says so to the realm and the phone hears its answer come back.
 # The phone reaches the realm through a line of its own (scripts/line-relay.py),
@@ -276,6 +276,15 @@ if [ -n "$SHARED" ]; then
     done
 fi
 echo "The Mac sees the place the phone shared with the alliance: $SHARED_SEEN"
+MARKED="$(sed -n 's/^Marked for the alliance: //p' "$REPORT" | head -n 1)"
+MARK_SEEN=no
+if [ -n "$MARKED" ]; then
+    for _ in $(seq 1 30); do
+        if grep -qxF "marked: $MARKED" "$MAC_REPORT" 2>/dev/null; then MARK_SEEN=yes; break; fi
+        sleep 1
+    done
+fi
+echo "The Mac sees the ground the phone marked for the alliance: $MARK_SEEN${MARKED:+ ($MARKED)}"
 STANDING="$(sed -n 's/^Standing orders: //p' "$REPORT" | head -n 1)"
 STOOD=no
 if [ -n "$STANDING" ]; then
@@ -475,6 +484,10 @@ if [ "$ALLIES_HEARD" != yes ]; then
 fi
 if [ -n "$SHARED" ] && [ "$SHARED_SEEN" != yes ]; then
     echo "error: the Mac never saw the place shared with the alliance on the phone" >&2
+    exit 1
+fi
+if [ -n "$MARKED" ] && [ "$MARK_SEEN" != yes ]; then
+    echo "error: the Mac never saw the ground marked for the alliance on the phone" >&2
     exit 1
 fi
 if [ "$STOOD" != yes ]; then

@@ -606,8 +606,9 @@ public final class GameApp {
     /// keeper's phone is in the realm with them as the realm last told this
     /// Mac, where it sees the blackwood burning and watchfires lit (each
     /// tile as `q,r`), its companies marching dark, the last words said
-    /// to the whole realm and to its alliance, a line each, and the places
-    /// last shared in them (each by its name and its tile).
+    /// to the whole realm and to its alliance, a line each, the places
+    /// last shared in them (each by its name and its tile), and the ground
+    /// its alliance has marked (each by what it bids and its tile).
     static func linkReport(of state: GameState, player: Int, keeper: Keeper? = nil) -> String {
         let dug = state.units(of: player).filter(\.fortified).map { String($0.id) }
         let working = state.holds(of: player).flatMap { hold in
@@ -619,6 +620,7 @@ public final class GameApp {
             words.filter { $0.alliance == alliance.id }.suffix(5).map { "alliance said: \($0.text)" }
         } ?? []
         let shared = words.compactMap(\.place).suffix(5).map { "shared: \($0.name) at \($0.at.q),\($0.at.r)" }
+        let marked = state.marksSeen(by: player).map { "marked: \($0.kind.title) at \($0.at.q),\($0.at.r)" }
         let sworn = state.alliance(of: player).map { ["alliance: \($0.name)"] } ?? []
         let standing = ["standing: \(state.standingOrders(of: player).said)"]
         let ring = ["ring: " + (state.ringLine(of: player) ?? []).map(String.init).joined(separator: " ")]
@@ -627,7 +629,7 @@ public final class GameApp {
         let dark = ["dark: " + state.units(of: player).filter { state.isUnlit($0.id) }.map { String($0.id) }.joined(separator: " ")]
         let watchfires = ["watchfires: " + state.watchfiresBurning.map { "\($0.at.q),\($0.at.r)" }.joined(separator: " ")]
         return (["dug in: " + dug.joined(separator: " "), "at work: " + working.joined(separator: " "), "watch: \(state.watch)"] + sworn + standing
-                + ring + phone + burning + dark + watchfires + said + allied + shared).joined(separator: "\n") + "\n"
+                + ring + phone + burning + dark + watchfires + said + allied + shared + marked).joined(separator: "\n") + "\n"
     }
 
     func stopLinkReport() {
