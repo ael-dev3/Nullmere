@@ -247,6 +247,80 @@ final class CommanderCounselTests: XCTestCase {
         XCTAssertTrue(told.contains("Your House has a pact with it."), told)
     }
 
+    /// A commander looks to their House's alliance as its keeper's Alliance
+    /// panel tells it: sworn to none, the alliances inviting it and those
+    /// it asked; sworn, who leads it and its officers, its Houses with their
+    /// might, where it stands, the ground it has marked, its side's rallies,
+    /// its study, its works and coffers, allies' works to help, Houses
+    /// asking to join and the shares of spoils waiting for the House.
+    func testACommanderLooksToTheAlliance() throws {
+        var (counsel, world) = try counsel("alliance look")
+        let me = counsel.player
+        func look(as house: Int = -1) throws -> String {
+            let viewer = house < 0 ? me : house
+            let commander = house < 0 ? counsel.commander.id : try XCTUnwrap(world.commanders(of: viewer).first).id
+            return try XCTUnwrap(CommanderCounsel(state: world.view(for: viewer), player: viewer, commander: commander)).allianceReport
+        }
+        XCTAssertEqual(counsel.allianceReport, "Your House is sworn to no alliance.")
+        XCTAssertTrue(counsel.instructions.contains("at your alliance"))
+
+        // Invited by one alliance, and asking to join another: both led by
+        // keepers, whose answers wait on them as a steward's do not.
+        let count = world.houses.count
+        let (ally, rival) = ((me + 1) % count, (me + 2) % count)
+        world.houses[ally].isPlayer = true
+        world.houses[rival].isPlayer = true
+        _ = try world.perform(.foundAlliance(name: "Reed Accord"), as: ally)
+        let reed = try XCTUnwrap(world.alliance(of: ally)).id
+        _ = try world.perform(.inviteToAlliance(house: me), as: ally)
+        _ = try world.perform(.foundAlliance(name: "Salt Oath"), as: rival)
+        _ = try world.perform(.askToJoin(alliance: try XCTUnwrap(world.alliance(of: rival)).id), as: me)
+        XCTAssertEqual(try look(), "Your House is sworn to no alliance. It is invited to join Reed Accord. It has asked to join Salt Oath.")
+
+        // Sworn to it, and named one of its officers.
+        _ = try world.perform(.answerInvitation(alliance: reed, accept: true), as: me)
+        _ = try world.perform(.nameOfficer(house: me, named: true), as: ally)
+        var view = world.view(for: me)
+        var told = try look()
+        let (mine, theirs) = (world.houses[me].title, world.houses[ally].title)
+        XCTAssertTrue(told.hasPrefix("Your House is sworn to Reed Accord, led by \(theirs); your House is one of its officers. "), told)
+        XCTAssertFalse(told.contains("officers:"), "It is the only officer: \(told)")
+        XCTAssertTrue(told.contains("Its Houses, 2 of the \(view.allianceLimit) it may take: \(theirs), might \(GameState.counted(view.might(of: ally))); "
+                                    + "\(mine), might \(GameState.counted(view.might(of: me)))."), told)
+        XCTAssertTrue(told.contains(try XCTUnwrap(view.ranking(.might, alliances: true, for: me, most: 0).standing)), told)
+        XCTAssertTrue(told.contains("Your alliance's Houses have slain no foe this age."), told)
+        XCTAssertTrue(told.contains("It has marked no ground. No rally of your side is gathering. It pursues no study."), told)
+        XCTAssertTrue(told.contains("It keeps 0 of the \(view.standardsAllowed(for: try XCTUnwrap(view.alliance(of: me)))) standards it may. "
+                                    + "It has no hall. Its coffers are empty."), told)
+        XCTAssertFalse(told.contains("Its yards") || told.contains("storehouse") || told.contains("spoils"), told)
+        let help = view.helpable(by: me, for: ally)
+        XCTAssertEqual(told.contains("Your House may yet help its allies' works, musters and studies: \(theirs), \(help)."), help > 0, told)
+
+        // Ground marked, a study pursued, a House asking and a share waiting.
+        let seat = try XCTUnwrap(world.seat(of: me))
+        _ = try world.perform(.markGround(seat.position, .gather, words: "Bring the spears"), as: me)
+        _ = try world.perform(.pursueAllianceStudy(.fieldcraft), as: ally)
+        // A House asking to join, though it is full for now.
+        let index = try XCTUnwrap(world.alliances?.firstIndex { $0.id == reed })
+        world.alliances![index].asking.append(rival)
+        world.allianceShares = [AllianceShare(house: me, from: ally, deed: .lair, level: 2, given: world.watch)]
+        view = world.view(for: me)
+        told = try look()
+        XCTAssertTrue(told.contains("Ground it has marked: Gather here, \(view.placeName(of: seat.position)): “Bring the spears”. "
+                                    + "Marked by \(mine); it lapses in \(GameState.watches(AllianceMark.lasts))."), told)
+        let still = AllianceStudy.fieldcraft.cost(grade: 1)
+        XCTAssertTrue(told.contains("It pursues Fieldcraft I (\(AllianceStudy.fieldcraft.effect(grade: 1))); still to give: \(still)."), told)
+        XCTAssertTrue(told.contains("Houses asking to join it: \(world.houses[rival].title)."), told)
+        XCTAssertFalse(view.sharesHeld(by: me).items.isEmpty, "A lair's share holds an hourglass")
+        XCTAssertTrue(told.hasSuffix("A share of the alliance's spoils waits for your House to take, holding \(view.sharesHeldSaid(by: me))."), told)
+        XCTAssertTrue(told.contains("with a Salt Hourglass"), told)
+
+        // Its leader is told it leads it, and who its officers are.
+        let led = try look(as: ally)
+        XCTAssertTrue(led.hasPrefix("Your House leads Reed Accord. Its officers: \(mine). "), led)
+        XCTAssertFalse(led.contains("spoils"), "The shares are the House's own: \(led)")
+    }
+
     /// An order is only ever proposed, read as the order book reads it: a
     /// march to a place the House knows is put forward as the realm would
     /// take it; one the realm wouldn't is told why, and nothing else is a

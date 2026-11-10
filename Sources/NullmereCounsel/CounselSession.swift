@@ -46,6 +46,11 @@ public actor CounselBench {
         return kept(counsel.report(onHouse: name))
     }
 
+    public func alliance() -> String {
+        looks.append("Looked to the alliance")
+        return kept(counsel.allianceReport)
+    }
+
     private func kept(_ said: String) -> String {
         told.append(said)
         return said
@@ -139,6 +144,25 @@ struct HouseReport: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await bench.house(named: arguments.house)
+    }
+}
+
+/// The House's alliance, as the keeper's own view tells it.
+struct AllianceReport: Tool {
+    let bench: CounselBench
+    let name = "yourAlliance"
+    let description = "Tells of your House's alliance: who leads it and its officers, its Houses, where it stands, the ground it has "
+        + "marked, its side's rallies gathering, its study, its works and coffers, allies' works your House may help and its shares "
+        + "of spoils; or, sworn to none, the alliances that have invited it."
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "What you want to know of: its Houses, marks, rallies, study or works")
+        var about: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await bench.alliance()
     }
 }
 
@@ -334,7 +358,7 @@ public final class CommanderCounselSession: ObservableObject {
 
     private func makeSession() -> LanguageModelSession {
         let tools: [any Tool] = [CompanyReport(bench: bench), LookAbout(bench: bench), HouseAffairs(bench: bench), HouseReport(bench: bench),
-                                 ProposeOrder(bench: bench)]
+                                 AllianceReport(bench: bench), ProposeOrder(bench: bench)]
         let made = LanguageModelSession(model: model, tools: tools, instructions: instructions)
         session = made
         return made

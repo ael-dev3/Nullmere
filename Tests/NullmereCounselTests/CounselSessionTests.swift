@@ -81,19 +81,22 @@ final class CounselSessionTests: XCTestCase {
         let other = counsel.state.houses[(counsel.player + 1) % counsel.state.houses.count].title
         let house = await bench.house(named: other)
         XCTAssertEqual(house, counsel.report(onHouse: other))
+        let alliance = await bench.alliance()
+        XCTAssertEqual(alliance, counsel.allianceReport)
         let given = await bench.propose("fortify", company: handle, place: "")
         XCTAssertTrue(given.hasPrefix("Put forward to your keeper:"))
         let refused = await bench.propose("march", company: "C99", place: "Anywhere")
         XCTAssertTrue(refused.hasPrefix("That cannot be ordered:"))
         let taken = await bench.taken()
-        XCTAssertEqual(taken.looks.count, 5, "Four looks and an order weighed and refused: \(taken.looks)")
+        XCTAssertEqual(taken.looks.count, 6, "Five looks and an order weighed and refused: \(taken.looks)")
         XCTAssertTrue(taken.looks.contains("Looked at \(other)"), "\(taken.looks)")
+        XCTAssertTrue(taken.looks.contains("Looked to the alliance"), "\(taken.looks)")
         XCTAssertTrue(taken.looks.last?.contains("cannot be ordered") == true)
         XCTAssertEqual(taken.proposals.map(\.command), [.fortify(unit: unit.id)])
         let again = await bench.taken()
         XCTAssertTrue(again.looks.isEmpty && again.proposals.isEmpty, "Each taken once")
         let told = await bench.told
-        XCTAssertEqual(told, [report, look, affairs, house, given, refused])
+        XCTAssertEqual(told, [report, look, affairs, house, alliance, given, refused])
         // Renewed, the looks tell the world as it now stands.
         var moved = counsel.state
         let index = try XCTUnwrap(moved.unitIndex(unit.id))

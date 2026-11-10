@@ -93,7 +93,7 @@ public struct CommanderCounsel: Sendable {
         and plain, as an old soldier speaks, in at most three sentences and seventy words, with no exclamation \
         marks and no modern words. Know only what you are told here and what your looks tell you: never invent \
         a number, a name, a place or an event. To learn more, look: at a company, about your own company, at \
-        your House's affairs, or at another House by its name. You may put an order to your keeper only by proposing it, and you never give \
+        your House's affairs, at your alliance, or at another House by its name. You may put an order to your keeper only by proposing it, and you never give \
         one yourself: say that you have put it forward, and that the keeper decides. Name companies by their \
         handles and names as given. Never speak of games, players, turns, rules, models or tools.
         """
@@ -297,6 +297,107 @@ public struct CommanderCounsel: Sendable {
         let holds = state.holds(of: house.id).count
         lines.append("It holds \(holds == 1 ? "1 hold" : "\(holds) holds").")
         if let seat = state.seat(of: house.id) { lines.append("Its seat is \(seat.name).") }
+        return lines.joined(separator: " ")
+    }
+
+    /// What the House knows of its alliance, as its keeper's Alliance panel
+    /// tells it: who leads it and who keeps its roll beside them, its
+    /// Houses, where it stands, the ground it has marked, its side's rallies
+    /// still gathering, its study, its works and coffers, the allies' works
+    /// the House may yet help and the shares of spoils waiting for it; or,
+    /// sworn to none, the alliances that have invited it and those it has
+    /// asked to join.
+    public var allianceReport: String {
+        guard state.houses.indices.contains(player), !state.houses[player].isEliminated else { return "Your House has fallen." }
+        let board = state.allianceBoard(for: player)
+        let most = CommanderCounsel.mostSeen
+        func title(_ house: Int) -> String { state.houses.indices.contains(house) ? state.houses[house].title : "a fallen House" }
+        guard let alliance = board.alliance else {
+            var lines = ["Your House is sworn to no alliance."]
+            if !board.invitations.isEmpty {
+                lines.append("It is invited to join " + board.invitations.prefix(most).map(\.name).joined(separator: ", ") + ".")
+            }
+            let asked = state.alliancesStanding.filter { $0.asking.contains(player) }
+            if !asked.isEmpty {
+                lines.append("It has asked to join " + asked.prefix(most).map(\.name).joined(separator: ", ") + ".")
+            }
+            return lines.joined(separator: " ")
+        }
+        var lines: [String] = []
+        // Who leads it, and who keeps its roll and marks beside them.
+        if board.isLeader {
+            lines.append("Your House leads \(alliance.name).")
+        } else {
+            lines.append("Your House is sworn to \(alliance.name), led by \(title(alliance.leader))"
+                         + (board.isOfficer ? "; your House is one of its officers." : "."))
+        }
+        let officers = alliance.officersNamed.filter { $0 != player }.map(title)
+        if !officers.isEmpty {
+            lines.append((board.isOfficer ? "Its other officers: " : "Its officers: ") + officers.joined(separator: ", ") + ".")
+        } else if !board.isOfficer {
+            lines.append("It has no officers.")
+        }
+        // Its Houses, the leader first, then its officers, then the rest.
+        let shown = board.members.prefix(most).map { "\(title($0.house)), might \(GameState.counted($0.might))" }
+        lines.append("Its Houses, \(board.members.count) of the \(board.limit) it may take: " + shown.joined(separator: "; ")
+                     + (board.members.count > shown.count ? "; and \(board.members.count - shown.count) more" : "") + ".")
+        // Where it stands among the alliances, as the Rankings tell it.
+        for by in RankedBy.allCases {
+            if let standing = state.ranking(by, alliances: true, for: player, most: 0).standing { lines.append(standing) }
+        }
+        // What it bids its Houses on the land, and its side's rallies.
+        let marks = state.marksSaid(of: alliance.id)
+        lines.append(marks.isEmpty ? "It has marked no ground." : "Ground it has marked: " + marks.joined(separator: " "))
+        let rallies = SpokenOrders.ralliesGathering(in: state, player: player)
+        lines.append(rallies.isEmpty ? "No rally of your side is gathering."
+                     : "Rallies of your side gathering: " + rallies.prefix(most).map { SpokenOrders.rallySaid($0, in: state) }.joined(separator: "; ") + ".")
+        // What it studies together, and what it has learned.
+        let lore = alliance.lore ?? AllianceLore()
+        if let next = lore.next {
+            let still = lore.given.shortfall(for: next.study.cost(grade: next.grade))
+            lines.append("It pursues \(next.study.title) \(BuildingKind.numeral(next.grade)) (\(next.study.effect(grade: next.grade)))"
+                         + (still.isZero ? ", all it needs given." : "; still to give: \(still)."))
+        } else {
+            lines.append("It pursues no study.")
+        }
+        let learned = AllianceStudy.allCases.filter { lore.grade(of: $0) > 0 }.map { "\($0.title) \(BuildingKind.numeral(lore.grade(of: $0)))" }
+        if !learned.isEmpty { lines.append("It has learned together " + learned.joined(separator: ", ") + ".") }
+        // Its works on its land, and its coffers.
+        lines.append("It keeps \(state.standards(of: alliance.id).count) of the \(state.standardsAllowed(for: alliance)) standards it may.")
+        if let hall = state.hall(of: alliance.id) {
+            lines.append(hall.isWhole ? "Its hall stands \(state.placeName(of: hall.position)), its ward \(hall.ward) of \(AllianceHall.maximumWard)."
+                         : "Its hall is rising \(state.placeName(of: hall.position)), \(hall.built) of \(AllianceHall.raising) watches done.")
+        } else {
+            lines.append("It has no hall.")
+        }
+        if let storehouse = state.storehouse(of: alliance.id) {
+            lines.append(storehouse.isWhole
+                         ? "Its storehouse stands \(state.placeName(of: storehouse.position)), its ward \(storehouse.ward) of \(Storehouse.maximumWard)."
+                         : "Its storehouse is rising \(state.placeName(of: storehouse.position)), \(storehouse.built) of \(Storehouse.raising) watches done.")
+        }
+        let yards = state.yards(of: alliance.id)
+        if !yards.isEmpty {
+            lines.append("Its yards: " + yards.map { "the \($0.title), \($0.remaining) \($0.store.title.lowercased()) left" }.joined(separator: "; ") + ".")
+        }
+        let yield = state.coffersYield(of: alliance.id)
+        lines.append((alliance.stores.isZero ? "Its coffers are empty" : "Its coffers hold \(alliance.stores)")
+                     + (yield.isZero ? "." : "; its land yields them \(yield) a watch."))
+        // What the House may do for it now: its allies' works to help,
+        // Houses to answer, and its shares of the spoils to take.
+        let helpable = board.members.filter { $0.helpable > 0 }
+        if !helpable.isEmpty {
+            lines.append("Your House may yet help its allies' works, musters and studies: "
+                         + helpable.prefix(most).map { "\(title($0.house)), \($0.helpable)" }.joined(separator: "; ") + ".")
+        }
+        if !board.asking.isEmpty {
+            lines.append("Houses asking to join it: " + board.asking.prefix(most).map(title).joined(separator: ", ") + ".")
+        }
+        // Said as the Mac's Alliance panel and the phone say what they hold.
+        let shares = state.shares(of: player)
+        if !shares.isEmpty {
+            lines.append("\(shares.count == 1 ? "A share" : "\(shares.count) shares") of the alliance's spoils "
+                         + "\(shares.count == 1 ? "waits" : "wait") for your House to take, holding \(state.sharesHeldSaid(by: player)).")
+        }
         return lines.joined(separator: " ")
     }
 
