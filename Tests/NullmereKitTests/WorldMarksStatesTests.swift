@@ -165,6 +165,9 @@ extension VoiceQueueTests {
         let steward = try XCTUnwrap(state.houses.indices.first { $0 != me && !state.houses[$0].isPlayer })
         state.envoys.append(Envoy(id: 901, from: steward, to: me, proposal: .pact, arrived: state.watch))
         let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("heard")), voice: SlowVoice())
+        // Into the world past the House's briefing, its steward's welcome no
+        // longer wanted and the model on to the envoy at once.
+        session.dismissSeatBriefing()
         var deadline = Date().addingTimeInterval(5)
         while session.voicing == nil, session.spoken[.envoy(901)] == nil, Date() < deadline { try await Task.sleep(nanoseconds: 5_000_000) }
         let voicing = try XCTUnwrap(session.voicing, "At work on the envoy's words")

@@ -112,8 +112,10 @@ final class VigilWordsTests: XCTestCase {
         XCTAssertNil(session.vigilUnworded)
 
         // Asked as a vigil, from the House's own numbers.
-        let first = await mourner.asked.first
-        let asked = try XCTUnwrap(first)
+        // The vigil among what the model was asked (the steward's welcome to
+        // a House newly taken up comes before it).
+        let heard = await mourner.asked
+        let asked = try XCTUnwrap(heard.first { $0.kind == .vigil })
         XCTAssertEqual(asked.kind, .vigil)
         XCTAssertTrue(asked.facts.contains("Companies of war of theirs fallen in battle: 2."), "\(asked.facts)")
         XCTAssertTrue(asked.facts.contains { $0.hasPrefix("The dead were of \(state.houses[me].title)") })

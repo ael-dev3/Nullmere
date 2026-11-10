@@ -83,9 +83,10 @@ public final class GameSession {
                 refreshReach()
                 refreshPathPreview()
                 // The commander of a company turned to gives their word, or
-                // the reeve of a hold; one turned from is no longer asked.
-                stopVoiceGone()
+                // the reeve of a hold, first; one turned from is no longer
+                // asked.
                 askChosenWord()
+                stopVoiceGone()
             }
         }
     }
@@ -671,6 +672,9 @@ public final class GameSession {
     /// The asking of the model now under way, to stop it once what it
     /// speaks for has gone from before the keeper.
     @ObservationIgnored private var speakingTask: Task<Void, Never>?
+    /// Which asking of the model is the one now under way: one passed over
+    /// before it answered keeps nothing of what it gives.
+    @ObservationIgnored private var speakingToken = 0
 
     /// Whether any character is still to speak, or speaking.
     /// Words still to be asked for or spoken: for tests to wait on.
@@ -1698,8 +1702,10 @@ public final class GameSession {
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
         refreshPathPreview()
-        stopVoiceGone()
+        // What is newly wanted asked, then what is no longer wanted passed
+        // over, so the model goes on to the newly wanted first.
         askVoices()
+        stopVoiceGone()
         noteStepsInWorld()
     }
 
@@ -3082,28 +3088,25 @@ public final class GameSession {
         }
         isSpeaking = true
         voicing = (key, Date())
+        speakingToken &+= 1
+        let token = speakingToken
         speakingTask = Task { [weak self] in
             let heard = await voice.speaking(moment)
-            guard let self else { return }
+            // Passed over because what it spoke for has gone: nothing of it
+            // kept, and the model already on to what still waits.
+            guard let self, self.speakingToken == token else { return }
             self.voicing = nil
             self.speakingTask = nil
-            // Stopped because what it spoke for has gone: nothing of it kept.
-            if !Task.isCancelled {
-                if let words = heard.words {
-                    // A commander's or reeve's fresh word lets their last go,
-                    // so a long age keeps one word of each, not one of every
-                    // watch.
-                    let last = self.spoken.keys.filter { $0 != key && $0.sameSpeaker(as: key) }
-                    for kept in last { self.spoken[kept] = nil }
-                    withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
-                    self.unvoiced[key] = nil
-                    self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
-                } else if let trouble = heard.trouble {
-                    self.unvoiced[key] = trouble.unvoiced
-                }
-            } else if key.isChosenWord {
-                // Turned from mid-word: asked again if turned to again.
-                self.asked.remove(key)
+            if let words = heard.words {
+                // A commander's or reeve's fresh word lets their last go, so
+                // a long age keeps one word of each, not one of every watch.
+                let last = self.spoken.keys.filter { $0 != key && $0.sameSpeaker(as: key) }
+                for kept in last { self.spoken[kept] = nil }
+                withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
+                self.unvoiced[key] = nil
+                self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
+            } else if let trouble = heard.trouble {
+                self.unvoiced[key] = trouble.unvoiced
             }
             self.isSpeaking = false
             self.speakNext()
@@ -3132,10 +3135,20 @@ public final class GameSession {
 
     /// The model asked for words for someone the realm has since taken from
     /// before the keeper (an envoy answered or gone, a plea answered or
-    /// withdrawn) is stopped there, so its time goes to what still waits.
+    /// withdrawn, a card put away, a company turned from) is stopped there
+    /// and passed over at once, so its time goes to what still waits: the
+    /// next is asked now, not when the stopped one would have answered. A
+    /// commander or reeve turned from mid-word is asked again if turned to
+    /// again.
     private func stopVoiceGone() {
         guard let key = voicing?.key, !stillVoiced(key) else { return }
         speakingTask?.cancel()
+        speakingToken &+= 1
+        speakingTask = nil
+        voicing = nil
+        isSpeaking = false
+        if key.isChosenWord { asked.remove(key) }
+        speakNext()
     }
 
     private func refreshReach() {
