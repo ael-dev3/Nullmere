@@ -36,3 +36,8 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 - Chill week continues: Claude session on Haiku 5.5 Low, once-a-day check.
 - Latest on main: parley with a prisoner and with a petitioner at the gate through the on-device model, on the Mac and the phone (tip 017c200, landed Nov 11). No new Claude pushes since.
 - Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+## 2026-11-13
+
+- Chill week continues: once-a-day check, no new Claude pushes to main since 017c200 (Nov 11).
+- Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
