@@ -59,29 +59,31 @@ public struct SceneFrame: Equatable, Sendable {
 }
 
 extension FrameUniforms {
-    /// A frame's uniforms for a camera over a map's land, at a moment. The
+    /// A frame's uniforms for a camera over a map's land, at a moment, lit
+    /// as an hour of the day has it (the night, unless told another). The
     /// Houses' colours go to the shaders apart, as a `HousePalette`.
     public static func make(camera: Camera, size: CGSize, pixelsPerPoint: Double, time: Float, motion: Float,
                             radius: Int, terrain: TerrainMesh, hovered: Hex?, selected: Hex?,
-                            exposure: Float = 1) -> FrameUniforms {
+                            exposure: Float = 1, daylight: Daylight = .night) -> FrameUniforms {
         let eye = camera.eye(in: size)
         let low = terrain.low, high = terrain.high
         var frame = FrameUniforms(
             viewProjection: camera.viewProjection(in: size),
             eye: Vec4(eye.x, eye.y, eye.z, time),
-            moon: Vec4(Sky.moon.x, Sky.moon.y, Sky.moon.z, Sky.moonStrength),
             viewport: Vec4(Float(size.width * pixelsPerPoint), Float(size.height * pixelsPerPoint),
                            1 / Float(max(size.width * pixelsPerPoint, 1)), 1 / Float(max(size.height * pixelsPerPoint, 1))),
             world: Vec4(Float(radius), Float(2 * radius + 1), Float(camera.scale * pixelsPerPoint), motion),
             highlight: Vec4(Float(hovered?.q ?? 999), Float(hovered?.r ?? 999), Float(selected?.q ?? 999), Float(selected?.r ?? 999)),
             extent: Vec4(low.x, low.z, high.x, high.z),
-            haze: Sky.haze(eyeDistance: (eye - camera.focus).length, exposure: exposure, spacing: terrain.spacing),
-            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)))
-        frame.cast(MoonShadow.matrix(camera: camera, size: size))
+            haze: Sky.haze(eyeDistance: (eye - camera.focus).length, exposure: exposure, spacing: terrain.spacing,
+                           density: daylight.hazeDensity),
+            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)),
+            daylight: daylight)
+        frame.cast(MoonShadow.matrix(camera: camera, size: size, moon: daylight.key))
         return frame
     }
 
-    /// The frame with the moon casting shadows by its matrix, or none.
+    /// The frame with the key light casting shadows by its matrix, or none.
     public mutating func cast(_ shadow: Mat4?) {
         guard let shadow else {
             still.y = 0
@@ -93,6 +95,6 @@ extension FrameUniforms {
         still.w = 1 / Float(MoonShadow.side)
     }
 
-    /// Whether the moon casts shadows in this frame.
+    /// Whether the key light casts shadows in this frame.
     public var casts: Bool { still.y > 0.5 }
 }

@@ -96,6 +96,11 @@ public final class GameApp {
     let pollInterval: Double
     private var ticker: Timer?
 
+    /// Whether the world keeps its own day by the clock (`Daylight`), as
+    /// the app sets it when a keeper opens it. A client made on its own, as
+    /// the tests make them, draws its world at midnight, the same every time.
+    public var keepsDay = false
+
     /// The name of the realm proper.
     public static let realmName = "The Nullmere"
 

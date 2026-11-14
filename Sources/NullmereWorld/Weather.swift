@@ -101,7 +101,7 @@ extension FrameUniforms {
     /// The frame under the weather: the haze thicker or thinner, the moon dimmer or brighter.
     public mutating func weather(_ weather: Weather) {
         haze.y *= weather.hazeFactor
-        moon.w *= weather.moonFactor
+        key.w *= weather.moonFactor
     }
 
     /// The frame over a Still of a calm (0 to Calm.deepest): its water stiller.

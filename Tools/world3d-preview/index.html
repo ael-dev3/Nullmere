@@ -7,7 +7,7 @@
   water can be judged without a Mac. The world comes from the NullmereWorld
   tests (set NULLMERE_WORLD_PREVIEW to a folder).
 
-    index.html?data=<world.json>&frame=seat|lake|whole|turned|moon|close|company
+    index.html?data=<world.json>&frame=seat|lake|whole|turned|moon|close|company&light=night|day|dusk|dawn
 -->
 <meta charset="utf-8">
 <title>Nullmere world</title>
@@ -21,6 +21,9 @@ const data = await fetch(query.get('data')).then((r) => r.json());
 const swift = await fetch(query.get('shaders') || 'WorldShaders.swift').then((r) => r.text());
 const scene = swift.match(/\/\/ BEGIN SCENE\n([\s\S]*?)\/\/ END SCENE/)?.[1] ?? fail('SCENE markers not found.');
 const frame = data.frames.find((f) => f.name === (query.get('frame') || 'seat')) ?? data.frames[0];
+// The hour it is drawn in: the night, or light=day, dusk, dawn and the rest.
+const hour = query.get('light');
+if (hour && hour !== 'night') Object.assign(frame, frame.lit?.[hour] ?? fail(`no light named ${hour}`));
 const [width, height] = data.viewport;
 const canvas = document.getElementById('world');
 canvas.width = width;
@@ -55,6 +58,7 @@ precision highp sampler2DShadow;
 #define NM_SHADOW_DEPTH(z) ((z) * 0.5 + 0.5)
 #define NM_FRAME_UNIFORM uniform FrameUniforms frame;
 #define NM_FRAME_ARGUMENT
+#define NM_FRAME_PASS
 #define NM_PALETTE_ARGUMENT
 #define NM_HOUSE(slot) houses[min(int(slot), 127)].rgb
 #define NM_HEIGHTS_ARGUMENT
@@ -260,7 +264,10 @@ function uniforms(p) {
   set('frame.inverseViewProjection', matrix, inverse(frame.viewProjection));
   set('frame.shadow', matrix, new Float32Array(frame.shadow || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]));
   set('frame.still', gl.uniform4fv, new Float32Array(frame.still || [0, 0, 0, 0]));
-  for (const name of ['eye', 'moon', 'viewport', 'world', 'highlight', 'extent', 'haze', 'heights']) set('frame.' + name, gl.uniform4fv, new Float32Array(frame[name]));
+  for (const name of ['eye', 'key', 'viewport', 'world', 'highlight', 'extent', 'haze', 'heights', 'keyColour', 'skyLight', 'groundLight',
+                      'fillColour', 'hazeColour', 'mistColour', 'mist', 'zenith', 'horizon', 'sun', 'moonFace', 'water', 'land', 'glow']) {
+    set('frame.' + name, gl.uniform4fv, new Float32Array(frame[name]));
+  }
   set('frame.lights[0]', gl.uniform4fv, new Float32Array(frame.lights || new Array(32).fill(0)));
   set('houses', gl.uniform4fv, new Float32Array(frame.houses));
   set('shadows', gl.uniform1i, 3);

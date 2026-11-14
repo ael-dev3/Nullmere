@@ -278,12 +278,12 @@ Work on the existing renderer, which the new game keeps.
 | # | Slice | Shown by |
 |---|---|---|
 | 1.1 | One lighting source shared by Metal and the Linux preview, so the preview can be trusted | A test that fails when the two differ; preview sheets |
-| 1.2 | Sun, sky and day cycle on realm time; HDR target and filmic tone curve; daylight the default | CI's Mac screenshots; brightness tests on rendered frames |
+| 1.2 | Sun, sky and day cycle on a clock every player shares; filmic tone curve; daylight most of the day | CI's Mac screenshots; brightness tests on rendered frames |
 | 1.3 | Terrain palette re-authored for daylight; terrain shadows; a quiet hex grid | Same |
 | 1.4 | Open closer; shadows and detailed models at every zoom; per-instance level of detail | Screenshots; frame-time budget unchanged |
 | 1.5 | Generated tiling textures for terrain and surfaces (colour and normal) | Screenshots close up |
 | 1.6 | Water: depth tint, sky reflection, shoreline; the lake as black glass | Screenshots |
-| 1.7 | Bloom, ambient occlusion, height fog, grading | Screenshots; frame-time budget unchanged |
+| 1.7 | HDR target; bloom, ambient occlusion, height fog, grading | Screenshots; frame-time budget unchanged |
 
 ### Phase 2. The realm in the database
 
@@ -400,4 +400,6 @@ Updated as slices land.
 | Slice | State | Commit | Evidence |
 |---|---|---|---|
 | Audit and plan | Done | `14a20ba` | This document |
-| 1.1 Shared lighting | Built; Metal compile **unverified** until a CI run | this commit | `SceneTests.testEveryFragmentIsLitByTheSharedShadingAlone`; the clang check of the Metal source; preview frames rendered locally before and after |
+| 1.1 Shared lighting | Done | `9fe8c3c` | Run 967: the Mac's tests on Metal, coverage, frame times and the offline shader compile passed, the phone, realm and accessibility jobs green. `SceneTests.testEveryFragmentIsLitByTheSharedShadingAlone` holds both sides to it |
+| 1.2 The world's day | Built; on Metal **unverified** until a CI run | this commit | `DaylightTests`; the Linux suite (1,672 tests); preview frames at noon, dusk, dawn and midnight ([the sheet](shots/rework-day-preview.jpg), drawn by the browser preview, not a Mac); the Mac's `testTheLandIsReadByDayAndByMoonlight` written but not yet run. The filmic curve is applied in each fragment; the HDR target moves to 1.7 with bloom, which needs it |
+| 1.3 Terrain palette | Palette re-authored for daylight, in the same commit; terrain shadows and the hex grid still to do | this commit | The same sheet; `FoundationTests` |

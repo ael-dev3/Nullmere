@@ -37,6 +37,9 @@ final class NullmereUITests: XCTestCase {
             "NULLMERE_NEWS_URL": "https://nullmere.invalid/news.json",
             // The map offers its orders as when VoiceOver runs.
             "NULLMERE_VOICEOVER": "1",
+            // The world at noon, its brightest, whatever the hour of its
+            // day: the same every run, and the hardest for words set over it.
+            "NULLMERE_HOUR": "12",
         ]
     }
 

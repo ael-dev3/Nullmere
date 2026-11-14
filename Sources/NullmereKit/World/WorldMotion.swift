@@ -16,4 +16,8 @@ extension EnvironmentValues {
     /// The realm's Settings' night: how much moonlight the world is drawn
     /// with.
     @Entry var worldNight: Night = .dark
+    /// The hour of the world's day the map is drawn at: nil for the world's
+    /// own day by the clock, as the app keeps it; midnight until then, so a
+    /// view made on its own is drawn the same every time.
+    @Entry var worldHour: Float? = 0
 }

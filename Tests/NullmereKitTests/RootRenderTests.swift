@@ -266,6 +266,20 @@ final class RootRenderTests: XCTestCase {
         XCTAssertEqual(GameRootView.settingsHeight(in: 300), 280, "Never squeezed to nothing")
     }
 
+    /// The hour of the world's day the map is drawn at: the world's own day
+    /// by the clock where the app keeps it, midnight where nothing does, and
+    /// for the smoke test the hour NULLMERE_HOUR names.
+    func testTheWorldKeepsItsDayWhereTheAppDoes() {
+        XCTAssertNil(PlayView.hour(keepsDay: true, environment: [:]), "By the clock, the same for every keeper")
+        XCTAssertEqual(PlayView.hour(keepsDay: false, environment: [:]), 0, "Midnight, the same every time")
+        XCTAssertEqual(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "12"]), 12)
+        XCTAssertEqual(PlayView.hour(keepsDay: false, environment: ["NULLMERE_HOUR": "18.3"]), 18.3)
+        XCTAssertNil(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "noon"]), "Only an hour it names")
+        XCTAssertNil(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "31"]))
+        XCTAssertFalse(app({ .ready }, seed: "keeps no day").keepsDay, "A client made on its own keeps no day")
+        XCTAssertEqual(WorldMetalView().hour, 0)
+    }
+
     /// The night the world is drawn with: as the realm's Settings keep it,
     /// dark as made where nothing is kept; for the smoke test, as
     /// NULLMERE_NIGHT names it, without keeping it.

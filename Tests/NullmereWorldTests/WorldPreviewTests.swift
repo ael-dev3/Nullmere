@@ -10,24 +10,17 @@ import XCTest
 final class WorldPreviewTests: XCTestCase {
     static let viewport = CGSize(width: 1280, height: 800)
 
-    static func frame(_ camera: Camera, terrain: TerrainMesh, radius: Int, time: Float) -> FrameUniforms {
-        let size = viewport
-        let eye = camera.eye(in: size)
-        let low = terrain.low, high = terrain.high
-        var frame = FrameUniforms(
-            viewProjection: camera.viewProjection(in: size),
-            eye: Vec4(eye.x, eye.y, eye.z, time),
-            moon: Vec4(Sky.moon.x, Sky.moon.y, Sky.moon.z, Sky.moonStrength),
-            viewport: Vec4(Float(size.width), Float(size.height), 1 / Float(size.width), 1 / Float(size.height)),
-            world: Vec4(Float(radius), Float(2 * radius + 1), Float(camera.scale), 1),
-            highlight: Vec4(999, 999, 999, 999),
-            extent: Vec4(low.x, low.z, high.x, high.z),
-            haze: Sky.haze(eyeDistance: (eye - camera.focus).length, spacing: terrain.spacing),
-            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)))
-        // Close in, the moon casts shadows, as the app's frames have it.
-        frame.cast(MoonShadow.matrix(camera: camera, size: size))
-        return frame
+    static func frame(_ camera: Camera, terrain: TerrainMesh, radius: Int, time: Float, daylight: Daylight = .night) -> FrameUniforms {
+        // As the app's frames have it: close in, the key light casts shadows.
+        FrameUniforms.make(camera: camera, size: viewport, pixelsPerPoint: 1, time: time, motion: 1, radius: radius, terrain: terrain,
+                           hovered: nil, selected: nil, daylight: daylight)
     }
+
+    /// The hours the preview can draw a frame in beside the night, by name.
+    static let hours: [(name: String, light: Daylight)] = [
+        ("day", .day), ("dusk", .dusk), ("dawn", .dawn), ("morning", .at(hour: 6.9)), ("evening", .at(hour: 17.4)),
+        ("nightfall", .at(hour: 19.1)),
+    ]
 
     /// The preview's Houses' colours, sixteen hues round the wheel.
     static let houses: [Vec4] = (0..<16).map { index in
@@ -38,12 +31,30 @@ final class WorldPreviewTests: XCTestCase {
     static func uniforms(_ frame: FrameUniforms) -> [String: Any] {
         func m(_ x: Mat4) -> [Float] { [x.c0, x.c1, x.c2, x.c3].flatMap { [$0.x, $0.y, $0.z, $0.w] } }
         func v(_ x: Vec4) -> [Float] { [x.x, x.y, x.z, x.w] }
-        return ["viewProjection": m(frame.viewProjection), "eye": v(frame.eye), "moon": v(frame.moon), "viewport": v(frame.viewport),
-                "world": v(frame.world), "highlight": v(frame.highlight), "extent": v(frame.extent), "haze": v(frame.haze),
-                // The palette's first 128 texels, as the preview takes them.
-                "heights": v(frame.heights), "houses": Array(HousePalette.texels(houses).prefix(128 * 4)), "lights": frame.lightValues.flatMap(v),
-                "shadow": m(frame.shadow), "still": v(frame.still)]
+        var all: [String: Any] = [
+            "viewProjection": m(frame.viewProjection), "eye": v(frame.eye), "viewport": v(frame.viewport),
+            "world": v(frame.world), "highlight": v(frame.highlight), "extent": v(frame.extent),
+            // The palette's first 128 texels, as the preview takes them.
+            "heights": v(frame.heights), "houses": Array(HousePalette.texels(houses).prefix(128 * 4)), "lights": frame.lightValues.flatMap(v),
+        ]
+        all.merge(hour(frame)) { _, new in new }
+        return all
     }
+
+    /// What of a frame's uniforms the hour of the day sets: its key light
+    /// and the shadows it casts, its haze, and the hour's own fields, each
+    /// by its name in the shaders.
+    static func hour(_ frame: FrameUniforms) -> [String: Any] {
+        func m(_ x: Mat4) -> [Float] { [x.c0, x.c1, x.c2, x.c3].flatMap { [$0.x, $0.y, $0.z, $0.w] } }
+        func v(_ x: Vec4) -> [Float] { [x.x, x.y, x.z, x.w] }
+        var all: [String: Any] = ["key": v(frame.key), "haze": v(frame.haze), "shadow": m(frame.shadow), "still": v(frame.still)]
+        for (name, value) in zip(hourNames, frame.hourValues) { all[name] = v(value) }
+        return all
+    }
+
+    /// The hour's fields, as the shaders name them, in `FrameUniforms.hourValues`' order.
+    static let hourNames = ["keyColour", "skyLight", "groundLight", "fillColour", "hazeColour", "mistColour", "mist", "zenith", "horizon",
+                            "sun", "moonFace", "water", "land", "glow"]
 
     /// Every model a world's keeper sees, staged as the app stages them:
     /// the land's furniture, the holds with their works, the companies in
@@ -233,7 +244,7 @@ final class WorldPreviewTests: XCTestCase {
         unquiet.lights += corpses.lights
         unquiet.batches += land.graves([(at: stood, troops: 6_000)])
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
-            ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
+            ("seat", near, opening, scene), ("lake", lakeView, whole, nil), ("whole", far, whole, afar), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
             ("folk", folkView, whole, scene), ("fishers", fishersView, whole, scene), ("vigils", vigilView, whole, vigils),
             ("field", fieldView, whole, fought), ("volley", volleyView, whole, fought), ("unquiet", unquietView, whole, unquiet),
@@ -243,6 +254,13 @@ final class WorldPreviewTests: XCTestCase {
             var uniforms = WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20)
             if let scene { uniforms.light(with: PointLight.strongest(scene.lights, near: camera.focus)) }
             var entry = WorldPreviewTests.uniforms(uniforms)
+            // The same view at other hours of the day: `light=day` and the rest.
+            var lit: [String: Any] = [:]
+            for hour in WorldPreviewTests.hours {
+                lit[hour.name] = WorldPreviewTests.hour(WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20,
+                                                                                 daylight: hour.light))
+            }
+            entry["lit"] = lit
             entry["name"] = name
             entry["tiles"] = Data(tiles).base64EncodedString()
             if let scene { entry["scene"] = WorldPreviewTests.export(scene) }

@@ -15,6 +15,7 @@ struct WorldView: View {
     @Environment(\.worldFrameRate) private var frameRate
     @Environment(\.worldQuality) private var quality
     @Environment(\.worldNight) private var night
+    @Environment(\.worldHour) private var hour
     @State private var metalFailed = false
 
     var body: some View {
@@ -126,6 +127,7 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
         view.frameRateCap = frameRate
         view.quality = quality
         view.exposure = night.exposure
+        view.hour = hour
         view.setTiles(session.tileBytes, side: TileTexture.side(for: session.state.map), version: session.tilesVersion)
     }
 }

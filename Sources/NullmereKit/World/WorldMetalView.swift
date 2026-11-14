@@ -42,6 +42,12 @@ final class WorldMetalView: MTKView {
     var exposure: Float = 1 {
         didSet { if exposure != oldValue { redraw() } }
     }
+    /// The hour of the world's day it is drawn at (`Daylight`): one held,
+    /// or nil for the world's own day by the clock, the same for every
+    /// keeper. Midnight until the world's view says otherwise.
+    var hour: Float? = 0 {
+        didSet { if hour != oldValue { redraw() } }
+    }
     var radius = 24
     /// The land under the view, for finding the hex under the pointer.
     var relief: Relief?
@@ -335,7 +341,9 @@ final class WorldMetalView: MTKView {
         let time = clock.advance(to: CACurrentMediaTime(), rate: motion.clockRate)
         var frame = FrameUniforms.make(camera: camera, size: bounds.size, pixelsPerPoint: pixelsPerPoint, time: Float(time),
                                        motion: Float(motion.clockRate), radius: radius, terrain: land.terrain,
-                                       hovered: hovered, selected: selected, exposure: exposure)
+                                       hovered: hovered, selected: selected, exposure: exposure,
+                                       daylight: hour.map { Daylight.at(hour: $0) }
+                                           ?? Daylight.at(seconds: Date().timeIntervalSinceReferenceDate))
         let staged = scene?(time, bounds.size) ?? SceneFrame()
         frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
         frame.weather(staged.weather)

@@ -395,10 +395,10 @@ final class WeatherTests: XCTestCase {
         var frame = FrameUniforms.make(camera: Camera(), size: CGSize(width: 800, height: 600), pixelsPerPoint: 2, time: 0, motion: 1,
                                        radius: 8, terrain: TerrainMesh(relief: Relief(map: WorldMap(radius: 8, fill: Tile(terrain: .greyfield)))),
                                        hovered: nil, selected: nil)
-        let (haze, moon) = (frame.haze.y, frame.moon.w)
+        let (haze, moon) = (frame.haze.y, frame.key.w)
         frame.weather(.rain)
         XCTAssertEqual(frame.haze.y, haze * 1.6, accuracy: 1e-6)
-        XCTAssertEqual(frame.moon.w, moon * 0.55, accuracy: 1e-6, "The moon dimmed by the rain")
+        XCTAssertEqual(frame.key.w, moon * 0.55, accuracy: 1e-6, "The moon dimmed by the rain")
         var misty = frame
         misty.weather(.mist)
         XCTAssertGreaterThan(misty.haze.y, frame.haze.y, "Mist lies thicker still")        // The Still's calm, none to its deepest, read by the water.

@@ -1,11 +1,11 @@
 // Draws the world preview in headless Chromium and saves it as a PNG.
-//   node Tools/world3d-preview/shoot.js <world.json> <out.png> [frame]
+//   node Tools/world3d-preview/shoot.js <world.json> <out.png> [frame] [light]
 // Needs Playwright with Chromium (as in cloud sessions and on CI's Linux runners).
 const { chromium } = require('playwright');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const [data, out, frame] = process.argv.slice(2);
+const [data, out, frame, light] = process.argv.slice(2);
 const here = path.resolve(__dirname);
 const files = {
   '/index.html': path.join(here, 'index.html'),
@@ -26,7 +26,7 @@ server.listen(0, async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   page.on('pageerror', (e) => console.log('pageerror:', e.message));
-  await page.goto(`http://127.0.0.1:${port}/index.html?data=/world.json&frame=${frame || 'seat'}`);
+  await page.goto(`http://127.0.0.1:${port}/index.html?data=/world.json&frame=${frame || 'seat'}&light=${light || 'night'}`);
   await page.waitForFunction(() => document.title === 'ready' || document.getElementById('error').textContent, null, { timeout: 180000 });
   const error = await page.textContent('#error');
   if (error) { console.log('error:', error.slice(0, 3000)); process.exitCode = 1; }

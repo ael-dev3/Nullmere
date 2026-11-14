@@ -14,6 +14,8 @@ public final class OnlineShell {
 
     public convenience init() {
         self.init(launcher: LauncherModel(), app: GameApp(opensAtOnce: false))
+        // The app as a keeper opens it: its world keeps its own day.
+        app.keepsDay = true
         // The last run, if it stopped on a fault: the launcher opens on its
         // page.
         launcher.open(on: RunLedger.shared.atLaunch)

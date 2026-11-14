@@ -3,8 +3,8 @@
 # realm hosted on this Mac as a keeper, past the on-device model check. It
 # must still be running after a while, and its world must be rendering
 # with Metal. Saves screenshots of the keeper's first watch with a company
-# selected and the Houses panel open, and the same with the night drawn
-# Bright, as a keeper may choose it; of the same realm eight watches on
+# selected and the Houses panel open, and the same at midnight of the
+# world's day; of the same realm eight watches on
 # as a keeper sees it most of the time, nothing chosen and no panel open,
 # the land's growth drawn in full, as a Mac with ten gigabytes or more for
 # its graphics draws it (each launch says the detail it drew at in
@@ -21,9 +21,16 @@
 #
 #   swift build && scripts/smoke-test-game.sh
 #
+# Every picture is taken at noon of the world's day, so each run's can be
+# set beside the last's, but for the first view and the Still, which are
+# photographed at midnight as well (game-world-night.png,
+# game-lakes-night.png).
+#
 # Only debug builds honour NULLMERE_MODEL_STATE, NULLMERE_LAUNCHER_KEYS,
-# NULLMERE_REALM, NULLMERE_KEEPER, NULLMERE_NIGHT and NULLMERE_DETAIL.
+# NULLMERE_REALM, NULLMERE_KEEPER, NULLMERE_NIGHT, NULLMERE_HOUR and
+# NULLMERE_DETAIL.
 set -euo pipefail
+export NULLMERE_HOUR="${NULLMERE_HOUR:-12}"
 
 cd "$(dirname "$0")/.."
 # shellcheck source=settled-log.sh
@@ -81,10 +88,9 @@ $(grep -h "renders with Metal" build/game-stdout.log 2>/dev/null || true)"
 set_aside_realm "$EXECUTABLE" "$IDENTITY"
 run build/game-world.png 0 unit,houses
 WORLD_LOG="$LOG"
-# The first view again, at the same watch, with the night drawn Bright, as a
-# keeper may choose it in the realm's Settings, to judge beside the night as
-# it was made.
-NULLMERE_NIGHT=bright run build/game-world-bright.png 0 unit,houses
+# The first view again, at the same watch, at midnight of the world's day,
+# to judge its night beside its noon.
+NULLMERE_HOUR=0 run build/game-world-night.png 0 unit,houses
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The same realm as a keeper sees it most of the time: nothing chosen, no
@@ -94,9 +100,13 @@ $LOG"
 NULLMERE_DETAIL=high run build/game-plain.png 8 ""
 WORLD_LOG="$WORLD_LOG
 $LOG"
-# The Still close and low, nothing chosen: the black water, the moon's
-# road on it and the far shore, to judge the lake by.
+# The Still close and low, nothing chosen: the dark glass of it by day and
+# the far shore, to judge the lake by.
 run build/game-lakes.png 0 lake
+WORLD_LOG="$WORLD_LOG
+$LOG"
+# The same at midnight: the black water, the moon's road on it.
+NULLMERE_HOUR=0 run build/game-lakes-night.png 0 lake
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The same view with one pass of the renderer left out at a time, to tell

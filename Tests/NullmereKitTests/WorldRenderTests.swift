@@ -61,13 +61,16 @@ final class WorldRenderTests: XCTestCase {
         return renderer
     }
 
+    /// Drawn at night, as every picture here was made to be judged, unless
+    /// told another hour of the world's day.
     func draw(_ renderer: WorldRenderer, _ name: String, camera: Camera, tiles: [UInt8], selected: Hex? = nil,
-              scene: SceneFrame = SceneFrame(), time: Float = 20) throws -> Drawn {
+              scene: SceneFrame = SceneFrame(), time: Float = 20, daylight: Daylight = .night) throws -> Drawn {
         let world = WorldRenderTests.world
         try renderer.updateTiles(tiles, side: TileTexture.side(for: world.state.map))
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
         var frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: time, motion: 1,
-                                       radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected)
+                                       radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected,
+                                       daylight: daylight)
         frame.light(with: PointLight.strongest(scene.lights, near: camera.focus))
         let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
         return Drawn(name: name, pixels: pixels, camera: camera)
@@ -1401,6 +1404,48 @@ final class WorldRenderTests: XCTestCase {
             XCTAssertGreaterThan(spread, 6, "\(drawn.name): land, water and mist told apart, never one flat field")
             XCTAssertLessThan(mean, 140, "\(drawn.name): a night scene")
         }
+    }
+
+    /// The world's day: the same land about the keeper's seat at noon, at
+    /// dusk and at midnight. By day it is read in full light; the dusk is
+    /// dimmer and the night dimmer again, but a night of bright moonlight,
+    /// never dark. CI keeps the three as world-hours.
+    func testTheLandIsReadByDayAndByMoonlight() throws {
+        let renderer = try renderer()
+        let world = WorldRenderTests.world
+        var camera = Camera(scale: 34)
+        camera.focus(on: try XCTUnwrap(world.state.seat(of: world.state.player)).position)
+        func mean(_ drawn: Drawn) -> Double {
+            var total = 0.0, count = 0.0
+            for y in stride(from: 0, to: WorldRenderTests.height, by: 4) {
+                for x in stride(from: 0, to: WorldRenderTests.width, by: 4) {
+                    total += drawn.luminance(x, y)
+                    count += 1
+                }
+            }
+            return total / count
+        }
+        let day = try draw(renderer, "day", camera: camera, tiles: world.whole, daylight: .day)
+        let dusk = try draw(renderer, "dusk", camera: camera, tiles: world.whole, daylight: .dusk)
+        let night = try draw(renderer, "night", camera: camera, tiles: world.whole)
+        try keep([day, dusk, night], as: "world-hours")
+        let (noon, evening, midnight) = (mean(day), mean(dusk), mean(night))
+        print("RENDER hours: day \(Int(noon)), dusk \(Int(evening)), night \(Int(midnight)) of 255")
+        XCTAssertGreaterThan(noon, 90, "By day the land is read in full light")
+        XCTAssertGreaterThan(noon, 1.8 * midnight, "well above the night's")
+        XCTAssertGreaterThan(evening, midnight + 8, "the dusk between them")
+        XCTAssertLessThan(evening, noon - 8)
+        XCTAssertGreaterThan(midnight, 15, "The night is bright moonlight, the land read under it")
+        XCTAssertLessThan(midnight, 90, "and still a night")
+        // The day's picture holds its range: neither burnt out nor flat.
+        var burnt = 0, sampled = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 4) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 4) {
+                sampled += 1
+                if day.luminance(x, y) > 250 { burnt += 1 }
+            }
+        }
+        XCTAssertLessThan(Double(burnt) / Double(sampled), 0.05, "The day's whites are rolled off, not burnt out")
     }
 
     /// The Moonford at the full: the lake's bed laid bare along the moon's

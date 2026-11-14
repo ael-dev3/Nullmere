@@ -402,7 +402,7 @@ final class ReliefTests: XCTestCase {
         for terrain in Terrain.allCases where terrain != .saltFlat && terrain != .ford {
             XCTAssertGreaterThan(TerrainMesh.colour(.saltFlat).x, TerrainMesh.colour(terrain).x, "\(terrain)")
         }
-        XCTAssertLessThan(TerrainMesh.colour(.saltFlat).x, 0.3, "never so pale that the flats along the Still read as cloud")
+        XCTAssertLessThan(TerrainMesh.colour(.saltFlat).x, TerrainMesh.frost.x, "and never white as the Spine's snow")
     }
 }
 

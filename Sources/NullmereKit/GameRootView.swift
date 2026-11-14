@@ -97,6 +97,20 @@ struct PlayView: View {
         return Night(stored: stored)
     }
 
+    /// The hour of the world's day the map is drawn at: nil, the world's
+    /// own day by the clock, where the app keeps it (`GameApp.keepsDay`);
+    /// midnight where nothing does, as in a view made on its own, so it is
+    /// drawn the same every time; and for the smoke test's pictures, the
+    /// hour NULLMERE_HOUR names (0 to 24).
+    static func hour(keepsDay: Bool, environment: [String: String] = ProcessInfo.processInfo.environment) -> Float? {
+        #if DEBUG
+        if let named = environment["NULLMERE_HOUR"].flatMap(Float.init), named.isFinite, (0...24).contains(named) {
+            return named
+        }
+        #endif
+        return keepsDay ? nil : 0
+    }
+
     /// How much of the land's growth the world draws: the display setting's
     /// Detail, Auto read for this Mac; for the smoke test, as NULLMERE_DETAIL
     /// names it, without keeping it, so a virtual Mac with little memory for
@@ -358,6 +372,7 @@ struct PlayView: View {
         .environment(\.worldFrameRate, app.displaySettings.frameRate)
         .environment(\.worldQuality, app.displaySettings.quality)
         .environment(\.worldNight, PlayView.night(stored: storedNight))
+        .environment(\.worldHour, PlayView.hour(keepsDay: app.keepsDay))
         .onChange(of: motion, initial: true) { _, motion in session.motion = motion }
         // The display setting's Detail, Auto read for this Mac, said for the
         // smoke test.

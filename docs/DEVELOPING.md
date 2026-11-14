@@ -249,7 +249,14 @@ the game's own lighting, over a world the NullmereWorld tests write out
 ```sh
 NULLMERE_WORLD_PREVIEW=build/world3d swift test --filter WorldPreviewTests
 node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # or lake, whole, turned, moon, close, company, folk, fishers, vigils
+node Tools/world3d-preview/shoot.js build/world3d/world.json noon.png close day   # the hour: night (as left out), day, dusk, dawn, morning, evening, nightfall
 ```
+
+The world keeps a day of its own (`Daylight` in `Sources/NullmereWorld/Sky.swift`):
+each hour's key light, sky, haze and cloud go to the shaders with the frame.
+The app follows the clock; a debug build draws the hour `NULLMERE_HOUR`
+names (0 to 24), as the smoke test's pictures do, and a view made on its
+own, as the tests make them, is drawn at midnight.
 
 The models are previewed the same way: `NULLMERE_MODEL_PREVIEW=build/models
 swift test --filter PreviewTests`, then `node Tools/model-preview/shoot.js

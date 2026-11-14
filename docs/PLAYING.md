@@ -602,6 +602,13 @@ a vote on the realm's law to cast.
   The Still, the lake's deep water, yields nothing and cannot be crossed;
   the shallows can.
   Drowned ruins hide something for the first company to search them.
+- **The world's day.** The world keeps a day of its own, two hours long
+  and the same for every keeper: an hour and twenty minutes of daylight,
+  the land in its own colours under a high sun, cloud lying white over
+  what has never been seen; eight minutes of dusk, the light long and
+  warm; twenty-four of night, bright moonlight over the black lake, its
+  windows and hearths lit; and eight of dawn. The lake is a dark glass at
+  every hour. Nothing in the rules turns on the hour.
 - **Streams and regions.** In a realm's ages, streams run from the Spine
   down to the lake in the gaps between the seats, one for every two seats
   (three at the fewest, twelve at the most), each with its name. No company
@@ -2289,9 +2296,9 @@ play, as are the night's drone and wind and the din of battle's voices.
   choice. The realm's Settings (⌘,) also hold its sound (on or off, the
   effects, the night, the music and its score's volume), counsel, the
   night's brightness (Dark, as the lake was made; Moonlit or Bright, the
-  whole world drawn with more of the moon's light for an easier eye, its
-  darkest ground lifted most, twice or three times, while lit windows and
-  fires keep their light and sparks theirs), and how
+  whole world drawn with more light for an easier eye at any hour of its
+  day, its darkest ground lifted most, twice or three times, while lit
+  windows and fires keep their light and sparks theirs), and how
   the voices stand on this Mac by Apple's own word on its model: who speaks
   through it, or, where it can't be asked, who falls silent and why; ⇧⌘M
   turns all sound off or on, and ⇧⌘U the music alone, once the realm shows.

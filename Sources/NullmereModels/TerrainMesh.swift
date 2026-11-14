@@ -20,37 +20,38 @@ public struct TerrainMesh: Sendable {
     public let low: Vec3
     public let high: Vec3
 
-    /// The colour each terrain shows in plain white light, in sRGB.
+    /// The colour each terrain shows in plain white light, in sRGB: the
+    /// land's own colours, as the day shows them. The night dims and blues
+    /// them by its light alone.
     public static func colour(_ terrain: Terrain) -> Vec3 {
         switch terrain {
-        case .still: return Vec3(0.06, 0.07, 0.07)
-        case .shallows: return Vec3(0.14, 0.15, 0.14)
-        // Shingle silvered by the moon, under the water: pale where the Still
-        // is black (the moonford's test holds it so).
-        case .ford: return Vec3(0.30, 0.30, 0.29)
-        // A stream's dark wet stones, and its shoal's paler shingle.
-        case .stream: return Vec3(0.09, 0.10, 0.10)
-        case .shoal: return Vec3(0.11, 0.115, 0.12)
-        case .strand: return Vec3(0.12, 0.11, 0.10)
-        // Salt pale under the moon, a shade paler than a ford's shingle:
-        // the palest land, but dull. The shore's grounds are wet and dark:
-        // at a third grey the moon lit them into banks of cloud before a
-        // low eye (run 540's view without the land's light showed it; run 541's at a
-        // fifth grey still showed them, fainter).
-        case .saltFlat: return Vec3(0.22, 0.21, 0.195)
-        case .greyfield: return Vec3(0.19, 0.21, 0.17)
-        case .blackwood: return Vec3(0.13, 0.16, 0.13)
-        case .barrow: return Vec3(0.18, 0.17, 0.14)
-        case .spine: return Vec3(0.21, 0.21, 0.24)
+        // The lake's bed, hardly seen: the Still is black glass over it.
+        case .still: return Vec3(0.07, 0.09, 0.11)
+        case .shallows: return Vec3(0.30, 0.36, 0.34)
+        // Pale shingle under the water: pale where the Still is black (the
+        // moonford's test holds it so).
+        case .ford: return Vec3(0.66, 0.64, 0.57)
+        // A stream's wet stones, and its shoal's paler shingle.
+        case .stream: return Vec3(0.26, 0.33, 0.36)
+        case .shoal: return Vec3(0.50, 0.50, 0.46)
+        // Sand, damp and tawny.
+        case .strand: return Vec3(0.64, 0.56, 0.40)
+        // Salt: the palest land.
+        case .saltFlat: return Vec3(0.80, 0.78, 0.71)
+        // Open grass, a little grey in it: the plain the Houses farm.
+        case .greyfield: return Vec3(0.36, 0.50, 0.24)
+        // The wood's floor, dark and green under its trees.
+        case .blackwood: return Vec3(0.19, 0.33, 0.18)
+        // Dry heath over the old dead.
+        case .barrow: return Vec3(0.52, 0.46, 0.28)
+        // Bare rock.
+        case .spine: return Vec3(0.40, 0.38, 0.37)
         }
     }
 
-    /// Frost on the Spine's heights.
-    /// Old snow on the Spine's heights, grey under the night: bright
-    /// enough to show the ridges, dark enough never to read as cloud.
-    /// A dull hoar on the heights, never snow: bright frost before a low
-    /// eye reads as cloud.
-    static let frost = Vec3(0.07, 0.075, 0.09)
+    /// Snow on the Spine's heights, lying in drifts with the rock showing
+    /// through between them.
+    static let frost = Vec3(0.88, 0.90, 0.95)
     static let frostLine: Float = 3.1
 
     /// How far past the map's outermost hexes the land is drawn.

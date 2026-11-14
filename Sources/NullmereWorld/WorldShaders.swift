@@ -58,6 +58,7 @@ public enum WorldShaders {
     // HousePalette), the land's heights, a pixel left out, and a list of six.
     #define NM_FRAME_UNIFORM
     #define NM_FRAME_ARGUMENT , constant FrameUniforms &frame
+    #define NM_FRAME_PASS , frame
     #define NM_PALETTE_ARGUMENT , texture2d<float, access::read> housePalette
     #define NM_HOUSE(slot) housePalette.read(uint2(slot % 64u, slot / 64u)).rgb
     #define NM_HEIGHTS_ARGUMENT , texture2d<float> heights
@@ -76,19 +77,49 @@ public enum WorldShaders {
     // Where the mist lies over what the keeper has never seen: just above
     // the water's face, so it hides the lake as well as the land.
     NM_CONST float kMistLevel = 0.02;
+    // The moon's own light and its face, whatever lights the land: the
+    // hour's key light, its sky and ground, its haze and its cloud are the
+    // frame's (see Daylight).
     NM_CONST float3 kMoonColour = float3(0.56, 0.66, 0.92);
     NM_CONST float3 kMoonFace = float3(0.80, 0.82, 0.84);
-    NM_CONST float3 kSkyLight = float3(0.034, 0.044, 0.085);
-    NM_CONST float3 kGroundLight = float3(0.012, 0.013, 0.018);
-    // Starlight off the lake, from the south-east: enough to read the
-    // faces turned from the moon.
+    // A fill from the south-east: enough to read the faces turned from
+    // the key light.
     NM_CONST float3 kFillDirection = float3(0.47, 0.53, 0.70);
-    NM_CONST float3 kFillColour = float3(0.050, 0.062, 0.100);
-    NM_CONST float3 kHaze = float3(0.0040, 0.0050, 0.0095);
-    NM_CONST float3 kMist = float3(0.0026, 0.0031, 0.0050);
     NM_CONST float3 kGlow = float3(0.95, 0.80, 0.52);
     NM_CONST float3 kHearth = float3(1.0, 0.62, 0.30);
-    NM_CONST float3 kDeepWater = float3(0.0004, 0.0006, 0.0012);
+
+    // The frame's own numbers, as every shader reads them.
+    struct FrameUniforms {
+        float4x4 viewProjection;
+        float4x4 inverseViewProjection;
+        float4 eye;        // the eye's position, and the map's clock
+        float4 key;        // toward the key light (the sun by day, the moon by night), and its strength
+        float4 viewport;   // width, height, and their reciprocals, in pixels
+        float4 world;      // map radius, tile texture side, pixels per world unit, motion
+        float4 highlight;  // hovered q and r, chosen q and r; 999 for none
+        float4 extent;     // the land's corner and far corner (x, z)
+        float4 haze;       // haze start, density, exposure, heights spacing
+        float4 heights;    // the heights grid's corner (x, z), columns, rows
+        float4 lights[8];  // the world's own lights: where and how far, then colour
+        float4 still;      // the Still's calm, 0 to 1; whether the key light casts shadows; a shadow texel, in world units and in the map's
+        float4x4 shadow;   // the key light's view and projection, from the world to its shadow map
+        // The hour's light (see Daylight).
+        float4 keyColour;   // the key light's colour; how much of the night's own shows, 0 to 1
+        float4 skyLight;    // the sky's light; how bright the picture stands, 1 at night
+        float4 groundLight; // the ground's light; how much of the filmic curve sets the picture down
+        float4 fillColour;  // the fill's colour; how strongly the key light outlines things
+        float4 hazeColour;  // the far air's colour; the most of it over a thing
+        float4 mistColour;  // the cloud's colour over the unknown; how much of it veils the remembered
+        float4 mist;        // the key light on the cloud's hollows, on its tops; the light the remembered keeps
+        float4 zenith;      // the sky overhead
+        float4 horizon;     // the sky along the horizon
+        float4 sun;         // toward the sun; how much of it shows
+        float4 moonFace;    // toward the moon; how much of its face shows
+        float4 water;       // deep water's colour
+        float4 land;        // how far the land's slopes are stood upright; the key light the land takes; its hearths' glow
+        float4 glow;        // how brightly a lit window shows; how much it flickers
+    };
+    NM_FRAME_UNIFORM
 
     // An angle that turns `perSecond` radians a second, near enough, and a
     // whole number of times in the clock's period.
@@ -230,6 +261,21 @@ public enum WorldShaders {
         return l * e / (float3(1.0) + l * (e - 1.0));
     }
 
+    // A filmic curve for the day's range: its sunlit whites rolled off
+    // into the top of the picture rather than burnt out, its shadows kept.
+    float3 nm_filmic(float3 c) {
+        float3 x = max(c, float3(0.0));
+        return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), float3(0.0), float3(1.0));
+    }
+
+    // A colour as the picture holds it: lifted as the keeper chooses, set
+    // down by as much of the filmic curve as the hour asks (none at night,
+    // whose colours are kept as they are), and encoded.
+    float3 nm_output(float3 c NM_FRAME_ARGUMENT) {
+        float3 lifted = nm_expose(c, frame.haze.z);
+        return nm_encode(mix(lifted, nm_filmic(lifted), frame.groundLight.a));
+    }
+
     // The fractional axial coordinates of a map point.
     float2 nm_axial(float2 p) {
         return float2(kRoot3 / 3.0 * p.x - p.y / 3.0, 2.0 / 3.0 * p.y);
@@ -319,11 +365,13 @@ public enum WorldShaders {
         return float3(0.8660254 - m, neighbour.x, neighbour.y);
     }
 
-    float3 nm_light(float3 albedo, float3 n, float3 moon, float strength) {
-        float moonLight = max(dot(n, moon), 0.0) * strength;
+    // A colour lit by the hour: the key light on what faces it (`strength`
+    // of it), the fill, and the sky's light above and the ground's below.
+    float3 nm_light(float3 albedo, float3 n, float strength NM_FRAME_ARGUMENT) {
+        float keyLight = max(dot(n, frame.key.xyz), 0.0) * strength;
         float fill = max(dot(n, kFillDirection), 0.0);
-        float3 sky = mix(kGroundLight, kSkyLight, n.y * 0.5 + 0.5);
-        return albedo * (kMoonColour * moonLight + kFillColour * fill + sky);
+        float3 sky = mix(frame.groundLight.rgb, frame.skyLight.rgb, n.y * 0.5 + 0.5);
+        return albedo * (frame.keyColour.rgb * keyLight + frame.fillColour.rgb * fill + sky);
     }
 
     // How much of the moon's light reaches a point of the world facing `n`,
@@ -365,11 +413,11 @@ public enum WorldShaders {
         return albedo * colour.rgb * fall * fall * facing;
     }
 
-    float3 nm_remembered(float3 c) {
+    float3 nm_remembered(float3 c NM_FRAME_ARGUMENT) {
         float grey = dot(c, float3(0.3, 0.5, 0.2));
         // Remembered ground keeps most of its colour, only darker and
         // cooler: out of sight, not out of the world.
-        return mix(float3(grey), c, 0.7) * 0.55 + kMist * 0.25;
+        return mix(float3(grey), c, 0.7) * frame.mist.z + frame.mistColour.rgb * frame.mistColour.a;
     }
 
     // The night sky in a direction, but for the moon: the dark, and the
@@ -420,10 +468,24 @@ public enum WorldShaders {
         return nm_stars(d, time) + nm_moonGlow(d, moon) + nm_moonlight(d, moon);
     }
 
-    // The night's haze between the eye and what it sees far off.
-    float3 nm_haze(float3 c, float distance, float start, float density) {
-        float amount = 1.0 - exp(-max(distance - start, 0.0) * density);
-        return mix(c, kHaze, clamp(amount, 0.0, 0.85));
+    // The hour's sky by day in a direction: its blue deepening overhead,
+    // pale along the horizon, the sun and its glow. Nothing at night, when
+    // the sky is its stars.
+    float3 nm_daySky(float3 d NM_FRAME_ARGUMENT) {
+        float up = max(d.y, 0.0);
+        float3 colour = mix(frame.horizon.rgb, frame.zenith.rgb, 1.0 - pow(1.0 - up, 3.0));
+        // Below the horizon, past the land's last edge: the far air.
+        colour = mix(colour, frame.hazeColour.rgb, (1.0 - smoothstep(-0.08, 0.0, d.y)) * frame.groundLight.a);
+        float facing = max(dot(d, frame.sun.xyz), 0.0);
+        float disc = smoothstep(0.99955, 0.99975, facing);
+        colour += frame.keyColour.rgb * frame.sun.w * (disc * 14.0 + pow(facing, 420.0) * 1.6 + pow(facing, 28.0) * 0.22);
+        return colour;
+    }
+
+    // The air between the eye and what it sees far off.
+    float3 nm_haze(float3 c, float distance NM_FRAME_ARGUMENT) {
+        float amount = 1.0 - exp(-max(distance - frame.haze.x, 0.0) * frame.haze.y);
+        return mix(c, frame.hazeColour.rgb, clamp(amount, 0.0, frame.hazeColour.a));
     }
 
     // The Still's mist over all the keeper has never seen, at a point `p`
@@ -434,12 +496,12 @@ public enum WorldShaders {
     // has it) it gathers thicker, as mist lies along a shore. Its palest
     // tops are no brighter than the moonlit ground the keeper knows, so
     // what is known always stands out of it.
-    float3 nm_mist(float2 p, float time, float known) {
+    float3 nm_mist(float2 p, float time, float known NM_FRAME_ARGUMENT) {
         float banks = nm_fbm(p * 0.21 + nm_drift(time, 0.03));
         float wisps = nm_noise(p * 0.8 + float2(41.0, 17.0) - nm_drift(time, 0.05));
         float shore = smoothstep(0.05, 0.5, known);
         float thick = smoothstep(0.42, 0.66, banks + 0.18 * wisps + 0.22 * shore - 0.08);
-        return kMist * 0.35 + kMoonColour * (0.0004 + 0.0072 * thick);
+        return frame.mistColour.rgb * 0.35 + frame.keyColour.rgb * (frame.mist.x + frame.mist.y * thick);
     }
 
     // How far out from the strand water lies, in the world's units: its
@@ -520,24 +582,6 @@ public enum WorldShaders {
         float index = p.x + p.y * 4.0;
         return nm_hash12(float2(index, 3.0)) * 0.94 + 0.03;
     }
-    // The frame's own numbers, as every shader reads them.
-    struct FrameUniforms {
-        float4x4 viewProjection;
-        float4x4 inverseViewProjection;
-        float4 eye;        // the eye's position, and the map's clock
-        float4 moon;       // toward the moon, and its strength
-        float4 viewport;   // width, height, and their reciprocals, in pixels
-        float4 world;      // map radius, tile texture side, pixels per world unit, motion
-        float4 highlight;  // hovered q and r, chosen q and r; 999 for none
-        float4 extent;     // the land's corner and far corner (x, z)
-        float4 haze;       // haze start, density, exposure, heights spacing
-        float4 heights;    // the heights grid's corner (x, z), columns, rows
-        float4 lights[8];  // the world's own lights: where and how far, then colour
-        float4 still;      // the Still's calm, 0 to 1; whether the moon casts shadows; a shadow texel, in world units and in the map's
-        float4x4 shadow;   // the moon's view and projection, from the world to its shadow map
-    };
-    NM_FRAME_UNIFORM
-
     // Each people's slates and walls, linear, in the order of their
     // heritages: the Saltborn's white, the Fenfolk's reed, the Blackwood
     // Kin's black, the Spinewardens' slate, the Mound Clans' turf, the
@@ -629,8 +673,10 @@ public enum WorldShaders {
         float hovered = (abs(float(h.x) - frame.highlight.x) < 0.5 && abs(float(h.y) - frame.highlight.y) < 0.5) ? 1.0 : 0.0;
         float chosen = (abs(float(h.x) - frame.highlight.z) < 0.5 && abs(float(h.y) - frame.highlight.w) < 0.5) ? 1.0 : 0.0;
         float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
-        float3 marked = float3(0.20, 0.22, 0.26) * ring * hovered * 0.6
-            + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
+        // Lit of themselves, as bright against the day as against the night.
+        float level = frame.skyLight.a;
+        float3 marked = (float3(0.20, 0.22, 0.26) * ring * hovered * 0.6
+            + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen) * level;
 
         float3 lit = float3(0.0);
         if (clear > 0.0) {
@@ -668,7 +714,7 @@ public enum WorldShaders {
                     float otherOwner = nm_owner(nm_tileAt(across, radius NM_TEXTURE_PASS));
                     if (abs(otherOwner - owner) > 0.5) {
                         float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
-                        lit += house * line * 0.22;
+                        lit += house * line * 0.22 * level;
                     }
                 }
             }
@@ -688,10 +734,12 @@ public enum WorldShaders {
             // is lit by its normal bent most of the way upright, so a
             // hillside's whole face can never stand pale against the flats
             // beside it; the fine grain of the ground still shades within it.
-            float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
-            // What stands on the land keeps the moon off the ground behind it.
+            // By day the sun stands high and the land takes it on its own
+            // slopes, all of it (the frame's land says how far, and how much).
+            float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), frame.land.x));
+            // What stands on the land keeps the key light off the ground behind it.
             float moonlit = nm_moonlit(world, n, frame.shadow, frame.still NM_SHADOW_PASS);
-            lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55 * moonlit) * shown;
+            lit += nm_light(albedo, ln, frame.key.w * frame.land.y * moonlit NM_FRAME_PASS) * shown;
             for (int i = 0; i < 4; i++) {
                 lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
             }
@@ -711,28 +759,31 @@ public enum WorldShaders {
                 float4 near = nm_tileAt(h + toward, radius NM_TEXTURE_PASS);
                 if (near.y >= 128.0) {
                     float far = length(p - nm_hexCentre(h + toward));
-                    lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
+                    lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6) * frame.land.z;
                 }
             }
             lit += marked;
             // Remembered, not watched: as it was last seen.
-            lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
+            lit = mix(nm_remembered(lit NM_FRAME_PASS), lit, smoothstep(0.0, 1.0, knows.y));
         }
     #ifndef NM_NO_FOG
         if (knows.x < 0.999) {
             // The unknown lies under the Still's mist, the pointer's and the
             // chosen hex's ring showing faintly through it.
-            float3 mist = nm_mist(p, time, knows.x) + (nm_remembered(marked) - kMist * 0.25) * 0.18;
+            float3 mist = nm_mist(p, time, knows.x NM_FRAME_PASS)
+                + (nm_remembered(marked NM_FRAME_PASS) - frame.mistColour.rgb * frame.mistColour.a) * 0.18;
             lit = mix(mist, lit, clear);
         }
     #endif
-        // Past the map's edge the Spine goes on into the dark.
+        // Past the map's edge the Spine goes on: into the dark at night, by
+        // day into the far air.
         float beyond = float(nm_hexDistance(h)) - radius;
-        lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
+        float kept = clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
+        lit = lit * kept + frame.hazeColour.rgb * (1.0 - kept) * frame.groundLight.a;
     #ifndef NM_NO_HAZE
-        lit = nm_haze(lit, distance(world, frame.eye.xyz), frame.haze.x, frame.haze.y);
+        lit = nm_haze(lit, distance(world, frame.eye.xyz) NM_FRAME_PASS);
     #endif
-        return float4(nm_encode(nm_expose(lit, frame.haze.z)), 1.0);
+        return float4(nm_output(lit NM_FRAME_PASS), 1.0);
     }
 
     // The still water at a point of its face; nothing where the land
@@ -749,12 +800,20 @@ public enum WorldShaders {
         float3 mirrored = float3(look.x, -look.y, look.z);
         float facing = 1.0 - max(-look.y, 0.0);
         float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-        float3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moon.xyz)) * fresnel;
-        float3 moonlit = nm_moonlight(mirrored, frame.moon.xyz) * fresnel;
+        // The sky it gives back: by night its stars and the moon, by day
+        // its blue and the sun, each as much as the hour shows of it.
+        float night = frame.keyColour.a;
+        // By day it is a dark glass: looked down into it gives back little
+        // of the sky, and all of it only where the look runs low across it.
+        float glass = 0.03 + 0.97 * facing * facing * facing * facing * facing;
+        float3 starlit = frame.water.rgb
+            + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel
+            + nm_daySky(mirrored NM_FRAME_PASS) * glass;
+        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w;
         // The moon's road: on the still water's faint swell, a broken glitter
         // of its light along its bearing from the eye, narrow near the moon's
         // image and widening toward the shore the eye stands on.
-        float2 toMoon = normalize(frame.moon.xz);
+        float2 toMoon = normalize(frame.key.xz);
         float2 along = normalize(look.xz);
         float across = 1.0 - max(dot(toMoon, along), 0.0);
         float near = clamp(distance(world, frame.eye.xyz) / 40.0, 0.05, 1.0);
@@ -764,7 +823,7 @@ public enum WorldShaders {
         float road = exp(-across * across / ((0.00001 + 0.0002 * (1.0 - near)) * (1.0 - 0.6 * calm)));
         float swell = nm_fbm(world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
         float glint = mix(smoothstep(0.66, 0.86, swell), 0.75, calm);
-        moonlit += kMoonColour * road * glint * 0.09 * fresnel;
+        moonlit += frame.keyColour.rgb * road * glint * 0.09 * fresnel * (frame.key.w / 1.5);
         // And the lights by the water lie on it as the moon does: a
         // fisher's lantern, a fire on the shore, each broken by the same
         // swell, whole at the calm.
@@ -802,11 +861,11 @@ public enum WorldShaders {
         // Laid over what shows through the shallows as froth lies on it:
         // pale, and never darker than the water it lies on, so the moon's
         // image runs on through it.
-        float3 foam = max(kMoonColour * 0.05 * mix(0.72, 1.0, knowledge.y), colour);
+        float3 foam = max(frame.keyColour.rgb * 0.05 * frame.skyLight.a * mix(0.72, 1.0, knowledge.y), colour);
         float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
         colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
-        colour = nm_haze(colour, distance(world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-        return float4(nm_encode(nm_expose(colour, frame.haze.z)), cover);
+        colour = nm_haze(colour, distance(world, frame.eye.xyz) NM_FRAME_PASS);
+        return float4(nm_output(colour NM_FRAME_PASS), cover);
     }
 
     // The river of the sky: a band of faint light along a great circle,
@@ -848,13 +907,15 @@ public enum WorldShaders {
         // second, finer field of them behind, so the night over the far
         // shore is full.
         float3 colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
-            + nm_milkyWay(d) + nm_moonGlow(d, frame.moon.xyz) + nm_moonlight(d, frame.moon.xyz);
+            + nm_milkyWay(d) + nm_moonGlow(d, frame.moonFace.xyz) + nm_moonlight(d, frame.moonFace.xyz) * frame.moonFace.w;
         // The night's haze lies thick along the horizon and thins upward,
         // so the far shore stands dark against a lighter band of air.
         float up = max(d.y, 0.0);
-        float3 horizon = kMist * 1.6 + kMoonColour * 0.004;
+        float3 horizon = frame.mistColour.rgb * 1.6 + kMoonColour * 0.004;
         colour = mix(horizon, colour, smoothstep(0.0, 0.035, up));
-        return float4(nm_encode(nm_expose(colour, frame.haze.z)), 1.0);
+        // As much of the night as the hour shows, and the day's sky over it.
+        colour = colour * frame.keyColour.a + nm_daySky(d NM_FRAME_PASS);
+        return float4(nm_output(colour NM_FRAME_PASS), 1.0);
     }
 
     // A model at a point of it: `colour` its own colour there, `local` and
@@ -878,35 +939,39 @@ public enum WorldShaders {
         // What stands nearer the moon keeps its light off: its glints and
         // its outline with it.
         float moonlit = nm_moonlit(world, n, frame.shadow, frame.still NM_SHADOW_PASS);
-        float3 lit = nm_light(albedo, n, frame.moon.xyz, frame.moon.w * moonlit);
+        float3 lit = nm_light(albedo, n, frame.key.w * moonlit NM_FRAME_PASS);
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
         }
         float facing = 1.0 - max(dot(n, toEye), 0.0);
-        // The moon behind outlines what stands against it.
-        float behind = max(dot(-toEye, frame.moon.xyz), 0.0);
-        lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * frame.moon.w;
+        // The key light behind outlines what stands against it.
+        float behind = max(dot(-toEye, frame.key.xyz), 0.0);
+        float3 keyColour = frame.keyColour.rgb;
+        lit += keyColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * frame.key.w * frame.fillColour.a;
         if (material > 5.5) {
-            float3 halfway = normalize(toEye + frame.moon.xyz);
-            lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * frame.moon.w * moonlit;
+            float3 halfway = normalize(toEye + frame.key.xyz);
+            lit += keyColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * frame.key.w * moonlit;
         } else if (material > 4.5) {
-            float glint = pow(max(dot(n, normalize(toEye + frame.moon.xyz)), 0.0), 20.0) * moonlit;
+            float glint = pow(max(dot(n, normalize(toEye + frame.key.xyz)), 0.0), 20.0) * moonlit;
             lit += colour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + world.x * 5.0)) + float3(0.6, 0.7, 0.9) * glint * 0.5;
         } else if (material > 1.5 && material < 2.5) {
-            lit = colour * (1.55 + 0.35 * nm_flicker(time + world.x * 3.0 + world.z * 2.0) * frame.world.w);
+            // A lit window, a lantern's pane: bright of itself, brightest at night.
+            lit = colour * (frame.glow.x + frame.glow.y * nm_flicker(time + world.x * 3.0 + world.z * 2.0) * frame.world.w);
         }
+        // Lit of themselves, as bright against the day as against the night.
+        float level = frame.skyLight.a;
         // A work being raised: its newest course pale and fresh.
         if (params.x < 50.0 && localY > params.x - 0.025) {
-            lit += float3(0.05, 0.042, 0.03);
+            lit += float3(0.05, 0.042, 0.03) * level;
         }
         // Chosen, or under the pointer: a light about its edges.
-        lit += kGlow * params.w * facing * facing * 0.45;
+        lit += kGlow * params.w * facing * facing * 0.45 * level;
         if (watched < 0.75) {
-            lit = nm_remembered(lit);
+            lit = nm_remembered(lit NM_FRAME_PASS);
         }
-        lit = nm_haze(lit, distance(world, frame.eye.xyz), frame.haze.x, frame.haze.y);
+        lit = nm_haze(lit, distance(world, frame.eye.xyz) NM_FRAME_PASS);
         // Fading, it covers as many of the pixel's samples as it is opaque.
-        return float4(nm_encode(nm_expose(lit, frame.haze.z)), params.y < 0.999 ? clamp(params.y, 0.0, 1.0) : 1.0);
+        return float4(nm_output(lit NM_FRAME_PASS), params.y < 0.999 ? clamp(params.y, 0.0, 1.0) : 1.0);
     }
 
     // A mote at a point of its disc (`corner`, -1 to 1 across it).
@@ -916,12 +981,12 @@ public enum WorldShaders {
             NM_DISCARD;
         }
         float soft = 1.0 - smoothstep(0.1, 1.0, r);
-        float far = 1.0 - clamp(1.0 - exp(-max(distance(world, frame.eye.xyz) - frame.haze.x, 0.0) * frame.haze.y), 0.0, 0.85);
+        float far = 1.0 - clamp(1.0 - exp(-max(distance(world, frame.eye.xyz) - frame.haze.x, 0.0) * frame.haze.y), 0.0, frame.hazeColour.a);
         // A mote's light is its own, a spark's or a fire's: as bright in a
         // lighter night (Night) as in the night as made, never lifted with
-        // the moon's.
+        // the moon's; by day set down by the day's curve with the rest.
         float3 light = colour.rgb * soft * far;
-        return float4(nm_encode(light), colour.a * soft);
+        return float4(nm_encode(mix(light, nm_filmic(light), frame.groundLight.a)), colour.a * soft);
     }
     // END SHADING
 
