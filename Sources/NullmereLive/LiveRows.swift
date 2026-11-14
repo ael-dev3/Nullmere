@@ -347,6 +347,9 @@ public struct LiveJob: Equatable, Sendable, Identifiable {
     public static let train = 2
     /// Wounded being healed: its level their tier, its amount how many.
     public static let heal = 3
+    /// A topic being studied in the Academy: its subject the topic, its
+    /// level the one being learnt.
+    public static let study = 4
 
     public let id: UInt64
     public let city: UInt64
@@ -673,5 +676,28 @@ public struct LiveTask: Equatable, Sendable, Identifiable {
               let words = cells.text(4) else { return nil }
         (self.step, self.goal, self.amount, self.level, self.words) = (step, goal, amount, level, words)
         gives = LiveGoods(grain: cells.unsigned(5) ?? 0, timber: cells.unsigned(6) ?? 0, stone: cells.unsigned(7) ?? 0, moonsalt: cells.unsigned(8) ?? 0)
+    }
+}
+
+/// What learning a level of one of the Academy's topics costs and gives.
+public struct LiveStudy: Equatable, Sendable {
+    public let topic: Int
+    public let level: Int
+    public let name: String
+    /// What the topic does, in a player's words, and how many hundredths
+    /// each level adds.
+    public let words: String
+    public let each: Int
+    public let cost: LiveGoods
+    public let seconds: Int
+    /// The level the Academy must have reached.
+    public let needsLevel: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let topic = cells.whole(1), let level = cells.whole(2), let name = cells.text(3), let words = cells.text(4),
+              let each = cells.whole(5), let seconds = cells.whole(10), let needsLevel = cells.whole(11) else { return nil }
+        (self.topic, self.level, self.name, self.words, self.each, self.seconds, self.needsLevel) = (topic, level, name, words, each, seconds, needsLevel)
+        cost = LiveGoods(grain: cells.unsigned(6) ?? 0, timber: cells.unsigned(7) ?? 0, stone: cells.unsigned(8) ?? 0, moonsalt: cells.unsigned(9) ?? 0)
     }
 }

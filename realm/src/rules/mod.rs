@@ -12,6 +12,7 @@ mod city;
 mod entry;
 mod march;
 mod siege;
+mod study;
 mod tasks;
 
 pub use alliance::*;
@@ -21,9 +22,10 @@ pub use city::*;
 pub use entry::*;
 pub use march::*;
 pub use siege::*;
+pub use study::*;
 pub use tasks::*;
 
-use crate::catalog::{Building, Goods, Troops};
+use crate::catalog::{Building, Goods, Topic, Troops};
 use crate::rows::Db;
 use crate::store::Timer;
 use std::fmt;
@@ -137,6 +139,11 @@ pub enum Refusal {
     NothingSaid,
     SaidTooLong,
     SayingTooFast,
+    NoSuchTopic,
+    AlreadyStudying,
+    /// The Academy can't be raised while it studies.
+    BusyStudying,
+    NothingMoreToLearn(Topic),
     /// The task the player is on is not done: what it asks.
     TaskNotDone(String),
     NoTasksLeft,
@@ -167,6 +174,7 @@ impl fmt::Display for Refusal {
             Refusal::NotEnoughWounded(troops, tier, wounded) => {
                 return write!(f, "You have only {} wounded tier {tier} {}.", crate::catalog::grouped(*wounded), troops.name());
             }
+            Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
@@ -223,6 +231,9 @@ impl fmt::Display for Refusal {
             Refusal::SaidTooLong => "That is too long to say at once: 200 letters at most.",
             Refusal::SayingTooFast => "Wait a moment before you say more.",
             Refusal::NoTasksLeft => "You have done every task there is.",
+            Refusal::NoSuchTopic => "There is no such study.",
+            Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
+            Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",
             Refusal::OwnCity => "That is your own city.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",

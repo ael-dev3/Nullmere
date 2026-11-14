@@ -1,7 +1,7 @@
 //! Cities: founding one, raising its buildings on timers, and its goods.
 
-use super::{asking, clear_for_city, healed, marching_power, realm, trained, troop_power, Refusal};
-use crate::catalog::{self, Building as Kind, Goods, TOP_LEVEL};
+use super::{asking, boost, clear_for_city, healed, marching_power, realm, sooner, studied, trained, troop_power, Refusal};
+use crate::catalog::{self, Building as Kind, Goods, Topic, TOP_LEVEL};
 use crate::hex::Hex;
 use crate::land;
 use crate::rows::{Building, City, Db, Job, Place, Player, Stock};
@@ -166,9 +166,13 @@ pub(super) fn reckon(db: &mut impl Db, city: u64) -> City {
         }
     }
     if let Ok(mut stock) = settle(db, city) {
+        // What the city has learnt adds to what its works bring in and
+        // to what it holds.
+        let more = |amount: u64, topic: Topic| amount * (100 + boost(db, city, topic)) / 100;
         let hourly = hourly.times(pace);
-        (stock.grain_hourly, stock.timber_hourly, stock.stone_hourly, stock.moonsalt_hourly) = (hourly.grain, hourly.timber, hourly.stone, hourly.moonsalt);
-        stock.holds = catalog::holds(level_of(Kind::Storehouse));
+        (stock.grain_hourly, stock.timber_hourly, stock.stone_hourly, stock.moonsalt_hourly) =
+            (more(hourly.grain, Topic::Tillage), more(hourly.timber, Topic::Forestry), more(hourly.stone, Topic::Masonry), more(hourly.moonsalt, Topic::Saltcraft));
+        stock.holds = more(catalog::holds(level_of(Kind::Storehouse)), Topic::Storage);
         db.update(stock);
     }
     row.keep = level_of(Kind::Keep).max(1);
@@ -187,6 +191,9 @@ fn raise(db: &mut impl Db, city: &City, building: &Building, kind: Kind, level: 
     if jobs.iter().any(|job| job.kind == Job::TRAIN && job.subject == building.id) {
         return Err(Refusal::BusyTraining(kind));
     }
+    if kind == Kind::Academy && jobs.iter().any(|job| job.kind == Job::STUDY) {
+        return Err(Refusal::BusyStudying);
+    }
     if jobs.iter().filter(|job| job.kind == Job::RAISE).count() as u32 >= city.builders {
         return Err(Refusal::BuildersBusy);
     }
@@ -200,7 +207,7 @@ fn raise(db: &mut impl Db, city: &City, building: &Building, kind: Kind, level: 
     set_goods(&mut stock, left);
     db.update(stock);
     let now = db.now();
-    let ends = now + catalog::paced(catalog::seconds(kind, level), realm(db)?.pace);
+    let ends = now + sooner(db, city.id, Topic::Building, catalog::paced(catalog::seconds(kind, level), realm(db)?.pace));
     let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::RAISE, subject: building.id, level, amount: 0, started: now, ends, timer: 0 });
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());
@@ -271,6 +278,8 @@ pub fn finish(db: &mut impl Db, job: u64) {
         trained(db, &job);
     } else if job.kind == Job::HEAL {
         healed(db, &job);
+    } else if job.kind == Job::STUDY {
+        studied(db, &job);
     }
     if Table::<City>::get(db, job.city).is_some() {
         reckon(db, job.city);

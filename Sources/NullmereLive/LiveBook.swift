@@ -80,6 +80,8 @@ public enum LiveBlock: Equatable, Sendable {
     case buildersBusy
     case short(LiveGoods)
     case top(String)
+    case studying
+    case learntAll(String)
 
     /// As the realm says it.
     public var words: String {
@@ -92,6 +94,8 @@ public enum LiveBlock: Equatable, Sendable {
         case .buildersBusy: return "Your builders are busy. Wait for them to finish."
         case .short(let goods): return "You need \(goods.words) more."
         case .top(let name): return "Your \(name) is at its highest level."
+        case .studying: return "Your Academy is already at its studies. Wait for them to finish."
+        case .learntAll(let name): return "You have learnt all there is of \(name)."
         }
     }
 }
@@ -306,6 +310,68 @@ extension LiveWorld {
         let tends = 50 + 150 * level + 10 * level * level
         let held = troops.reduce(0) { $0 + $1.wounded } + squads.reduce(0) { $0 + $1.wounded }
         return tends > held ? tends - held : 0
+    }
+}
+
+/// One of the Academy's topics as the player's city has it.
+public struct LiveStudyLine: Equatable, Identifiable, Sendable {
+    public let topic: Int
+    public var id: Int { topic }
+    public let name: String
+    /// What it does, and what the city has of it so far: "Your Farm
+    /// brings in 5% more grain.", "15% so far".
+    public let words: String
+    public let level: Int
+    /// The study learning it now.
+    public let job: LiveJob?
+    /// What its next level costs; nil when all of it is learnt.
+    public let next: LiveStudy?
+    /// Why it can't be studied now; nil where it can be asked.
+    public let block: LiveBlock?
+
+    /// What the city has of it so far, in words.
+    public var soFar: String {
+        guard let each = next?.each ?? last?.each, level > 0 else { return "Not yet learnt" }
+        return "Level \(level): \(each * level)% so far"
+    }
+
+    /// The level learnt last, where none is left to learn.
+    let last: LiveStudy?
+}
+
+extension LiveWorld {
+    /// The highest level a topic is learnt to, as the module's catalogue has it.
+    public static let topStudy = 10
+
+    /// Every topic of the Academy: what the city has learnt of it, what
+    /// its next level costs, and why it can't be studied now.
+    public func studyLines(at seconds: Double) -> [LiveStudyLine] {
+        let have = stock?.goods(at: seconds) ?? LiveGoods()
+        let academy = building(14)
+        let rising = academy.map { building in building.level == 0 || jobs.contains { $0.kind == LiveJob.raise && $0.subject == building.id } } ?? false
+        let studying = jobs.first { $0.kind == LiveJob.study }
+        return (1...64).compactMap { topic -> LiveStudyLine? in
+            guard let first = study(topic, level: 1) else { return nil }
+            let level = lore[topic] ?? 0
+            let next = study(topic, level: level + 1)
+            var block: LiveBlock?
+            if academy == nil {
+                block = .needsOther("Academy", 1)
+            } else if rising {
+                block = .rising("Academy")
+            } else if studying != nil {
+                block = .studying
+            } else if level >= LiveWorld.topStudy || next == nil {
+                block = .learntAll(first.name)
+            } else if let next, (academy?.level ?? 0) < next.needsLevel {
+                block = .needsOther("Academy", next.needsLevel)
+            } else if let next, !have.covers(next.cost) {
+                block = .short(have.short(of: next.cost))
+            }
+            let job = studying.flatMap { Int($0.subject) == topic ? $0 : nil }
+            return LiveStudyLine(topic: topic, name: first.name, words: first.words, level: level, job: job, next: next, block: block,
+                                 last: study(topic, level: level))
+        }
     }
 }
 

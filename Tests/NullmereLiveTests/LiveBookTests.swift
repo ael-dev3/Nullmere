@@ -191,6 +191,57 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(rising.trainLines(at: 2_000).first?.tiers[0].block, .rising("Barracks"))
     }
 
+    func testTheAcademysTopicsAreListedWithWhatEachAsks() throws {
+        func study(_ topic: Int, _ level: Int, _ name: String, _ words: String, each: Int, grain: Int, needs: Int) -> [JSONValue] {
+            [n(topic << 32 | level), n(topic), n(level), .string(name), .string(words), n(each), n(grain), n(grain / 2), n(0), n(0), n(120 * level * level), n(needs)]
+        }
+        var snapshot = rows(jobs: [])
+        snapshot["study"] = (1...10).flatMap { level in
+            [study(1, level, "Tillage", "Your Farm brings in 5% more grain.", each: 5, grain: 500 * level, needs: 2 * level - 1),
+             study(6, level, "Storage", "Your city holds 10% more of each good.", each: 10, grain: 9_000 * level, needs: 2 * level - 1)]
+        }
+        // No Academy: nothing can be studied, and each line says why.
+        var lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
+        XCTAssertEqual(lines.map(\.name), ["Tillage", "Storage"])
+        XCTAssertEqual(lines.map(\.block), [.needsOther("Academy", 1), .needsOther("Academy", 1)])
+        XCTAssertEqual(lines.map(\.soFar), ["Not yet learnt", "Not yet learnt"])
+        XCTAssertEqual(lines[0].next?.cost, LiveGoods(grain: 500, timber: 250))
+        // With one: Tillage may be studied; Storage is too dear.
+        snapshot["my_buildings"]?.append([n(30), n(7), n(14), n(1)])
+        lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
+        XCTAssertNil(lines[0].block)
+        XCTAssertEqual(lines[1].block, .short(LiveGoods(grain: 4_000, timber: 3_500)))
+        // Learnt to the third level: what it has so far, and the next asks an Academy of the seventh.
+        snapshot["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(3)]]
+        lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
+        XCTAssertEqual([String(lines[0].level), lines[0].soFar, lines[0].words], ["3", "Level 3: 15% so far", "Your Farm brings in 5% more grain."])
+        XCTAssertEqual(lines[0].next?.level, 4)
+        XCTAssertEqual(lines[0].block, .needsOther("Academy", 7))
+        // While one is studied nothing else is; the line studied carries its work.
+        snapshot["my_jobs"] = [[n(9), n(7), n(4), n(6), n(1), n(0), n(2_000), n(2_120), n(3)]]
+        lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
+        XCTAssertEqual(lines.map(\.block), [.studying, .studying])
+        XCTAssertNil(lines[0].job)
+        XCTAssertEqual(lines[1].job?.level, 1)
+        // An Academy being raised studies nothing; all of a topic learnt, there is no next.
+        snapshot["my_jobs"] = [[n(9), n(7), n(1), n(30), n(2), n(0), n(2_000), n(2_120), n(3)]]
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).studyLines(at: 2_000)[0].block, .rising("Academy"))
+        snapshot["my_jobs"] = []
+        snapshot["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(10)]]
+        let learnt = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)[0]
+        XCTAssertEqual(learnt.block, .learntAll("Tillage"))
+        XCTAssertNil(learnt.next)
+        XCTAssertEqual(learnt.soFar, "Level 10: 50% so far")
+        XCTAssertEqual(LiveBlock.studying.words, "Your Academy is already at its studies. Wait for them to finish.")
+        XCTAssertEqual(LiveBlock.learntAll("Tillage").words, "You have learnt all there is of Tillage.")
+        let rules = try source("rules/mod.rs"), catalog = try source("catalog.rs")
+        XCTAssertTrue(rules.contains("\"Your Academy is already at its studies. Wait for them to finish.\""))
+        XCTAssertTrue(rules.contains("\"You have learnt all there is of {}.\""))
+        XCTAssertTrue(catalog.contains("pub const TOP_STUDY: u32 = \(LiveWorld.topStudy);"))
+        XCTAssertTrue(catalog.contains("Academy = 14,"))
+        XCTAssertEqual(LiveJob.study, 4)
+    }
+
     func testAlliancesAreOfferedAndWhatIsSaidIsListed() throws {
         var snapshot: [String: [[JSONValue]]] = [
             "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]],

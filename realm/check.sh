@@ -243,6 +243,12 @@ check("and gives what it promised", (rows(ada, "SELECT * FROM my_stock")[0]["gra
 check("the next is not done yet", call(ada, "claim_task"), "Not done yet: Build a Barracks.")
 check("no one reads another's progress", isinstance(rows(ada, "SELECT * FROM progress"), str), True)
 
+# What an Academy studies.
+studies = rows(nobody, "SELECT * FROM study")
+check("the studies are written out for all to read", (len(studies), sorted(s["name"] for s in studies if s["level"] == 1)[:3]), (150, ["Archery", "Building", "Drill"]))
+check("nothing is studied without an Academy", call(ada, "learn", 1), "Raise your Academy to level 1 first.")
+check("what a city has learnt is its owner's alone", (rows(ada, "SELECT * FROM my_lore"), isinstance(rows(ada, "SELECT * FROM lore"), str)), ([], True))
+
 # What players say to one another, and alliances.
 check("a player speaks to the realm", call(ada, "say", False, "  Good   morning, all. "), None)
 check("and everyone reads it, tidied, under their name", [(s["name"], s["words"]) for s in rows(nobody, "SELECT * FROM realm_chat")], [("Ada of the Lake", "Good morning, all.")])

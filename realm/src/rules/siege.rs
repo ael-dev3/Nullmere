@@ -1,7 +1,7 @@
 //! A city under attack: another player's army at its walls, the fight,
 //! what is carried off, and the peace that follows.
 
-use super::{allied, building_of, fallen, fight_sheltered, goods, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
+use super::{allied, building_of, fallen, fight_learned, goods, mastery, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
 use crate::catalog::{self, Building as Kind, Goods, Troops, Unit};
 use crate::hex::Hex;
 use crate::rows::{City, Db, Haul, March, Place, Player, Report, Squad, Troop};
@@ -86,7 +86,7 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
     let defenders: Vec<Unit> = garrison.iter().filter_map(|row| Troops::of(row.kind).map(|kind| Unit { kind, tier: row.tier, count: row.ready })).collect();
     let wall = building_of(db, city.id, Kind::Wall).map(|building| building.level).unwrap_or(0);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
-    let outcome = fight_sheltered(&army, &defenders, catalog::shelter(wall), || rolls.pop().unwrap_or(0));
+    let outcome = fight_learned(&army, &defenders, [mastery(db, march.city), mastery(db, city.id)], catalog::shelter(wall), || rolls.pop().unwrap_or(0));
 
     // The army's fallen: half carried home wounded, while there is room.
     let mut room = room_for_wounded(db, march.city);

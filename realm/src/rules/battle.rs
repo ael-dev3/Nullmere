@@ -2,8 +2,8 @@
 //! the barrows of the Unquiet that players clear, and the energy that
 //! takes; the wounded and their healing; and the reports of what happened.
 
-use super::{asking, city_of, goods, keep_troop, realm, set_goods, settle, squads, troop, Refusal, TIMER_JOB};
-use crate::catalog::{self, Building as Kind, Goods, Troops, Unit, TOP_TIER};
+use super::{asking, boost, city_of, goods, keep_troop, mastery, realm, set_goods, settle, squads, troop, Mastery, Refusal, TIMER_JOB};
+use crate::catalog::{self, Building as Kind, Goods, Topic, Troops, Unit, TOP_TIER};
 use crate::hex::Hex;
 use crate::land::{self, Ground};
 use crate::rows::{Barrow, Building, Db, Hunt, Job, March, Place, Report, Squad, Troop};
@@ -56,7 +56,14 @@ pub fn fight(attackers: &[Unit], defenders: &[Unit], chance: impl FnMut() -> u64
 
 /// The same fight with the defenders behind a wall: each of them takes
 /// `shelter` hundredths more to bring down.
-pub fn fight_sheltered(attackers: &[Unit], defenders: &[Unit], shelter: u64, mut chance: impl FnMut() -> u64) -> Outcome {
+pub fn fight_sheltered(attackers: &[Unit], defenders: &[Unit], shelter: u64, chance: impl FnMut() -> u64) -> Outcome {
+    fight_learned(attackers, defenders, [Mastery::default(); 2], shelter, chance)
+}
+
+/// The same fight between soldiers of cities that have studied: each
+/// side's kinds strike so many hundredths harder, and all its soldiers
+/// take so many more to bring down, as its city has learnt.
+pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2], shelter: u64, mut chance: impl FnMut() -> u64) -> Outcome {
     let sides = [attackers, defenders];
     let mut left: [Vec<u64>; 2] = [attackers.iter().map(|unit| unit.count).collect(), defenders.iter().map(|unit| unit.count).collect()];
     // What each unit has taken toward its next soldier down.
@@ -72,13 +79,14 @@ pub fn fight_sheltered(attackers: &[Unit], defenders: &[Unit], shelter: u64, mut
             let mut blow: u128 = 0;
             for (unit, count) in sides[striking].iter().zip(&stood[striking]) {
                 let over: u128 = sides[struck].iter().zip(&stood[struck]).map(|(other, there)| *there as u128 * edge(unit.kind, other.kind) as u128).sum();
-                blow += *count as u128 * unit.kind.soldier(unit.tier).attack as u128 * over / heads / 100;
+                let sharper = 100 + learnt[striking].strikes[unit.kind as usize - 1] as u128;
+                blow += *count as u128 * unit.kind.soldier(unit.tier).attack as u128 * sharper / 100 * over / heads / 100;
             }
             let blow = blow * luck / 100 / 4;
             for (index, unit) in sides[struck].iter().enumerate() {
                 let soldier = unit.kind.soldier(unit.tier);
                 let behind = if struck == 1 { 100 + shelter } else { 100 };
-                let tough = (soldier.health * soldier.defence * behind / 10_000).max(1);
+                let tough = (soldier.health * soldier.defence * behind * (100 + learnt[struck].shields) / 1_000_000).max(1);
                 worn[struck][index] += (blow * stood[struck][index] as u128 / heads) as u64;
                 let down = (worn[struck][index] / tough).min(left[struck][index]);
                 worn[struck][index] -= down * tough;
@@ -201,7 +209,7 @@ pub fn room_for_wounded(db: &impl Db, city: u64) -> u64 {
     let hospital = Table::<Building>::by(db, 0, city).iter().find(|building| building.kind == Kind::Hospital as u8).map(|building| building.level).unwrap_or(0);
     let lying: u64 = Table::<Troop>::by(db, 0, city).iter().map(|row| row.wounded).sum();
     let carried: u64 = Table::<March>::by(db, 1, city).iter().flat_map(|march| squads(db, march.id)).map(|squad| squad.wounded).sum();
-    catalog::tends(hospital).saturating_sub(lying + carried)
+    (catalog::tends(hospital) * (100 + boost(db, city, Topic::Medicine)) / 100).saturating_sub(lying + carried)
 }
 
 /// An army has reached its barrow: if it still stands and no one else is
@@ -233,7 +241,7 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     let army: Vec<Unit> = own.iter().filter_map(|squad| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
     let unquiet = catalog::barrow(barrow.level);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
-    let outcome = fight(&army, &unquiet, || rolls.pop().unwrap_or(0));
+    let outcome = fight_learned(&army, &unquiet, [mastery(db, march.city), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
 
     let mut room = room_for_wounded(db, march.city);
     let (mut wounded, mut dead) = (0, 0);

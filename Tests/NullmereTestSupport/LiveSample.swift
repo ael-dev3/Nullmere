@@ -130,6 +130,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func read(report: UInt64) async throws { try take("read \(report)") }
     public func forget(report: UInt64) async throws { try take("forget \(report)") }
     public func recall(march: UInt64) async throws { try take("recall \(march)") }
+    public func learn(topic: Int) async throws { try take("learn \(topic)") }
     public func claimTask() async throws { try take("claim task") }
     public func foundAlliance(name: String, tag: String) async throws { try take("found \(name) [\(tag)]") }
     public func joinAlliance(_ alliance: UInt64) async throws { try take("join alliance \(alliance)") }

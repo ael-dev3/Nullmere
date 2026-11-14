@@ -722,3 +722,144 @@ pub fn tasks() -> Vec<(Goal, Goods)> {
         (Goal::Power(5_000), Goods::of(20_000, 20_000, 10_000, 500)),
     ]
 }
+
+/// What an Academy studies. Each topic is learnt level by level, and
+/// each level adds the same again to what it gives.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Topic {
+    Tillage = 1,
+    Forestry = 2,
+    Masonry = 3,
+    Saltcraft = 4,
+    Building = 5,
+    Storage = 6,
+    Gathering = 7,
+    Spearcraft = 8,
+    Archery = 9,
+    Horsemanship = 10,
+    Siegecraft = 11,
+    Shields = 12,
+    Medicine = 13,
+    Marching = 14,
+    Drill = 15,
+}
+
+/// The highest level a topic is learnt to.
+pub const TOP_STUDY: u32 = 10;
+
+impl Topic {
+    pub const ALL: [Topic; 15] = [
+        Topic::Tillage,
+        Topic::Forestry,
+        Topic::Masonry,
+        Topic::Saltcraft,
+        Topic::Building,
+        Topic::Storage,
+        Topic::Gathering,
+        Topic::Spearcraft,
+        Topic::Archery,
+        Topic::Horsemanship,
+        Topic::Siegecraft,
+        Topic::Shields,
+        Topic::Medicine,
+        Topic::Marching,
+        Topic::Drill,
+    ];
+
+    pub fn of(code: u8) -> Option<Topic> {
+        Topic::ALL.into_iter().find(|topic| *topic as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Topic::Tillage => "Tillage",
+            Topic::Forestry => "Forestry",
+            Topic::Masonry => "Masonry",
+            Topic::Saltcraft => "Saltcraft",
+            Topic::Building => "Building",
+            Topic::Storage => "Storage",
+            Topic::Gathering => "Gathering",
+            Topic::Spearcraft => "Spearcraft",
+            Topic::Archery => "Archery",
+            Topic::Horsemanship => "Horsemanship",
+            Topic::Siegecraft => "Siegecraft",
+            Topic::Shields => "Shields",
+            Topic::Medicine => "Field medicine",
+            Topic::Marching => "Marching",
+            Topic::Drill => "Drill",
+        }
+    }
+
+    /// Whether it is of the city's works, or of its armies.
+    pub fn is_of_war(self) -> bool {
+        self >= Topic::Spearcraft
+    }
+
+    /// What each level gives, in hundredths.
+    pub fn each(self) -> u64 {
+        match self {
+            Topic::Tillage | Topic::Forestry | Topic::Masonry | Topic::Saltcraft | Topic::Marching => 5,
+            Topic::Storage | Topic::Gathering | Topic::Medicine => 10,
+            _ => 3,
+        }
+    }
+
+    /// What it does, in a player's words.
+    pub fn words(self) -> String {
+        let each = self.each();
+        match self {
+            Topic::Tillage => format!("Your Farm brings in {each}% more grain."),
+            Topic::Forestry => format!("Your Sawmill brings in {each}% more timber."),
+            Topic::Masonry => format!("Your Quarry brings in {each}% more stone."),
+            Topic::Saltcraft => format!("Your Saltworks brings in {each}% more moonsalt."),
+            Topic::Building => format!("Buildings are raised {each}% sooner."),
+            Topic::Storage => format!("Your city holds {each}% more of each good."),
+            Topic::Gathering => format!("Your armies gather {each}% faster."),
+            Topic::Spearcraft => format!("Your Spearmen strike {each}% harder."),
+            Topic::Archery => format!("Your Archers strike {each}% harder."),
+            Topic::Horsemanship => format!("Your Riders strike {each}% harder."),
+            Topic::Siegecraft => format!("Your Mangonels strike {each}% harder."),
+            Topic::Shields => format!("All your soldiers are {each}% harder to bring down."),
+            Topic::Medicine => format!("Your city tends {each}% more wounded."),
+            Topic::Marching => format!("Your armies march {each}% faster."),
+            Topic::Drill => format!("Soldiers are trained {each}% sooner."),
+        }
+    }
+
+    /// The topic that makes a kind of soldier strike harder.
+    pub fn sharpens(kind: Troops) -> Topic {
+        match kind {
+            Troops::Spearmen => Topic::Spearcraft,
+            Troops::Archers => Topic::Archery,
+            Troops::Riders => Topic::Horsemanship,
+            Troops::Mangonels => Topic::Siegecraft,
+        }
+    }
+}
+
+/// What learning a topic's level costs: the city's works are paid for in
+/// grain and timber, its arms in timber and stone, and from the fifth
+/// level both in moonsalt as well.
+pub fn study_cost(topic: Topic, level: u32) -> Goods {
+    let level = level.clamp(1, TOP_STUDY) as u64;
+    let base = 300 * level * level + 200 * level;
+    let moonsalt = if level >= 5 { 30 * level } else { 0 };
+    if topic.is_of_war() {
+        Goods::of(0, base, base * 2 / 3, moonsalt)
+    } else {
+        Goods::of(base, base * 2 / 3, 0, moonsalt)
+    }
+}
+
+/// The seconds learning a topic's level takes, as written: two minutes
+/// for the first, a little over three hours for the tenth.
+pub fn study_seconds(level: u32) -> i64 {
+    let level = level.clamp(1, TOP_STUDY) as i64;
+    120 * level * level
+}
+
+/// The Academy level a topic's level asks for: its own first level for
+/// the first, and two more for each after.
+pub fn study_needs(level: u32) -> u32 {
+    (2 * level.clamp(1, TOP_STUDY)).saturating_sub(1).min(TOP_LEVEL)
+}

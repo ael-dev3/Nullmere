@@ -147,6 +147,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Throws one of the player's reports away.
     public func forget(report: UInt64) async throws { try await ask("forget_report", [.integer(report)]) }
 
+    /// Has the player's Academy study the next level of a topic.
+    public func learn(topic: Int) async throws { try await ask("learn", [.integer(UInt64(topic))]) }
+
     /// Claims what the task the player is on gives, if it is done.
     public func claimTask() async throws { try await ask("claim_task", []) }
 

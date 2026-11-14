@@ -314,6 +314,9 @@ impl Job {
     /// Wounded being healed: its subject is their troop row, its level
     /// their tier, its amount how many.
     pub const HEAL: u8 = 3;
+    /// A topic being studied in the Academy: its subject is the topic,
+    /// its level the one being learnt.
+    pub const STUDY: u8 = 4;
 }
 
 /// A city's troops of one kind and tier: its owner's alone to read. Keyed
@@ -613,6 +616,56 @@ pub struct Progress {
 }
 row!(Progress in progress, by player);
 
+/// What a city has learnt of a topic: its owner's alone to read. Keyed
+/// by city and topic.
+#[spacetimedb::table(accessor = lore)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Lore {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub city: u64,
+    pub topic: u8,
+    pub level: u32,
+}
+row!(Lore in lore, by id, city);
+
+impl Lore {
+    pub fn key(city: u64, topic: u8) -> u64 {
+        (city << 8) | topic as u64
+    }
+}
+
+/// What learning a level of a topic costs and gives in this realm, as
+/// the catalogue has it, for clients to show. Keyed by topic and level.
+#[spacetimedb::table(accessor = study, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Study {
+    #[primary_key]
+    pub id: u64,
+    pub topic: u8,
+    pub level: u32,
+    pub name: String,
+    /// What the topic does, in a player's words, and how many hundredths
+    /// each level adds.
+    pub words: String,
+    pub each: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub seconds: Seconds,
+    /// The level the Academy must have reached.
+    pub needs_level: u32,
+}
+row!(Study in study, by id);
+
+impl Study {
+    pub fn key(topic: u8, level: u32) -> u64 {
+        ((topic as u64) << 32) | level as u64
+    }
+}
+
 /// Everything the rules keep: every table, the clock, chance and timers.
 pub trait Db:
     World
@@ -642,6 +695,8 @@ pub trait Db:
     + Table<AllianceChat>
     + Table<Task>
     + Table<Progress>
+    + Table<Lore>
+    + Table<Study>
 {
 }
 
@@ -672,7 +727,9 @@ impl<
             + Table<RealmChat>
             + Table<AllianceChat>
             + Table<Task>
-            + Table<Progress>,
+            + Table<Progress>
+            + Table<Lore>
+            + Table<Study>,
     > Db for T
 {
 }

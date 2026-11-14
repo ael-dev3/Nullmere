@@ -23,6 +23,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func read(report: UInt64) async throws
     func forget(report: UInt64) async throws
     func recall(march: UInt64) async throws
+    func learn(topic: Int) async throws
     func claimTask() async throws
     func foundAlliance(name: String, tag: String) async throws
     func joinAlliance(_ alliance: UInt64) async throws
@@ -360,6 +361,7 @@ public final class LiveSession {
     public func read(report: UInt64) async { await ask { try await $0.read(report: report) } }
     public func forget(report: UInt64) async { await ask { try await $0.forget(report: report) } }
 
+    public func learn(topic: Int) async { await ask { try await $0.learn(topic: topic) } }
     public func claimTask() async { await ask { try await $0.claimTask() } }
     public func foundAlliance(name: String, tag: String) async { await ask { try await $0.foundAlliance(name: name, tag: tag) } }
     public func joinAlliance(_ alliance: UInt64) async { await ask { try await $0.joinAlliance(alliance) } }

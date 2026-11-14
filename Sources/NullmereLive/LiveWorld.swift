@@ -23,6 +23,7 @@ public struct LiveWorld: Equatable, Sendable {
     public var land: [UInt64: [UInt8]] = [:]
     /// The players' first tasks, by their place in the order.
     public var tasks: [Int: LiveTask] = [:]
+    var studies: [UInt64: LiveStudy] = [:]
     var blueprints: [UInt64: LiveBlueprint] = [:]
     var soldiers: [UInt64: LiveSoldier] = [:]
 
@@ -37,6 +38,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var hunt: LiveHunt?
     /// The player's reports, the latest first.
     public var reports: [LiveReport] = []
+    /// What the player's city has learnt: each topic's level, by the topic.
+    public var lore: [Int: Int] = [:]
     /// The task the player is on, by its place in the order; one past the
     /// last when they have done them all.
     public var step: Int?
@@ -62,6 +65,7 @@ public struct LiveWorld: Equatable, Sendable {
         members = Dictionary(rows("member", LiveMember.init).map { ($0.player, $0) }, uniquingKeysWith: { _, new in new })
         realmChat = rows("realm_chat", LiveSaying.init(realm:)).sorted { $0.id < $1.id }
         tasks = Dictionary(rows("task", LiveTask.init).map { ($0.step, $0) }, uniquingKeysWith: { _, new in new })
+        studies = Dictionary(rows("study", LiveStudy.init).map { (LiveWorld.key($0.topic, $0.level), $0) }, uniquingKeysWith: { _, new in new })
         for row in snapshot["land"] ?? [] {
             let cells = Cells(row: row)
             if let chunk = cells.unsigned(0), let ground = cells.bytes(1) { land[chunk] = ground }
@@ -83,12 +87,19 @@ public struct LiveWorld: Equatable, Sendable {
         allianceChat = rows("my_alliance_chat", LiveSaying.init(alliance:)).sorted { $0.id < $1.id }
         applicants = rows("my_applicants", LiveApplicant.init).sorted { $0.at < $1.at }
         step = (snapshot["my_progress"] ?? []).compactMap { Cells(row: $0).whole(1) }.first
+        for row in snapshot["my_lore"] ?? [] {
+            let cells = Cells(row: row)
+            if let topic = cells.whole(2), let level = cells.whole(3) { lore[topic] = level }
+        }
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
 
     /// What a building costs and gives at a level.
     public func blueprint(_ building: Int, level: Int) -> LiveBlueprint? { blueprints[LiveWorld.key(building, level)] }
+
+    /// What learning a level of a topic costs and gives.
+    public func study(_ topic: Int, level: Int) -> LiveStudy? { studies[LiveWorld.key(topic, level)] }
 
     /// What a soldier of a kind and tier is and costs.
     public func soldier(_ kind: Int, tier: Int) -> LiveSoldier? { soldiers[LiveWorld.key(kind, tier)] }

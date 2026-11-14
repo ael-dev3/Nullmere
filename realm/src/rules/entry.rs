@@ -1,6 +1,6 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::{found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_tasks, Refusal};
+use super::{found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_studies, write_tasks, Refusal};
 use crate::catalog::{self, Building, Troops};
 use crate::land;
 use crate::rows::{Blueprint, City, Db, Hunt, Land, Pace, Player, Progress, Realm, Soldier};
@@ -28,6 +28,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
         db.insert(Land { chunk, ground });
     }
     write_catalogue(db, pace);
+    write_studies(db, pace);
     write_tasks(db);
     scatter_sites(db);
     scatter_barrows(db);
@@ -56,6 +57,7 @@ pub fn repace(db: &mut impl Db, pace: u32) -> Result<(), Refusal> {
         Table::<Soldier>::delete(db, row.id);
     }
     write_catalogue(db, realm.pace);
+    write_studies(db, realm.pace);
     for city in Table::<City>::all(db) {
         reckon(db, city.id);
     }

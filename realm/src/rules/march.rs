@@ -2,9 +2,9 @@
 //! real time, gathering what lies at a site, and carrying it home.
 
 use super::{
-    asking, besiege, break_peace, city_of, engage, fought, goods, keep_troop, may_attack, may_hunt, realm, set_goods, settle, spend_energy, stormed, troop, Refusal,
+    asking, besiege, boost, break_peace, city_of, engage, fought, goods, keep_troop, may_attack, may_hunt, realm, set_goods, settle, spend_energy, stormed, troop, Refusal,
 };
-use crate::catalog::{self, Goods, Troops, TOP_TIER};
+use crate::catalog::{self, Goods, Topic, Troops, TOP_TIER};
 use crate::hex::{self, Hex};
 use crate::land::{self, Ground};
 use crate::rows::{City, Db, Haul, March, Place, Site, Squad};
@@ -97,10 +97,12 @@ pub fn marching_power(db: &impl Db, city: u64) -> u64 {
 
 /// How long a march of these soldiers takes over a number of steps: at
 /// the pace of its slowest, in this realm.
-fn travel(db: &impl Db, squads: &[Squad], steps: usize) -> Seconds {
+fn travel(db: &impl Db, city: u64, squads: &[Squad], steps: usize) -> Seconds {
     let slowest = squads.iter().filter_map(|squad| Troops::of(squad.kind).map(|kind| kind.soldier(squad.tier).pace)).max().unwrap_or(60);
     let pace = realm(db).map(|realm| realm.pace).unwrap_or(1);
-    catalog::paced((steps as u64 * slowest).div_ceil(10) as Seconds, pace)
+    // What the city has learnt of marching makes its armies so much faster.
+    let tenths = (steps as u64 * slowest * 100).div_ceil(100 + boost(db, city, Topic::Marching));
+    catalog::paced(tenths.div_ceil(10) as Seconds, pace)
 }
 
 /// A player sends soldiers from their city: to gather at a site, to
@@ -184,7 +186,7 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
     for ask in &wanted {
         db.insert(Squad { id: Squad::key(march.id, ask.kind, ask.tier), march: march.id, kind: ask.kind, tier: ask.tier, count: ask.count, wounded: 0 });
     }
-    march.arrives = now + travel(db, &squads(db, march.id), way.len() - 1);
+    march.arrives = now + travel(db, city.id, &squads(db, march.id), way.len() - 1);
     march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
     db.update(march.clone());
     Ok(march)
@@ -195,7 +197,7 @@ fn turn_home(db: &mut impl Db, mut march: March, way: Vec<Hex>) {
     let now = db.now();
     march.state = March::RETURNING;
     march.departed = now;
-    march.arrives = now + travel(db, &squads(db, march.id), way.len().saturating_sub(1));
+    march.arrives = now + travel(db, march.city, &squads(db, march.id), way.len().saturating_sub(1));
     march.route = hex::encode(&way);
     march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
     db.update(march);
@@ -285,7 +287,7 @@ pub fn arrive(db: &mut impl Db, march: u64) {
             let amount = load(db, march.id).min(site.left);
             db.update(site);
             let pace = realm(db).map(|realm| realm.pace).unwrap_or(1);
-            let hourly = (march.soldiers * GATHERED_AN_HOUR).max(1);
+            let hourly = (march.soldiers * GATHERED_AN_HOUR * (100 + boost(db, march.city, Topic::Gathering)) / 100).max(1);
             let now = db.now();
             march.state = March::WORKING;
             march.departed = now;
