@@ -72,7 +72,9 @@ jobs:
 
       - name: Install Rust and SpacetimeDB
         run: |
-          apt-get update -qq && apt-get install -y -qq curl python3 > /dev/null
+          # The Swift image has clang but no `cc`, which Rust links its
+          # build scripts with.
+          apt-get update -qq && apt-get install -y -qq curl python3 gcc libc6-dev > /dev/null
           curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --target wasm32-unknown-unknown
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
