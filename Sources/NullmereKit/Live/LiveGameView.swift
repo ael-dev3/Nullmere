@@ -8,13 +8,14 @@ import SwiftUI
 /// only what the moment needs. Along the top, the city's goods and the
 /// task the player is on; at the foot, the player's armies out, the
 /// doors to everything else, and a card for whatever is chosen; at the
-/// side, when asked for, the city, its troops, the alliance, what is
-/// being said, or the reports.
+/// side, when asked for, the city, its troops, its studies, the
+/// alliance, what is being said, or the reports.
 public struct LiveGameView: View {
     /// What the side of the window is given over to.
     enum Panel: Equatable {
         case city
         case troops
+        case studies
         case alliance
         case chat
         case reports
@@ -316,8 +317,8 @@ struct LiveDock: View {
         var id: String { title }
     }
 
-    static let doors = [Door(title: "Buildings", panel: .city), Door(title: "Troops", panel: .troops), Door(title: "Alliance", panel: .alliance),
-                        Door(title: "Chat", panel: .chat), Door(title: "Reports", panel: .reports)]
+    static let doors = [Door(title: "Buildings", panel: .city), Door(title: "Troops", panel: .troops), Door(title: "Studies", panel: .studies),
+                        Door(title: "Alliance", panel: .alliance), Door(title: "Chat", panel: .chat), Door(title: "Reports", panel: .reports)]
 
     let session: LiveSession
     @Binding var panel: LiveGameView.Panel?

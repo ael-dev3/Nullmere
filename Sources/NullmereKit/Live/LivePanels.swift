@@ -15,6 +15,7 @@ struct LiveSidePanel: View {
         switch panel {
         case .city: return "Buildings"
         case .troops: return "Troops"
+        case .studies: return "Studies"
         case .alliance: return "Alliance"
         case .chat: return "Chat"
         case .reports: return "Reports"
@@ -34,6 +35,7 @@ struct LiveSidePanel: View {
                     switch panel {
                     case .city: LiveBuildings(session: session, seconds: seconds)
                     case .troops: LiveTroops(session: session, seconds: seconds)
+                    case .studies: LiveStudies(session: session, seconds: seconds)
                     case .alliance: LiveAlliancePanel(session: session)
                     case .chat: LiveChatPanel(session: session)
                     case .reports: LiveReports(session: session, seconds: seconds)
@@ -118,6 +120,51 @@ struct LiveBuildings: View {
                 } else if let next = line.next {
                     LiveSmall(words: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))")
                     if let block = line.block {
+                        LiveSmall(words: block.words, dim: true)
+                    }
+                } else if let block = line.block {
+                    LiveSmall(words: block.words, dim: true)
+                }
+            }
+            .accessibilityElement(children: .contain)
+        }
+    }
+}
+
+/// What the Academy studies: each topic with what the city has of it,
+/// what its next level costs, and a way to study it.
+struct LiveStudies: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let lines = session.world.studyLines(at: seconds)
+        if lines.isEmpty {
+            LiveSmall(words: "Nothing to study has been told of yet.")
+        }
+        ForEach(lines) { line in
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: line.name)
+                        .font(.nm(13, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                    Text(verbatim: line.soFar)
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.text(0.65))
+                    Spacer(minLength: 0)
+                    if line.job == nil, line.next != nil {
+                        QuietButton(title: "Study", prominent: line.block == nil, enabled: line.block == nil && session.asking == 0,
+                                    name: "Study \(line.name)", why: line.block?.words) {
+                            Task { await session.learn(topic: line.topic) }
+                        }
+                    }
+                }
+                LiveSmall(words: line.words)
+                if let job = line.job {
+                    LiveProgress(part: job.progress(at: seconds), left: Int(job.left(at: seconds).rounded(.up)))
+                } else if let next = line.next {
+                    LiveSmall(words: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))", dim: true)
+                    if let block = line.block, block != .studying {
                         LiveSmall(words: block.words, dim: true)
                     }
                 } else if let block = line.block {
