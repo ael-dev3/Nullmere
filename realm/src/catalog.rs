@@ -638,3 +638,12 @@ pub fn shelter(wall: u32) -> u64 {
 pub fn kept_safe(storehouse: u32) -> u64 {
     2_000 + 1_000 * storehouse.min(TOP_LEVEL) as u64
 }
+
+/// The most members an alliance has, how many of its words and the
+/// realm's are kept, the longest thing that can be said, and the seconds
+/// a player waits between saying one thing and the next.
+pub const ALLIANCE_MOST: u32 = 100;
+pub const ALLIANCE_CHAT_KEPT: usize = 200;
+pub const REALM_CHAT_KEPT: u64 = 300;
+pub const SAID_LONGEST: usize = 200;
+pub const SAID_EVERY: i64 = 2;

@@ -5,6 +5,7 @@
 //! changes rows, or refuses with the reason in plain words and changes
 //! nothing.
 
+mod alliance;
 mod army;
 mod battle;
 mod city;
@@ -12,6 +13,7 @@ mod entry;
 mod march;
 mod siege;
 
+pub use alliance::*;
 pub use army::*;
 pub use battle::*;
 pub use city::*;
@@ -110,6 +112,29 @@ pub enum Refusal {
     OwnCity,
     /// The city is at peace: for how many seconds more.
     AtPeace(i64),
+    /// A city of the player's own alliance.
+    AllysCity,
+    AlreadyAllied,
+    NotAllied,
+    NoSuchAlliance,
+    AllianceFull,
+    AllianceNameNotAllowed,
+    AllianceNameTaken,
+    TagNotAllowed,
+    TagTaken,
+    /// Something only an alliance's officers may do, or only its leader.
+    NotAnOfficer,
+    NotTheLeader,
+    /// The leader can't leave an alliance that has other members.
+    LeaderMustHandOver,
+    NoSuchApplicant,
+    /// Not a member of the player's alliance.
+    NotAMember,
+    OutranksYou,
+    NoSuchRank,
+    NothingSaid,
+    SaidTooLong,
+    SayingTooFast,
     /// Something only the realm's owner may do.
     NotTheOwner,
 }
@@ -170,6 +195,27 @@ impl fmt::Display for Refusal {
             Refusal::Fighting => "That army is fighting. Wait for the fight to end.",
             Refusal::AlreadyHealing => "Your wounded are already being healed. Wait for them to finish.",
             Refusal::NoSuchReport => "There is no such report.",
+            Refusal::AllysCity => "That city is your ally's.",
+            Refusal::AlreadyAllied => "You are in an alliance already. Leave it first.",
+            Refusal::NotAllied => "You are in no alliance.",
+            Refusal::NoSuchAlliance => "There is no such alliance.",
+            Refusal::AllianceFull => "That alliance is full.",
+            Refusal::AllianceNameNotAllowed => {
+                "An alliance's name has 3 to 20 letters, digits, spaces, hyphens and apostrophes, and starts and ends with a letter or digit."
+            }
+            Refusal::AllianceNameTaken => "Another alliance has that name.",
+            Refusal::TagNotAllowed => "A tag is 3 or 4 letters or digits.",
+            Refusal::TagTaken => "Another alliance has that tag.",
+            Refusal::NotAnOfficer => "Only your alliance's officers may do that.",
+            Refusal::NotTheLeader => "Only your alliance's leader may do that.",
+            Refusal::LeaderMustHandOver => "Hand the alliance over to another member before you leave it.",
+            Refusal::NoSuchApplicant => "No one of that name has asked to join.",
+            Refusal::NotAMember => "They are not a member of your alliance.",
+            Refusal::OutranksYou => "They are of your rank or above it.",
+            Refusal::NoSuchRank => "There is no such rank.",
+            Refusal::NothingSaid => "Say something first.",
+            Refusal::SaidTooLong => "That is too long to say at once: 200 letters at most.",
+            Refusal::SayingTooFast => "Wait a moment before you say more.",
             Refusal::NoCityThere => "There is no city to attack there.",
             Refusal::OwnCity => "That is your own city.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",

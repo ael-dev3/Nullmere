@@ -147,6 +147,33 @@ public final class LiveClient: @unchecked Sendable {
     /// Throws one of the player's reports away.
     public func forget(report: UInt64) async throws { try await ask("forget_report", [.integer(report)]) }
 
+    // MARK: Alliances and chat
+
+    /// Founds an alliance under a name and a tag, with the player its leader.
+    public func foundAlliance(name: String, tag: String) async throws { try await ask("found_alliance", [.string(name), .string(tag)]) }
+
+    /// Joins an alliance, or asks to be let into one that is not open.
+    public func joinAlliance(_ alliance: UInt64) async throws { try await ask("join_alliance", [.integer(alliance)]) }
+
+    /// Leaves the player's alliance.
+    public func leaveAlliance() async throws { try await ask("leave_alliance", []) }
+
+    /// Lets in, or turns away, a player who asked to join.
+    public func answer(applicant: UInt64, admit: Bool) async throws { try await ask("answer_applicant", [.integer(applicant), .bool(admit)]) }
+
+    /// Puts a member of lower rank out of the alliance.
+    public func expel(_ player: UInt64) async throws { try await ask("expel", [.integer(player)]) }
+
+    /// Gives a member a rank: `LiveMember.member`, `.officer` or `.leader`.
+    public func setRank(of player: UInt64, to rank: Int) async throws { try await ask("set_rank", [.integer(player), .integer(UInt64(rank))]) }
+
+    /// Says whether anyone may join without being let in, and what the
+    /// alliance says of itself.
+    public func setAlliance(open: Bool, words: String) async throws { try await ask("set_alliance", [.bool(open), .string(words)]) }
+
+    /// Says something: to the whole realm, or within the player's alliance.
+    public func say(_ words: String, withinAlliance: Bool) async throws { try await ask("say", [.bool(withinAlliance), .string(words)]) }
+
     /// Calls one of the player's armies home.
     public func recall(march: UInt64) async throws { try await ask("recall", [.integer(march)]) }
 }

@@ -9,11 +9,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 
 use crate::hex::Hex;
 use crate::rows::{
-    barrow as _, blueprint as _, building as _, building__view as _, city as _, city__view as _, haul as _, haul__view as _, hunt as _,
-    hunt__view as _, job as _, job__view as _, land as _, march as _, march__view as _, pace as _, place as _, player as _,
-    player__view as _, realm as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _,
-    stock__view as _, troop as _, troop__view as _, Barrow, Blueprint, Building, City, Haul, Hunt, Job, Land, March, Pace, Place, Player,
-    Realm, Report, Site, Soldier, Squad, Stock, Troop,
+    alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
+    building__view as _, city as _, city__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _,
+    march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, realm as _,
+    realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _,
+    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, City, Haul, Hunt, Job, Land, March, Member,
+    Pace, Place, Player, Realm, RealmChat, Report, Site, Soldier, Squad, Stock, Troop,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -140,6 +141,11 @@ stored!(Haul in haul by march, owner);
 stored!(Barrow in barrow by id);
 stored!(Hunt in hunt by player);
 stored!(Report in report by id, player);
+stored!(Alliance in alliance by id, name_key, tag_key);
+stored!(Member in member by player, alliance);
+stored!(Applicant in applicant by player, alliance);
+stored!(RealmChat in realm_chat by id);
+stored!(AllianceChat in alliance_chat by id, alliance);
 
 /// The player a caller is, by their identity.
 fn caller(ctx: &ReducerContext) -> Result<u64, Refusal> {
@@ -293,6 +299,56 @@ pub fn forget_report(ctx: &ReducerContext, report: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::forget_report(&mut Stdb(ctx), player, report)))
 }
 
+/// Found an alliance under a name and a tag, with the caller its leader.
+#[reducer]
+pub fn found_alliance(ctx: &ReducerContext, name: String, tag: String) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::found_alliance(&mut Stdb(ctx), player, &name, &tag)))
+}
+
+/// Join an alliance, or ask to be let into one that is not open.
+#[reducer]
+pub fn join_alliance(ctx: &ReducerContext, alliance: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::join_alliance(&mut Stdb(ctx), player, alliance)))
+}
+
+/// Leave the caller's alliance.
+#[reducer]
+pub fn leave_alliance(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::leave_alliance(&mut Stdb(ctx), player)))
+}
+
+/// Let in, or turn away, a player who asked to join the caller's alliance.
+#[reducer]
+pub fn answer_applicant(ctx: &ReducerContext, player: u64, admit: bool) -> Result<(), String> {
+    said(caller(ctx).and_then(|officer| rules::answer_applicant(&mut Stdb(ctx), officer, player, admit)))
+}
+
+/// Put a member of lower rank out of the caller's alliance.
+#[reducer]
+pub fn expel(ctx: &ReducerContext, player: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|officer| rules::expel(&mut Stdb(ctx), officer, player)))
+}
+
+/// Give a member of the caller's alliance a rank: 1 a member, 4 an
+/// officer, 5 its leader in the caller's place.
+#[reducer]
+pub fn set_rank(ctx: &ReducerContext, player: u64, rank: u8) -> Result<(), String> {
+    said(caller(ctx).and_then(|leader| rules::set_rank(&mut Stdb(ctx), leader, player, rank)))
+}
+
+/// Say whether anyone may join the caller's alliance without being let
+/// in, and what it says of itself.
+#[reducer]
+pub fn set_alliance(ctx: &ReducerContext, open: bool, words: String) -> Result<(), String> {
+    said(caller(ctx).and_then(|leader| rules::set_alliance(&mut Stdb(ctx), leader, open, &words)))
+}
+
+/// Say something: to the whole realm, or within the caller's alliance.
+#[reducer]
+pub fn say(ctx: &ReducerContext, within_alliance: bool, words: String) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::say(&mut Stdb(ctx), player, within_alliance, &words)))
+}
+
 /// A timer the rules set has come due. Only the scheduler may call this.
 #[reducer]
 pub fn fire(ctx: &ReducerContext, timer: Timer) -> Result<(), String> {
@@ -374,4 +430,23 @@ fn my_hunt(ctx: &ViewContext) -> Option<Hunt> {
 #[view(accessor = my_reports, public)]
 fn my_reports(ctx: &ViewContext) -> Vec<Report> {
     viewer(ctx).map(|player| ctx.db.report().player().filter(player).collect()).unwrap_or_default()
+}
+
+/// What has been said within the caller's alliance.
+#[view(accessor = my_alliance_chat, public)]
+fn my_alliance_chat(ctx: &ViewContext) -> Vec<AllianceChat> {
+    let Some(member) = viewer(ctx).and_then(|player| ctx.db.member().player().find(player)) else { return Vec::new() };
+    ctx.db.alliance_chat().alliance().filter(member.alliance).collect()
+}
+
+/// Who has asked to join the caller's alliance, for its officers; and
+/// for a caller in no alliance, their own asking, if they have asked.
+#[view(accessor = my_applicants, public)]
+fn my_applicants(ctx: &ViewContext) -> Vec<Applicant> {
+    let Some(player) = viewer(ctx) else { return Vec::new() };
+    match ctx.db.member().player().find(player) {
+        Some(member) if member.rank >= Member::OFFICER => ctx.db.applicant().alliance().filter(member.alliance).collect(),
+        Some(_) => Vec::new(),
+        None => ctx.db.applicant().player().find(player).into_iter().collect(),
+    }
 }

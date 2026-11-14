@@ -24,6 +24,9 @@ public enum LiveSchema {
         "city": .init(columns: city, key: "id"),
         "site": .init(columns: ["id", "hex", "kind", "level", "left", "gatherer"], key: "id"),
         "barrow": .init(columns: ["id", "hex", "level", "fighter"], key: "id"),
+        "alliance": .init(columns: ["id", "name_key", "tag_key", "name", "tag", "leader", "founded", "members", "open", "words"], key: "id"),
+        "member": .init(columns: ["player", "alliance", "rank", "joined"], key: "player"),
+        "realm_chat": .init(columns: ["id", "player", "name", "at", "words"], key: "id"),
         "march": .init(columns: ["id", "owner", "city", "kind", "state", "from", "to", "target", "departed", "arrives", "soldiers", "route",
                                  "timer"], key: "id"),
         "me": .init(columns: player, key: "id"),
@@ -38,12 +41,15 @@ public enum LiveSchema {
         "my_hunt": .init(columns: ["player", "energy", "as_of", "most", "point_millis", "cleared"], key: "player"),
         "my_reports": .init(columns: ["id", "player", "at", "kind", "hex", "won", "foe", "rounds", "fought", "wounded", "dead", "stood", "fell",
                                       "grain", "timber", "stone", "moonsalt", "words", "read"], key: "id"),
+        "my_alliance_chat": .init(columns: ["id", "alliance", "player", "name", "at", "words"], key: "id"),
+        "my_applicants": .init(columns: ["player", "alliance", "name", "at"], key: "player"),
     ]
 
     /// The view each of the caller's own tables is read through.
     public static let views: [String: String] = [
         "me": "player", "my_city": "city", "my_buildings": "building", "my_jobs": "job", "my_stock": "stock", "my_troops": "troop",
-        "my_squads": "squad", "my_hauls": "haul", "my_hunt": "hunt", "my_reports": "report",
+        "my_squads": "squad", "my_hauls": "haul", "my_hunt": "hunt", "my_reports": "report", "my_alliance_chat": "alliance_chat",
+        "my_applicants": "applicant",
     ]
 
     /// The queries that watch all of them.

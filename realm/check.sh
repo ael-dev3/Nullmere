@@ -233,6 +233,19 @@ refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count
 check("an army sent against a new city is refused", (refused or "").startswith("That city is at peace for another "), True)
 check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}]), "That is your own city.")
 
+# What players say to one another, and alliances.
+check("a player speaks to the realm", call(ada, "say", False, "  Good   morning, all. "), None)
+check("and everyone reads it, tidied, under their name", [(s["name"], s["words"]) for s in rows(nobody, "SELECT * FROM realm_chat")], [("Ada of the Lake", "Good morning, all.")])
+check("one thing at a time", call(ada, "say", False, "And again"), "Wait a moment before you say more.")
+check("nothing is not said", call(bryn, "say", False, "   "), "Say something first.")
+check("no alliance, no alliance's chat", call(bryn, "say", True, "Hello?"), "You are in no alliance.")
+check("an alliance is founded from an Embassy", call(bryn, "found_alliance", "Keepers of the Mere", "MERE"), "Raise your Embassy to level 1 first.")
+check("there is none to join yet", call(bryn, "join_alliance", 1), "There is no such alliance.")
+check("nor to leave", call(bryn, "leave_alliance"), "You are in no alliance.")
+check("the alliance tables are read by all, and empty", (rows(nobody, "SELECT * FROM alliance"), rows(nobody, "SELECT * FROM member")), ([], []))
+check("an alliance's chat is closed to clients, but for its members' view", (isinstance(rows(bryn, "SELECT * FROM alliance_chat"), str), rows(bryn, "SELECT * FROM my_alliance_chat")), (True, []))
+check("as is who has asked to join", (isinstance(rows(bryn, "SELECT * FROM applicant"), str), rows(bryn, "SELECT * FROM my_applicants")), (True, []))
+
 # The Unquiet: a barrow cleared, its report read, the wounded healed.
 barrows = sorted(rows(nobody, "SELECT * FROM barrow"), key=lambda barrow: distance(unpacked(barrow["hex"]), home))
 check("barrows of the Unquiet stand over the land", len(barrows) > 300, True)

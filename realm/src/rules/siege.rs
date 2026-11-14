@@ -1,7 +1,7 @@
 //! A city under attack: another player's army at its walls, the fight,
 //! what is carried off, and the peace that follows.
 
-use super::{building_of, fallen, fight_sheltered, goods, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
+use super::{allied, building_of, fallen, fight_sheltered, goods, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
 use crate::catalog::{self, Building as Kind, Goods, Troops, Unit};
 use crate::hex::Hex;
 use crate::rows::{City, Db, Haul, March, Place, Player, Report, Squad, Troop};
@@ -21,11 +21,15 @@ fn name_of(db: &impl Db, player: u64) -> String {
 }
 
 /// Whether a player may send an army against the city at a hex: one
-/// stands there, it is not their own, and it is not at peace.
+/// stands there, it is not their own nor an ally's, and it is not at
+/// peace.
 pub(super) fn may_attack(db: &impl Db, player: u64, to: Hex) -> Result<City, Refusal> {
     let city = city_at(db, to).ok_or(Refusal::NoCityThere)?;
     if city.owner == player {
         return Err(Refusal::OwnCity);
+    }
+    if allied(db, player, city.owner) {
+        return Err(Refusal::AllysCity);
     }
     let left = city.shield - db.now();
     if left > 0 {

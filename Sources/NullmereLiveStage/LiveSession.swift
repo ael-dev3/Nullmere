@@ -23,6 +23,14 @@ public protocol LiveLine: AnyObject, Sendable {
     func read(report: UInt64) async throws
     func forget(report: UInt64) async throws
     func recall(march: UInt64) async throws
+    func foundAlliance(name: String, tag: String) async throws
+    func joinAlliance(_ alliance: UInt64) async throws
+    func leaveAlliance() async throws
+    func answer(applicant: UInt64, admit: Bool) async throws
+    func expel(_ player: UInt64) async throws
+    func setRank(of player: UInt64, to rank: Int) async throws
+    func setAlliance(open: Bool, words: String) async throws
+    func say(_ words: String, withinAlliance: Bool) async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -296,7 +304,7 @@ public final class LiveSession {
             case LivePlace.city:
                 if let city = world.cities[place.id] {
                     if city.id == world.city?.id { return .home(city) }
-                    return .city(city, of: world.players[city.owner]?.name ?? city.name)
+                    return .city(city, of: world.shownName(of: city.owner) ?? city.name)
                 }
             case LivePlace.site:
                 // An army at work on a site is chosen with the site, not for it.
@@ -350,6 +358,15 @@ public final class LiveSession {
     public func recall(march: UInt64) async { await ask { try await $0.recall(march: march) } }
     public func read(report: UInt64) async { await ask { try await $0.read(report: report) } }
     public func forget(report: UInt64) async { await ask { try await $0.forget(report: report) } }
+
+    public func foundAlliance(name: String, tag: String) async { await ask { try await $0.foundAlliance(name: name, tag: tag) } }
+    public func joinAlliance(_ alliance: UInt64) async { await ask { try await $0.joinAlliance(alliance) } }
+    public func leaveAlliance() async { await ask { try await $0.leaveAlliance() } }
+    public func answer(applicant: UInt64, admit: Bool) async { await ask { try await $0.answer(applicant: applicant, admit: admit) } }
+    public func expel(_ player: UInt64) async { await ask { try await $0.expel(player) } }
+    public func setRank(of player: UInt64, to rank: Int) async { await ask { try await $0.setRank(of: player, to: rank) } }
+    public func setAlliance(open: Bool, words: String) async { await ask { try await $0.setAlliance(open: open, words: words) } }
+    public func say(_ words: String, withinAlliance: Bool) async { await ask { try await $0.say(words, withinAlliance: withinAlliance) } }
 
     /// Sends soldiers to what the player has chosen: to gather at a site,
     /// to clear a barrow, or against another player's city. Elsewhere

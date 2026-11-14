@@ -152,6 +152,44 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertTrue(LiveWorld(snapshot: ["city": [[.string("x")]], "my_stock": [[]]]).cities.isEmpty)
     }
 
+    func testAlliancesAndWhatIsSaidAreRead() throws {
+        let world = LiveWorld(snapshot: [
+            "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)],
+                       [n(3), n(7), .string("Cato"), n(1_000), .bool(false), n(1_000)], [n(4), n(6), .string("Dara"), n(1_000), .bool(false), n(1_000)]],
+            "me": [[n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]],
+            "alliance": [[n(5), n(77), n(78), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_500), n(3), .bool(false), .string("We keep the east shore.")],
+                         [n(6), n(79), n(80), .string("Wardens"), .string("WRD"), n(4), n(1_600), n(1), n(1), .string("")]],
+            "member": [[n(3), n(5), n(1), n(1_700)], [n(1), n(5), n(5), n(1_500)], [n(2), n(5), n(4), n(1_600)], [n(4), n(6), n(5), n(1_600)]],
+            "realm_chat": [[n(12), n(4), .string("[WRD] Dara"), n(2_010), .string("Anyone trading stone?")], [n(11), n(1), .string("[MERE] Ada"), n(2_000), .string("Good morning, all.")]],
+            "my_alliance_chat": [[n(31), n(5), n(1), .string("Ada"), n(2_020), .string("East shore is quiet")]],
+            "my_applicants": [[n(9), n(5), .string("Edda"), n(2_030)], [n(8), n(5), .string("Finn"), n(2_025)]],
+        ])
+        let mere = try XCTUnwrap(world.alliances[5])
+        XCTAssertEqual([mere.name, mere.tag, mere.words], ["Keepers of the Mere", "MERE", "We keep the east shore."])
+        XCTAssertEqual([mere.members, mere.founded, Int(mere.leader)], [3, 1_500, 1])
+        XCTAssertFalse(mere.open)
+        XCTAssertEqual(world.alliances[6]?.open, true, "a pushed row's true as 1")
+        XCTAssertEqual(world.myAlliance, mere)
+        XCTAssertEqual(world.myMembership?.title, "Officer")
+        XCTAssertEqual(world.alliance(of: 4)?.tag, "WRD")
+        XCTAssertNil(world.alliance(of: 99))
+        XCTAssertEqual(world.roster(of: 5).map(\.player), [1, 2, 3], "its leader, its officer, its member")
+        XCTAssertEqual(world.roster(of: 5).map(\.title), ["Leader", "Officer", "Member"])
+        XCTAssertTrue(world.isAlly(1) && world.isAlly(3))
+        XCTAssertFalse(world.isAlly(4), "of another alliance")
+        XCTAssertFalse(world.isAlly(2), "himself is no ally of his")
+        XCTAssertEqual([world.shownName(of: 1), world.shownName(of: 4), world.shownName(of: 99)], ["[MERE] Ada", "[WRD] Dara", nil])
+        XCTAssertEqual(world.realmChat.map(\.words), ["Good morning, all.", "Anyone trading stone?"], "the oldest first")
+        XCTAssertEqual(world.realmChat.first.map { [$0.name, String($0.at), String($0.player)] }, ["[MERE] Ada", "2000", "1"])
+        XCTAssertEqual(world.allianceChat.map { [$0.name, $0.words] }, [["Ada", "East shore is quiet"]])
+        XCTAssertEqual(world.applicants.map(\.name), ["Finn", "Edda"], "as they asked")
+        // No alliance, no allies.
+        let alone = LiveWorld(snapshot: ["me": [[n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]]])
+        XCTAssertNil(alone.myAlliance)
+        XCTAssertFalse(alone.isAlly(1))
+        XCTAssertEqual([LiveMember.member, LiveMember.officer, LiveMember.leader], [1, 4, 5])
+    }
+
     /// What a call carries goes in its body as the module reads it: a
     /// hex's place may be below zero, and a march's soldiers are records
     /// by name.

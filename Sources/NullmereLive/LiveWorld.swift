@@ -14,6 +14,11 @@ public struct LiveWorld: Equatable, Sendable {
     public var sites: [UInt64: LiveSite] = [:]
     public var barrows: [UInt64: LiveBarrow] = [:]
     public var marches: [UInt64: LiveMarch] = [:]
+    public var alliances: [UInt64: LiveAlliance] = [:]
+    /// Each player's place in an alliance, by the player's number.
+    public var members: [UInt64: LiveMember] = [:]
+    /// What has been said in the realm, the oldest first.
+    public var realmChat: [LiveSaying] = []
     /// The land's chunks, sixteen hexes by sixteen, a byte a hex.
     public var land: [UInt64: [UInt8]] = [:]
     var blueprints: [UInt64: LiveBlueprint] = [:]
@@ -30,6 +35,11 @@ public struct LiveWorld: Equatable, Sendable {
     public var hunt: LiveHunt?
     /// The player's reports, the latest first.
     public var reports: [LiveReport] = []
+    /// What has been said within the player's alliance, the oldest first.
+    public var allianceChat: [LiveSaying] = []
+    /// Who has asked to join the player's alliance, for its officers; or
+    /// the player's own asking, while they are in none.
+    public var applicants: [LiveApplicant] = []
 
     public init() {}
 
@@ -43,6 +53,9 @@ public struct LiveWorld: Equatable, Sendable {
         sites = Dictionary(rows("site", LiveSite.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         barrows = Dictionary(rows("barrow", LiveBarrow.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         marches = Dictionary(rows("march", LiveMarch.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        alliances = Dictionary(rows("alliance", LiveAlliance.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        members = Dictionary(rows("member", LiveMember.init).map { ($0.player, $0) }, uniquingKeysWith: { _, new in new })
+        realmChat = rows("realm_chat", LiveSaying.init(realm:)).sorted { $0.id < $1.id }
         for row in snapshot["land"] ?? [] {
             let cells = Cells(row: row)
             if let chunk = cells.unsigned(0), let ground = cells.bytes(1) { land[chunk] = ground }
@@ -61,6 +74,8 @@ public struct LiveWorld: Equatable, Sendable {
         hauls = rows("my_hauls", LiveHaul.init).sorted { $0.march < $1.march }
         hunt = rows("my_hunt", LiveHunt.init).first
         reports = rows("my_reports", LiveReport.init).sorted { $0.id > $1.id }
+        allianceChat = rows("my_alliance_chat", LiveSaying.init(alliance:)).sorted { $0.id < $1.id }
+        applicants = rows("my_applicants", LiveApplicant.init).sorted { $0.at < $1.at }
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
@@ -78,6 +93,34 @@ public struct LiveWorld: Equatable, Sendable {
     public func barrow(at hex: LiveHex) -> LiveBarrow? {
         guard let place = places[hex], place.kind == LivePlace.barrow else { return nil }
         return barrows[place.id]
+    }
+
+    /// The alliance a player is in, if any.
+    public func alliance(of player: UInt64) -> LiveAlliance? {
+        members[player].flatMap { alliances[$0.alliance] }
+    }
+
+    /// The player's own alliance and their place in it.
+    public var myAlliance: LiveAlliance? { me.flatMap { alliance(of: $0.id) } }
+    public var myMembership: LiveMember? { me.flatMap { members[$0.id] } }
+
+    /// Whether another player is of the player's own alliance.
+    public func isAlly(_ player: UInt64) -> Bool {
+        guard let mine = myMembership, let theirs = members[player] else { return false }
+        return mine.alliance == theirs.alliance && player != mine.player
+    }
+
+    /// A player's name as others read it: their alliance's tag before it,
+    /// where they are in one.
+    public func shownName(of player: UInt64) -> String? {
+        guard let name = players[player]?.name else { return nil }
+        return alliance(of: player).map { "[\($0.tag)] \(name)" } ?? name
+    }
+
+    /// An alliance's members, its leader first, then by rank and by when
+    /// they joined.
+    public func roster(of alliance: UInt64) -> [LiveMember] {
+        members.values.filter { $0.alliance == alliance }.sorted { ($1.rank, $0.joined, $0.player) < ($0.rank, $1.joined, $1.player) }
     }
 
     /// How many of the player's reports are unread.

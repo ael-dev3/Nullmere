@@ -130,6 +130,14 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func read(report: UInt64) async throws { try take("read \(report)") }
     public func forget(report: UInt64) async throws { try take("forget \(report)") }
     public func recall(march: UInt64) async throws { try take("recall \(march)") }
+    public func foundAlliance(name: String, tag: String) async throws { try take("found \(name) [\(tag)]") }
+    public func joinAlliance(_ alliance: UInt64) async throws { try take("join alliance \(alliance)") }
+    public func leaveAlliance() async throws { try take("leave alliance") }
+    public func answer(applicant: UInt64, admit: Bool) async throws { try take("\(admit ? "admit" : "turn away") \(applicant)") }
+    public func expel(_ player: UInt64) async throws { try take("expel \(player)") }
+    public func setRank(of player: UInt64, to rank: Int) async throws { try take("rank \(player) \(rank)") }
+    public func setAlliance(open: Bool, words: String) async throws { try take("alliance \(open ? "open" : "closed"): \(words)") }
+    public func say(_ words: String, withinAlliance: Bool) async throws { try take("say \(withinAlliance ? "within" : "to all"): \(words)") }
 }
 
 /// How many times something has been tried.

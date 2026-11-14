@@ -550,3 +550,98 @@ public struct LiveHaul: Equatable, Sendable {
                           moonsalt: cells.unsigned(5) ?? 0)
     }
 }
+
+/// An alliance of players.
+public struct LiveAlliance: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let name: String
+    /// Its short name, shown before its members' names.
+    public let tag: String
+    public let leader: UInt64
+    public let founded: Int
+    public let members: Int
+    /// Whether anyone may join without being let in.
+    public let open: Bool
+    /// What it says of itself.
+    public let words: String
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let name = cells.text(3), let tag = cells.text(4), let leader = cells.unsigned(5),
+              let founded = cells.whole(6), let members = cells.whole(7), let open = cells.flag(8), let words = cells.text(9) else { return nil }
+        (self.id, self.name, self.tag, self.leader) = (id, name, tag, leader)
+        (self.founded, self.members, self.open, self.words) = (founded, members, open, words)
+    }
+}
+
+/// A player's place in an alliance.
+public struct LiveMember: Equatable, Sendable, Identifiable {
+    public static let member = 1
+    public static let officer = 4
+    public static let leader = 5
+
+    public let player: UInt64
+    public var id: UInt64 { player }
+    public let alliance: UInt64
+    public let rank: Int
+    public let joined: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let player = cells.unsigned(0), let alliance = cells.unsigned(1), let rank = cells.whole(2), let joined = cells.whole(3)
+        else { return nil }
+        (self.player, self.alliance, self.rank, self.joined) = (player, alliance, rank, joined)
+    }
+
+    /// The rank in a word.
+    public var title: String {
+        switch rank {
+        case LiveMember.leader: return "Leader"
+        case LiveMember.officer: return "Officer"
+        default: return "Member"
+        }
+    }
+}
+
+/// Something said: in the realm for all to read, or within the player's
+/// alliance.
+public struct LiveSaying: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let player: UInt64
+    /// The speaker's name as it was when they spoke.
+    public let name: String
+    public let at: Int
+    public let words: String
+
+    /// From a row of the realm's chat: id, player, name, at, words.
+    init?(realm row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let player = cells.unsigned(1), let name = cells.text(2), let at = cells.whole(3),
+              let words = cells.text(4) else { return nil }
+        (self.id, self.player, self.name, self.at, self.words) = (id, player, name, at, words)
+    }
+
+    /// From a row of an alliance's: id, alliance, player, name, at, words.
+    init?(alliance row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let player = cells.unsigned(2), let name = cells.text(3), let at = cells.whole(4),
+              let words = cells.text(5) else { return nil }
+        (self.id, self.player, self.name, self.at, self.words) = (id, player, name, at, words)
+    }
+}
+
+/// A player asking to be let into an alliance.
+public struct LiveApplicant: Equatable, Sendable, Identifiable {
+    public let player: UInt64
+    public var id: UInt64 { player }
+    public let alliance: UInt64
+    public let name: String
+    public let at: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let player = cells.unsigned(0), let alliance = cells.unsigned(1), let name = cells.text(2), let at = cells.whole(3)
+        else { return nil }
+        (self.player, self.alliance, self.name, self.at) = (player, alliance, name, at)
+    }
+}

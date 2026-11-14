@@ -74,6 +74,11 @@ extension LiveSession {
             if city.peace(at: seconds) > 0 {
                 why = "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))."
             }
+            // An ally's city is never attacked, and nothing else can be
+            // sent to it yet.
+            if world.isAlly(city.owner) {
+                return LiveCard(title: city.name, lines: [lines[0], "Your ally."], buttons: [])
+            }
             return LiveCard(title: city.name, lines: lines,
                             buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)])
 
@@ -105,7 +110,7 @@ extension LiveSession {
 
         case .army(let march, let own):
             guard own, let line = world.marchLines().first(where: { $0.id == march.id }) else {
-                let owner = world.players[march.owner]?.name ?? "Another player"
+                let owner = world.shownName(of: march.owner) ?? "Another player"
                 return LiveCard(title: "\(owner)'s army", lines: [soldiers(march.soldiers)], buttons: [])
             }
             var lines = ["\(line.doing): \(LiveWords.clock(march.arrives - Int(seconds)))"]

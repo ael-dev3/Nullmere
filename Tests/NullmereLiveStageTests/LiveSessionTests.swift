@@ -332,6 +332,19 @@ final class LiveSessionTests: XCTestCase {
         session.selected = LiveHex(q: 14, r: -4)
         await session.press(card(14, -4).buttons[0])
         XCTAssertEqual(line.asked.last, "attack at 14, -4 with 40 of 1.1")
+        // Once he is of her alliance, his city is her ally's: named with its
+        // tag, and nothing to be done to it.
+        line.change { rows in
+            rows["alliance"] = [[self.n(5), self.n(77), self.n(78), .string("Keepers"), .string("MERE"), self.n(1), self.n(1_500), self.n(2), .bool(true), .string("")]]
+            rows["member"] = [[self.n(1), self.n(5), self.n(5), self.n(1_500)], [self.n(2), self.n(5), self.n(1), self.n(1_600)]]
+        }
+        session.refresh()
+        XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["[MERE] Bryn's city. Keep level 8, power 9,000. They are here now.", "Your ally."], buttons: []))
+        line.change { rows in
+            rows["alliance"] = nil
+            rows["member"] = nil
+        }
+        session.refresh()
         // While his city is at peace it can't be; while her own is, she is
         // told what attacking would cost her.
         line.change { rows in
@@ -420,6 +433,23 @@ final class LiveSessionTests: XCTestCase {
         await session.send([(kind: 1, tier: 1, count: 30)], to: LiveHex(q: 5, r: 5))
         XCTAssertEqual(session.said, "There is nothing to send an army for there.")
         XCTAssertEqual(line.asked.count, 9, "and the realm is not troubled with it")
+
+        // Alliances and what is said go the same way.
+        session.said = nil
+        await session.foundAlliance(name: "Keepers", tag: "MERE")
+        await session.joinAlliance(5)
+        await session.answer(applicant: 9, admit: true)
+        await session.answer(applicant: 8, admit: false)
+        await session.setRank(of: 2, to: LiveMember.officer)
+        await session.expel(3)
+        await session.setAlliance(open: false, words: "We keep the east shore.")
+        await session.say("Good morning, all.", withinAlliance: false)
+        await session.say("East shore is quiet", withinAlliance: true)
+        await session.leaveAlliance()
+        XCTAssertEqual(Array(line.asked.suffix(10)), ["found Keepers [MERE]", "join alliance 5", "admit 9", "turn away 8", "rank 2 4", "expel 3",
+                                                       "alliance closed: We keep the east shore.", "say to all: Good morning, all.",
+                                                       "say within: East shore is quiet", "leave alliance"])
+        XCTAssertNil(session.said)
 
         // The realm's refusal is kept in its own words until put away.
         session.said = nil

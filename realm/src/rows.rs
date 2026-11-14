@@ -238,6 +238,8 @@ pub struct Pace {
     /// The start of the ten seconds being counted, and the count.
     pub window: Seconds,
     pub asked: u32,
+    /// When they last said something for others to read.
+    pub said: Seconds,
 }
 row!(Pace in pace, by player);
 
@@ -486,6 +488,99 @@ impl Report {
     pub const DEFENCE: u8 = 3;
 }
 
+/// An alliance of players. Everyone may read it.
+#[spacetimedb::table(accessor = alliance, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Alliance {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    /// Its name and its tag, each folded to one case and hashed: no two
+    /// alliances share either.
+    #[index(btree)]
+    pub name_key: u64,
+    #[index(btree)]
+    pub tag_key: u64,
+    pub name: String,
+    /// Its short name, three or four letters, shown before its members'.
+    pub tag: String,
+    pub leader: u64,
+    pub founded: Seconds,
+    pub members: u32,
+    /// Whether anyone may join without being let in.
+    pub open: bool,
+    /// What it says of itself.
+    pub words: String,
+}
+row!(Alliance in alliance, auto, by id, name_key, tag_key);
+
+/// A player's place in an alliance. Everyone may read it. Keyed by the
+/// player: no one is in two.
+#[spacetimedb::table(accessor = member, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Member {
+    #[primary_key]
+    pub player: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    /// `Member::MEMBER`, `OFFICER` or `LEADER`.
+    pub rank: u8,
+    pub joined: Seconds,
+}
+row!(Member in member, by player, alliance);
+
+impl Member {
+    pub const MEMBER: u8 = 1;
+    pub const OFFICER: u8 = 4;
+    pub const LEADER: u8 = 5;
+}
+
+/// A player asking to be let into an alliance that is not open: for the
+/// player and that alliance's officers to read. Keyed by the player: one
+/// asking at a time.
+#[spacetimedb::table(accessor = applicant)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Applicant {
+    #[primary_key]
+    pub player: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    pub name: String,
+    pub at: Seconds,
+}
+row!(Applicant in applicant, by player, alliance);
+
+/// Something said in the realm, for everyone to read.
+#[spacetimedb::table(accessor = realm_chat, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct RealmChat {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    pub player: u64,
+    /// Their name as it was, with their alliance's tag if they had one.
+    pub name: String,
+    pub at: Seconds,
+    pub words: String,
+}
+row!(RealmChat in realm_chat, auto, by id);
+
+/// Something said within an alliance, for its members alone to read.
+#[spacetimedb::table(accessor = alliance_chat)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct AllianceChat {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    pub player: u64,
+    pub name: String,
+    pub at: Seconds,
+    pub words: String,
+}
+row!(AllianceChat in alliance_chat, auto, by id, alliance);
+
 /// Everything the rules keep: every table, the clock, chance and timers.
 pub trait Db:
     World
@@ -508,6 +603,11 @@ pub trait Db:
     + Table<Barrow>
     + Table<Hunt>
     + Table<Report>
+    + Table<Alliance>
+    + Table<Member>
+    + Table<Applicant>
+    + Table<RealmChat>
+    + Table<AllianceChat>
 {
 }
 
@@ -531,7 +631,12 @@ impl<
             + Table<Haul>
             + Table<Barrow>
             + Table<Hunt>
-            + Table<Report>,
+            + Table<Report>
+            + Table<Alliance>
+            + Table<Member>
+            + Table<Applicant>
+            + Table<RealmChat>
+            + Table<AllianceChat>,
     > Db for T
 {
 }
