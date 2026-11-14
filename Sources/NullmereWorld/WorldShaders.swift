@@ -853,7 +853,13 @@ public enum WorldShaders {
         // By day it is a dark glass: looked down into it gives back little
         // of the sky, and all of it only where the look runs low across it.
         float glass = 0.03 + 0.97 * facing * facing * facing * facing * facing;
-        float3 starlit = frame.water.rgb
+        // And under the sun it has a colour of its own, as the night's
+        // black water has none: clear and green-blue over the shallows,
+        // where the light comes back off the bed, a deep blue over the
+        // deeps; as bright as the hour's sky, and nothing at all by night.
+        float sunlit = (1.0 - night) * dot(frame.skyLight.rgb, float3(0.3, 0.5, 0.2)) / 0.44;
+        float3 body = mix(float3(0.075, 0.30, 0.32), float3(0.016, 0.08, 0.21), smoothstep(0.04, 0.8, depth)) * sunlit;
+        float3 starlit = frame.water.rgb + body
             + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel
             + nm_daySky(mirrored NM_FRAME_PASS) * glass;
         float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w;
