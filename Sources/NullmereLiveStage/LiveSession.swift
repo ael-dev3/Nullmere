@@ -90,7 +90,8 @@ public final class LiveSession {
     /// changed: its cities, sites and barrows.
     public private(set) var standingVersion = 0
 
-    @ObservationIgnored private let line: any LiveLine
+    @ObservationIgnored private var line: (any LiveLine)?
+    @ObservationIgnored private let door: @Sendable () async throws -> any LiveLine
     @ObservationIgnored private let clock: @Sendable () -> Double
     @ObservationIgnored private var staged: (stage: WorldStage, relief: Relief, terrain: TerrainMesh)?
     @ObservationIgnored private var fixed: [ModelBatch] = []
@@ -108,8 +109,16 @@ public final class LiveSession {
         return Vec4(part(0), part(-2.094), part(2.094), 1)
     }
 
-    public init(line: any LiveLine, clock: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
-        self.line = line
+    /// A session over a line already open.
+    public convenience init(line: any LiveLine, clock: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
+        self.init(opening: { line }, clock: clock)
+    }
+
+    /// A session over a line still to be opened: `open` opens it, and
+    /// tries again each time it is asked while the realm can't be reached.
+    public init(opening door: @escaping @Sendable () async throws -> any LiveLine,
+                clock: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
+        self.door = door
         self.clock = clock
     }
 
@@ -120,10 +129,14 @@ public final class LiveSession {
 
     /// Begins watching the realm. Its rows come as they change from here on.
     public func open() async {
-        let live = await line.watch { [weak self] in
+        if phase == .lost { phase = .opening }
+        if line == nil {
+            line = try? await door()
+        }
+        let live = await line?.watch { [weak self] in
             Task { @MainActor in self?.refresh() }
         }
-        guard live else {
+        guard live == true else {
             phase = .lost
             return
         }
@@ -132,12 +145,12 @@ public final class LiveSession {
 
     /// Stops watching.
     public func close() {
-        line.close()
+        line?.close()
     }
 
     /// Takes the realm's rows as they now stand.
     public func refresh() {
-        let latest = line.world
+        guard let latest = line?.world else { return }
         guard latest != world || phase == .opening else { return }
         world = latest
         if world.realm == nil {
@@ -307,8 +320,15 @@ public final class LiveSession {
 
     // MARK: Asking
 
+    /// What is said when the realm can't be asked at all.
+    public static let unreached = "The realm could not be reached. Try again in a moment."
+
     /// Asks something of the realm; its refusal is kept in `said`.
     private func ask(_ work: @Sendable (any LiveLine) async throws -> Void) async {
+        guard let line else {
+            said = LiveSession.unreached
+            return
+        }
         asking += 1
         defer { asking -= 1 }
         do {
@@ -317,7 +337,7 @@ public final class LiveSession {
         } catch let refusal as LiveRefusal {
             said = refusal.words
         } catch {
-            said = "The realm could not be reached. Try again in a moment."
+            said = LiveSession.unreached
         }
     }
 

@@ -29,7 +29,7 @@ var targets: [Target] = [
     // The rebuilt realm as the renderer takes it: a window of its land as
     // a map, its cities as holds and its armies as companies, each where
     // it is at a moment. Pure Swift, so tested on Linux.
-    .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore"]),
+    .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereRealm", "NullmereWorld", "NullmereModels", "NullmereCore"]),
     .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore", "NullmereRealm"]),
     // A keeper's phone on their realm, apart from its screens: linked by the
     // code their Mac shows, in as the keeper, their House as the phone

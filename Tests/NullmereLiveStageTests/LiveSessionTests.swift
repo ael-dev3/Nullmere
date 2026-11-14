@@ -78,6 +78,19 @@ final class StandInLine: LiveLine, @unchecked Sendable {
     func recall(march: UInt64) async throws { try take("recall \(march)") }
 }
 
+/// How many times something has been tried.
+final class Tries: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func next() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        count += 1
+        return count
+    }
+}
+
 /// A player's session over a line: what it reads, the window it keeps
 /// about where the player looks, what it stages, what is chosen, and what
 /// it asks. The world is `LiveWindowTests`' own: Ada's city at 10, -4.
@@ -98,6 +111,23 @@ final class LiveSessionTests: XCTestCase {
         await nowhere.open()
         XCTAssertEqual(nowhere.phase, .lost)
         XCTAssertNil(nowhere.window)
+
+        // A door that won't open: the same, and asking says so; tried
+        // again once it will, the session is in.
+        let tries = Tries()
+        let shut = LiveSession(opening: {
+            guard tries.next() > 1 else { throw URLError(.cannotConnectToHost) }
+            return StandInLine(rows: LiveWindowTests.rows())
+        }, clock: { 2_015 })
+        await shut.open()
+        XCTAssertEqual(shut.phase, .lost)
+        await shut.build(2)
+        XCTAssertEqual(shut.said, LiveSession.unreached)
+        shut.refresh()
+        XCTAssertEqual(shut.phase, .lost)
+        await shut.open()
+        XCTAssertEqual(shut.phase, .playing)
+        XCTAssertEqual(shut.world.me?.name, "Ada")
 
         // A realm whose rows have not come yet; then they come, and the
         // player has no city there: a name is wanted.
@@ -174,6 +204,31 @@ final class LiveSessionTests: XCTestCase {
         line.change { $0["march"]?.removeLast() }
         session.refresh()
         XCTAssertEqual([session.windowVersion, session.standingVersion], [2, 3])
+    }
+
+    func testARealmsAddressIsReadAndItsPlayerKept() async throws {
+        let read = try XCTUnwrap(LiveDoor.address(" https://maincloud.spacetimedb.com/nullmere-online\n"))
+        XCTAssertEqual(read.server.absoluteString, "https://maincloud.spacetimedb.com")
+        XCTAssertEqual(read.database, "nullmere-online")
+        let local = try XCTUnwrap(LiveDoor.address("http://127.0.0.1:3000/nullmere_check/"))
+        XCTAssertEqual([local.server.absoluteString, local.database], ["http://127.0.0.1:3000", "nullmere_check"])
+        for text in ["", "nullmere-online", "https://maincloud.spacetimedb.com", "https://maincloud.spacetimedb.com/", "ftp://example.com/realm",
+                     "https://example.com/a/b", "https://example.com/a b", "https:///realm", "https://example.com/realm;drop"] {
+            XCTAssertNil(LiveDoor.address(text), text)
+        }
+
+        // The player a store keeps is the player the door opens as.
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("nullmere-door-\(UUID().uuidString)").appendingPathComponent("key")
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        let store = FileIdentityStore(url: file)
+        XCTAssertNil(LiveDoor.kept(in: store), "no one yet")
+        let credentials = SpacetimeCredentials(identity: "c200ab", token: "a.token")
+        try store.save(String(decoding: try JSONEncoder().encode(credentials), as: UTF8.self))
+        XCTAssertEqual(LiveDoor.kept(in: store), credentials)
+        let client = try await LiveDoor.open(server: local.server, database: local.database, keeping: store)
+        XCTAssertEqual(client.credentials, credentials, "opened as the one kept, with no word to the server")
+        try store.save("not a key")
+        XCTAssertNil(LiveDoor.kept(in: store))
     }
 
     func testTheCameraKeepsItsPlaceAsTheWindowMoves() async throws {
