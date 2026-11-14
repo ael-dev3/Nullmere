@@ -1,7 +1,7 @@
 //! Armies on the map: sent out along a way over open ground, arriving in
 //! real time, gathering what lies at a site, and carrying it home.
 
-use super::{asking, city_of, goods, keep_troop, realm, set_goods, settle, troop, Refusal};
+use super::{asking, city_of, engage, fought, goods, keep_troop, may_hunt, realm, set_goods, settle, spend_energy, troop, Refusal};
 use crate::catalog::{self, Goods, Troops, TOP_TIER};
 use crate::hex::{self, Hex};
 use crate::land::{self, Ground};
@@ -101,21 +101,26 @@ fn travel(db: &impl Db, squads: &[Squad], steps: usize) -> Seconds {
     catalog::paced((steps as u64 * slowest).div_ceil(10) as Seconds, pace)
 }
 
-/// A player sends soldiers from their city to gather at a site.
+/// A player sends soldiers from their city: to gather at a site, or to
+/// clear a barrow of the Unquiet.
 pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -> Result<March, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
     let realm = realm(db)?;
-    if kind != March::GATHER {
-        return Err(Refusal::NoSuchOrder);
-    }
-    let site = match Table::<Place>::get(db, to.packed()) {
-        Some(place) if place.kind == Place::SITE => Table::<Site>::get(db, place.id).ok_or(Refusal::NothingThere)?,
-        _ => return Err(Refusal::NothingThere),
+    let target = match kind {
+        March::GATHER => {
+            let site = match Table::<Place>::get(db, to.packed()) {
+                Some(place) if place.kind == Place::SITE => Table::<Site>::get(db, place.id).ok_or(Refusal::NothingThere)?,
+                _ => return Err(Refusal::NothingThere),
+            };
+            if site.gatherer != 0 {
+                return Err(Refusal::SiteTaken);
+            }
+            site.id
+        }
+        March::HUNT => may_hunt(db, player, to)?.id,
+        _ => return Err(Refusal::NoSuchOrder),
     };
-    if site.gatherer != 0 {
-        return Err(Refusal::SiteTaken);
-    }
     // What was asked, each kind and tier once.
     let mut wanted: Vec<Asked> = Vec::new();
     for ask in asked.iter().filter(|ask| ask.count > 0) {
@@ -145,6 +150,9 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
     let from = Hex::unpacked(city.hex);
     let way = land::way(realm.seed, realm.radius, from, to).ok_or(Refusal::NoWay)?;
 
+    if kind == March::HUNT {
+        spend_energy(db, player, false);
+    }
     for ask in &wanted {
         let troops = Troops::of(ask.kind).ok_or(Refusal::NoSuchTroops)?;
         let mut row = troop(db, city.id, troops, ask.tier);
@@ -160,7 +168,7 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
         state: March::GOING,
         from: city.hex,
         to: to.packed(),
-        target: site.id,
+        target,
         departed: now,
         arrives: now,
         soldiers: wanted.iter().map(|ask| ask.count).sum(),
@@ -168,7 +176,7 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
         timer: 0,
     });
     for ask in &wanted {
-        db.insert(Squad { id: Squad::key(march.id, ask.kind, ask.tier), march: march.id, kind: ask.kind, tier: ask.tier, count: ask.count });
+        db.insert(Squad { id: Squad::key(march.id, ask.kind, ask.tier), march: march.id, kind: ask.kind, tier: ask.tier, count: ask.count, wounded: 0 });
     }
     march.arrives = now + travel(db, &squads(db, march.id), way.len() - 1);
     march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
@@ -225,6 +233,27 @@ fn take(db: &mut impl Db, march: &March, amount: u64) {
 pub fn arrive(db: &mut impl Db, march: u64) {
     let Some(mut march) = Table::<March>::get(db, march) else { return };
     match march.state {
+        March::GOING if march.kind == March::HUNT => {
+            if engage(db, &mut march) {
+                march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
+                db.update(march);
+            } else {
+                // Cleared already, or another army is at it: home again.
+                let way = way_back(&march);
+                turn_home(db, march, way);
+            }
+        }
+        March::FIGHTING => {
+            fought(db, &mut march);
+            if squads(db, march.id).is_empty() {
+                // No one is left to come home.
+                Table::<Haul>::delete(db, march.id);
+                Table::<March>::delete(db, march.id);
+            } else {
+                let way = way_back(&march);
+                turn_home(db, march, way);
+            }
+        }
         March::GOING => {
             let free = Table::<Site>::get(db, march.target).filter(|site| site.gatherer == 0 && site.left > 0);
             let Some(mut site) = free else {
@@ -254,13 +283,15 @@ pub fn arrive(db: &mut impl Db, march: u64) {
     }
 }
 
-/// A march is home: its soldiers stand ready again, and what it carried
-/// goes into the city's stock, though it overfill it.
+/// A march is home: its soldiers stand ready again, its wounded are laid
+/// in the Hospital, and what it carried goes into the city's stock,
+/// though it overfill it.
 fn home(db: &mut impl Db, march: &March) {
     for squad in squads(db, march.id) {
         if let Some(kind) = Troops::of(squad.kind) {
             let mut row = troop(db, march.city, kind, squad.tier);
             row.ready += squad.count;
+            row.wounded += squad.wounded;
             keep_troop(db, row);
         }
         Table::<Squad>::delete(db, squad.id);
@@ -294,6 +325,10 @@ pub fn recall(db: &mut impl Db, player: u64, march: u64) -> Result<March, Refusa
             let mut back: Vec<Hex> = way[..=steps].to_vec();
             back.reverse();
             db.cancel(march.timer);
+            if march.kind == March::HUNT {
+                // It never fought: the energy the attack took comes back.
+                spend_energy(db, player, true);
+            }
             turn_home(db, march.clone(), back);
         }
         March::WORKING => {
@@ -303,6 +338,7 @@ pub fn recall(db: &mut impl Db, player: u64, march: u64) -> Result<March, Refusa
             let way = way_back(&march);
             turn_home(db, march.clone(), way);
         }
+        March::FIGHTING => return Err(Refusal::Fighting),
         _ => return Err(Refusal::AlreadyReturning),
     }
     Table::<March>::get(db, march.id).ok_or(Refusal::NoSuchMarch)

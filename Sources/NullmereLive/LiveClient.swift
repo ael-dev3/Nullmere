@@ -118,6 +118,24 @@ public final class LiveClient: @unchecked Sendable {
         try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(1), .records(records)])
     }
 
+    /// Sends soldiers from the player's city to clear the barrow of the
+    /// Unquiet at a hex.
+    public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
+        let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(2), .records(records)])
+    }
+
+    /// Has some of the player's wounded of a kind and tier healed.
+    public func heal(kind: Int, tier: Int, count: UInt64) async throws {
+        try await ask("heal", [.integer(UInt64(kind)), .integer(UInt64(tier)), .integer(count)])
+    }
+
+    /// Marks one of the player's reports read.
+    public func read(report: UInt64) async throws { try await ask("read_report", [.integer(report)]) }
+
+    /// Throws one of the player's reports away.
+    public func forget(report: UInt64) async throws { try await ask("forget_report", [.integer(report)]) }
+
     /// Calls one of the player's armies home.
     public func recall(march: UInt64) async throws { try await ask("recall", [.integer(march)]) }
 }

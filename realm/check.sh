@@ -225,6 +225,51 @@ check("its soldiers ready again", [(t["kind"], t["ready"]) for t in rows(bryn, "
 after = rows(bryn, "SELECT * FROM my_stock")[0]
 check("and its load in the city's stock", after[good] >= before[good] + 240, True)
 
+# The Unquiet: a barrow cleared, its report read, the wounded healed.
+barrows = sorted(rows(nobody, "SELECT * FROM barrow"), key=lambda barrow: distance(unpacked(barrow["hex"]), home))
+check("barrows of the Unquiet stand over the land", len(barrows) > 300, True)
+check("a player begins with all their energy and nothing cleared", [(h["energy"], h["most"], h["cleared"]) for h in rows(bryn, "SELECT * FROM my_hunt")], [(1000, 1000, 0)])
+strong = next(barrow for barrow in barrows if barrow["level"] >= 3)
+check("a barrow too strong is refused", call(bryn, "send", *unpacked(strong["hex"]), 2, [{"kind": 1, "tier": 1, "count": 20}]), f"Clear a level {strong['level'] - 1} barrow first.")
+check("fifty more spearmen go into training", call(bryn, "train", barracks["id"], 1, 50), None)
+until("and stand ready", lambda: [(t["kind"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(1, 70)])
+# Slower from here, so that the fight lasts long enough to be seen.
+slower = subprocess.run(shlex.split(spacetime) + ["call", "--server", server, db, "set_pace", "5"], capture_output=True, text=True)
+check("the realm's owner slows it", slower.returncode, 0)
+barrow, sent = None, "There is no way there over open ground."
+for barrow in [barrow for barrow in barrows if barrow["level"] == 1][:20]:
+    sent = call(bryn, "send", *unpacked(barrow["hex"]), 2, [{"kind": 1, "tier": 1, "count": 70}])
+    if sent != "There is no way there over open ground.":
+        break
+check("an army sets out against the nearest weak barrow", sent, None)
+check("which takes fifty energy", [950 <= h["energy"] < 1000 for h in rows(bryn, "SELECT * FROM my_hunt")], [True])
+until("it reaches the barrow and fights", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [4], 180)
+hunting = rows(nobody, "SELECT * FROM march")[0]
+check("the barrow is its while it fights", [b["fighter"] for b in rows(nobody, "SELECT * FROM barrow") if b["id"] == barrow["id"]], [hunting["id"]])
+check("and it can't be called away", call(bryn, "recall", hunting["id"]), "That army is fighting. Wait for the fight to end.")
+until("the fight ends and it turns for home", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [3], 60)
+told = rows(bryn, "SELECT * FROM my_reports")
+check("its player is told how it went", [(r["won"], r["foe"], r["fought"], r["stood"], r["fell"], r["dead"], r["read"]) for r in told], [(True, 1, 70, 25, 25, 0, False)])
+# As much of the barrow's 800 grain and 800 timber as those still standing carry, twelve each.
+carried = min(800, (70 - told[0]["wounded"]) * 12 // 2)
+check("in plain words", told[0]["words"], f"Your army cleared a level 1 barrow of the Unquiet. Of your 70 soldiers, {told[0]['wounded']} {'was' if told[0]['wounded'] == 1 else 'were'} wounded. It is bringing home {carried} grain and {carried} timber.")
+check("and it carries the spoils", [(h["grain"], h["timber"]) for h in rows(bryn, "SELECT * FROM my_hauls")], [(carried, carried)])
+check("and no one else is", rows(ada, "SELECT * FROM my_reports"), [])
+check("the report table itself is closed to clients", isinstance(rows(bryn, "SELECT * FROM report"), str), True)
+check("the barrow is gone", [b for b in rows(nobody, "SELECT * FROM barrow") if b["id"] == barrow["id"]], [])
+check("another stands somewhere", len(rows(nobody, "SELECT * FROM barrow")), len(barrows))
+check("and the player has cleared the first level", [h["cleared"] for h in rows(bryn, "SELECT * FROM my_hunt")], [1])
+check("the report is marked read", (call(bryn, "read_report", told[0]["id"]), [r["read"] for r in rows(bryn, "SELECT * FROM my_reports")]), (None, [True]))
+check("another player can't read it", call(ada, "read_report", told[0]["id"]), "There is no such report.")
+until("the army comes home", lambda: rows(nobody, "SELECT * FROM march") == [], 180)
+wounded = told[0]["wounded"]
+check("with its wounded", [(t["ready"], t["wounded"]) for t in rows(bryn, "SELECT * FROM my_troops")], [(70 - wounded, wounded)])
+check("more than lie wounded can't be healed", call(bryn, "heal", 1, 1, wounded + 1), f"You have only {wounded} wounded tier 1 Spearmen.")
+if wounded:
+    check("the wounded are healed for goods", call(bryn, "heal", 1, 1, wounded), None)
+    until("and stand ready again", lambda: [(t["ready"], t["wounded"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(70, 0)], 60)
+check("the report is thrown away", (call(bryn, "forget_report", told[0]["id"]), rows(bryn, "SELECT * FROM my_reports")), (None, []))
+
 if failures:
     print(f"{len(failures)} of the realm's checks failed")
     sys.exit(1)

@@ -1,9 +1,9 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::{found, reckon, scatter_sites, Refusal};
+use super::{found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, Refusal};
 use crate::catalog::{self, Building, Troops};
 use crate::land;
-use crate::rows::{Blueprint, City, Db, Land, Pace, Player, Realm, Soldier};
+use crate::rows::{Blueprint, City, Db, Hunt, Land, Pace, Player, Realm, Soldier};
 use crate::store::{Seconds, Table};
 
 /// The fewest and the most letters in a player's name.
@@ -29,6 +29,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     }
     write_catalogue(db, pace);
     scatter_sites(db);
+    scatter_barrows(db);
 }
 
 /// Sets the realm's pace: how many times faster than written everything
@@ -37,8 +38,16 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
 /// under way keeps the end it was given. For a trial realm, or a check.
 pub fn repace(db: &mut impl Db, pace: u32) -> Result<(), Refusal> {
     let mut realm = realm(db)?;
+    // Every player's energy as it has grown at the old pace; from here
+    // on it grows at the new.
+    let hunts: Vec<Hunt> = Table::<Hunt>::all(db).iter().map(|hunt| hunt_of(db, hunt.player)).collect();
     realm.pace = pace.max(1);
     db.update(realm.clone());
+    for hunt in hunts {
+        db.update(hunt.clone());
+        let paced = hunt_of(db, hunt.player);
+        db.update(paced);
+    }
     for row in Table::<Blueprint>::all(db) {
         Table::<Blueprint>::delete(db, row.id);
     }
@@ -176,6 +185,8 @@ pub fn join(db: &mut impl Db, name: &str) -> Result<Player, Refusal> {
     db.update(realm);
     let player = db.insert(Player { id: 0, name_key: name_key(&name), name, joined: now, online: true, seen: now });
     found(db, &player)?;
+    let hunt = hunt_of(db, player.id);
+    keep_hunt(db, hunt);
     Ok(player)
 }
 

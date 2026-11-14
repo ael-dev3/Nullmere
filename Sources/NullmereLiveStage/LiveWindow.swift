@@ -95,6 +95,28 @@ public struct LiveWindow: Sendable {
         }
     }
 
+    /// The sites in the window, as the stage's own: each good's site
+    /// standing on its hex.
+    public func sites(in world: LiveWorld) -> [(store: Resource, hex: Hex)] {
+        world.sites.values.sorted { $0.id < $1.id }.compactMap { site in
+            guard let hex = local(site.hex), let store = LiveWindow.store(of: site.kind) else { return nil }
+            return (store, hex)
+        }
+    }
+
+    /// The good a kind of site holds.
+    static func store(of kind: Int) -> Resource? {
+        [1: .grain, 2: .timber, 3: .stone, 4: .moonsalt][kind]
+    }
+
+    /// The Unquiet's barrows in the window, as the stage's lairs of the
+    /// restless dead.
+    public func barrows(in world: LiveWorld) -> [(kind: WildKind, hex: Hex)] {
+        world.barrows.values.sorted { $0.id < $1.id }.compactMap { barrow in
+            local(barrow.hex).map { (.barrowkin, $0) }
+        }
+    }
+
     /// The window's tiles as the world's shader takes them: every hex
     /// known and watched, since the realm keeps nothing of its land from
     /// anyone; a hold where a city stands; and no one's territory, which
@@ -146,7 +168,8 @@ public struct LiveWindow: Sendable {
 
     /// The armies in the window as the stage's companies, each where it is
     /// at a moment: along its way, facing the way it goes, marching; or
-    /// standing at its site while it works.
+    /// standing where it came to, at work on its site or striking at the
+    /// barrow it fights.
     public func companies(in world: LiveWorld, relief: Relief, at seconds: Double) -> [CompanyPose] {
         world.marches.values.sorted { $0.id < $1.id }.compactMap { march -> CompanyPose? in
             let at = march.position(at: seconds)
@@ -157,13 +180,21 @@ public struct LiveWindow: Sendable {
             // Which way it goes: toward where it will be a moment on.
             let ahead = march.position(at: seconds + 1)
             let (dx, dy) = (ahead.x - at.x, ahead.y - at.y)
-            let moving = march.state != LiveMarch.working && (dx * dx + dy * dy) > 1e-12
-            let heading = moving ? Float(atan2(dx, dy)) : 0
+            let moving = !march.stands && (dx * dx + dy * dy) > 1e-12
+            // Standing, it faces the way it came by: toward what it came for.
+            var heading: Float = 0
+            if moving {
+                heading = Float(atan2(dx, dy))
+            } else if march.route.count >= 2 {
+                let (last, before) = (march.route[march.route.count - 1].centre, march.route[march.route.count - 2].centre)
+                heading = Float(atan2(last.x - before.x, last.y - before.y))
+            }
+            let clip: Clip = moving ? .march : (march.state == LiveMarch.fighting ? .attack : .idle)
             let own = world.me?.id == march.owner
             let (kind, tier) = LiveWindow.figure(of: march, squads: own ? world.squads : [])
             let ground = max(relief.height(atX: place.x, z: place.z), Relief.waterline)
             return CompanyPose(unit: Int(march.id), key: .figure(kind, tier: tier), sigil: LiveWindow.sigil(of: march.owner), health: 100,
-                               hex: hex, position: Vec3(place.x, ground, place.z), heading: heading, clip: moving ? .march : .idle,
+                               hex: hex, position: Vec3(place.x, ground, place.z), heading: heading, clip: clip,
                                clipTime: Float(seconds.truncatingRemainder(dividingBy: 3_600)), isOwn: own)
         }
     }

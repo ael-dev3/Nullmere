@@ -2,15 +2,17 @@ import Foundation
 import NullmereRealm
 
 /// The realm as one client knows it at a moment: what everyone may read
-/// (the land, who plays, where cities and sites stand, the armies on the
-/// map, the game's numbers) and what is the player's own (their city, its
-/// buildings, work under way, goods, troops and armies).
+/// (the land, who plays, where cities, sites and the Unquiet's barrows
+/// stand, the armies on the map, the game's numbers) and what is the
+/// player's own (their city, its buildings, work under way, goods, troops
+/// and armies, their energy, and the reports of what their armies did).
 public struct LiveWorld: Equatable, Sendable {
     public var realm: LiveRealm?
     public var players: [UInt64: LivePlayer] = [:]
     public var cities: [UInt64: LiveCity] = [:]
     public var places: [LiveHex: LivePlace] = [:]
     public var sites: [UInt64: LiveSite] = [:]
+    public var barrows: [UInt64: LiveBarrow] = [:]
     public var marches: [UInt64: LiveMarch] = [:]
     /// The land's chunks, sixteen hexes by sixteen, a byte a hex.
     public var land: [UInt64: [UInt8]] = [:]
@@ -25,6 +27,9 @@ public struct LiveWorld: Equatable, Sendable {
     public var troops: [LiveTroop] = []
     public var squads: [LiveSquad] = []
     public var hauls: [LiveHaul] = []
+    public var hunt: LiveHunt?
+    /// The player's reports, the latest first.
+    public var reports: [LiveReport] = []
 
     public init() {}
 
@@ -36,6 +41,7 @@ public struct LiveWorld: Equatable, Sendable {
         cities = Dictionary(rows("city", LiveCity.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         places = Dictionary(rows("place", LivePlace.init).map { ($0.hex, $0) }, uniquingKeysWith: { _, new in new })
         sites = Dictionary(rows("site", LiveSite.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        barrows = Dictionary(rows("barrow", LiveBarrow.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         marches = Dictionary(rows("march", LiveMarch.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         for row in snapshot["land"] ?? [] {
             let cells = Cells(row: row)
@@ -53,6 +59,8 @@ public struct LiveWorld: Equatable, Sendable {
         troops = rows("my_troops", LiveTroop.init).sorted { ($0.kind, $0.tier) < ($1.kind, $1.tier) }
         squads = rows("my_squads", LiveSquad.init).sorted { $0.id < $1.id }
         hauls = rows("my_hauls", LiveHaul.init).sorted { $0.march < $1.march }
+        hunt = rows("my_hunt", LiveHunt.init).first
+        reports = rows("my_reports", LiveReport.init).sorted { $0.id > $1.id }
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
@@ -65,6 +73,15 @@ public struct LiveWorld: Equatable, Sendable {
 
     /// The player's building of a kind, if their city has one.
     public func building(_ kind: Int) -> LiveBuilding? { buildings.first { $0.kind == kind } }
+
+    /// The barrow at a hex, if one stands there.
+    public func barrow(at hex: LiveHex) -> LiveBarrow? {
+        guard let place = places[hex], place.kind == LivePlace.barrow else { return nil }
+        return barrows[place.id]
+    }
+
+    /// How many of the player's reports are unread.
+    public var unread: Int { reports.filter { !$0.read }.count }
 
     /// The player's own marches.
     public var myMarches: [LiveMarch] {

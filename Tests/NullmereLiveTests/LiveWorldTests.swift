@@ -41,8 +41,16 @@ final class LiveWorldTests: XCTestCase {
             "my_jobs": [[n(4), n(7), n(1), n(21), n(4), n(0), n(2_000), n(2_180), n(9)]],
             "my_stock": [[n(7), n(6_000), n(8_000), n(29_990), n(0), n(2_000), n(1_300), n(1_300), n(300), n(0), n(0), n(1_800), n(0), n(0), n(30_000)]],
             "my_troops": [[n(Double(7 << 16 | 2 << 8 | 1)), n(7), n(2), n(1), n(40), n(3)], [n(Double(7 << 16 | 1 << 8 | 1)), n(7), n(1), n(1), n(60), n(0)]],
-            "my_squads": [[n(Double(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(20)]],
+            "my_squads": [[n(Double(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(20), n(4)]],
             "my_hauls": [[n(3), n(1), n(0), n(240), n(0), n(0)]],
+            "barrow": [[n(9), n(Double(LiveHex(q: 14, r: -30).packed)), n(3), n(0)]],
+            "my_hunt": [[n(1), n(940), n(2_000), n(1_000), n(8_000), n(2)]],
+            "my_reports": [
+                [n(31), n(1), n(1_900), n(1), n(Double(LiveHex(q: 14, r: -31).packed)), .bool(true), n(2), n(3), n(200), n(6), n(0), n(60), n(60),
+                 n(1_600), n(1_600), n(0), n(0), .string("Your army cleared a level 2 barrow of the Unquiet."), .bool(true)],
+                [n(32), n(1), n(1_950), n(1), n(Double(LiveHex(q: 14, r: -30).packed)), n(0), n(3), n(5), n(40), n(30), n(10), n(105), n(31),
+                 n(0), n(0), n(0), n(0), .string("Your army was beaten at a level 3 barrow of the Unquiet."), n(0)],
+            ],
         ]
         let world = LiveWorld(snapshot: snapshot)
         XCTAssertEqual(world.realm.map { [$0.opened, $0.pace, $0.radius] }, [1_000, 60, 128])
@@ -74,10 +82,43 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(spear.cost, LiveGoods(grain: 50, timber: 50))
         XCTAssertEqual([spear.pace, spear.millis, spear.building, spear.needsLevel], [60, 8_000, 7, 1])
         XCTAssertEqual(world.troops.map { [$0.kind, Int($0.ready), Int($0.wounded)] }, [[1, 60, 0], [2, 40, 3]])
-        XCTAssertEqual(world.squads.first?.count, 20)
+        XCTAssertEqual(world.squads.first.map { [$0.count, $0.wounded] }, [20, 4], "twenty fit to fight, four carried wounded")
         XCTAssertEqual(world.hauls.first?.goods, LiveGoods(timber: 240))
         XCTAssertTrue(LiveGoods(grain: 5, timber: 620, stone: 400).covers(keep.cost))
         XCTAssertFalse(LiveGoods(timber: 619, stone: 400).covers(keep.cost))
+
+        // The Unquiet's barrows, where they stand; the player's energy as
+        // it grows back; and what their armies did, the latest first.
+        XCTAssertEqual(world.places.count, 2)
+        var withBarrow = snapshot
+        withBarrow["place"]?.append([n(Double(LiveHex(q: 14, r: -30).packed)), n(3), n(9)])
+        let found = LiveWorld(snapshot: withBarrow)
+        XCTAssertEqual(found.barrow(at: LiveHex(q: 14, r: -30))?.level, 3)
+        XCTAssertNil(found.barrow(at: LiveHex(q: 13, r: -30)), "a site stands there, not a barrow")
+        XCTAssertNil(found.barrow(at: LiveHex(q: 0, r: 0)))
+        XCTAssertEqual(world.barrows[9].map { [$0.level, Int($0.fighter)] }, [3, 0])
+        let hunt = try XCTUnwrap(world.hunt)
+        XCTAssertEqual([hunt.energy, hunt.most, hunt.cleared, hunt.mayAttack], [940, 1_000, 2, 3])
+        XCTAssertEqual(hunt.energy(at: 2_000), 940)
+        XCTAssertEqual(hunt.energy(at: 2_007.9), 940, "a point every eight seconds")
+        XCTAssertEqual(hunt.energy(at: 2_008), 941)
+        XCTAssertEqual(hunt.energy(at: 2_480), 1_000)
+        XCTAssertEqual(hunt.energy(at: 99_999), 1_000, "never past the most a player keeps")
+        XCTAssertEqual(hunt.energy(at: 0), 940, "time never runs back")
+        XCTAssertEqual(world.reports.map(\.id), [32, 31])
+        XCTAssertEqual(world.unread, 1)
+        let lost = try XCTUnwrap(world.reports.first)
+        XCTAssertEqual(lost.kind, LiveReport.hunt)
+        XCTAssertFalse(lost.won)
+        XCTAssertEqual(lost.hex, LiveHex(q: 14, r: -30))
+        XCTAssertEqual([lost.foe, lost.fought, lost.wounded, lost.dead, lost.stood, lost.fell], [3, 40, 30, 10, 105, 31])
+        XCTAssertEqual([lost.rounds, lost.at], [5, 1_950])
+        XCTAssertTrue(lost.spoils.isNone)
+        XCTAssertEqual(lost.words, "Your army was beaten at a level 3 barrow of the Unquiet.")
+        let won = world.reports[1]
+        XCTAssertTrue(won.won && won.read)
+        XCTAssertEqual(won.spoils, LiveGoods(grain: 1_600, timber: 1_600))
+        XCTAssertNil(LiveWorld(snapshot: [:]).hunt)
 
         // Work under way: how far along, and how long left.
         let job = try XCTUnwrap(world.jobs.first)
@@ -135,6 +176,14 @@ final class LiveWorldTests: XCTestCase {
         let listed = try XCTUnwrap(LiveMarch(march(state: LiveMarch.working, route: .array(bytes.map { n(Double($0)) }))))
         XCTAssertEqual(listed.route, way)
         XCTAssertEqual(listed.position(at: 109).x, way[3].centre.x, accuracy: 1e-9)
+        XCTAssertTrue(listed.stands)
+        XCTAssertFalse(going.stands)
+        // In a fight it stands at its barrow as long as the fight lasts.
+        let fighting = try XCTUnwrap(LiveMarch(march(state: LiveMarch.fighting, route: .string(hexText))))
+        XCTAssertTrue(fighting.stands)
+        XCTAssertEqual(fighting.position(at: 100).x, way[3].centre.x, accuracy: 1e-9)
+        XCTAssertEqual(fighting.position(at: 109).x, way[3].centre.x, accuracy: 1e-9)
+        XCTAssertEqual([LiveMarch.gather, LiveMarch.hunt], [1, 2])
         XCTAssertNil(LiveMarch(march(state: 1, route: .string("xyz"))), "a way that doesn't read")
 
         var world = LiveWorld()

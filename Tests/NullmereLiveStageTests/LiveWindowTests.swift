@@ -20,7 +20,8 @@ final class LiveWindowTests: XCTestCase {
     /// A small world: plain, a wood to the east, deep water in the far
     /// west; Ada's city at 10, -4 with a Farm and a Wall; Bryn's at 14, -4;
     /// a grove at 12, -2; Ada's army half way from her city to it; Bryn's
-    /// army at work there.
+    /// army at work there; a barrow of the Unquiet at 8, -2, and another
+    /// of Bryn's armies fighting at it.
     private func world() -> LiveWorld {
         func ground(_ hex: LiveHex) -> UInt8 {
             if hex.q <= -10 { return 0 }
@@ -34,12 +35,16 @@ final class LiveWindowTests: XCTestCase {
                 chunks.append([n(LiveHex(q: cq, r: cr).packed), .string(bytes.map { String(format: "%02x", $0) }.joined())])
             }
         }
-        let (ada, bryn, grove) = (LiveHex(q: 10, r: -4), LiveHex(q: 14, r: -4), LiveHex(q: 12, r: -2))
-        let way = [ada, LiveHex(q: 10, r: -3), LiveHex(q: 11, r: -3), LiveHex(q: 11, r: -2), grove]
-        let route = way.flatMap { hex -> [UInt8] in
-            let (q, r) = (UInt16(bitPattern: Int16(hex.q)), UInt16(bitPattern: Int16(hex.r)))
-            return [UInt8(q & 0xFF), UInt8(q >> 8), UInt8(r & 0xFF), UInt8(r >> 8)]
-        }.map { String(format: "%02x", $0) }.joined()
+        let (ada, bryn, grove, barrow) = (LiveHex(q: 10, r: -4), LiveHex(q: 14, r: -4), LiveHex(q: 12, r: -2), LiveHex(q: 8, r: -2))
+        func encoded(_ way: [LiveHex]) -> String {
+            way.flatMap { hex -> [UInt8] in
+                let (q, r) = (UInt16(bitPattern: Int16(hex.q)), UInt16(bitPattern: Int16(hex.r)))
+                return [UInt8(q & 0xFF), UInt8(q >> 8), UInt8(r & 0xFF), UInt8(r >> 8)]
+            }.map { String(format: "%02x", $0) }.joined()
+        }
+        let route = encoded([ada, LiveHex(q: 10, r: -3), LiveHex(q: 11, r: -3), LiveHex(q: 11, r: -2), grove])
+        // Bryn's second army came to the barrow from the east.
+        let toBarrow = encoded([LiveHex(q: 10, r: -2), LiveHex(q: 9, r: -2), barrow])
         return LiveWorld(snapshot: [
             "realm": [[n(0), n(42), n(1_000), n(1), n(1_000), n(2), n(40)]],
             "land": chunks,
@@ -49,11 +54,13 @@ final class LiveWindowTests: XCTestCase {
                      [n(8), n(2), n(bryn.packed), .string("Bryn"), n(8), n(9_000), n(1_000), n(1)]],
             "my_city": [[n(7), n(1), n(ada.packed), .string("Ada"), n(3), n(1_000), n(1_000), n(1)]],
             "my_buildings": [[n(21), n(7), n(1), n(3)], [n(22), n(7), n(2), n(2)], [n(23), n(7), n(12), n(11)]],
-            "place": [[n(ada.packed), n(1), n(7)], [n(bryn.packed), n(1), n(8)], [n(grove.packed), n(2), n(5)]],
+            "place": [[n(ada.packed), n(1), n(7)], [n(bryn.packed), n(1), n(8)], [n(grove.packed), n(2), n(5)], [n(barrow.packed), n(3), n(9)]],
+            "barrow": [[n(9), n(barrow.packed), n(2), n(6)]],
             "site": [[n(5), n(grove.packed), n(2), n(4), n(80_000), n(4)]],
             "march": [[n(3), n(1), n(7), n(1), n(1), n(ada.packed), n(grove.packed), n(5), n(2_000), n(2_024), n(40), .string(route), n(1)],
-                      [n(4), n(2), n(8), n(1), n(2), n(bryn.packed), n(grove.packed), n(5), n(2_000), n(2_600), n(90), .string(route), n(2)]],
-            "my_squads": [[n(UInt64(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(10)], [n(UInt64(3 << 16 | 3 << 8 | 2)), n(3), n(3), n(2), n(30)]],
+                      [n(4), n(2), n(8), n(1), n(2), n(bryn.packed), n(grove.packed), n(5), n(2_000), n(2_600), n(90), .string(route), n(2)],
+                      [n(6), n(2), n(8), n(2), n(4), n(bryn.packed), n(barrow.packed), n(9), n(2_010), n(2_025), n(50), .string(toBarrow), n(3)]],
+            "my_squads": [[n(UInt64(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(10), n(0)], [n(UInt64(3 << 16 | 3 << 8 | 2)), n(3), n(3), n(2), n(30), n(0)]],
         ])
     }
 
@@ -128,7 +135,7 @@ final class LiveWindowTests: XCTestCase {
         // it goes, marching, drawn as what it has most of.
         let relief = Relief(map: window.map)
         let companies = window.companies(in: world, relief: relief, at: 2_015)
-        XCTAssertEqual(companies.map(\.unit), [3, 4])
+        XCTAssertEqual(companies.map(\.unit), [3, 4, 6])
         let mine = companies[0], theirs = companies[1]
         let from = Relief.centre(of: Hex(1, 1)), to = Relief.centre(of: Hex(1, 2))
         XCTAssertEqual(mine.position.x, (from.x + to.x) / 2, accuracy: 1e-4)
@@ -149,6 +156,26 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(theirs.clip, .idle)
         XCTAssertFalse(theirs.isOwn)
         XCTAssertEqual(theirs.key, .figure(.spear, tier: 1), "what it is made of is its owner's alone to know")
+
+        // Bryn's other army, fighting at the barrow: there, striking, and
+        // facing the way it came by, which was from the east.
+        let fighting = companies[2]
+        let mound = Relief.centre(of: Hex(-2, 2))
+        XCTAssertEqual(fighting.position.x, mound.x, accuracy: 1e-4)
+        XCTAssertEqual(fighting.position.z, mound.z, accuracy: 1e-4)
+        XCTAssertEqual(fighting.clip, .attack)
+        XCTAssertEqual(fighting.heading, -.pi / 2, accuracy: 1e-3)
+        XCTAssertEqual(theirs.heading, atan2(Float(grove.x - Relief.centre(of: Hex(1, 2)).x), Float(grove.z - Relief.centre(of: Hex(1, 2)).z)), accuracy: 1e-3,
+                       "and the army at work faces its grove")
+
+        // What stands on the land for all to see: the grove's timber, and the barrow.
+        XCTAssertEqual(window.sites(in: world).map { [$0.hex.q, $0.hex.r] }, [[2, 2]])
+        XCTAssertEqual(window.sites(in: world).map(\.store), [.timber])
+        XCTAssertEqual(window.barrows(in: world).map { [$0.hex.q, $0.hex.r] }, [[-2, 2]])
+        XCTAssertEqual(window.barrows(in: world).map(\.kind), [.barrowkin])
+        XCTAssertEqual([1, 2, 3, 4, 5].map { LiveWindow.store(of: $0) }, [.grain, .timber, .stone, .moonsalt, nil])
+        let far = LiveWindow(world: world, centre: LiveHex(q: -20, r: 20), radius: 4)
+        XCTAssertTrue(far.sites(in: world).isEmpty && far.barrows(in: world).isEmpty)
 
         // Arrived, Ada's stands at the grove; before it set out, at her city.
         XCTAssertEqual(window.companies(in: world, relief: relief, at: 9_999)[0].position.x, grove.x, accuracy: 1e-4)
@@ -190,13 +217,15 @@ final class LiveWindowTests: XCTestCase {
         let (holds, _) = stage.holds(sights, time: 20, into: &frame)
         let poses = window.companies(in: world, relief: relief, at: seconds)
         let companies = stage.companies(poses, houses: colours, into: &frame)
-        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(sights.map(\.hold.position)))
-        frame.batches = holds + companies
+        let barrows = window.barrows(in: world), sites = window.sites(in: world)
+        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex) + barrows.map(\.hex) + sites.map(\.hex)), holds: Set(sights.map(\.hold.position)))
+        frame.batches = holds + companies + stage.sites(sites) + stage.lairs(barrows).batches
         XCTAssertFalse(sights.isEmpty)
         XCTAssertGreaterThan(frame.instanceCount, 50, "a keep, its works, an army's figures and the land's furniture")
         XCTAssertTrue(frame.batches.contains { if case .figure = $0.key { return true } else { return false } } || poses.isEmpty)
 
-        print("LIVE a window about \(centre.q), \(centre.r): \(sights.count) cities, \(poses.count) armies, \(frame.instanceCount) models")
+        print("LIVE a window about \(centre.q), \(centre.r): \(sights.count) cities, \(poses.count) armies, \(sites.count) sites, "
+            + "\(barrows.count) barrows, \(frame.instanceCount) models")
 
         guard let folder = environment["NULLMERE_WORLD_PREVIEW"] else { return }
         // As Tools/world3d-preview reads a world: the land's mesh, the

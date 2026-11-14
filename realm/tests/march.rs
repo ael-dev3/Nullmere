@@ -99,7 +99,7 @@ fn an_army_marches_to_a_site_gathers_and_carries_it_home() {
     assert_eq!((march.kind, march.state, march.owner, march.city, march.target, march.soldiers), (March::GATHER, March::GOING, ada, city.id, site.id, 60));
     assert_eq!(march.arrives - march.departed, steps * 6, "six seconds a hex at a spearman's pace");
     assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).ready, 40, "those sent are out of the city");
-    assert_eq!(rules::squads(&db, march.id), vec![Squad { id: Squad::key(march.id, 1, 1), march: march.id, kind: 1, tier: 1, count: 60 }]);
+    assert_eq!(rules::squads(&db, march.id), vec![Squad { id: Squad::key(march.id, 1, 1), march: march.id, kind: 1, tier: 1, count: 60, wounded: 0 }]);
 
     // On the road nothing has changed at the site.
     wait(&mut db, steps * 6 - 1);

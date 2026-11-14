@@ -55,6 +55,7 @@ row!(Place in place, by hex);
 impl Place {
     pub const CITY: u8 = 1;
     pub const SITE: u8 = 2;
+    pub const BARROW: u8 = 3;
 }
 
 /// Somewhere on the land where goods lie to be gathered, until they run
@@ -105,7 +106,7 @@ pub struct March {
     pub state: u8,
     pub from: u64,
     pub to: u64,
-    /// What it set out for: a site's number.
+    /// What it set out for: a site's number, or a barrow's.
     pub target: u64,
     pub departed: Seconds,
     pub arrives: Seconds,
@@ -118,11 +119,16 @@ pub struct March {
 row!(March in march, auto, by id, owner, city);
 
 impl March {
+    /// To gather at a site.
     pub const GATHER: u8 = 1;
+    /// To clear a barrow of the Unquiet.
+    pub const HUNT: u8 = 2;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
     pub const RETURNING: u8 = 3;
+    /// Fighting where it stands, at `to`, until `arrives`.
+    pub const FIGHTING: u8 = 4;
 }
 
 /// The soldiers of one kind and tier in a march: its owner's alone to
@@ -136,7 +142,9 @@ pub struct Squad {
     pub march: u64,
     pub kind: u8,
     pub tier: u32,
+    /// How many march fit to fight, and how many it carries wounded.
     pub count: u64,
+    pub wounded: u64,
 }
 row!(Squad in squad, by id, march);
 
@@ -297,6 +305,9 @@ impl Job {
     pub const RAISE: u8 = 1;
     /// Troops in training: its subject is the building that trains them.
     pub const TRAIN: u8 = 2;
+    /// Wounded being healed: its subject is their troop row, its level
+    /// their tier, its amount how many.
+    pub const HEAL: u8 = 3;
 }
 
 /// A city's troops of one kind and tier: its owner's alone to read. Keyed
@@ -388,6 +399,84 @@ pub struct Stock {
 }
 row!(Stock in stock, by city);
 
+/// A barrow of the Unquiet on the land, for players to clear. Everyone
+/// sees it, and whether an army is fighting there.
+#[spacetimedb::table(accessor = barrow, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Barrow {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    pub hex: u64,
+    /// How strong it is, 1 to 25 (`catalog::barrow`).
+    pub level: u32,
+    /// The march fighting there now; 0 for none.
+    pub fighter: u64,
+}
+row!(Barrow in barrow, auto, by id);
+
+/// What a player has for hunting the Unquiet: theirs alone to read. Keyed
+/// by their player number.
+///
+/// `energy` is as it stood at `as_of`. Since then it has grown by a point
+/// every `point_millis`, up to `most`: the rules settle that whenever
+/// they touch the row, and a client reckons it for itself between times.
+#[spacetimedb::table(accessor = hunt)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Hunt {
+    #[primary_key]
+    pub player: u64,
+    pub energy: u32,
+    pub as_of: Seconds,
+    pub most: u32,
+    pub point_millis: u64,
+    /// The strongest barrow they have cleared: they may attack one level
+    /// above it.
+    pub cleared: u32,
+}
+row!(Hunt in hunt, by player);
+
+/// What happened to a player's army, told to them: theirs alone to read.
+#[spacetimedb::table(accessor = report)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Report {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub at: Seconds,
+    /// What it tells of (`Report::HUNT`), where, and whether it went the
+    /// player's way.
+    pub kind: u8,
+    pub hex: u64,
+    pub won: bool,
+    /// The other side: a barrow's level.
+    pub foe: u64,
+    pub rounds: u32,
+    /// The player's soldiers: how many fought, and of them how many came
+    /// away wounded and how many died.
+    pub fought: u64,
+    pub wounded: u64,
+    pub dead: u64,
+    /// The other side's: how many stood, and how many fell.
+    pub stood: u64,
+    pub fell: u64,
+    /// What was won.
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    /// The whole of it in plain words.
+    pub words: String,
+    pub read: bool,
+}
+row!(Report in report, auto, by id, player);
+
+impl Report {
+    pub const HUNT: u8 = 1;
+}
+
 /// Everything the rules keep: every table, the clock, chance and timers.
 pub trait Db:
     World
@@ -407,6 +496,9 @@ pub trait Db:
     + Table<March>
     + Table<Squad>
     + Table<Haul>
+    + Table<Barrow>
+    + Table<Hunt>
+    + Table<Report>
 {
 }
 
@@ -427,7 +519,10 @@ impl<
             + Table<Site>
             + Table<March>
             + Table<Squad>
-            + Table<Haul>,
+            + Table<Haul>
+            + Table<Barrow>
+            + Table<Hunt>
+            + Table<Report>,
     > Db for T
 {
 }

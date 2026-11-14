@@ -9,10 +9,11 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 
 use crate::hex::Hex;
 use crate::rows::{
-    blueprint as _, building as _, building__view as _, city as _, city__view as _, haul as _, haul__view as _, job as _, job__view as _,
-    land as _, march as _, march__view as _, pace as _, place as _, player as _, player__view as _, realm as _, site as _, soldier as _,
-    squad as _, squad__view as _, stock as _, stock__view as _, troop as _, troop__view as _, Blueprint, Building, City, Haul, Job, Land,
-    March, Pace, Place, Player, Realm, Site, Soldier, Squad, Stock, Troop,
+    barrow as _, blueprint as _, building as _, building__view as _, city as _, city__view as _, haul as _, haul__view as _, hunt as _,
+    hunt__view as _, job as _, job__view as _, land as _, march as _, march__view as _, pace as _, place as _, player as _,
+    player__view as _, realm as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _,
+    stock__view as _, troop as _, troop__view as _, Barrow, Blueprint, Building, City, Haul, Hunt, Job, Land, March, Pace, Place, Player,
+    Realm, Report, Site, Soldier, Squad, Stock, Troop,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -136,6 +137,9 @@ stored!(Site in site by id);
 stored!(March in march by id, owner, city);
 stored!(Squad in squad by id, march);
 stored!(Haul in haul by march, owner);
+stored!(Barrow in barrow by id);
+stored!(Hunt in hunt by player);
+stored!(Report in report by id, player);
 
 /// The player a caller is, by their identity.
 fn caller(ctx: &ReducerContext) -> Result<u64, Refusal> {
@@ -256,8 +260,8 @@ pub struct Soldiers {
     pub count: u64,
 }
 
-/// Send soldiers from the caller's city to a hex, to do an order there
-/// (1, to gather).
+/// Send soldiers from the caller's city to a hex, to do an order there:
+/// 1 to gather at a site, 2 to clear a barrow of the Unquiet.
 #[reducer]
 pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>) -> Result<(), String> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
@@ -268,6 +272,24 @@ pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldi
 #[reducer]
 pub fn recall(ctx: &ReducerContext, march: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::recall(&mut Stdb(ctx), player, march)))
+}
+
+/// Have some of the caller's wounded of a kind and tier healed.
+#[reducer]
+pub fn heal(ctx: &ReducerContext, kind: u8, tier: u32, count: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::heal(&mut Stdb(ctx), player, kind, tier, count)))
+}
+
+/// Mark one of the caller's reports read.
+#[reducer]
+pub fn read_report(ctx: &ReducerContext, report: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::read_report(&mut Stdb(ctx), player, report)))
+}
+
+/// Throw one of the caller's reports away.
+#[reducer]
+pub fn forget_report(ctx: &ReducerContext, report: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::forget_report(&mut Stdb(ctx), player, report)))
 }
 
 /// A timer the rules set has come due. Only the scheduler may call this.
@@ -337,4 +359,18 @@ fn my_hauls(ctx: &ViewContext) -> Vec<Haul> {
 #[view(accessor = my_stock, public)]
 fn my_stock(ctx: &ViewContext) -> Option<Stock> {
     ctx.db.stock().city().find(my_city(ctx)?.id)
+}
+
+/// What the caller has for hunting the Unquiet: their energy as it stood
+/// when the realm last touched it, and the strongest barrow they have
+/// cleared.
+#[view(accessor = my_hunt, public)]
+fn my_hunt(ctx: &ViewContext) -> Option<Hunt> {
+    ctx.db.hunt().player().find(viewer(ctx)?)
+}
+
+/// The caller's reports.
+#[view(accessor = my_reports, public)]
+fn my_reports(ctx: &ViewContext) -> Vec<Report> {
+    viewer(ctx).map(|player| ctx.db.report().player().filter(player).collect()).unwrap_or_default()
 }

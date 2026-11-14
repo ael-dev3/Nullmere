@@ -1,6 +1,6 @@
 //! Cities: founding one, raising its buildings on timers, and its goods.
 
-use super::{asking, clear_for_city, marching_power, realm, trained, troop_power, Refusal};
+use super::{asking, clear_for_city, healed, marching_power, realm, trained, troop_power, Refusal};
 use crate::catalog::{self, Building as Kind, Goods, TOP_LEVEL};
 use crate::hex::Hex;
 use crate::land;
@@ -267,6 +267,8 @@ pub fn finish(db: &mut impl Db, job: u64) {
         }
     } else if job.kind == Job::TRAIN {
         trained(db, &job);
+    } else if job.kind == Job::HEAL {
+        healed(db, &job);
     }
     if Table::<City>::get(db, job.city).is_some() {
         reckon(db, job.city);

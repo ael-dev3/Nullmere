@@ -45,6 +45,9 @@ public struct LiveGoods: Equatable, Sendable {
 
     public var parts: [UInt64] { [grain, timber, stone, moonsalt] }
 
+    /// Whether there is nothing of any of them.
+    public var isNone: Bool { parts.allSatisfy { $0 == 0 } }
+
     /// Whether these goods pay a cost.
     public func covers(_ cost: LiveGoods) -> Bool {
         zip(parts, cost.parts).allSatisfy { $0 >= $1 }
@@ -163,6 +166,7 @@ public struct LiveCity: Equatable, Sendable, Identifiable {
 public struct LivePlace: Equatable, Sendable {
     public static let city = 1
     public static let site = 2
+    public static let barrow = 3
 
     public let hex: LiveHex
     public let kind: Int
@@ -196,9 +200,16 @@ public struct LiveSite: Equatable, Sendable, Identifiable {
 
 /// An army out of its city.
 public struct LiveMarch: Equatable, Sendable, Identifiable {
+    /// What a march set out to do: to gather at a site, or to clear a
+    /// barrow of the Unquiet.
+    public static let gather = 1
+    public static let hunt = 2
+
     public static let going = 1
     public static let working = 2
     public static let returning = 3
+    /// Fighting where it stands, at `to`, until `arrives`.
+    public static let fighting = 4
 
     public let id: UInt64
     public let owner: UInt64
@@ -236,10 +247,14 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
         return min(max((seconds - Double(departed)) / whole, 0), 1)
     }
 
+    /// Whether it stands where it came to, at work or in a fight.
+    public var stands: Bool { state == LiveMarch.working || state == LiveMarch.fighting }
+
     /// Where it is on the flat map at a moment: along its way at an even
-    /// pace while it marches, at its site while it works.
+    /// pace while it marches; at its site while it works there, or at its
+    /// barrow while it fights.
     public func position(at seconds: Double) -> (x: Double, y: Double) {
-        guard state != LiveMarch.working, route.count > 1 else { return (state == LiveMarch.working ? to : route.first ?? from).centre }
+        guard !stands, route.count > 1 else { return (stands ? to : route.first ?? from).centre }
         let along = progress(at: seconds) * Double(route.count - 1)
         let step = min(Int(along), route.count - 2)
         let (a, b, t) = (route[step].centre, route[step + 1].centre, along - Double(step))
@@ -322,6 +337,8 @@ public struct LiveBuilding: Equatable, Sendable, Identifiable {
 public struct LiveJob: Equatable, Sendable, Identifiable {
     public static let raise = 1
     public static let train = 2
+    /// Wounded being healed: its level their tier, its amount how many.
+    public static let heal = 3
 
     public let id: UInt64
     public let city: UInt64
@@ -409,13 +426,101 @@ public struct LiveSquad: Equatable, Sendable, Identifiable {
     public let march: UInt64
     public let kind: Int
     public let tier: Int
+    /// How many march fit to fight, and how many it carries wounded.
     public let count: UInt64
+    public let wounded: UInt64
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
         guard let id = cells.unsigned(0), let march = cells.unsigned(1), let kind = cells.whole(2), let tier = cells.whole(3),
-              let count = cells.unsigned(4) else { return nil }
-        (self.id, self.march, self.kind, self.tier, self.count) = (id, march, kind, tier, count)
+              let count = cells.unsigned(4), let wounded = cells.unsigned(5) else { return nil }
+        (self.id, self.march, self.kind, self.tier, self.count, self.wounded) = (id, march, kind, tier, count, wounded)
+    }
+}
+
+/// A barrow of the Unquiet on the land, for players to clear.
+public struct LiveBarrow: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let hex: LiveHex
+    /// How strong it is, 1 to 25.
+    public let level: Int
+    /// The march fighting there now; 0 for none.
+    public let fighter: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let hex = cells.unsigned(1), let level = cells.whole(2), let fighter = cells.unsigned(3)
+        else { return nil }
+        (self.id, self.hex, self.level, self.fighter) = (id, LiveHex(packed: hex), level, fighter)
+    }
+}
+
+/// What the player has for hunting the Unquiet: their energy as it stood
+/// when the realm last touched it, with what brings it up to any moment
+/// since, and the strongest barrow they have cleared.
+public struct LiveHunt: Equatable, Sendable {
+    public let energy: Int
+    public let asOf: Int
+    public let most: Int
+    /// The thousandths of a second that bring one point back.
+    public let pointMillis: Int
+    public let cleared: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let energy = cells.whole(1), let asOf = cells.whole(2), let most = cells.whole(3), let pointMillis = cells.whole(4),
+              let cleared = cells.whole(5) else { return nil }
+        (self.energy, self.asOf, self.most, self.pointMillis, self.cleared) = (energy, asOf, most, pointMillis, cleared)
+    }
+
+    /// The energy at a moment: grown by a point every so often since it
+    /// was last settled, never past the most a player keeps, as the realm
+    /// itself reckons it (`rules::hunt_of` in the module).
+    public func energy(at seconds: Double) -> Int {
+        guard energy < most, pointMillis > 0 else { return energy }
+        let gone = Int(max(seconds - Double(asOf), 0)) * 1_000
+        return min(energy + gone / pointMillis, most)
+    }
+
+    /// The strongest barrow the player may attack.
+    public var mayAttack: Int { cleared + 1 }
+}
+
+/// What happened to one of the player's armies, as the realm told it.
+public struct LiveReport: Equatable, Sendable, Identifiable {
+    public static let hunt = 1
+
+    public let id: UInt64
+    public let at: Int
+    public let kind: Int
+    public let hex: LiveHex
+    public let won: Bool
+    /// The other side: a barrow's level.
+    public let foe: UInt64
+    public let rounds: Int
+    /// The player's soldiers: how many fought, and of them how many came
+    /// away wounded and how many died.
+    public let fought: UInt64
+    public let wounded: UInt64
+    public let dead: UInt64
+    /// The other side's: how many stood, and how many fell.
+    public let stood: UInt64
+    public let fell: UInt64
+    public let spoils: LiveGoods
+    /// The whole of it in the realm's own words.
+    public let words: String
+    public let read: Bool
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let at = cells.whole(2), let kind = cells.whole(3), let hex = cells.unsigned(4),
+              let won = cells.flag(5), let foe = cells.unsigned(6), let rounds = cells.whole(7), let words = cells.text(17),
+              let read = cells.flag(18) else { return nil }
+        let counts = (8...16).map { cells.unsigned($0) ?? 0 }
+        (self.id, self.at, self.kind, self.hex, self.won, self.foe, self.rounds) = (id, at, kind, LiveHex(packed: hex), won, foe, rounds)
+        (fought, wounded, dead, stood, fell) = (counts[0], counts[1], counts[2], counts[3], counts[4])
+        spoils = LiveGoods(grain: counts[5], timber: counts[6], stone: counts[7], moonsalt: counts[8])
+        (self.words, self.read) = (words, read)
     }
 }
 

@@ -563,3 +563,59 @@ mod tests {
         assert!(STARTING_GOODS.covers(cost(Building::Keep, 2)), "a new city can raise its Keep at once");
     }
 }
+
+/// Soldiers of one kind and tier, counted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Unit {
+    pub kind: Troops,
+    pub tier: u32,
+    pub count: u64,
+}
+
+/// The highest level a barrow of the Unquiet reaches.
+pub const TOP_BARROW: u32 = 25;
+
+/// Who stands in a barrow of the Unquiet at a level: foot at first, bows
+/// among them from the fourth level, riders from the eighth, a tier
+/// stronger every five levels.
+pub fn barrow(level: u32) -> Vec<Unit> {
+    let level = level.clamp(1, TOP_BARROW) as u64;
+    let tier = (1 + (level - 1) / 5) as u32;
+    let heads = 20 * level + 5 * level * level;
+    let bows = if level >= 4 { heads * 30 / 100 } else { 0 };
+    let riders = if level >= 8 { heads * 20 / 100 } else { 0 };
+    [(Troops::Spearmen, heads - bows - riders), (Troops::Archers, bows), (Troops::Riders, riders)]
+        .into_iter()
+        .filter(|(_, count)| *count > 0)
+        .map(|(kind, count)| Unit { kind, tier, count })
+        .collect()
+}
+
+/// What lies in a barrow of a level for whoever clears it.
+pub fn spoils(level: u32) -> Goods {
+    let level = level.clamp(1, TOP_BARROW) as u64;
+    Goods::of(800 * level, 800 * level, if level >= 3 { 300 * level } else { 0 }, if level >= 6 { 30 * level } else { 0 })
+}
+
+/// The most energy a player keeps, what attacking a barrow takes, and how
+/// many seconds bring one point back, as written.
+pub const ENERGY_MOST: u32 = 1_000;
+pub const ENERGY_A_HUNT: u32 = 50;
+pub const ENERGY_SECONDS: u64 = 8;
+
+/// How long a fight at a barrow lasts, as written.
+pub const FIGHT_SECONDS: i64 = 15;
+
+/// How many wounded a city can tend, by its Hospital's level: a few even
+/// with none.
+pub fn tends(hospital: u32) -> u64 {
+    let level = hospital.min(TOP_LEVEL) as u64;
+    50 + 150 * level + 10 * level * level
+}
+
+/// What healing one wounded soldier costs, and the seconds it takes as
+/// written: a third of training one, in a quarter of the time.
+pub fn healing(soldier: Soldier) -> (Goods, i64) {
+    let [grain, timber, stone, moonsalt] = soldier.cost.parts();
+    (Goods::of(grain / 3, timber / 3, stone / 3, moonsalt / 3), (soldier.seconds / 4).max(1))
+}

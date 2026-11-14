@@ -6,11 +6,13 @@
 //! nothing.
 
 mod army;
+mod battle;
 mod city;
 mod entry;
 mod march;
 
 pub use army::*;
+pub use battle::*;
 pub use city::*;
 pub use entry::*;
 pub use march::*;
@@ -85,6 +87,21 @@ pub enum Refusal {
     NoWay,
     NoSuchMarch,
     AlreadyReturning,
+    /// No barrow stands at the hex named.
+    NothingToFight,
+    /// Another army is fighting there.
+    BarrowTaken,
+    /// The barrow is more than a level above the strongest the player has
+    /// cleared: the level they must clear first.
+    TooStrong(u32),
+    /// Too little energy for an attack: how much the player has.
+    NoEnergy(u32),
+    /// The army is in a fight, and can't be called away.
+    Fighting,
+    /// The city has fewer wounded than were asked for: which, and how many.
+    NotEnoughWounded(Troops, u32, u64),
+    AlreadyHealing,
+    NoSuchReport,
     /// Something only the realm's owner may do.
     NotTheOwner,
 }
@@ -104,6 +121,13 @@ impl fmt::Display for Refusal {
             Refusal::BusyTraining(building) => return write!(f, "Your {} is training troops. Wait for them to finish.", building.name()),
             Refusal::NotEnoughTroops(troops, tier, ready) => {
                 return write!(f, "You have only {} tier {tier} {} ready.", crate::catalog::grouped(*ready), troops.name());
+            }
+            Refusal::TooStrong(level) => return write!(f, "Clear a level {level} barrow first."),
+            Refusal::NoEnergy(energy) => {
+                return write!(f, "An attack takes {} energy. You have {energy}.", crate::catalog::ENERGY_A_HUNT);
+            }
+            Refusal::NotEnoughWounded(troops, tier, wounded) => {
+                return write!(f, "You have only {} wounded tier {tier} {}.", crate::catalog::grouped(*wounded), troops.name());
             }
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
@@ -132,6 +156,11 @@ impl fmt::Display for Refusal {
             Refusal::NoWay => "There is no way there over open ground.",
             Refusal::NoSuchMarch => "There is no such army.",
             Refusal::AlreadyReturning => "That army is already on its way home.",
+            Refusal::NothingToFight => "There is nothing to fight there.",
+            Refusal::BarrowTaken => "Another army is fighting there.",
+            Refusal::Fighting => "That army is fighting. Wait for the fight to end.",
+            Refusal::AlreadyHealing => "Your wounded are already being healed. Wait for them to finish.",
+            Refusal::NoSuchReport => "There is no such report.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",
             _ => "",
         })

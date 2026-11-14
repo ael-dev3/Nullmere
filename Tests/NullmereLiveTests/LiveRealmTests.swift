@@ -162,6 +162,55 @@ final class LiveRealmTests: XCTestCase {
             return now.goods.parts.reduce(0, +) >= before.goods.parts.reduce(0, +) + 240
         }
 
+        // The Unquiet: twenty spearmen against the nearest weak barrow are
+        // beaten, carried home wounded, told of in a report, and healed.
+        let hunt = try XCTUnwrap(ada.world.hunt)
+        XCTAssertEqual([hunt.most, hunt.cleared, hunt.mayAttack], [1_000, 0, 1])
+        XCTAssertEqual(hunt.energy(at: Date().timeIntervalSince1970 + 60), 1_000)
+        let barrows = ada.world.barrows.values.sorted { ($0.hex.distance(to: city.hex), $0.id) < ($1.hex.distance(to: city.hex), $1.id) }
+        XCTAssertGreaterThan(barrows.count, 300, "Barrows scattered over the land")
+        if let strong = barrows.first(where: { $0.level >= 3 }) {
+            let why = await refusal { try await ada.hunt(at: strong.hex, soldiers: [(kind: 1, tier: 1, count: 20)]) }
+            XCTAssertEqual(why, "Clear a level \(strong.level - 1) barrow first.")
+        }
+        var fought: LiveBarrow?
+        for barrow in barrows.filter({ $0.level == 1 }).prefix(20) {
+            let why = await refusal { try await ada.hunt(at: barrow.hex, soldiers: [(kind: 1, tier: 1, count: 20)]) }
+            if why == nil {
+                fought = barrow
+                break
+            }
+            XCTAssertEqual(why, "There is no way there over open ground.", "The only reason a near barrow can't be reached")
+        }
+        let barrow = try XCTUnwrap(fought, "An army set out against a barrow nearby")
+        XCTAssertEqual(ada.world.barrow(at: barrow.hex)?.id, barrow.id)
+        await eventually("she is told how the fight went", within: 120) { !ada.world.reports.isEmpty }
+        let report = try XCTUnwrap(ada.world.reports.first)
+        XCTAssertEqual(report.kind, LiveReport.hunt)
+        XCTAssertFalse(report.won, "Twenty against twenty-five")
+        XCTAssertEqual(report.hex, barrow.hex)
+        XCTAssertEqual([report.foe, report.fought, report.wounded, report.dead, report.stood], [1, 20, 20, 0, 25])
+        XCTAssertTrue(report.spoils.isNone)
+        XCTAssertTrue(report.words.hasPrefix("Your army was beaten at a level 1 barrow of the Unquiet."), report.words)
+        XCTAssertTrue(report.words.hasSuffix("Of your 20 soldiers, 20 were wounded."), report.words)
+        XCTAssertEqual(ada.world.unread, 1)
+        XCTAssertTrue(bryn.world.reports.isEmpty, "Hers alone to read")
+        XCTAssertEqual(bryn.world.barrows[barrow.id]?.level, 1, "The barrow stands as it stood, for everyone")
+        await eventually("her wounded are carried home", within: 120) {
+            ada.world.myMarches.isEmpty && ada.world.troops.first { $0.kind == 1 }.map { [$0.ready, $0.wounded] } == [0, 20]
+        }
+        let tooManyWounded = await refusal { try await ada.heal(kind: 1, tier: 1, count: 21) }
+        XCTAssertEqual(tooManyWounded, "You have only 20 wounded tier 1 Spearmen.")
+        try await ada.heal(kind: 1, tier: 1, count: 20)
+        await eventually("a healing job is pushed, or already done") {
+            ada.world.jobs.contains { $0.kind == LiveJob.heal } || ada.world.troops.first { $0.kind == 1 }?.ready == 20
+        }
+        await eventually("and they stand ready again", within: 60) { ada.world.troops.first { $0.kind == 1 }.map { [$0.ready, $0.wounded] } == [20, 0] }
+        try await ada.read(report: report.id)
+        await eventually("the report is read") { ada.world.unread == 0 && ada.world.reports.count == 1 }
+        try await ada.forget(report: report.id)
+        await eventually("and thrown away") { ada.world.reports.isEmpty }
+
         // Gone when his subscription closes; his city stays.
         XCTAssertEqual(ada.world.players[him]?.online, true, "Still here, after all he asked")
         bryn.close()

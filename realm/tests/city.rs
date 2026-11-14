@@ -127,7 +127,8 @@ fn those_who_join_about_the_same_time_are_neighbours() {
     assert!(count >= 12, "a world sixteen hexes out has room for a dozen cities: {count}");
     for hex in Hex::new(0, 0).within(16) {
         let length = hex.length();
-        if length >= 16 * 30 / 100 && length <= 16 * 86 / 100 && land::ground(42, 16, hex).is_buildable() {
+        let bare = Table::<Place>::get(&small, hex.packed()).is_none();
+        if bare && length >= 16 * 30 / 100 && length <= 16 * 86 / 100 && land::ground(42, 16, hex).is_buildable() {
             assert!(all.iter().any(|city| Hex::unpacked(city.hex).distance(hex) <= rules::CITY_SPACING), "room was left at {}, {}", hex.q, hex.r);
         }
     }
