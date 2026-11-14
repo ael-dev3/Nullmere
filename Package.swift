@@ -26,6 +26,11 @@ var targets: [Target] = [
     // calls. Foundation only, so tested on Linux against a real server.
     .target(name: "NullmereLive", dependencies: ["NullmereRealm"]),
     .testTarget(name: "NullmereLiveTests", dependencies: ["NullmereLive", "NullmereRealm"]),
+    // The rebuilt realm as the renderer takes it: a window of its land as
+    // a map, its cities as holds and its armies as companies, each where
+    // it is at a moment. Pure Swift, so tested on Linux.
+    .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore"]),
+    .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore", "NullmereRealm"]),
     // A keeper's phone on their realm, apart from its screens: linked by the
     // code their Mac shows, in as the keeper, their House as the phone
     // lists it and the orders it gives. Foundation only, so tested on Linux.

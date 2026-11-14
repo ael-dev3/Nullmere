@@ -12,6 +12,8 @@ on:
       - realm/**
       - Sources/NullmereLive/**
       - Tests/NullmereLiveTests/**
+      - Sources/NullmereLiveStage/**
+      - Tests/NullmereLiveStageTests/**
       - .github/workflows/realm-check.yml
   push:
     branches: [main, "claude/**"]
@@ -19,6 +21,8 @@ on:
       - realm/**
       - Sources/NullmereLive/**
       - Tests/NullmereLiveTests/**
+      - Sources/NullmereLiveStage/**
+      - Tests/NullmereLiveStageTests/**
       - .github/workflows/realm-check.yml
   workflow_dispatch:
 
@@ -89,6 +93,13 @@ jobs:
           total="$(grep "Executed .* tests" realm-client.log | tail -n 1)"
           echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" && ! grep -q "skipped" realm-client.log || {
             echo "::error::The Swift client didn't play the realm through: $total"
+            exit 1
+          }
+          # And a window of that realm staged for the renderer: its land, its
+          # cities and its armies, from the rows the server holds.
+          NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveStageTests 2>&1 | tee realm-stage.log
+          grep -q "^LIVE a window" realm-stage.log && grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" realm-stage.log || {
+            echo "::error::A window of the realm wasn't staged from its rows"
             exit 1
           }
 
