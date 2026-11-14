@@ -41,3 +41,9 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 
 - Chill week continues: once-a-day check, no new Claude pushes to main since 017c200 (Nov 11).
 - Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+## 2026-11-14
+
+- Full rework started: the Claude session moves to Fable 5.2 xHigh to rebuild weak systems, art, UI and code toward Rise of Kingdoms level, per docs/rework-plan.md.
+- No new Claude pushes to main since 017c200 (Nov 11); main CI green.
+- Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
