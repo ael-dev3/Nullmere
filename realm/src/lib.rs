@@ -11,6 +11,9 @@
 //! tests as `store::Mem`, a store kept in memory with a clock the test
 //! moves: `cargo test` runs every rule natively, in milliseconds.
 
+pub mod catalog;
+pub mod hex;
+pub mod land;
 pub mod rows;
 pub mod rules;
 pub mod store;

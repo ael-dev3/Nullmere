@@ -6,7 +6,7 @@ use realm::store::{Mem, Table};
 
 fn opened() -> Mem {
     let mut db = Mem::new(1_000_000, 7);
-    rules::open(&mut db, 42, 1);
+    rules::open(&mut db, 42, 1, 24);
     db
 }
 
@@ -15,11 +15,11 @@ fn the_realm_opens_once() {
     let mut db = Mem::new(500, 7);
     assert_eq!(rules::realm(&db), Err(Refusal::NotOpen));
     assert_eq!(rules::join(&mut db, "Ada"), Err(Refusal::NotOpen));
-    rules::open(&mut db, 42, 0);
+    rules::open(&mut db, 42, 0, 24);
     let realm = rules::realm(&db).unwrap();
-    assert_eq!((realm.seed, realm.opened, realm.pace), (42, 500, 1), "a pace of nothing is the pace as written");
+    assert_eq!((realm.seed, realm.opened, realm.pace, realm.radius), (42, 500, 1, 24), "a pace of nothing is the pace as written");
     db.clock = 900;
-    rules::open(&mut db, 99, 5);
+    rules::open(&mut db, 99, 5, 30);
     assert_eq!(rules::realm(&db).unwrap(), realm, "opened once, it stays as it opened");
     assert_eq!(Table::<Realm>::all(&db).len(), 1);
 }
@@ -54,7 +54,9 @@ fn a_player_joins_under_a_name_of_their_own() {
 
 #[test]
 fn only_so_many_join_in_a_minute() {
-    let mut db = opened();
+    // A world with room for them all.
+    let mut db = Mem::new(1_000_000, 7);
+    rules::open(&mut db, 42, 1, 80);
     for index in 0..rules::JOINING_A_MINUTE {
         db.call(|db| rules::join(db, &format!("Player {index}"))).unwrap();
     }

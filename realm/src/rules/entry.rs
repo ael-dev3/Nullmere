@@ -1,7 +1,9 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::Refusal;
-use crate::rows::{Db, Pace, Player, Realm};
+use super::{found, Refusal};
+use crate::catalog::{self, Building};
+use crate::land;
+use crate::rows::{Blueprint, Db, Land, Pace, Player, Realm};
 use crate::store::{Seconds, Table};
 
 /// The fewest and the most letters in a player's name.
@@ -13,13 +15,44 @@ pub const JOINING_A_MINUTE: u32 = 120;
 /// The most things one player may ask of the realm in ten seconds.
 pub const ASKING_IN_TEN_SECONDS: u32 = 40;
 
-/// Opens the realm: once, as the module is published.
-pub fn open(db: &mut impl Db, seed: u64, pace: u32) {
+/// Opens the realm: once, as the module is published. Its land is grown
+/// from the seed and kept, and the catalogue is written out for clients.
+pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     if Table::<Realm>::get(db, 0).is_some() {
         return;
     }
     let now = db.now();
-    db.insert(Realm { id: 0, seed, opened: now, pace: pace.max(1), joining_minute: now, joined_in_minute: 0 });
+    let pace = pace.max(1);
+    db.insert(Realm { id: 0, seed, opened: now, pace, joining_minute: now, joined_in_minute: 0, radius });
+    for (chunk, ground) in land::chunks(seed, radius) {
+        db.insert(Land { chunk, ground });
+    }
+    for building in Building::ALL {
+        for level in 1..=catalog::TOP_LEVEL {
+            let cost = catalog::cost(building, level);
+            let hourly = catalog::yields(building, level).times(pace as u64);
+            let needs = catalog::needs(building, level);
+            db.insert(Blueprint {
+                id: Blueprint::key(building as u8, level),
+                building: building as u8,
+                level,
+                name: building.name().to_string(),
+                grain: cost.grain,
+                timber: cost.timber,
+                stone: cost.stone,
+                moonsalt: cost.moonsalt,
+                seconds: catalog::paced(catalog::seconds(building, level), pace),
+                grain_hourly: hourly.grain,
+                timber_hourly: hourly.timber,
+                stone_hourly: hourly.stone,
+                moonsalt_hourly: hourly.moonsalt,
+                opens_at: building.opens_at(),
+                needs_building: needs.map(|(other, _)| other as u8).unwrap_or(0),
+                needs_level: needs.map(|(_, level)| level).unwrap_or(0),
+                power: catalog::power(building, level),
+            });
+        }
+    }
 }
 
 /// The realm's one row.
@@ -68,7 +101,8 @@ pub fn name_taken(db: &impl Db, name: &str) -> bool {
     Table::<Player>::by(db, 0, name_key(name)).iter().any(|player| player.name.to_lowercase() == folded)
 }
 
-/// A new player joins the realm under a name, and is given their number.
+/// A new player joins the realm under a name, is given their number, and
+/// their city is founded.
 pub fn join(db: &mut impl Db, name: &str) -> Result<Player, Refusal> {
     let mut realm = realm(db)?;
     let name = tidy(name);
@@ -89,7 +123,9 @@ pub fn join(db: &mut impl Db, name: &str) -> Result<Player, Refusal> {
     }
     realm.joined_in_minute += 1;
     db.update(realm);
-    Ok(db.insert(Player { id: 0, name_key: name_key(&name), name, joined: now, online: true, seen: now }))
+    let player = db.insert(Player { id: 0, name_key: name_key(&name), name, joined: now, online: true, seen: now });
+    found(db, &player)?;
+    Ok(player)
 }
 
 /// A player connects or disconnects: seen now, here or gone.

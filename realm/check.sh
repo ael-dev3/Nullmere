@@ -111,6 +111,47 @@ check("nor whose identity is whose", isinstance(private, str) and "account" in p
 fired = call(ada, "fire", {"scheduled_id": 1, "scheduled_at": {"Time": {"__timestamp_micros_since_unix_epoch__": 0}}, "kind": 1, "subject": 1})
 check("only the realm keeps its timers", fired is not None, True)
 
+# The world: its land and its catalogue, there for every client to read.
+radius = realm[0]["radius"]
+land = rows(nobody, "SELECT * FROM land")
+check("the land is kept in chunks of 256 hexes", (len(land) > 100, all(len(chunk["ground"]) in (256, 512) for chunk in land)), (True, True))
+check("the catalogue is written out, 18 buildings by 25 levels", len(rows(nobody, "SELECT id FROM blueprint")), 450)
+
+# A city: founded on joining, its owner's to read whole, everyone's to see.
+city = rows(ada, "SELECT * FROM my_city")
+check("joining founds a city", [(c["name"], c["keep"], c["builders"]) for c in city], [("Ada of the Lake", 1, 1)])
+check("everyone sees where cities stand", len(rows(nobody, "SELECT id FROM city")), 2)
+check("and what stands on which hex", sorted(p["kind"] for p in rows(nobody, "SELECT * FROM place")), [1, 1])
+buildings = rows(ada, "SELECT * FROM my_buildings")
+check("it has a Keep, a Farm and a Sawmill", sorted((b["kind"], b["level"]) for b in buildings), [(1, 1), (2, 1), (3, 1)])
+check("another player's buildings are not theirs to read", sorted(b["city"] for b in rows(bryn, "SELECT * FROM my_buildings")) == [c["id"] for c in rows(bryn, "SELECT * FROM my_city")] * 3, True)
+for table in ("building", "job", "stock"):
+    private = rows(ada, f"SELECT * FROM {table}")
+    check(f"the {table} table itself is closed to clients", isinstance(private, str), True)
+stock = rows(ada, "SELECT * FROM my_stock")[0]
+check("it starts with goods and brings more in each hour", (stock["grain"], stock["timber"], stock["stone"], stock["grain_hourly"], stock["holds"]), (6000, 8000, 6000, 1300, 30000))
+
+# Raising the Keep: paid at once, done by the database's own scheduler.
+keep = next(b for b in buildings if b["kind"] == 1)
+farm = next(b for b in buildings if b["kind"] == 2)
+check("nothing rises above the Keep", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
+check("another player can't raise it", call(bryn, "upgrade", keep["id"]), "That is not yours.")
+check("the Keep begins to rise", call(ada, "upgrade", keep["id"]), None)
+jobs = rows(ada, "SELECT * FROM my_jobs")
+check("a job is under way, eight seconds long", [(j["kind"], j["subject"], j["level"], j["ends"] - j["started"]) for j in jobs], [(1, keep["id"], 2, 8)])
+check("its cost is paid as it begins", rows(ada, "SELECT * FROM my_stock")[0]["timber"] in range(8000 - 620, 8000 - 620 + 10), True)
+check("and nothing else rises above the Keep meanwhile", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
+check("and not the same thing twice", call(ada, "upgrade", keep["id"]), "Your Keep is already being built.")
+import time
+deadline = time.time() + 30
+while time.time() < deadline and rows(ada, "SELECT * FROM my_jobs"):
+    time.sleep(1)
+check("the realm's own timer finishes it", [b["level"] for b in rows(ada, "SELECT * FROM my_buildings") if b["kind"] == 1], [2])
+check("and everyone sees the city's Keep at level 2", [c["keep"] for c in rows(nobody, "SELECT * FROM city") if c["name"] == "Ada of the Lake"], [2])
+check("now the Farm may follow", call(ada, "upgrade", farm["id"]), None)
+check("a second thing must wait for the builder", call(ada, "build", 4), "Your builders are busy. Wait for them to finish.")
+check("a building not yet open is refused", call(bryn, "build", 10), "Raise your Keep to level 10 first.")
+
 if failures:
     print(f"{len(failures)} of the realm's checks failed")
     sys.exit(1)

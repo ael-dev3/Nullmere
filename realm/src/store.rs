@@ -161,6 +161,22 @@ impl Mem {
     pub fn next_due(&self) -> Option<Seconds> {
         self.timers.values().map(|timer| timer.at).min()
     }
+
+    /// Moves the clock on to a moment, firing every timer that comes due
+    /// on the way, each at its own moment and in its own transaction, as
+    /// the database's scheduler does; `fire` is the rules' own.
+    pub fn advance(&mut self, to: Seconds, mut fire: impl FnMut(&mut Mem, &Timer)) {
+        while let Some(at) = self.next_due().filter(|at| *at <= to) {
+            self.clock = self.clock.max(at);
+            for timer in self.due() {
+                let _: Result<(), ()> = self.call(|db| {
+                    fire(db, &timer);
+                    Ok(())
+                });
+            }
+        }
+        self.clock = self.clock.max(to);
+    }
 }
 
 impl<R: Row> Table<R> for Mem {

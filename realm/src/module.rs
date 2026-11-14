@@ -7,7 +7,11 @@
 
 use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Table as _, Timestamp, ViewContext};
 
-use crate::rows::{pace as _, player as _, player__view as _, realm as _, Pace, Player, Realm};
+use crate::rows::{
+    blueprint as _, building as _, building__view as _, city as _, city__view as _, job as _, job__view as _, land as _, pace as _, place as _,
+    player as _, player__view as _, realm as _, stock as _, stock__view as _, Blueprint, Building, City, Job, Land, Pace, Place, Player, Realm,
+    Stock,
+};
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
 
@@ -98,6 +102,13 @@ macro_rules! stored {
 stored!(Realm in realm by id);
 stored!(Player in player by id, name_key);
 stored!(Pace in pace by player);
+stored!(Land in land by chunk);
+stored!(Place in place by hex);
+stored!(Blueprint in blueprint by id);
+stored!(City in city by id, owner);
+stored!(Building in building by id, city);
+stored!(Job in job by id, city);
+stored!(Stock in stock by city);
 
 /// The player a caller is, by their identity.
 fn caller(ctx: &ReducerContext) -> Result<u64, Refusal> {
@@ -109,16 +120,20 @@ fn said<T>(result: Result<T, Refusal>) -> Result<(), String> {
     result.map(|_| ()).map_err(|refusal| refusal.to_string())
 }
 
-/// How many times faster than written a realm runs, where its publisher
-/// sets none: the realm proper's pace.
+/// How many times faster than written the realm runs: 1, the realm
+/// proper's pace.
 const PACE: u32 = 1;
+/// How many hexes the world reaches from the lake's heart: room for some
+/// two thousand cities.
+const RADIUS: u32 = 128;
 
-/// The module is published: the realm opens.
+/// The module is published: the realm opens, its land grown from a seed
+/// drawn then.
 #[reducer(init)]
 pub fn init(ctx: &ReducerContext) {
     let seed: u64 = ctx.random();
-    rules::open(&mut Stdb(ctx), seed, PACE);
-    log::info!("The realm is open.");
+    rules::open(&mut Stdb(ctx), seed, PACE, RADIUS);
+    log::info!("The realm is open: seed {seed}, {RADIUS} hexes from heart to rim.");
 }
 
 /// A player's client connects: they are here.
@@ -150,19 +165,64 @@ pub fn join(ctx: &ReducerContext, name: String) -> Result<(), String> {
     said(joined)
 }
 
+/// Build a building the caller's city has not got, by its kind's number.
+#[reducer]
+pub fn build(ctx: &ReducerContext, kind: u8) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::build(&mut Stdb(ctx), player, kind)))
+}
+
+/// Raise one of the caller's buildings a level.
+#[reducer]
+pub fn upgrade(ctx: &ReducerContext, building: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::upgrade(&mut Stdb(ctx), player, building)))
+}
+
 /// A timer the rules set has come due. Only the scheduler may call this.
 #[reducer]
 pub fn fire(ctx: &ReducerContext, timer: Timer) -> Result<(), String> {
     if ctx.sender() != ctx.database_identity() {
         return Err("Only the realm itself keeps its timers.".into());
     }
-    log::debug!("timer {} of kind {} for {}", timer.scheduled_id, timer.kind, timer.subject);
+    let at = match timer.scheduled_at {
+        ScheduleAt::Time(moment) => moment.to_micros_since_unix_epoch().div_euclid(1_000_000),
+        ScheduleAt::Interval(_) => Stdb(ctx).now(),
+    };
+    rules::fire(&mut Stdb(ctx), &crate::store::Timer { at, kind: timer.kind, subject: timer.subject });
     Ok(())
+}
+
+/// The player a view's caller is, if they have joined.
+fn viewer(ctx: &ViewContext) -> Option<u64> {
+    ctx.db.account().identity().find(ctx.sender()).map(|account| account.player)
 }
 
 /// The caller's own player, if they have joined.
 #[view(accessor = me, public)]
 fn me(ctx: &ViewContext) -> Option<Player> {
-    let account = ctx.db.account().identity().find(ctx.sender())?;
-    ctx.db.player().id().find(account.player)
+    ctx.db.player().id().find(viewer(ctx)?)
+}
+
+/// The caller's own city.
+#[view(accessor = my_city, public)]
+fn my_city(ctx: &ViewContext) -> Option<City> {
+    ctx.db.city().owner().filter(viewer(ctx)?).next()
+}
+
+/// What stands in the caller's city.
+#[view(accessor = my_buildings, public)]
+fn my_buildings(ctx: &ViewContext) -> Vec<Building> {
+    my_city(ctx).map(|city| ctx.db.building().city().filter(city.id).collect()).unwrap_or_default()
+}
+
+/// What the caller's city has under way.
+#[view(accessor = my_jobs, public)]
+fn my_jobs(ctx: &ViewContext) -> Vec<Job> {
+    my_city(ctx).map(|city| ctx.db.job().city().filter(city.id).collect()).unwrap_or_default()
+}
+
+/// The caller's city's goods, as they stood when the realm last touched
+/// them: the client reckons their growth since from the hourly rates.
+#[view(accessor = my_stock, public)]
+fn my_stock(ctx: &ViewContext) -> Option<Stock> {
+    ctx.db.stock().city().find(my_city(ctx)?.id)
 }
