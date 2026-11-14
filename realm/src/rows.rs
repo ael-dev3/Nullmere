@@ -581,6 +581,38 @@ pub struct AllianceChat {
 }
 row!(AllianceChat in alliance_chat, auto, by id, alliance);
 
+/// One of a player's first tasks, as the catalogue has it, for clients to
+/// show: what it asks, in words and in numbers a client can check
+/// against its own rows (`catalog::Goal::numbers`), and what it gives.
+/// Keyed by its place in the order, from 1.
+#[spacetimedb::table(accessor = task, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Task {
+    #[primary_key]
+    pub step: u64,
+    pub goal: u8,
+    pub amount: u64,
+    pub level: u64,
+    pub words: String,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+}
+row!(Task in task, by step);
+
+/// How far through their tasks a player is: theirs alone to read. Keyed
+/// by their player number. `step` is the task they are on; one past the
+/// last when they have done them all.
+#[spacetimedb::table(accessor = progress)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Progress {
+    #[primary_key]
+    pub player: u64,
+    pub step: u64,
+}
+row!(Progress in progress, by player);
+
 /// Everything the rules keep: every table, the clock, chance and timers.
 pub trait Db:
     World
@@ -608,6 +640,8 @@ pub trait Db:
     + Table<Applicant>
     + Table<RealmChat>
     + Table<AllianceChat>
+    + Table<Task>
+    + Table<Progress>
 {
 }
 
@@ -636,7 +670,9 @@ impl<
             + Table<Member>
             + Table<Applicant>
             + Table<RealmChat>
-            + Table<AllianceChat>,
+            + Table<AllianceChat>
+            + Table<Task>
+            + Table<Progress>,
     > Db for T
 {
 }

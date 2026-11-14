@@ -152,6 +152,44 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertTrue(LiveWorld(snapshot: ["city": [[.string("x")]], "my_stock": [[]]]).cities.isEmpty)
     }
 
+    func testThePlayersTaskIsReadAndReckonedDone() throws {
+        func task(_ step: Int, _ goal: Int, _ amount: Int, _ level: Int, _ words: String) -> [JSONValue] {
+            [n(Double(step)), n(Double(goal)), n(Double(amount)), n(Double(level)), .string(words), n(1_000), n(1_500), n(0), n(0)]
+        }
+        var snapshot: [String: [[JSONValue]]] = [
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "my_city": [[n(7), n(1), n(Double(LiveHex(q: 0, r: 0).packed)), .string("Ada"), n(2), n(940), n(1_000), n(1)]],
+            "my_buildings": [[n(21), n(7), n(1), n(2)], [n(24), n(7), n(7), n(0)]],
+            "my_troops": [[n(Double(7 << 16 | 1 << 8 | 1)), n(7), n(1), n(1), n(10), n(3)]],
+            "my_squads": [[n(Double(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(5), n(2)]],
+            "my_hunt": [[n(1), n(940), n(2_000), n(1_000), n(8_000), n(1)]],
+            "task": [task(1, 1, 2, 0, "Raise your Keep to level 2."), task(2, 2, 7, 1, "Build a Barracks."), task(3, 3, 20, 0, "Have 20 soldiers."),
+                     task(4, 4, 2, 0, "Clear a level 2 barrow of the Unquiet."), task(5, 5, 0, 0, "Join an alliance, or found one."),
+                     task(6, 6, 940, 0, "Reach 940 power."), task(7, 9, 0, 0, "Something not yet known here.")],
+            "my_progress": [[n(1), n(2)]],
+        ]
+        let world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.step, 2)
+        let on = try XCTUnwrap(world.task)
+        XCTAssertEqual([on.words, on.gives.words], ["Build a Barracks.", "1,000 grain and 1,500 timber"])
+        XCTAssertEqual([on.goal, Int(on.amount), on.level], [LiveTask.raised, 7, 1])
+        // Done or not, as far as the rows tell.
+        let done = (1...7).map { world.isDone(world.tasks[$0]!) }
+        XCTAssertEqual(done, [true, false, true, false, false, true, false],
+                       "the Keep is at 2; the Barracks is still rising; 13 at home and 7 out make 20; a level 1 barrow cleared; no alliance; 940 power; a goal unknown")
+        snapshot["my_buildings"] = [[n(24), n(7), n(7), n(1)]]
+        snapshot["member"] = [[n(1), n(5), n(1), n(1_600)]]
+        snapshot["my_hunt"] = [[n(1), n(940), n(2_000), n(1_000), n(8_000), n(2)]]
+        let later = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual((1...7).map { later.isDone(later.tasks[$0]!) }, [true, true, true, true, true, true, false])
+        // Every task done: none is left; and no city, nothing done.
+        snapshot["my_progress"] = [[n(1), n(8)]]
+        XCTAssertNil(LiveWorld(snapshot: snapshot).task)
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).step, 8)
+        XCTAssertFalse(LiveWorld(snapshot: ["task": snapshot["task"]!]).isDone(on))
+        XCTAssertNil(LiveWorld(snapshot: [:]).step)
+    }
+
     func testAlliancesAndWhatIsSaidAreRead() throws {
         let world = LiveWorld(snapshot: [
             "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)],

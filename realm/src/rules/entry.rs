@@ -1,9 +1,9 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::{found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, Refusal};
+use super::{found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_tasks, Refusal};
 use crate::catalog::{self, Building, Troops};
 use crate::land;
-use crate::rows::{Blueprint, City, Db, Hunt, Land, Pace, Player, Realm, Soldier};
+use crate::rows::{Blueprint, City, Db, Hunt, Land, Pace, Player, Progress, Realm, Soldier};
 use crate::store::{Seconds, Table};
 
 /// The fewest and the most letters in a player's name.
@@ -28,6 +28,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
         db.insert(Land { chunk, ground });
     }
     write_catalogue(db, pace);
+    write_tasks(db);
     scatter_sites(db);
     scatter_barrows(db);
 }
@@ -187,6 +188,7 @@ pub fn join(db: &mut impl Db, name: &str) -> Result<Player, Refusal> {
     found(db, &player)?;
     let hunt = hunt_of(db, player.id);
     keep_hunt(db, hunt);
+    db.insert(Progress { player: player.id, step: 1 });
     Ok(player)
 }
 

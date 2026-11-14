@@ -12,6 +12,7 @@ mod city;
 mod entry;
 mod march;
 mod siege;
+mod tasks;
 
 pub use alliance::*;
 pub use army::*;
@@ -20,6 +21,7 @@ pub use city::*;
 pub use entry::*;
 pub use march::*;
 pub use siege::*;
+pub use tasks::*;
 
 use crate::catalog::{Building, Goods, Troops};
 use crate::rows::Db;
@@ -135,6 +137,9 @@ pub enum Refusal {
     NothingSaid,
     SaidTooLong,
     SayingTooFast,
+    /// The task the player is on is not done: what it asks.
+    TaskNotDone(String),
+    NoTasksLeft,
     /// Something only the realm's owner may do.
     NotTheOwner,
 }
@@ -162,6 +167,7 @@ impl fmt::Display for Refusal {
             Refusal::NotEnoughWounded(troops, tier, wounded) => {
                 return write!(f, "You have only {} wounded tier {tier} {}.", crate::catalog::grouped(*wounded), troops.name());
             }
+            Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
@@ -216,6 +222,7 @@ impl fmt::Display for Refusal {
             Refusal::NothingSaid => "Say something first.",
             Refusal::SaidTooLong => "That is too long to say at once: 200 letters at most.",
             Refusal::SayingTooFast => "Wait a moment before you say more.",
+            Refusal::NoTasksLeft => "You have done every task there is.",
             Refusal::NoCityThere => "There is no city to attack there.",
             Refusal::OwnCity => "That is your own city.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",

@@ -446,7 +446,9 @@ final class LiveSessionTests: XCTestCase {
         await session.say("Good morning, all.", withinAlliance: false)
         await session.say("East shore is quiet", withinAlliance: true)
         await session.leaveAlliance()
-        XCTAssertEqual(Array(line.asked.suffix(10)), ["found Keepers [MERE]", "join alliance 5", "admit 9", "turn away 8", "rank 2 4", "expel 3",
+        await session.claimTask()
+        XCTAssertEqual(line.asked.last, "claim task")
+        XCTAssertEqual(Array(line.asked.dropLast().suffix(10)), ["found Keepers [MERE]", "join alliance 5", "admit 9", "turn away 8", "rank 2 4", "expel 3",
                                                        "alliance closed: We keep the east shore.", "say to all: Good morning, all.",
                                                        "say within: East shore is quiet", "leave alliance"])
         XCTAssertNil(session.said)

@@ -147,6 +147,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Throws one of the player's reports away.
     public func forget(report: UInt64) async throws { try await ask("forget_report", [.integer(report)]) }
 
+    /// Claims what the task the player is on gives, if it is done.
+    public func claimTask() async throws { try await ask("claim_task", []) }
+
     // MARK: Alliances and chat
 
     /// Founds an alliance under a name and a tag, with the player its leader.

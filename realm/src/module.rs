@@ -11,10 +11,10 @@ use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
     building__view as _, city as _, city__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _,
-    march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, realm as _,
-    realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _,
+    march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
+    realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, City, Haul, Hunt, Job, Land, March, Member,
-    Pace, Place, Player, Realm, RealmChat, Report, Site, Soldier, Squad, Stock, Troop,
+    Pace, Place, Player, Progress, Realm, RealmChat, Report, Site, Soldier, Squad, Stock, Task, Troop,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -146,6 +146,8 @@ stored!(Member in member by player, alliance);
 stored!(Applicant in applicant by player, alliance);
 stored!(RealmChat in realm_chat by id);
 stored!(AllianceChat in alliance_chat by id, alliance);
+stored!(Task in task by step);
+stored!(Progress in progress by player);
 
 /// The player a caller is, by their identity.
 fn caller(ctx: &ReducerContext) -> Result<u64, Refusal> {
@@ -349,6 +351,12 @@ pub fn say(ctx: &ReducerContext, within_alliance: bool, words: String) -> Result
     said(caller(ctx).and_then(|player| rules::say(&mut Stdb(ctx), player, within_alliance, &words)))
 }
 
+/// Claim what the task the caller is on gives, if it is done.
+#[reducer]
+pub fn claim_task(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::claim_task(&mut Stdb(ctx), player)))
+}
+
 /// A timer the rules set has come due. Only the scheduler may call this.
 #[reducer]
 pub fn fire(ctx: &ReducerContext, timer: Timer) -> Result<(), String> {
@@ -449,4 +457,10 @@ fn my_applicants(ctx: &ViewContext) -> Vec<Applicant> {
         Some(_) => Vec::new(),
         None => ctx.db.applicant().player().find(player).into_iter().collect(),
     }
+}
+
+/// Which of their first tasks the caller is on.
+#[view(accessor = my_progress, public)]
+fn my_progress(ctx: &ViewContext) -> Option<Progress> {
+    ctx.db.progress().player().find(viewer(ctx)?)
 }

@@ -21,6 +21,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var realmChat: [LiveSaying] = []
     /// The land's chunks, sixteen hexes by sixteen, a byte a hex.
     public var land: [UInt64: [UInt8]] = [:]
+    /// The players' first tasks, by their place in the order.
+    public var tasks: [Int: LiveTask] = [:]
     var blueprints: [UInt64: LiveBlueprint] = [:]
     var soldiers: [UInt64: LiveSoldier] = [:]
 
@@ -35,6 +37,9 @@ public struct LiveWorld: Equatable, Sendable {
     public var hunt: LiveHunt?
     /// The player's reports, the latest first.
     public var reports: [LiveReport] = []
+    /// The task the player is on, by its place in the order; one past the
+    /// last when they have done them all.
+    public var step: Int?
     /// What has been said within the player's alliance, the oldest first.
     public var allianceChat: [LiveSaying] = []
     /// Who has asked to join the player's alliance, for its officers; or
@@ -56,6 +61,7 @@ public struct LiveWorld: Equatable, Sendable {
         alliances = Dictionary(rows("alliance", LiveAlliance.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         members = Dictionary(rows("member", LiveMember.init).map { ($0.player, $0) }, uniquingKeysWith: { _, new in new })
         realmChat = rows("realm_chat", LiveSaying.init(realm:)).sorted { $0.id < $1.id }
+        tasks = Dictionary(rows("task", LiveTask.init).map { ($0.step, $0) }, uniquingKeysWith: { _, new in new })
         for row in snapshot["land"] ?? [] {
             let cells = Cells(row: row)
             if let chunk = cells.unsigned(0), let ground = cells.bytes(1) { land[chunk] = ground }
@@ -76,6 +82,7 @@ public struct LiveWorld: Equatable, Sendable {
         reports = rows("my_reports", LiveReport.init).sorted { $0.id > $1.id }
         allianceChat = rows("my_alliance_chat", LiveSaying.init(alliance:)).sorted { $0.id < $1.id }
         applicants = rows("my_applicants", LiveApplicant.init).sorted { $0.at < $1.at }
+        step = (snapshot["my_progress"] ?? []).compactMap { Cells(row: $0).whole(1) }.first
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
@@ -121,6 +128,26 @@ public struct LiveWorld: Equatable, Sendable {
     /// they joined.
     public func roster(of alliance: UInt64) -> [LiveMember] {
         members.values.filter { $0.alliance == alliance }.sorted { ($1.rank, $0.joined, $0.player) < ($0.rank, $1.joined, $1.player) }
+    }
+
+    /// The task the player is on, if any are left.
+    public var task: LiveTask? { step.flatMap { tasks[$0] } }
+
+    /// Whether the player's city has done what a task asks, as far as the
+    /// rows tell: the realm has the last word when it is claimed.
+    public func isDone(_ task: LiveTask) -> Bool {
+        guard let city else { return false }
+        switch task.goal {
+        case LiveTask.keep: return city.keep >= Int(task.amount)
+        case LiveTask.raised: return (building(Int(task.amount))?.level ?? 0) >= task.level
+        case LiveTask.soldiers:
+            let home = troops.reduce(0) { $0 + $1.ready + $1.wounded }
+            return home + squads.reduce(0) { $0 + $1.count + $1.wounded } >= task.amount
+        case LiveTask.cleared: return (hunt?.cleared ?? 0) >= Int(task.amount)
+        case LiveTask.allied: return myMembership != nil
+        case LiveTask.power: return city.power >= task.amount
+        default: return false
+        }
     }
 
     /// How many of the player's reports are unread.

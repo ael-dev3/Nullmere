@@ -645,3 +645,33 @@ public struct LiveApplicant: Equatable, Sendable, Identifiable {
         (self.player, self.alliance, self.name, self.at) = (player, alliance, name, at)
     }
 }
+
+/// One of a player's first tasks: what it asks, in words and in numbers
+/// a client can check against its own rows, and what it gives.
+public struct LiveTask: Equatable, Sendable, Identifiable {
+    /// What a task asks, as the module's catalogue numbers its goals.
+    public static let keep = 1
+    public static let raised = 2
+    public static let soldiers = 3
+    public static let cleared = 4
+    public static let allied = 5
+    public static let power = 6
+
+    public let step: Int
+    public var id: Int { step }
+    public let goal: Int
+    /// The goal's amounts: a level, a count or a power; or a building's
+    /// kind, with the level it is to stand at.
+    public let amount: UInt64
+    public let level: Int
+    public let words: String
+    public let gives: LiveGoods
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let step = cells.whole(0), let goal = cells.whole(1), let amount = cells.unsigned(2), let level = cells.whole(3),
+              let words = cells.text(4) else { return nil }
+        (self.step, self.goal, self.amount, self.level, self.words) = (step, goal, amount, level, words)
+        gives = LiveGoods(grain: cells.unsigned(5) ?? 0, timber: cells.unsigned(6) ?? 0, stone: cells.unsigned(7) ?? 0, moonsalt: cells.unsigned(8) ?? 0)
+    }
+}

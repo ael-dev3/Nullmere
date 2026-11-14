@@ -647,3 +647,78 @@ pub const ALLIANCE_CHAT_KEPT: usize = 200;
 pub const REALM_CHAT_KEPT: u64 = 300;
 pub const SAID_LONGEST: usize = 200;
 pub const SAID_EVERY: i64 = 2;
+
+/// What a task asks of a player's city.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Goal {
+    /// The Keep at a level.
+    Keep(u32),
+    /// A building standing at a level.
+    Raised(Building, u32),
+    /// So many soldiers, wherever they are.
+    Soldiers(u64),
+    /// A barrow of a level cleared.
+    Cleared(u32),
+    /// In an alliance.
+    Allied,
+    /// So much power.
+    Power(u64),
+}
+
+impl Goal {
+    /// The goal as three numbers, for a row: its kind and two amounts.
+    pub fn numbers(self) -> (u8, u64, u64) {
+        match self {
+            Goal::Keep(level) => (1, level as u64, 0),
+            Goal::Raised(building, level) => (2, building as u64, level as u64),
+            Goal::Soldiers(count) => (3, count, 0),
+            Goal::Cleared(level) => (4, level as u64, 0),
+            Goal::Allied => (5, 0, 0),
+            Goal::Power(power) => (6, power, 0),
+        }
+    }
+
+    /// The goal in a player's words.
+    pub fn words(self) -> String {
+        match self {
+            Goal::Keep(level) => format!("Raise your Keep to level {level}."),
+            Goal::Raised(building, 1) => format!("Build {} {}.", if building.name().starts_with(['A', 'E', 'I', 'O', 'U']) { "an" } else { "a" }, building.name()),
+            Goal::Raised(building, level) => format!("Raise your {} to level {level}.", building.name()),
+            Goal::Soldiers(count) => format!("Have {} soldiers.", grouped(count)),
+            Goal::Cleared(level) => format!("Clear a level {level} barrow of the Unquiet."),
+            Goal::Allied => "Join an alliance, or found one.".to_string(),
+            Goal::Power(power) => format!("Reach {} power.", grouped(power)),
+        }
+    }
+}
+
+/// A player's first tasks, in the order they are set: what each asks and
+/// what it gives when it is done. They lead a new city through its
+/// first buildings, its first soldiers and its first fights.
+pub fn tasks() -> Vec<(Goal, Goods)> {
+    let give = |grain: u64, timber: u64, stone: u64| Goods::of(grain, timber, stone, 0);
+    vec![
+        (Goal::Keep(2), give(1_000, 1_000, 0)),
+        (Goal::Raised(Building::Barracks, 1), give(1_000, 1_000, 0)),
+        (Goal::Soldiers(20), give(1_500, 1_500, 0)),
+        (Goal::Cleared(1), give(2_000, 2_000, 500)),
+        (Goal::Raised(Building::Farm, 2), give(1_000, 1_500, 0)),
+        (Goal::Raised(Building::Sawmill, 2), give(1_500, 1_000, 0)),
+        (Goal::Raised(Building::Quarry, 1), give(1_000, 1_000, 1_000)),
+        (Goal::Raised(Building::Storehouse, 1), give(2_000, 2_000, 1_000)),
+        (Goal::Keep(3), give(3_000, 3_000, 1_500)),
+        (Goal::Raised(Building::Wall, 1), give(2_000, 2_000, 2_000)),
+        (Goal::Raised(Building::Hospital, 1), give(3_000, 3_000, 1_000)),
+        (Goal::Soldiers(100), give(4_000, 4_000, 1_000)),
+        (Goal::Cleared(2), give(4_000, 4_000, 2_000)),
+        (Goal::Keep(4), give(6_000, 6_000, 3_000)),
+        (Goal::Raised(Building::Range, 1), give(5_000, 5_000, 2_000)),
+        (Goal::Cleared(3), give(6_000, 6_000, 3_000)),
+        (Goal::Keep(5), give(10_000, 10_000, 5_000)),
+        (Goal::Raised(Building::Embassy, 1), give(6_000, 6_000, 4_000)),
+        (Goal::Allied, give(10_000, 10_000, 5_000)),
+        (Goal::Soldiers(500), give(12_000, 12_000, 6_000)),
+        (Goal::Cleared(5), give(15_000, 15_000, 8_000)),
+        (Goal::Power(5_000), Goods::of(20_000, 20_000, 10_000, 500)),
+    ]
+}

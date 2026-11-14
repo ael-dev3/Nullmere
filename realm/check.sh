@@ -233,6 +233,16 @@ refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count
 check("an army sent against a new city is refused", (refused or "").startswith("That city is at peace for another "), True)
 check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}]), "That is your own city.")
 
+# A player's first tasks: the first is to raise the Keep, which Ada has done.
+tasks = rows(nobody, "SELECT * FROM task")
+check("the first tasks are written out for all to read", (len(tasks), sorted(tasks, key=lambda task: task["step"])[0]["words"]), (22, "Raise your Keep to level 2."))
+check("a player is on the first", rows(ada, "SELECT * FROM my_progress"), [{"player": rows(ada, "SELECT * FROM me")[0]["id"], "step": 1}])
+grain = rows(ada, "SELECT * FROM my_stock")[0]["grain"]
+check("a task done is claimed", call(ada, "claim_task"), None)
+check("and gives what it promised", (rows(ada, "SELECT * FROM my_stock")[0]["grain"] >= grain + 1000, rows(ada, "SELECT * FROM my_progress")[0]["step"]), (True, 2))
+check("the next is not done yet", call(ada, "claim_task"), "Not done yet: Build a Barracks.")
+check("no one reads another's progress", isinstance(rows(ada, "SELECT * FROM progress"), str), True)
+
 # What players say to one another, and alliances.
 check("a player speaks to the realm", call(ada, "say", False, "  Good   morning, all. "), None)
 check("and everyone reads it, tidied, under their name", [(s["name"], s["words"]) for s in rows(nobody, "SELECT * FROM realm_chat")], [("Ada of the Lake", "Good morning, all.")])
