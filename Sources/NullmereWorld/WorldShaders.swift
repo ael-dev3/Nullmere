@@ -13,8 +13,11 @@
 /// as soft discs facing the eye; fires and blows also light the land and
 /// the models round them, as four lights of the world's own.
 ///
-/// The code between the SCENE markers is written in the subset shared by
-/// Metal and GLSL, so Tools/world3d-preview can render it in a browser.
+/// The code between the SCENE markers, and the fragments' own between the
+/// SHADING markers, is written in the subset shared by Metal and GLSL: what
+/// a fragment is lit by is written once, there, and the Metal fragment
+/// functions and Tools/world3d-preview's both only hand their inputs to it,
+/// so the browser preview draws what the game draws.
 public enum WorldShaders {
     public static let landVertex = "nm_land_vertex"
     public static let landFragment = "nm_land_fragment"
@@ -50,6 +53,18 @@ public enum WorldShaders {
     #define NM_SHADOW_V -0.5
     #define NM_SHADOW_DEPTH(z) (z)
     constexpr sampler nm_shadowSampler(coord::normalized, filter::linear, address::clamp_to_edge, compare_func::less_equal);
+    // What the fragments' shared code is handed here and finds for itself
+    // in the browser: the frame, the Houses' colours (64 to a row, see
+    // HousePalette), the land's heights, a pixel left out, and a list of six.
+    #define NM_FRAME_UNIFORM
+    #define NM_FRAME_ARGUMENT , constant FrameUniforms &frame
+    #define NM_PALETTE_ARGUMENT , texture2d<float, access::read> housePalette
+    #define NM_HOUSE(slot) housePalette.read(uint2(slot % 64u, slot / 64u)).rgb
+    #define NM_HEIGHTS_ARGUMENT , texture2d<float> heights
+    #define NM_HEIGHT(uv) heights.sample(nm_smoothSampler, uv).r
+    constexpr sampler nm_smoothSampler(filter::linear, address::clamp_to_edge);
+    #define NM_DISCARD discard_fragment()
+    #define NM_ARRAY6(type, name, a, b, c, d, e, f) constant type name[6] = { a, b, c, d, e, f };
 
     // BEGIN SCENE
     NM_CONST float kRoot3 = 1.7320508;
@@ -505,8 +520,7 @@ public enum WorldShaders {
         float index = p.x + p.y * 4.0;
         return nm_hash12(float2(index, 3.0)) * 0.94 + 0.03;
     }
-    // END SCENE
-
+    // The frame's own numbers, as every shader reads them.
     struct FrameUniforms {
         float4x4 viewProjection;
         float4x4 inverseViewProjection;
@@ -522,6 +536,394 @@ public enum WorldShaders {
         float4 still;      // the Still's calm, 0 to 1; whether the moon casts shadows; a shadow texel, in world units and in the map's
         float4x4 shadow;   // the moon's view and projection, from the world to its shadow map
     };
+    NM_FRAME_UNIFORM
+
+    // Each people's slates and walls, linear, in the order of their
+    // heritages: the Saltborn's white, the Fenfolk's reed, the Blackwood
+    // Kin's black, the Spinewardens' slate, the Mound Clans' turf, the
+    // Strandfolk's sea-grey; then their walls.
+    NM_ARRAY6(float3, kPeopleRoof,
+              float3(0.68, 0.68, 0.646), float3(0.19, 0.173, 0.087), float3(0.0078, 0.0063, 0.0063),
+              float3(0.0394, 0.0434, 0.0606), float3(0.0324, 0.0516, 0.0358), float3(0.0516, 0.0761, 0.1119))
+    NM_ARRAY6(float3, kPeopleWall,
+              float3(0.612, 0.664, 0.718), float3(0.148, 0.126, 0.099), float3(0.026, 0.0133, 0.0078),
+              float3(0.133, 0.133, 0.148), float3(0.428, 0.414, 0.375), float3(0.456, 0.414, 0.325))
+
+    // How much of the land's own shape a point keeps: all of it where the
+    // keeper knows the ground, none where they don't, where it lies flat
+    // under the mist and gives nothing of itself away.
+    float nm_landKnown(float2 knowledge) {
+    #ifndef NM_NO_FOG
+        return smoothstep(0.0, 1.0, knowledge.x);
+    #else
+        return 1.0;
+    #endif
+    }
+
+    // Whether a model is watched now (1), remembered (0.5) or never seen
+    // (0): by its hex, unless its flags say it always shows.
+    float nm_modelWatched(uint flags, int2 hex, float radius NM_TEXTURE_ARGUMENT) {
+        if ((flags & 1u) != 0u) {
+            return 1.0;
+        }
+        float2 knowledge = nm_knowledge(hex, radius NM_TEXTURE_PASS);
+        return knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
+    }
+
+    // A model's own colour at a vertex, linear: its cloth and banners in
+    // its House's colour (`tint`, where its alpha says so), and a hold's
+    // works as its House's people build them (the flags' second byte, one
+    // more than the people): their slates take the people's roofs, their
+    // stone and timber lean to its walls.
+    float3 nm_modelAlbedo(float3 colour, float material, float surface, float4 tint, uint flags) {
+        float3 albedo = nm_linear(colour);
+        if ((material > 0.5 && material < 1.5) || (material > 3.5 && material < 4.5)) {
+            if (tint.a > 0.5) {
+                float shade = dot(albedo, float3(0.30, 0.55, 0.15));
+                albedo = tint.rgb * shade * 2.0;
+            }
+        }
+        uint people = (flags >> 8u) & 255u;
+        if (people > 0u && people <= 6u && material < 0.5) {
+            int which = int(people) - 1;
+            if (surface > 3.5 && surface < 4.5) {
+                albedo = mix(albedo, kPeopleRoof[which], 0.8);
+            } else if (surface > 0.5 && surface < 2.5) {
+                albedo = mix(albedo, kPeopleWall[which], surface < 1.5 ? 0.4 : 0.3);
+            }
+        }
+        return albedo;
+    }
+    // END SCENE
+
+    // What each fragment is given, between the SHADING markers: written in
+    // the same shared subset, for fragments alone (it asks how fast things
+    // change across a pixel, and leaves pixels out). The Metal fragment
+    // functions below and the browser preview's both only hand their
+    // inputs to these, so what the preview draws is what the game draws.
+    // BEGIN SHADING
+
+    // The land at a point of it: `known` as the mesh's corner had it.
+    float4 nm_landShade(float3 world, float3 normal, float3 colour, float known
+                        NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT) {
+        float time = frame.eye.w;
+        float radius = frame.world.x;
+        float2 p = world.xz;
+        int2 h = nm_hexRound(nm_axial(p));
+        float3 edge = nm_hexEdge(p, h);
+        float pixel = max(fwidth(p.x), fwidth(p.y));
+        // What the keeper knows of the ground, blended between hexes here
+        // and not from the mesh's corners, so the edge of sight is a soft
+        // falling-off and never a terrace of lit and grey hexes.
+    #ifndef NM_NO_FOG
+        float2 knows = nm_knowledgeAround(p, radius NM_TEXTURE_PASS);
+    #else
+        float2 knows = float2(1.0, 1.0);
+    #endif
+        // How much of the ground shows through the mist: none over the
+        // unknown, which is never drawn under it, and the known ground's own
+        // colour fading into it over its outer half.
+        float clear = smoothstep(0.55, 1.0, knows.x);
+
+        // The hex under the pointer, and the one chosen.
+        float hovered = (abs(float(h.x) - frame.highlight.x) < 0.5 && abs(float(h.y) - frame.highlight.y) < 0.5) ? 1.0 : 0.0;
+        float chosen = (abs(float(h.x) - frame.highlight.z) < 0.5 && abs(float(h.y) - frame.highlight.w) < 0.5) ? 1.0 : 0.0;
+        float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
+        float3 marked = float3(0.20, 0.22, 0.26) * ring * hovered * 0.6
+            + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
+
+        float3 lit = float3(0.0);
+        if (clear > 0.0) {
+            float3 n = normalize(normal);
+            float4 tile = nm_tileAt(h, radius NM_TEXTURE_PASS);
+            float owner = nm_owner(tile);
+        #ifndef NM_NO_GRAIN
+            float3 albedo = nm_grain(p, colour);
+        #else
+            float3 albedo = colour;
+        #endif
+
+            // Whose land: a faint wash of the House's colour, and a line
+            // where it meets another's.
+            if (owner > 0.5 && known > 0.5) {
+                // Each House's colour a texel past its sigil, 64 to a row
+                // (see HousePalette).
+                uint slot = uint(owner);
+                float3 house = NM_HOUSE(slot);
+                // The wash is the faintest breath of the House's colour,
+                // broken by the ground's own grain, so the land reads as land.
+                float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
+                // From afar, as the eye draws back over the realm (the haze
+                // begins at nine tenths of its distance), it deepens, so
+                // whose land is whose reads at a glance across the lake as
+                // a map of war shows it; close in it stays a breath.
+                breath = mix(breath, 0.3, smoothstep(60.0, 120.0, frame.haze.x / 0.9));
+                albedo = mix(albedo, house * 0.5, breath);
+                // The neighbour is the hex just outside the nearest edge: a
+                // point pushed out past it, so a line falls only where the
+                // land truly meets another's, never between hexes of one.
+                float2 centre = nm_hexCentre(h);
+                int2 across = nm_hexRound(nm_axial(centre + (p - centre) * 1.45));
+                if (across.x != h.x || across.y != h.y) {
+                    float otherOwner = nm_owner(nm_tileAt(across, radius NM_TEXTURE_PASS));
+                    if (abs(otherOwner - owner) > 0.5) {
+                        float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
+                        lit += house * line * 0.22;
+                    }
+                }
+            }
+        #ifndef NM_NO_LIGHT
+            // Ground the keeper half knows is laid flat toward the mist and
+            // turned to face the sky: the moon lit it full on, brighter than
+            // any true slope, and along the edge of what is known it lay in
+            // pale banks over the shore (run 543: gone without the light,
+            // kept without the grain). The moon and the sky light only what
+            // is known.
+            float shown = smoothstep(0.35, 1.0, known);
+            // The moon low over the far shore lit the slopes facing it into
+            // pale banks against the rest (run 546: kept without the fog,
+            // lost without the light); on the land it falls softer than on
+            // models. Softer alone kept them (run 546 after 543): the slope
+            // itself turned the land toward the moon and the fill. The land
+            // is lit by its normal bent most of the way upright, so a
+            // hillside's whole face can never stand pale against the flats
+            // beside it; the fine grain of the ground still shades within it.
+            float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
+            // What stands on the land keeps the moon off the ground behind it.
+            float moonlit = nm_moonlit(world, n, frame.shadow, frame.still NM_SHADOW_PASS);
+            lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55 * moonlit) * shown;
+            for (int i = 0; i < 4; i++) {
+                lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
+            }
+        #else
+            lit += albedo * 0.02;
+        #endif
+
+            // A hold's hearths light the country round it.
+            for (int i = 0; i < 7; i++) {
+                int2 toward = int2(0, 0);
+                if (i == 1) { toward = int2(1, 0); }
+                if (i == 2) { toward = int2(-1, 0); }
+                if (i == 3) { toward = int2(0, 1); }
+                if (i == 4) { toward = int2(0, -1); }
+                if (i == 5) { toward = int2(1, -1); }
+                if (i == 6) { toward = int2(-1, 1); }
+                float4 near = nm_tileAt(h + toward, radius NM_TEXTURE_PASS);
+                if (near.y >= 128.0) {
+                    float far = length(p - nm_hexCentre(h + toward));
+                    lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
+                }
+            }
+            lit += marked;
+            // Remembered, not watched: as it was last seen.
+            lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
+        }
+    #ifndef NM_NO_FOG
+        if (knows.x < 0.999) {
+            // The unknown lies under the Still's mist, the pointer's and the
+            // chosen hex's ring showing faintly through it.
+            float3 mist = nm_mist(p, time, knows.x) + (nm_remembered(marked) - kMist * 0.25) * 0.18;
+            lit = mix(mist, lit, clear);
+        }
+    #endif
+        // Past the map's edge the Spine goes on into the dark.
+        float beyond = float(nm_hexDistance(h)) - radius;
+        lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
+    #ifndef NM_NO_HAZE
+        lit = nm_haze(lit, distance(world, frame.eye.xyz), frame.haze.x, frame.haze.y);
+    #endif
+        return float4(nm_encode(nm_expose(lit, frame.haze.z)), 1.0);
+    }
+
+    // The still water at a point of its face; nothing where the land
+    // stands above it.
+    float4 nm_waterShade(float3 world NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
+        float2 grid = (world.xz - frame.heights.xy) / frame.haze.w + 0.5;
+        float ground = NM_HEIGHT(grid / frame.heights.zw);
+        float depth = -ground;
+        if (depth <= 0.0) {
+            NM_DISCARD;
+        }
+        float time = frame.eye.w;
+        float3 look = normalize(world - frame.eye.xyz);
+        float3 mirrored = float3(look.x, -look.y, look.z);
+        float facing = 1.0 - max(-look.y, 0.0);
+        float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
+        float3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moon.xyz)) * fresnel;
+        float3 moonlit = nm_moonlight(mirrored, frame.moon.xyz) * fresnel;
+        // The moon's road: on the still water's faint swell, a broken glitter
+        // of its light along its bearing from the eye, narrow near the moon's
+        // image and widening toward the shore the eye stands on.
+        float2 toMoon = normalize(frame.moon.xz);
+        float2 along = normalize(look.xz);
+        float across = 1.0 - max(dot(toMoon, along), 0.0);
+        float near = clamp(distance(world, frame.eye.xyz) / 40.0, 0.05, 1.0);
+        // The calmer the Still, the narrower and whole the road: at its
+        // deepest calm the moon lies on the water as in a mirror.
+        float calm = clamp(frame.still.x, 0.0, 1.0);
+        float road = exp(-across * across / ((0.00001 + 0.0002 * (1.0 - near)) * (1.0 - 0.6 * calm)));
+        float swell = nm_fbm(world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
+        float glint = mix(smoothstep(0.66, 0.86, swell), 0.75, calm);
+        moonlit += kMoonColour * road * glint * 0.09 * fresnel;
+        // And the lights by the water lie on it as the moon does: a
+        // fisher's lantern, a fire on the shore, each broken by the same
+        // swell, whole at the calm.
+        for (int i = 0; i < 4; i++) {
+            moonlit += nm_lightOnWater(world, frame.eye.xyz, along, frame.lights[i], frame.lights[i + 4], calm)
+                * mix(0.3 + glint, 1.0, calm) * 0.14 * fresnel;
+        }
+        // Where it is shallow the shingle shows through, darkened and wet.
+        float clear = smoothstep(0.0, 0.14, depth);
+
+        // Blended between hexes, so the edge of sight is no row of steps.
+        float2 knowledge = nm_knowledgeAround(world.xz, frame.world.x NM_TEXTURE_PASS);
+        // The lake lies open to every shore: its water is never grey with
+        // memory, only a little dimmer out of sight; and the moon's image
+        // lies whole on all of it, seen or not.
+        float3 colour = starlit * mix(0.72, 1.0, knowledge.y) + moonlit;
+        // At the strand the small waves wash up pale with the moon and draw
+        // back, the froth hiding the shingle under it; the lake's own water
+        // only, never the skin over a ford or a stream's shoals. How far out
+        // the water lies is read from how the bed falls a cell east and a
+        // cell south, only where it is shallow enough to be near a shore.
+        float froth = 0.0;
+    #ifndef NM_NO_WASH
+        if (depth < 0.6) {
+            float4 tile = nm_tileAt(nm_hexRound(nm_axial(world.xz)), frame.world.x NM_TEXTURE_PASS);
+            float kind = tile.x - 16.0 * floor(tile.x / 16.0);
+            if (kind < 7.5) {
+                float east = NM_HEIGHT((grid + float2(1.0, 0.0)) / frame.heights.zw);
+                float south = NM_HEIGHT((grid + float2(0.0, 1.0)) / frame.heights.zw);
+                float fall = length(float2(east - ground, south - ground)) / frame.haze.w;
+                froth = nm_wash(world.xz, nm_offshore(depth, fall), time, calm);
+            }
+        }
+    #endif
+        // Laid over what shows through the shallows as froth lies on it:
+        // pale, and never darker than the water it lies on, so the moon's
+        // image runs on through it.
+        float3 foam = max(kMoonColour * 0.05 * mix(0.72, 1.0, knowledge.y), colour);
+        float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
+        colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
+        colour = nm_haze(colour, distance(world, frame.eye.xyz), frame.haze.x, frame.haze.y);
+        return float4(nm_encode(nm_expose(colour, frame.haze.z)), cover);
+    }
+
+    // The river of the sky: a band of faint light along a great circle,
+    // torn by dark lanes of dust, thick with fine stars.
+    float3 nm_milkyWay(float3 d) {
+        float across = dot(d, normalize(float3(0.86, 0.22, 0.46)));
+        float along = NM_ATAN2(d.z, d.x);
+        float band = exp(-across * across / 0.007);
+        // Below the far shore, or well off the band, there is nothing to add.
+        if (d.y < -0.02 || band < 0.02) { return float3(0.0); }
+        float2 q = float2(along * 3.2, across * 9.0);
+        // Clotted, never an even wash: light only where the noise gathers.
+        float glow = band * smoothstep(0.35, 0.85, nm_fbm(q * 1.7 + 4.0));
+        float lanes = smoothstep(0.42, 0.68, nm_fbm(q * 3.1 + 11.0)) * exp(-across * across / 0.004);
+        glow *= 1.0 - 0.75 * lanes;
+        float3 colour = float3(0.0022, 0.0024, 0.0031) * glow;
+        // Fine stars, many more within the band than without.
+        float3 grid = d * 420.0;
+        float3 cell = floor(grid);
+        float chance = nm_hash13(cell + 57.0);
+        float dense = 0.985 - 0.10 * band;
+        if (chance > dense) {
+            float3 spot = cell + 0.5 + (float3(nm_hash13(cell + 2.3), nm_hash13(cell + 5.9), nm_hash13(cell + 8.1)) - 0.5) * 0.6;
+            float far = length(grid - normalize(spot) * 420.0);
+            float bright = (chance - dense) / (1.0 - dense);
+            colour += mix(float3(0.75, 0.82, 1.0), float3(1.0, 0.9, 0.75), nm_hash13(cell + 9.4))
+                * (1.0 - smoothstep(0.0, 0.35, far)) * (0.10 + 0.5 * bright * bright);
+        }
+        return colour * smoothstep(-0.02, 0.12, d.y);
+    }
+
+    // The sky behind everything, at a point of the view (`ndc`, -1 to 1).
+    float4 nm_skyShade(float2 ndc NM_FRAME_ARGUMENT) {
+        float4 near = frame.inverseViewProjection * float4(ndc, 0.0, 1.0);
+        float4 far = frame.inverseViewProjection * float4(ndc, 1.0, 1.0);
+        float3 d = normalize(far.xyz / far.w - near.xyz / near.w);
+        float time = frame.eye.w;
+        // The sky's own stars brighter than their image on the water, and a
+        // second, finer field of them behind, so the night over the far
+        // shore is full.
+        float3 colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
+            + nm_milkyWay(d) + nm_moonGlow(d, frame.moon.xyz) + nm_moonlight(d, frame.moon.xyz);
+        // The night's haze lies thick along the horizon and thins upward,
+        // so the far shore stands dark against a lighter band of air.
+        float up = max(d.y, 0.0);
+        float3 horizon = kMist * 1.6 + kMoonColour * 0.004;
+        colour = mix(horizon, colour, smoothstep(0.0, 0.035, up));
+        return float4(nm_encode(nm_expose(colour, frame.haze.z)), 1.0);
+    }
+
+    // A model at a point of it: `colour` its own colour there, `local` and
+    // `localNormal` where on the model and which way its face turns, for
+    // its grain; `params` its instance's (risen to, opacity, phase,
+    // emphasis). Nothing above what has been raised of it. Its alpha is how
+    // much of the pixel it covers as it fades.
+    float4 nm_modelShade(float3 world, float3 normal, float3 colour, float localY, float3 local, float3 localNormal,
+                         float surface, float material, float4 params, float watched
+                         NM_FRAME_ARGUMENT NM_SHADOW_ARGUMENT) {
+        if (localY > params.x) {
+            NM_DISCARD;
+        }
+        float time = frame.eye.w + params.z;
+        float3 n = normalize(normal);
+        float3 toEye = normalize(frame.eye.xyz - world);
+        if (dot(n, toEye) < 0.0) {
+            n = -n;
+        }
+        float3 albedo = nm_surface(colour, local, localNormal, surface, length(fwidth(local)));
+        // What stands nearer the moon keeps its light off: its glints and
+        // its outline with it.
+        float moonlit = nm_moonlit(world, n, frame.shadow, frame.still NM_SHADOW_PASS);
+        float3 lit = nm_light(albedo, n, frame.moon.xyz, frame.moon.w * moonlit);
+        for (int i = 0; i < 4; i++) {
+            lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
+        }
+        float facing = 1.0 - max(dot(n, toEye), 0.0);
+        // The moon behind outlines what stands against it.
+        float behind = max(dot(-toEye, frame.moon.xyz), 0.0);
+        lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * frame.moon.w;
+        if (material > 5.5) {
+            float3 halfway = normalize(toEye + frame.moon.xyz);
+            lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * frame.moon.w * moonlit;
+        } else if (material > 4.5) {
+            float glint = pow(max(dot(n, normalize(toEye + frame.moon.xyz)), 0.0), 20.0) * moonlit;
+            lit += colour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + world.x * 5.0)) + float3(0.6, 0.7, 0.9) * glint * 0.5;
+        } else if (material > 1.5 && material < 2.5) {
+            lit = colour * (1.55 + 0.35 * nm_flicker(time + world.x * 3.0 + world.z * 2.0) * frame.world.w);
+        }
+        // A work being raised: its newest course pale and fresh.
+        if (params.x < 50.0 && localY > params.x - 0.025) {
+            lit += float3(0.05, 0.042, 0.03);
+        }
+        // Chosen, or under the pointer: a light about its edges.
+        lit += kGlow * params.w * facing * facing * 0.45;
+        if (watched < 0.75) {
+            lit = nm_remembered(lit);
+        }
+        lit = nm_haze(lit, distance(world, frame.eye.xyz), frame.haze.x, frame.haze.y);
+        // Fading, it covers as many of the pixel's samples as it is opaque.
+        return float4(nm_encode(nm_expose(lit, frame.haze.z)), params.y < 0.999 ? clamp(params.y, 0.0, 1.0) : 1.0);
+    }
+
+    // A mote at a point of its disc (`corner`, -1 to 1 across it).
+    float4 nm_moteShade(float2 corner, float4 colour, float3 world NM_FRAME_ARGUMENT) {
+        float r = length(corner);
+        if (r > 1.0) {
+            NM_DISCARD;
+        }
+        float soft = 1.0 - smoothstep(0.1, 1.0, r);
+        float far = 1.0 - clamp(1.0 - exp(-max(distance(world, frame.eye.xyz) - frame.haze.x, 0.0) * frame.haze.y), 0.0, 0.85);
+        // A mote's light is its own, a spark's or a fire's: as bright in a
+        // lighter night (Night) as in the night as made, never lifted with
+        // the moon's.
+        float3 light = colour.rgb * soft * far;
+        return float4(nm_encode(light), colour.a * soft);
+    }
+    // END SHADING
 
     struct ModelVertex {
         packed_float3 position;
@@ -564,11 +966,7 @@ public enum WorldShaders {
         char4 packedNormal = char4(v.normalMaterial);
         uchar4 packedColour = uchar4(v.colorSway);
         float2 knowledge = nm_knowledgeAround(p.xz, frame.world.x, tiles);
-    #ifndef NM_NO_FOG
-        float known = smoothstep(0.0, 1.0, knowledge.x);
-    #else
-        float known = 1.0;
-    #endif
+        float known = nm_landKnown(knowledge);
         // The unknown lies flat under the mist: its shape is not given away.
         p.y = mix(kMistLevel, p.y, known);
         float3 n = normalize(float3(packedNormal.xyz) / 127.0);
@@ -587,133 +985,7 @@ public enum WorldShaders {
                                      texture2d<float, access::read> tiles [[texture(0)]],
                                      depth2d<float> shadows [[texture(2)]],
                                      texture2d<float, access::read> housePalette [[texture(3)]]) {
-        float time = frame.eye.w;
-        float radius = frame.world.x;
-        float2 p = in.world.xz;
-        int2 h = nm_hexRound(nm_axial(p));
-        float3 edge = nm_hexEdge(p, h);
-        float pixel = max(fwidth(p.x), fwidth(p.y));
-        // What the keeper knows of the ground, blended between hexes here
-        // and not from the mesh's corners, so the edge of sight is a soft
-        // falling-off and never a terrace of lit and grey hexes.
-    #ifndef NM_NO_FOG
-        float2 knows = nm_knowledgeAround(p, radius, tiles);
-    #else
-        float2 knows = float2(1.0, 1.0);
-    #endif
-        // How much of the ground shows through the mist: none over the
-        // unknown, which is never drawn under it, and the known ground's own
-        // colour fading into it over its outer half.
-        float clear = smoothstep(0.55, 1.0, knows.x);
-
-        // The hex under the pointer, and the one chosen.
-        float hovered = (abs(float(h.x) - frame.highlight.x) < 0.5 && abs(float(h.y) - frame.highlight.y) < 0.5) ? 1.0 : 0.0;
-        float chosen = (abs(float(h.x) - frame.highlight.z) < 0.5 && abs(float(h.y) - frame.highlight.w) < 0.5) ? 1.0 : 0.0;
-        float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
-        float3 marked = float3(0.20, 0.22, 0.26) * ring * hovered * 0.6
-            + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
-
-        float3 lit = float3(0.0);
-        if (clear > 0.0) {
-            float3 n = normalize(in.normal);
-            float4 tile = nm_tileAt(h, radius, tiles);
-            float owner = nm_owner(tile);
-        #ifndef NM_NO_GRAIN
-            float3 albedo = nm_grain(p, in.colour);
-        #else
-            float3 albedo = in.colour;
-        #endif
-
-            // Whose land: a faint wash of the House's colour, and a line
-            // where it meets another's.
-            if (owner > 0.5 && in.known > 0.5) {
-                // Each House's colour a texel past its sigil, 64 to a row
-                // (see HousePalette).
-                uint slot = uint(owner);
-                float3 house = housePalette.read(uint2(slot % 64u, slot / 64u)).rgb;
-                // The wash is the faintest breath of the House's colour,
-                // broken by the ground's own grain, so the land reads as land.
-                float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
-                // From afar, as the eye draws back over the realm (the haze
-                // begins at nine tenths of its distance), it deepens, so
-                // whose land is whose reads at a glance across the lake as
-                // a map of war shows it; close in it stays a breath.
-                breath = mix(breath, 0.3, smoothstep(60.0, 120.0, frame.haze.x / 0.9));
-                albedo = mix(albedo, house * 0.5, breath);
-                // The neighbour is the hex just outside the nearest edge: a
-                // point pushed out past it, so a line falls only where the
-                // land truly meets another's, never between hexes of one.
-                float2 centre = nm_hexCentre(h);
-                int2 across = nm_hexRound(nm_axial(centre + (p - centre) * 1.45));
-                if (across.x != h.x || across.y != h.y) {
-                    float otherOwner = nm_owner(nm_tileAt(across, radius, tiles));
-                    if (abs(otherOwner - owner) > 0.5) {
-                        float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
-                        lit += house * line * 0.22;
-                    }
-                }
-            }
-        #ifndef NM_NO_LIGHT
-            // Ground the keeper half knows is laid flat toward the mist and
-            // turned to face the sky: the moon lit it full on, brighter than
-            // any true slope, and along the edge of what is known it lay in
-            // pale banks over the shore (run 543: gone without the light,
-            // kept without the grain). The moon and the sky light only what
-            // is known.
-            float shown = smoothstep(0.35, 1.0, in.known);
-            // The moon low over the far shore lit the slopes facing it into
-            // pale banks against the rest (run 546: kept without the fog,
-            // lost without the light); on the land it falls softer than on
-            // models. Softer alone kept them (run 546 after 543): the slope
-            // itself turned the land toward the moon and the fill. The land
-            // is lit by its normal bent most of the way upright, so a
-            // hillside's whole face can never stand pale against the flats
-            // beside it; the fine grain of the ground still shades within it.
-            float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
-            // What stands on the land keeps the moon off the ground behind it.
-            float moonlit = nm_moonlit(in.world, n, frame.shadow, frame.still NM_SHADOW_PASS);
-            lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55 * moonlit) * shown;
-            for (int i = 0; i < 4; i++) {
-                lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
-            }
-        #else
-            lit += albedo * 0.02;
-        #endif
-
-            // A hold's hearths light the country round it.
-            for (int i = 0; i < 7; i++) {
-                int2 toward = int2(0, 0);
-                if (i == 1) { toward = int2(1, 0); }
-                if (i == 2) { toward = int2(-1, 0); }
-                if (i == 3) { toward = int2(0, 1); }
-                if (i == 4) { toward = int2(0, -1); }
-                if (i == 5) { toward = int2(1, -1); }
-                if (i == 6) { toward = int2(-1, 1); }
-                float4 near = nm_tileAt(h + toward, radius, tiles);
-                if (near.y >= 128.0) {
-                    float far = length(p - nm_hexCentre(h + toward));
-                    lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
-                }
-            }
-            lit += marked;
-            // Remembered, not watched: as it was last seen.
-            lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
-        }
-    #ifndef NM_NO_FOG
-        if (knows.x < 0.999) {
-            // The unknown lies under the Still's mist, the pointer's and the
-            // chosen hex's ring showing faintly through it.
-            float3 mist = nm_mist(p, time, knows.x) + (nm_remembered(marked) - kMist * 0.25) * 0.18;
-            lit = mix(mist, lit, clear);
-        }
-    #endif
-        // Past the map's edge the Spine goes on into the dark.
-        float beyond = float(nm_hexDistance(h)) - radius;
-        lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
-    #ifndef NM_NO_HAZE
-        lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-    #endif
-        return float4(nm_encode(nm_expose(lit, frame.haze.z)), 1.0);
+        return nm_landShade(in.world, in.normal, in.colour, in.known, frame, tiles, shadows, housePalette);
     }
 
     // MARK: The still water
@@ -736,76 +1008,7 @@ public enum WorldShaders {
                                       constant FrameUniforms &frame [[buffer(0)]],
                                       texture2d<float, access::read> tiles [[texture(0)]],
                                       texture2d<float> heights [[texture(1)]]) {
-        constexpr sampler smooth(filter::linear, address::clamp_to_edge);
-        float2 grid = (in.world.xz - frame.heights.xy) / frame.haze.w + 0.5;
-        float ground = heights.sample(smooth, grid / frame.heights.zw).r;
-        float depth = -ground;
-        if (depth <= 0.0) {
-            discard_fragment();
-        }
-        float time = frame.eye.w;
-        float3 look = normalize(in.world - frame.eye.xyz);
-        float3 mirrored = float3(look.x, -look.y, look.z);
-        float facing = 1.0 - max(-look.y, 0.0);
-        float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-        float3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moon.xyz)) * fresnel;
-        float3 moonlit = nm_moonlight(mirrored, frame.moon.xyz) * fresnel;
-        // The moon's road: on the still water's faint swell, a broken glitter
-        // of its light along its bearing from the eye, narrow near the moon's
-        // image and widening toward the shore the eye stands on.
-        float2 toMoon = normalize(frame.moon.xz);
-        float2 along = normalize(look.xz);
-        float across = 1.0 - max(dot(toMoon, along), 0.0);
-        float near = clamp(distance(in.world, frame.eye.xyz) / 40.0, 0.05, 1.0);
-        // The calmer the Still, the narrower and whole the road: at its
-        // deepest calm the moon lies on the water as in a mirror.
-        float calm = clamp(frame.still.x, 0.0, 1.0);
-        float road = exp(-across * across / ((0.00001 + 0.0002 * (1.0 - near)) * (1.0 - 0.6 * calm)));
-        float swell = nm_fbm(in.world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
-        float glint = mix(smoothstep(0.66, 0.86, swell), 0.75, calm);
-        moonlit += kMoonColour * road * glint * 0.09 * fresnel;
-        // And the lights by the water lie on it as the moon does: a
-        // fisher's lantern, a fire on the shore, each broken by the same
-        // swell, whole at the calm.
-        for (int i = 0; i < 4; i++) {
-            moonlit += nm_lightOnWater(in.world, frame.eye.xyz, along, frame.lights[i], frame.lights[i + 4], calm)
-                * mix(0.3 + glint, 1.0, calm) * 0.14 * fresnel;
-        }
-        // Where it is shallow the shingle shows through, darkened and wet.
-        float clear = smoothstep(0.0, 0.14, depth);
-
-        // Blended between hexes, so the edge of sight is no row of steps.
-        float2 knowledge = nm_knowledgeAround(in.world.xz, frame.world.x, tiles);
-        // The lake lies open to every shore: its water is never grey with
-        // memory, only a little dimmer out of sight; and the moon's image
-        // lies whole on all of it, seen or not.
-        float3 colour = starlit * mix(0.72, 1.0, knowledge.y) + moonlit;
-        // At the strand the small waves wash up pale with the moon and draw
-        // back, the froth hiding the shingle under it; the lake's own water
-        // only, never the skin over a ford or a stream's shoals. How far out
-        // the water lies is read from how the bed falls a cell east and a
-        // cell south, only where it is shallow enough to be near a shore.
-        float froth = 0.0;
-    #ifndef NM_NO_WASH
-        if (depth < 0.6) {
-            float4 tile = nm_tileAt(nm_hexRound(nm_axial(in.world.xz)), frame.world.x, tiles);
-            float kind = tile.x - 16.0 * floor(tile.x / 16.0);
-            if (kind < 7.5) {
-                float east = heights.sample(smooth, (grid + float2(1.0, 0.0)) / frame.heights.zw).r;
-                float south = heights.sample(smooth, (grid + float2(0.0, 1.0)) / frame.heights.zw).r;
-                float fall = length(float2(east - ground, south - ground)) / frame.haze.w;
-                froth = nm_wash(in.world.xz, nm_offshore(depth, fall), time, calm);
-            }
-        }
-    #endif
-        // Laid over what shows through the shallows as froth lies on it:
-        // pale, and never darker than the water it lies on, so the moon's
-        // image runs on through it.
-        float3 foam = max(kMoonColour * 0.05 * mix(0.72, 1.0, knowledge.y), colour);
-        float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
-        colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
-        colour = nm_haze(colour, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-        return float4(nm_encode(nm_expose(colour, frame.haze.z)), cover);
+        return nm_waterShade(in.world, frame, tiles, heights);
     }
 
     // MARK: The sky
@@ -825,67 +1028,11 @@ public enum WorldShaders {
         return out;
     }
 
-    // The river of the sky: a band of faint light along a great circle,
-    // torn by dark lanes of dust, thick with fine stars.
-    float3 nm_milkyWay(float3 d) {
-        float across = dot(d, normalize(float3(0.86, 0.22, 0.46)));
-        float along = atan2(d.z, d.x);
-        float band = exp(-across * across / 0.007);
-        // Below the far shore, or well off the band, there is nothing to add.
-        if (d.y < -0.02 || band < 0.02) { return float3(0.0); }
-        float2 q = float2(along * 3.2, across * 9.0);
-        // Clotted, never an even wash: light only where the noise gathers.
-        float glow = band * smoothstep(0.35, 0.85, nm_fbm(q * 1.7 + 4.0));
-        float lanes = smoothstep(0.42, 0.68, nm_fbm(q * 3.1 + 11.0)) * exp(-across * across / 0.004);
-        glow *= 1.0 - 0.75 * lanes;
-        float3 colour = float3(0.0022, 0.0024, 0.0031) * glow;
-        // Fine stars, many more within the band than without.
-        float3 grid = d * 420.0;
-        float3 cell = floor(grid);
-        float chance = nm_hash13(cell + 57.0);
-        float dense = 0.985 - 0.10 * band;
-        if (chance > dense) {
-            float3 spot = cell + 0.5 + (float3(nm_hash13(cell + 2.3), nm_hash13(cell + 5.9), nm_hash13(cell + 8.1)) - 0.5) * 0.6;
-            float far = length(grid - normalize(spot) * 420.0);
-            float bright = (chance - dense) / (1.0 - dense);
-            colour += mix(float3(0.75, 0.82, 1.0), float3(1.0, 0.9, 0.75), nm_hash13(cell + 9.4))
-                * (1.0 - smoothstep(0.0, 0.35, far)) * (0.10 + 0.5 * bright * bright);
-        }
-        return colour * smoothstep(-0.02, 0.12, d.y);
-    }
-
     fragment float4 nm_sky_fragment(SkyOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]]) {
-        float4 near = frame.inverseViewProjection * float4(in.ndc, 0.0, 1.0);
-        float4 far = frame.inverseViewProjection * float4(in.ndc, 1.0, 1.0);
-        float3 d = normalize(far.xyz / far.w - near.xyz / near.w);
-        float time = frame.eye.w;
-        // The sky's own stars brighter than their image on the water, and a
-        // second, finer field of them behind, so the night over the far
-        // shore is full.
-        float3 colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
-            + nm_milkyWay(d) + nm_moonGlow(d, frame.moon.xyz) + nm_moonlight(d, frame.moon.xyz);
-        // The night's haze lies thick along the horizon and thins upward,
-        // so the far shore stands dark against a lighter band of air.
-        float up = max(d.y, 0.0);
-        float3 horizon = kMist * 1.6 + kMoonColour * 0.004;
-        colour = mix(horizon, colour, smoothstep(0.0, 0.035, up));
-        return float4(nm_encode(nm_expose(colour, frame.haze.z)), 1.0);
+        return nm_skyShade(in.ndc, frame);
     }
 
     // MARK: Models
-
-    // Each people's slates and walls, linear, in the order of their
-    // heritages: the Saltborn's white, the Fenfolk's reed, the Blackwood
-    // Kin's black, the Spinewardens' slate, the Mound Clans' turf, the
-    // Strandfolk's sea-grey; then their walls.
-    constant float3 kPeopleRoof[6] = {
-        float3(0.68, 0.68, 0.646), float3(0.19, 0.173, 0.087), float3(0.0078, 0.0063, 0.0063),
-        float3(0.0394, 0.0434, 0.0606), float3(0.0324, 0.0516, 0.0358), float3(0.0516, 0.0761, 0.1119)
-    };
-    constant float3 kPeopleWall[6] = {
-        float3(0.612, 0.664, 0.718), float3(0.148, 0.126, 0.099), float3(0.026, 0.0133, 0.0078),
-        float3(0.133, 0.133, 0.148), float3(0.428, 0.414, 0.375), float3(0.456, 0.414, 0.325)
-    };
 
     struct ModelOut {
         float4 position [[position]];
@@ -928,36 +1075,13 @@ public enum WorldShaders {
         float4 posed = part * float4(local, 1.0);
         float4 world = instance.model * posed;
         float3 normal = (instance.model * (part * float4(float3(packedNormal.xyz) / 127.0, 0.0))).xyz;
-
-        float watched = 1.0;
-        if ((instance.flags & 1u) == 0u) {
-            float2 knowledge = nm_knowledge(instance.hex, frame.world.x, tiles);
-            watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
-        }
-        float3 albedo = nm_linear(float3(packedColour.xyz) / 255.0);
-        if ((material > 0.5 && material < 1.5) || (material > 3.5 && material < 4.5)) {
-            if (instance.colour.a > 0.5) {
-                float shade = dot(albedo, float3(0.30, 0.55, 0.15));
-                albedo = instance.colour.rgb * shade * 2.0;
-            }
-        }
-        // A hold's works as its House's people build them (the flags'
-        // second byte, one more than the people): their slates take the
-        // people's roofs, their stone and timber lean to its walls.
-        uint people = (instance.flags >> 8) & 0xFFu;
-        if (people > 0u && people <= 6u && material < 0.5) {
-            if (v.surface == 4) {
-                albedo = mix(albedo, kPeopleRoof[people - 1u], 0.8);
-            } else if (v.surface == 1 || v.surface == 2) {
-                albedo = mix(albedo, kPeopleWall[people - 1u], v.surface == 1 ? 0.4 : 0.3);
-            }
-        }
+        float watched = nm_modelWatched(instance.flags, instance.hex, frame.world.x, tiles);
         ModelOut out;
         // What the keeper has never seen is not drawn: put past the far plane.
         out.position = watched > 0.25 ? frame.viewProjection * world : float4(0.0, 0.0, 2.0, 1.0);
         out.world = world.xyz;
         out.normal = normalize(normal);
-        out.colour = albedo;
+        out.colour = nm_modelAlbedo(float3(packedColour.xyz) / 255.0, material, float(v.surface), instance.colour, instance.flags);
         out.localY = posed.y;
         out.local = float3(v.position);
         out.localNormal = float3(packedNormal.xyz) / 127.0;
@@ -998,58 +1122,14 @@ public enum WorldShaders {
         float4 posed = part * float4(local, 1.0);
         posed.y = min(posed.y, instance.params.x);
         float4 world = instance.model * posed;
-        float watched = 1.0;
-        if ((instance.flags & 1u) == 0u) {
-            float2 knowledge = nm_knowledge(instance.hex, frame.world.x, tiles);
-            watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
-        }
+        float watched = nm_modelWatched(instance.flags, instance.hex, frame.world.x, tiles);
         return watched > 0.25 ? frame.shadow * world : float4(0.0, 0.0, 2.0, 1.0);
     }
 
     fragment float4 nm_model_fragment(ModelOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]],
                                       depth2d<float> shadows [[texture(2)]]) {
-        if (in.localY > in.params.x) {
-            discard_fragment();
-        }
-        float time = frame.eye.w + in.params.z;
-        float3 n = normalize(in.normal);
-        float3 toEye = normalize(frame.eye.xyz - in.world);
-        if (dot(n, toEye) < 0.0) {
-            n = -n;
-        }
-        float3 albedo = nm_surface(in.colour, in.local, in.localNormal, in.surface, length(fwidth(in.local)));
-        // What stands nearer the moon keeps its light off: its glints and
-        // its outline with it.
-        float moonlit = nm_moonlit(in.world, n, frame.shadow, frame.still NM_SHADOW_PASS);
-        float3 lit = nm_light(albedo, n, frame.moon.xyz, frame.moon.w * moonlit);
-        for (int i = 0; i < 4; i++) {
-            lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
-        }
-        float facing = 1.0 - max(dot(n, toEye), 0.0);
-        // The moon behind outlines what stands against it.
-        float behind = max(dot(-toEye, frame.moon.xyz), 0.0);
-        lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * frame.moon.w;
-        if (in.material > 5.5) {
-            float3 halfway = normalize(toEye + frame.moon.xyz);
-            lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * frame.moon.w * moonlit;
-        } else if (in.material > 4.5) {
-            float glint = pow(max(dot(n, normalize(toEye + frame.moon.xyz)), 0.0), 20.0) * moonlit;
-            lit += in.colour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + in.world.x * 5.0)) + float3(0.6, 0.7, 0.9) * glint * 0.5;
-        } else if (in.material > 1.5 && in.material < 2.5) {
-            lit = in.colour * (1.55 + 0.35 * nm_flicker(time + in.world.x * 3.0 + in.world.z * 2.0) * frame.world.w);
-        }
-        // A work being raised: its newest course pale and fresh.
-        if (in.params.x < 50.0 && in.localY > in.params.x - 0.025) {
-            lit += float3(0.05, 0.042, 0.03);
-        }
-        // Chosen, or under the pointer: a light about its edges.
-        lit += kGlow * in.params.w * facing * facing * 0.45;
-        if (in.watched < 0.75) {
-            lit = nm_remembered(lit);
-        }
-        lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-        // Fading, it covers as many of the pixel's samples as it is opaque.
-        return float4(nm_encode(nm_expose(lit, frame.haze.z)), in.params.y < 0.999 ? saturate(in.params.y) : 1.0);
+        return nm_modelShade(in.world, in.normal, in.colour, in.localY, in.local, in.localNormal,
+                             in.surface, in.material, in.params, in.watched, frame, shadows);
     }
 
     // MARK: Motes
@@ -1090,17 +1170,7 @@ public enum WorldShaders {
     }
 
     fragment float4 nm_mote_fragment(MoteOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]]) {
-        float r = length(in.corner);
-        if (r > 1.0) {
-            discard_fragment();
-        }
-        float soft = 1.0 - smoothstep(0.1, 1.0, r);
-        float far = 1.0 - clamp(1.0 - exp(-max(distance(in.world, frame.eye.xyz) - frame.haze.x, 0.0) * frame.haze.y), 0.0, 0.85);
-        // A mote's light is its own, a spark's or a fire's: as bright in a
-        // lighter night (Night) as in the night as made, never lifted with
-        // the moon's.
-        float3 light = in.colour.rgb * soft * far;
-        return float4(nm_encode(light), in.colour.a * soft);
+        return nm_moteShade(in.corner, in.colour, in.world, frame);
     }
     """#
 }

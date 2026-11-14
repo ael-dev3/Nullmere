@@ -245,8 +245,8 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(marks.allSatisfy { $0 & 0xFF == 0 && $0 & ModelInstance.alwaysShown == 0 }, "the first byte is left alone")
         // The shader knows each people's roofs and walls, and no more.
         let count = Heritage.allCases.count
-        XCTAssertTrue(WorldShaders.source.contains("constant float3 kPeopleRoof[\(count)]"))
-        XCTAssertTrue(WorldShaders.source.contains("constant float3 kPeopleWall[\(count)]"))
+        XCTAssertTrue(WorldShaders.source.contains("NM_ARRAY\(count)(float3, kPeopleRoof,"))
+        XCTAssertTrue(WorldShaders.source.contains("NM_ARRAY\(count)(float3, kPeopleWall,"))
         XCTAssertTrue(WorldShaders.source.contains("people <= \(count)u"))
         XCTAssertTrue(WorldStage.isPeoples(.study(level: 1)))
         XCTAssertFalse(WorldStage.isPeoples(.scaffold))

@@ -399,4 +399,5 @@ Updated as slices land.
 
 | Slice | State | Commit | Evidence |
 |---|---|---|---|
-| Audit and plan | Done | this commit | This document |
+| Audit and plan | Done | `14a20ba` | This document |
+| 1.1 Shared lighting | Built; Metal compile **unverified** until a CI run | this commit | `SceneTests.testEveryFragmentIsLitByTheSharedShadingAlone`; the clang check of the Metal source; preview frames rendered locally before and after |

@@ -238,10 +238,13 @@ Query parameters: `horizon`, `activity` (1 for full motion, 0.4 reduced,
 0 still) and `time`, which freezes a moment. Try `?time=7.2` to catch the
 first falling star.
 
-The world's shaders are written the same way: the section between their
-SCENE markers is shared by Metal and GLSL, so a browser draws the land,
-the mist and the still water from the same code, over a world the
-NullmereWorld tests write out (Playwright's Chromium draws it headless):
+The world's shaders are written the same way: the sections between their
+SCENE and SHADING markers are shared by Metal and GLSL, and every fragment
+is lit there and nowhere else (the Metal fragment functions and the
+preview's only hand their inputs to it; `SceneTests` holds both to that),
+so a browser draws the land, the sky, the models and the still water with
+the game's own lighting, over a world the NullmereWorld tests write out
+(Playwright's Chromium draws it headless):
 
 ```sh
 NULLMERE_WORLD_PREVIEW=build/world3d swift test --filter WorldPreviewTests
@@ -412,7 +415,7 @@ scripts/              Building, packing and checking a release; smoke tests; rai
 Art/                  The models made in Blender: their scripts (blender/), the files they make (models/), and embed.py, which writes a file into the package; and sound/make.py, which makes the score's recorded notes
 Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader
-Tools/world3d-preview/ Browser preview of the world's land, mist, water and staged models, from the shaders' shared section
+Tools/world3d-preview/ Browser preview of the world's land, sky, water and staged models, lit by the shaders' shared sections
 Tools/model-preview/  Browser preview of the models, on a sheet
 Tools/msl-check/      Checks Metal source with clang away from a Mac
 docs/                 Playing, the realm, developing, design, the gap list and going live; the audit of October 2026 (audit/); what carried over from Warpkeep; the README's stills (images/)

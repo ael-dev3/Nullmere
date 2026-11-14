@@ -1,9 +1,10 @@
 <!doctype html>
 <!--
   Nullmere Online's world in three dimensions, drawn in a browser with the
-  SCENE section of Sources/NullmereWorld/WorldShaders.swift, the code the
-  Metal shaders share with GLSL, so the land, the mist and the still water
-  can be judged without a Mac. The world comes from the NullmereWorld
+  SCENE and SHADING sections of Sources/NullmereWorld/WorldShaders.swift,
+  the code the Metal shaders share with GLSL: every fragment here is lit
+  by the game's own code, so the land, the sky, the models and the still
+  water can be judged without a Mac. The world comes from the NullmereWorld
   tests (set NULLMERE_WORLD_PREVIEW to a folder).
 
     index.html?data=<world.json>&frame=seat|lake|whole|turned|moon|close|company
@@ -27,6 +28,11 @@ canvas.height = height;
 const gl = canvas.getContext('webgl2', { antialias: true, preserveDrawingBuffer: true });
 if (!gl) fail('no WebGL2');
 
+const shading = swift.match(/\/\/ BEGIN SHADING\n([\s\S]*?)\/\/ END SHADING/)?.[1] ?? fail('SHADING markers not found.');
+
+// What the shared code is handed in Metal it finds for itself here: the
+// frame as one uniform, the Houses' colours as a list, the tiles, the
+// heights and the moon's shadow map as samplers.
 const header = `#version 300 es
 precision highp float;
 precision highp int;
@@ -47,267 +53,133 @@ precision highp sampler2DShadow;
 #define NM_SHADOW_TEST(uv, depth) texture(shadows, vec3(uv, depth))
 #define NM_SHADOW_V 0.5
 #define NM_SHADOW_DEPTH(z) ((z) * 0.5 + 0.5)
+#define NM_FRAME_UNIFORM uniform FrameUniforms frame;
+#define NM_FRAME_ARGUMENT
+#define NM_PALETTE_ARGUMENT
+#define NM_HOUSE(slot) houses[min(int(slot), 127)].rgb
+#define NM_HEIGHTS_ARGUMENT
+#define NM_HEIGHT(uv) texture(heights, uv).r
+#define NM_DISCARD discard
+#define NM_ARRAY6(type, name, a, b, c, d, e, f) const type name[6] = type[6](a, b, c, d, e, f);
 uniform sampler2D tiles;
 uniform sampler2D heights;
 uniform sampler2DShadow shadows;
-uniform mat4 viewProjection;
-uniform mat4 shadow;
-uniform vec4 still;
-uniform vec4 eye, moon, viewport, world, highlight, extent, haze, heightsGrid;
 uniform vec4 houses[128];
-uniform vec4 lights[8];
 ${scene}
 `;
+// Every fragment below only hands its inputs to the shared SHADING code,
+// as the Metal fragment functions do: none lights anything itself.
+const fragmentHeader = header + shading;
 const landVertex = header + `
 in vec3 position; in vec3 normal; in vec3 colour;
-out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vKnown; out float vWatched;
+out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vKnown;
 void main() {
   vec3 p = position;
-  vec2 knowledge = nm_knowledgeAround(p.xz, world.x);
-  float known = smoothstep(0.0, 1.0, knowledge.x);
+  vec2 knowledge = nm_knowledgeAround(p.xz, frame.world.x);
+  float known = nm_landKnown(knowledge);
   p.y = mix(kMistLevel, p.y, known);
-  gl_Position = viewProjection * vec4(p, 1.0);
+  gl_Position = frame.viewProjection * vec4(p, 1.0);
   vWorld = p;
   vNormal = normalize(mix(vec3(0.0, 1.0, 0.0), normal, known));
   vColour = nm_linear(colour);
   vKnown = knowledge.x;
-  vWatched = knowledge.y;
 }`;
-const landFragment = header + `
-in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vKnown; in float vWatched;
+const landFragment = fragmentHeader + `
+in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vKnown;
 out vec4 outColour;
 void main() {
-  float time = eye.w;
-  float radius = world.x;
-  vec3 n = normalize(vNormal);
-  vec2 p = vWorld.xz;
-  ivec2 h = nm_hexRound(nm_axial(p));
-  vec4 tile = nm_tileAt(h, radius);
-  float owner = nm_owner(tile);
-  vec3 albedo = nm_grain(p, vColour);
-  vec3 edge = nm_hexEdge(p, h);
-  float pixel = max(fwidth(p.x), fwidth(p.y));
-  vec3 lit = vec3(0.0);
-  if (owner > 0.5 && vKnown > 0.5) {
-    vec3 house = houses[min(int(owner), 127)].rgb;
-    // As the game's: a breath of the House's colour, deepening from afar.
-    float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
-    breath = mix(breath, 0.3, smoothstep(60.0, 120.0, haze.x / 0.9));
-    albedo = mix(albedo, house * 0.5, breath);
-    ivec2 across = h + ivec2(int(edge.y), int(edge.z));
-    vec4 other = nm_tileAt(across, radius);
-    float otherOwner = nm_owner(other);
-    if (abs(otherOwner - owner) > 0.5) {
-      float line = 1.0 - smoothstep(pixel * 0.6, pixel * 2.2, edge.x);
-      lit += house * line * 0.35;
-    }
-  }
-  float moonlit = nm_moonlit(vWorld, n, shadow, still);
-  lit += nm_light(albedo, n, moon.xyz, moon.w * moonlit);
-  for (int i = 0; i < 4; i++) { lit += nm_pointLight(albedo, vWorld, n, lights[i], lights[i + 4]); }
-  for (int i = 0; i < 7; i++) {
-    ivec2 toward = ivec2(0, 0);
-    if (i == 1) { toward = ivec2(1, 0); }
-    if (i == 2) { toward = ivec2(-1, 0); }
-    if (i == 3) { toward = ivec2(0, 1); }
-    if (i == 4) { toward = ivec2(0, -1); }
-    if (i == 5) { toward = ivec2(1, -1); }
-    if (i == 6) { toward = ivec2(-1, 1); }
-    vec4 near = nm_tileAt(h + toward, radius);
-    if (near.y >= 128.0) {
-      float far = length(p - nm_hexCentre(h + toward));
-      lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
-    }
-  }
-  float hovered = (abs(float(h.x) - highlight.x) < 0.5 && abs(float(h.y) - highlight.y) < 0.5) ? 1.0 : 0.0;
-  float chosen = (abs(float(h.x) - highlight.z) < 0.5 && abs(float(h.y) - highlight.w) < 0.5) ? 1.0 : 0.0;
-  float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
-  lit += vec3(0.20, 0.22, 0.26) * ring * hovered * 0.6;
-  lit += kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
-  // What the keeper knows of the ground, blended between hexes, as the
-  // world's land fragment has it.
-  vec2 knows = nm_knowledgeAround(p, radius);
-  lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
-  if (knows.x < 0.999) {
-    // The unknown under the Still's mist, the pointer's and the chosen
-    // hex's ring showing faintly through it.
-    vec3 marked = vec3(0.20, 0.22, 0.26) * ring * hovered * 0.6 + kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
-    vec3 mist = nm_mist(p, time, knows.x) + (nm_remembered(marked) - kMist * 0.25) * 0.18;
-    lit = mix(mist, lit, smoothstep(0.55, 1.0, knows.x));
-  }
-  float beyond = float(nm_hexDistance(h)) - radius;
-  lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
-  lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(nm_expose(lit, haze.z)), 1.0);
+  outColour = nm_landShade(vWorld, vNormal, vColour, vKnown);
 }`;
 const waterVertex = header + `
 out vec3 vWorld;
 void main() {
   vec2 corner = vec2(float(gl_VertexID & 1), float(gl_VertexID >> 1));
-  vec2 xz = mix(extent.xy, extent.zw, corner);
+  vec2 xz = mix(frame.extent.xy, frame.extent.zw, corner);
   vWorld = vec3(xz.x, 0.0, xz.y);
-  gl_Position = viewProjection * vec4(vWorld, 1.0);
+  gl_Position = frame.viewProjection * vec4(vWorld, 1.0);
 }`;
-const waterFragment = header + `
+const waterFragment = fragmentHeader + `
 in vec3 vWorld;
 out vec4 outColour;
 void main() {
-  vec2 grid = (vWorld.xz - heightsGrid.xy) / haze.w + 0.5;
-  float ground = texture(heights, grid / heightsGrid.zw).r;
-  float depth = -ground;
-  if (depth <= 0.0) { discard; }
-  float time = eye.w;
-  vec3 look = normalize(vWorld - eye.xyz);
-  vec3 mirrored = vec3(look.x, -look.y, look.z);
-  float facing = 1.0 - max(-look.y, 0.0);
-  float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-  vec3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, moon.xyz)) * fresnel;
-  vec3 moonlit = nm_moonlight(mirrored, moon.xyz) * fresnel;
-  // The lights by the water on it, as the world's water fragment lays
-  // them, at the swell's middling glint.
-  float calm = clamp(still.x, 0.0, 1.0);
-  for (int i = 0; i < 4; i++) {
-    moonlit += nm_lightOnWater(vWorld, eye.xyz, normalize(look.xz), lights[i], lights[i + 4], calm)
-      * mix(1.05, 1.0, calm) * 0.14 * fresnel;
-  }
-  float clear = smoothstep(0.0, 0.14, depth);
-  ivec2 h = nm_hexRound(nm_axial(vWorld.xz));
-  vec2 knowledge = nm_knowledge(h, world.x);
-  vec3 colour = mix(nm_remembered(starlit + moonlit * (1.0 - knowledge.x)), starlit, knowledge.y) + moonlit * knowledge.x;
-  // The strand's small waves, as the world's water fragment has them.
-  float froth = 0.0;
-  if (depth < 0.6) {
-    vec4 tile = nm_tileAt(h, world.x);
-    float kind = tile.x - 16.0 * floor(tile.x / 16.0);
-    if (kind < 7.5) {
-      float east = texture(heights, (grid + vec2(1.0, 0.0)) / heightsGrid.zw).r;
-      float south = texture(heights, (grid + vec2(0.0, 1.0)) / heightsGrid.zw).r;
-      float fall = length(vec2(east - ground, south - ground)) / haze.w;
-      froth = nm_wash(vWorld.xz, nm_offshore(depth, fall), time, clamp(still.x, 0.0, 1.0));
-    }
-  }
-  vec3 foam = max(kMoonColour * 0.05 * mix(0.72, 1.0, knowledge.y), colour);
-  float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
-  colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
-  colour = nm_haze(colour, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(nm_expose(colour, haze.z)), cover);
+  outColour = nm_waterShade(vWorld);
+}`;
+// One triangle over the whole view at the far plane, as the game's sky.
+const skyVertex = header + `
+out vec2 vNdc;
+void main() {
+  vec2 corner = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2)) * 2.0 - 1.0;
+  gl_Position = vec4(corner, 1.0, 1.0);
+  vNdc = corner;
+}`;
+const skyFragment = fragmentHeader + `
+in vec2 vNdc;
+out vec4 outColour;
+void main() {
+  outColour = nm_skyShade(vNdc);
 }`;
 
-const modelVertex = header + `
+// A model's vertex, posed from the palette as the game poses it.
+const posedVertex = `
 uniform sampler2D palette;
 in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in vec2 parts; in vec2 surfaceBlend;
 in vec4 m0; in vec4 m1; in vec4 m2; in vec4 m3; in vec4 iColour; in vec4 iParams; in ivec2 iHex; in uint iPalette; in uint iFlags;
+mat4 posingOf(int part) {
+  int row = int(iPalette) + part;
+  return mat4(texelFetch(palette, ivec2(0, row), 0), texelFetch(palette, ivec2(1, row), 0),
+              texelFetch(palette, ivec2(2, row), 0), texelFetch(palette, ivec2(3, row), 0));
+}
+mat4 posing() {
+  mat4 first = posingOf(int(parts.x));
+  float blend = surfaceBlend.y / 255.0;
+  return blend > 0.0 ? first * (1.0 - blend) + posingOf(int(parts.y)) * blend : first;
+}
+vec3 swayed() {
+  float sway = colorSway.w / 255.0;
+  vec3 local = position;
+  if (sway > 0.0) { local += nm_wind(local, sway, normalMaterial.w, frame.eye.w + iParams.z) * frame.world.w; }
+  return local;
+}`;
+const modelVertex = header + posedVertex + `
 out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vLocalY; out vec3 vLocal; out vec3 vLocalNormal;
 flat out float vMaterial; flat out vec4 vParams; flat out float vWatched; flat out float vSurface;
 void main() {
-  float material = normalMaterial.w;
-  float sway = colorSway.w / 255.0;
-  float time = eye.w + iParams.z;
-  vec3 local = position;
-  if (sway > 0.0) { local += nm_wind(local, sway, material, time) * world.w; }
-  int row = int(iPalette) + int(parts.x);
-  mat4 posing = mat4(texelFetch(palette, ivec2(0, row), 0), texelFetch(palette, ivec2(1, row), 0),
-                     texelFetch(palette, ivec2(2, row), 0), texelFetch(palette, ivec2(3, row), 0));
-  float blend = surfaceBlend.y / 255.0;
-  if (blend > 0.0) {
-    int second = int(iPalette) + int(parts.y);
-    mat4 other = mat4(texelFetch(palette, ivec2(0, second), 0), texelFetch(palette, ivec2(1, second), 0),
-                      texelFetch(palette, ivec2(2, second), 0), texelFetch(palette, ivec2(3, second), 0));
-    posing = posing * (1.0 - blend) + other * blend;
-  }
-  vec4 posed = posing * vec4(local, 1.0);
+  mat4 part = posing();
+  vec4 posed = part * vec4(swayed(), 1.0);
   mat4 model = mat4(m0, m1, m2, m3);
   vec4 place = model * posed;
-  vec3 normal = (model * (posing * vec4(normalMaterial.xyz / 127.0, 0.0))).xyz;
-  float watched = 1.0;
-  if ((iFlags & 1u) == 0u) {
-    vec2 knowledge = nm_knowledge(iHex, world.x);
-    watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
-  }
-  vec3 albedo = nm_linear(colorSway.xyz / 255.0);
-  if ((material > 0.5 && material < 1.5) || (material > 3.5 && material < 4.5)) {
-    if (iColour.a > 0.5) {
-      float shade = dot(albedo, vec3(0.30, 0.55, 0.15));
-      albedo = iColour.rgb * shade * 2.0;
-    }
-  }
-  gl_Position = watched > 0.25 ? viewProjection * place : vec4(0.0, 0.0, 2.0, 1.0);
+  float watched = nm_modelWatched(iFlags, iHex, frame.world.x);
+  gl_Position = watched > 0.25 ? frame.viewProjection * place : vec4(0.0, 0.0, 2.0, 1.0);
   vWorld = place.xyz;
-  vNormal = normalize(normal);
-  vColour = albedo;
+  vNormal = normalize((model * (part * vec4(normalMaterial.xyz / 127.0, 0.0))).xyz);
+  vColour = nm_modelAlbedo(colorSway.xyz / 255.0, normalMaterial.w, surfaceBlend.x, iColour, iFlags);
   vLocalY = posed.y;
   vLocal = position;
   vLocalNormal = normalMaterial.xyz / 127.0;
   vSurface = surfaceBlend.x;
-  vMaterial = material;
+  vMaterial = normalMaterial.w;
   vParams = iParams;
   vWatched = watched;
 }`;
-const modelFragment = header + `
+// Fading, the game covers fewer of a pixel's samples; the browser leaves
+// pixels out by an ordered pattern instead. Nothing else differs.
+const modelFragment = fragmentHeader + `
 in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vLocalY; in vec3 vLocal; in vec3 vLocalNormal;
 flat in float vMaterial; flat in vec4 vParams; flat in float vWatched; flat in float vSurface;
 out vec4 outColour;
 void main() {
-  if (vLocalY > vParams.x) { discard; }
   if (vParams.y < 0.999 && vParams.y <= nm_bayer(gl_FragCoord.xy)) { discard; }
-  float time = eye.w + vParams.z;
-  vec3 n = normalize(vNormal);
-  vec3 toEye = normalize(eye.xyz - vWorld);
-  if (dot(n, toEye) < 0.0) { n = -n; }
-  vec3 albedo = nm_surface(vColour, vLocal, vLocalNormal, vSurface, length(fwidth(vLocal)));
-  float moonlit = nm_moonlit(vWorld, n, shadow, still);
-  vec3 lit = nm_light(albedo, n, moon.xyz, moon.w * moonlit);
-  for (int i = 0; i < 4; i++) { lit += nm_pointLight(albedo, vWorld, n, lights[i], lights[i + 4]); }
-  float facing = 1.0 - max(dot(n, toEye), 0.0);
-  float behind = max(dot(-toEye, moon.xyz), 0.0);
-  lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind * moonlit) * moon.w;
-  if (vMaterial > 5.5) {
-    vec3 halfway = normalize(toEye + moon.xyz);
-    lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * moon.w * moonlit;
-  } else if (vMaterial > 4.5) {
-    float glint = pow(max(dot(n, normalize(toEye + moon.xyz)), 0.0), 20.0) * moonlit;
-    lit += vColour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + vWorld.x * 5.0)) + vec3(0.6, 0.7, 0.9) * glint * 0.5;
-  } else if (vMaterial > 1.5 && vMaterial < 2.5) {
-    lit = vColour * (1.55 + 0.35 * nm_flicker(time + vWorld.x * 3.0 + vWorld.z * 2.0) * world.w);
-  }
-  if (vParams.x < 50.0 && vLocalY > vParams.x - 0.025) { lit += vec3(0.05, 0.042, 0.03); }
-  lit += kGlow * vParams.w * facing * facing * 0.45;
-  if (vWatched < 0.75) { lit = nm_remembered(lit); }
-  lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
-  outColour = vec4(nm_encode(nm_expose(lit, haze.z)), 1.0);
+  outColour = vec4(nm_modelShade(vWorld, vNormal, vColour, vLocalY, vLocal, vLocalNormal, vSurface, vMaterial, vParams, vWatched).rgb, 1.0);
 }`;
 
 // A model's vertex as the moon sees it, as the world's shadow vertex has it.
-const shadowVertex = header + `
-uniform sampler2D palette;
-in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in vec2 parts; in vec2 surfaceBlend;
-in vec4 m0; in vec4 m1; in vec4 m2; in vec4 m3; in vec4 iParams; in ivec2 iHex; in uint iPalette;
-in uint iFlags;
+const shadowVertex = header + posedVertex + `
 void main() {
-  float material = normalMaterial.w;
-  float sway = colorSway.w / 255.0;
-  float time = eye.w + iParams.z;
-  vec3 local = position;
-  if (sway > 0.0) { local += nm_wind(local, sway, material, time) * world.w; }
-  int row = int(iPalette) + int(parts.x);
-  mat4 posing = mat4(texelFetch(palette, ivec2(0, row), 0), texelFetch(palette, ivec2(1, row), 0),
-                     texelFetch(palette, ivec2(2, row), 0), texelFetch(palette, ivec2(3, row), 0));
-  float blend = surfaceBlend.y / 255.0;
-  if (blend > 0.0) {
-    int second = int(iPalette) + int(parts.y);
-    mat4 other = mat4(texelFetch(palette, ivec2(0, second), 0), texelFetch(palette, ivec2(1, second), 0),
-                      texelFetch(palette, ivec2(2, second), 0), texelFetch(palette, ivec2(3, second), 0));
-    posing = posing * (1.0 - blend) + other * blend;
-  }
-  vec4 posed = posing * vec4(local, 1.0);
+  vec4 posed = posing() * vec4(swayed(), 1.0);
   posed.y = min(posed.y, iParams.x);
   vec4 place = mat4(m0, m1, m2, m3) * posed;
-  float watched = 1.0;
-  if ((iFlags & 1u) == 0u) {
-    vec2 knowledge = nm_knowledge(iHex, world.x);
-    watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
-  }
-  gl_Position = watched > 0.25 ? shadow * place : vec4(0.0, 0.0, 2.0, 1.0);
+  float watched = nm_modelWatched(iFlags, iHex, frame.world.x);
+  gl_Position = watched > 0.25 ? frame.shadow * place : vec4(0.0, 0.0, 2.0, 1.0);
 }`;
 const shadowFragment = `#version 300 es
 precision highp float;
@@ -319,26 +191,21 @@ out vec2 vCorner; out vec4 vColour; out vec3 vWorld;
 void main() {
   int v = gl_VertexID;
   vec2 corner = vec2((v == 1 || v == 4 || v == 5) ? 1.0 : -1.0, (v == 2 || v == 3 || v == 5) ? 1.0 : -1.0);
-  vec3 forward = normalize(place.xyz - eye.xyz);
+  vec3 forward = normalize(place.xyz - frame.eye.xyz);
   vec3 right = normalize(cross(forward, vec3(0.0, 1.0, 0.0)));
   vec3 up = cross(right, forward);
   vec3 p = place.xyz + (right * corner.x + up * corner.y) * place.w;
-  vec2 knowledge = nm_knowledge(nm_hexRound(nm_axial(place.xz)), world.x);
-  gl_Position = knowledge.x > 0.5 ? viewProjection * vec4(p, 1.0) : vec4(0.0, 0.0, 2.0, 1.0);
+  vec2 knowledge = nm_knowledge(nm_hexRound(nm_axial(place.xz)), frame.world.x);
+  gl_Position = knowledge.x > 0.5 ? frame.viewProjection * vec4(p, 1.0) : vec4(0.0, 0.0, 2.0, 1.0);
   vCorner = corner;
   vColour = colour;
   vWorld = p;
 }`;
-const moteFragment = header + `
+const moteFragment = fragmentHeader + `
 in vec2 vCorner; in vec4 vColour; in vec3 vWorld;
 out vec4 outColour;
 void main() {
-  float r = length(vCorner);
-  if (r > 1.0) { discard; }
-  float soft = 1.0 - smoothstep(0.1, 1.0, r);
-  float far = 1.0 - clamp(1.0 - exp(-max(distance(vWorld, eye.xyz) - haze.x, 0.0) * haze.y), 0.0, 0.85);
-  vec3 light = vColour.rgb * soft * far;
-  outColour = vec4(nm_encode(light), vColour.a * soft);
+  outColour = nm_moteShade(vCorner, vColour, vWorld);
 }`;
 
 function compile(type, source) {
@@ -361,17 +228,42 @@ function program(vertex, fragment) {
 }
 const decode = (b64, Type) => { const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); return new Type(bytes.buffer); };
 
+// A 4 by 4 matrix's inverse, column-major as the frame gives it.
+function inverse(m) {
+  const a = Array.from(m), n = 4;
+  const aug = [];
+  for (let r = 0; r < n; r++) {
+    aug.push([...Array(n).keys()].map((c) => a[c * n + r]).concat([...Array(n).keys()].map((c) => (c === r ? 1 : 0))));
+  }
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(aug[r][col]) > Math.abs(aug[pivot][col])) pivot = r;
+    [aug[col], aug[pivot]] = [aug[pivot], aug[col]];
+    const d = aug[col][col];
+    for (let c = 0; c < 2 * n; c++) aug[col][c] /= d;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = aug[r][col];
+      for (let c = 0; c < 2 * n; c++) aug[r][c] -= f * aug[col][c];
+    }
+  }
+  const out = new Float32Array(16);
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) out[c * n + r] = aug[r][n + c];
+  return out;
+}
+
 function uniforms(p) {
   gl.useProgram(p);
   const set = (name, f, value) => { const at = gl.getUniformLocation(p, name); if (at) f.call(gl, at, value); };
-  set('viewProjection', (at, v) => gl.uniformMatrix4fv(at, false, v), new Float32Array(frame.viewProjection));
-  set('shadow', (at, v) => gl.uniformMatrix4fv(at, false, v), new Float32Array(frame.shadow || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]));
-  set('still', gl.uniform4fv, new Float32Array(frame.still || [0, 0, 0, 0]));
-  set('shadows', gl.uniform1i, 3);
-  for (const name of ['eye', 'moon', 'viewport', 'world', 'highlight', 'extent', 'haze']) set(name, gl.uniform4fv, new Float32Array(frame[name]));
-  set('heightsGrid', gl.uniform4fv, new Float32Array(frame.heights));
+  const matrix = (at, v) => gl.uniformMatrix4fv(at, false, v);
+  set('frame.viewProjection', matrix, new Float32Array(frame.viewProjection));
+  set('frame.inverseViewProjection', matrix, inverse(frame.viewProjection));
+  set('frame.shadow', matrix, new Float32Array(frame.shadow || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]));
+  set('frame.still', gl.uniform4fv, new Float32Array(frame.still || [0, 0, 0, 0]));
+  for (const name of ['eye', 'moon', 'viewport', 'world', 'highlight', 'extent', 'haze', 'heights']) set('frame.' + name, gl.uniform4fv, new Float32Array(frame[name]));
+  set('frame.lights[0]', gl.uniform4fv, new Float32Array(frame.lights || new Array(32).fill(0)));
   set('houses', gl.uniform4fv, new Float32Array(frame.houses));
-  set('lights', gl.uniform4fv, new Float32Array(frame.lights || new Array(32).fill(0)));
+  set('shadows', gl.uniform1i, 3);
   set('tiles', gl.uniform1i, 0);
   set('heights', gl.uniform1i, 1);
 }
@@ -513,6 +405,12 @@ if (batches.length > 0) {
   uniforms(models);
   drawBatches(models);
 }
+
+// The sky, wherever nothing nearer stands.
+const sky = program(skyVertex, skyFragment);
+uniforms(sky);
+gl.bindVertexArray(gl.createVertexArray());
+gl.drawArrays(gl.TRIANGLES, 0, 3);
 
 const water = program(waterVertex, waterFragment);
 uniforms(water);

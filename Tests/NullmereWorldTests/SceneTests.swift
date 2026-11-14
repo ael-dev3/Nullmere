@@ -35,6 +35,47 @@ final class SceneTests: XCTestCase {
         }
     }
 
+    /// What a fragment is lit by is written once, between the SHADING
+    /// markers, for the game and for the browser preview alike: the Metal
+    /// fragment functions and the preview's only hand their inputs to it, so
+    /// the preview can be trusted for what the game draws.
+    func testEveryFragmentIsLitByTheSharedShadingAlone() throws {
+        let source = WorldShaders.source
+        let shared = try XCTUnwrap(source.range(of: "// BEGIN SHADING")).upperBound..<XCTUnwrap(source.range(of: "// END SHADING")).lowerBound
+        let shading = String(source[shared])
+        let shades = ["nm_landShade", "nm_waterShade", "nm_skyShade", "nm_modelShade", "nm_moteShade"]
+        for shade in shades {
+            XCTAssertTrue(shading.contains("float4 \(shade)("), "\(shade) is shared")
+        }
+        // What lights, hazes and encodes a colour: none of it outside the
+        // shared code but in the functions the shared code is built from.
+        let lighting = ["nm_light(", "nm_pointLight(", "nm_moonlit(", "nm_haze(", "nm_encode(", "nm_expose(", "nm_remembered(", "nm_mist(",
+                        "nm_surface(", "nm_grain(", "nm_stars(", "nm_moonlight(", "nm_moonGlow(", "nm_wash("]
+        let metal = String(source[shared.upperBound...])
+        for name in lighting {
+            XCTAssertFalse(metal.contains(name), "The Metal functions leave \(name) to the shared shading")
+        }
+        for (function, shade) in zip(["nm_land_fragment", "nm_water_fragment", "nm_sky_fragment", "nm_model_fragment", "nm_mote_fragment"], shades) {
+            let body = try XCTUnwrap(metal.range(of: "fragment float4 \(function)(")).upperBound
+            let end = try XCTUnwrap(metal.range(of: "\n}", range: body..<metal.endIndex)).lowerBound
+            XCTAssertTrue(metal[body..<end].contains("return \(shade)("), "\(function) only hands its inputs to \(shade)")
+        }
+
+        // The preview, where the repository's tools are at hand.
+        let page = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Tools/world3d-preview/index.html")
+        guard let preview = try? String(contentsOf: page, encoding: .utf8) else {
+            throw XCTSkip("Tools/world3d-preview is not beside the tests here")
+        }
+        XCTAssertTrue(preview.contains("BEGIN SHADING") && preview.contains("BEGIN SCENE"), "It reads both shared sections")
+        for name in lighting {
+            XCTAssertFalse(preview.contains(name), "The preview leaves \(name) to the shared shading")
+        }
+        for shade in shades {
+            XCTAssertTrue(preview.contains("\(shade)("), "The preview's fragment hands its inputs to \(shade)")
+        }
+    }
+
     /// The Houses' colours as the shaders read them: a House's a texel past
     /// its sigil, the first texel no House's, every texel no House has grey,
     /// and room for every House the widest lake seats.
