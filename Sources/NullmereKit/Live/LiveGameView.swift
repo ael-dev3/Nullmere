@@ -5,14 +5,18 @@ import NullmereLiveStage
 import SwiftUI
 
 /// The rebuilt realm, played: the world filling the window, and over it
-/// only what the moment needs. Along the top, the city's goods; at the
-/// foot, a card for whatever is chosen and the player's armies out; at
-/// the side, when asked for, the city, its troops, or the reports.
+/// only what the moment needs. Along the top, the city's goods and the
+/// task the player is on; at the foot, the player's armies out, the
+/// doors to everything else, and a card for whatever is chosen; at the
+/// side, when asked for, the city, its troops, the alliance, what is
+/// being said, or the reports.
 public struct LiveGameView: View {
     /// What the side of the window is given over to.
     enum Panel: Equatable {
         case city
         case troops
+        case alliance
+        case chat
         case reports
     }
 
@@ -190,7 +194,11 @@ struct LiveHUD: View {
             let seconds = session.now
             HStack(alignment: .top, spacing: 12) {
                 VStack(spacing: 10) {
-                    LiveTopBar(session: session, seconds: seconds, panel: $panel)
+                    LiveTopBar(session: session, seconds: seconds)
+                    HStack(alignment: .top, spacing: 12) {
+                        LiveTaskChip(session: session)
+                        Spacer(minLength: 0)
+                    }
                     if let said = session.said {
                         LiveSaid(words: said) { session.said = nil }
                     }
@@ -198,6 +206,7 @@ struct LiveHUD: View {
                     HStack(alignment: .bottom, spacing: 12) {
                         LiveArmies(session: session, seconds: seconds)
                         Spacer(minLength: 0)
+                        LiveDock(session: session, panel: $panel)
                     }
                     if let selection = session.selection {
                         LiveCardView(session: session, card: session.card(for: selection), panel: $panel)
@@ -212,12 +221,11 @@ struct LiveHUD: View {
     }
 }
 
-/// Along the top: whose city, its goods as they stand this second, the
-/// player's energy, and the way to the reports.
+/// Along the top: whose city, its goods as they stand this second, and
+/// the player's energy.
 struct LiveTopBar: View {
     let session: LiveSession
     let seconds: Double
-    @Binding var panel: LiveGameView.Panel?
 
     private static let stores: [Resource] = [.grain, .timber, .stone, .moonsalt]
 
@@ -262,13 +270,69 @@ struct LiveTopBar: View {
                     .monospacedDigit()
                     .foregroundStyle(Palette.text(0.8))
             }
-            Spacer(minLength: 0)
-            QuietButton(title: session.world.unread > 0 ? "Reports \(session.world.unread)" : "Reports", prominent: session.world.unread > 0) {
-                panel = panel == .reports ? nil : .reports
-            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .panelBackground()
+    }
+}
+
+/// The task the player is on: what it asks, what it gives, and a way to
+/// claim it once it is done.
+struct LiveTaskChip: View {
+    let session: LiveSession
+
+    var body: some View {
+        if let task = session.world.task {
+            let done = session.world.isDone(task)
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: task.words)
+                        .font(.nm(12, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                    Text(verbatim: "Gives \(task.gives.words).")
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.text(0.7))
+                }
+                QuietButton(title: "Claim", prominent: done, enabled: done && session.asking == 0, name: "Claim what the task gives",
+                            why: "Not done yet: \(task.words)") {
+                    Task { await session.claimTask() }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .panelBackground()
+            .accessibilityElement(children: .contain)
+        }
+    }
+}
+
+/// The doors to everything that is not the world: each opens a side of
+/// the window, or closes it again.
+struct LiveDock: View {
+    struct Door: Identifiable {
+        let title: String
+        let panel: LiveGameView.Panel
+        var id: String { title }
+    }
+
+    static let doors = [Door(title: "Buildings", panel: .city), Door(title: "Troops", panel: .troops), Door(title: "Alliance", panel: .alliance),
+                        Door(title: "Chat", panel: .chat), Door(title: "Reports", panel: .reports)]
+
+    let session: LiveSession
+    @Binding var panel: LiveGameView.Panel?
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Self.doors) { door in
+                let unread = door.panel == .reports ? session.world.unread : 0
+                QuietButton(title: unread > 0 ? "\(door.title) \(unread)" : door.title, prominent: panel == door.panel || unread > 0,
+                            name: unread > 0 ? "\(door.title), \(unread) unread" : door.title) {
+                    panel = panel == door.panel ? nil : door.panel
+                }
+            }
+        }
+        .padding(4)
         .panelBackground()
     }
 }

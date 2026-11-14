@@ -191,6 +191,70 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(rising.trainLines(at: 2_000).first?.tiers[0].block, .rising("Barracks"))
     }
 
+    func testAlliancesAreOfferedAndWhatIsSaidIsListed() throws {
+        var snapshot: [String: [[JSONValue]]] = [
+            "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]],
+            "me": [[n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]],
+            "my_city": [[n(8), n(2), n(Double(LiveHex(q: 3, r: 4).packed)), .string("Bryn"), n(5), n(500), n(1_000), n(1)]],
+            "my_buildings": [[n(21), n(8), n(1), n(5)]],
+            "alliance": [[n(5), n(77), n(78), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_500), n(40), .bool(false), .string("We keep the east shore.")],
+                         [n(6), n(79), n(80), .string("Wardens"), .string("WRD"), n(4), n(1_600), n(100), .bool(true), .string("")],
+                         [n(7), n(81), n(82), .string("Lanterns"), .string("LAN"), n(5), n(1_700), n(60), .bool(true), .string("")]],
+            "realm_chat": [[n(11), n(1), .string("[MERE] Ada"), n(2_000), .string("Good morning, all.")], [n(12), n(2), .string("Bryn"), n(2_010), .string("Morning.")]],
+        ]
+        // In no alliance: each is offered, the largest first; a full one can't be joined.
+        var world = LiveWorld(snapshot: snapshot)
+        var lines = world.allianceLines()
+        XCTAssertEqual(lines.map(\.alliance.tag), ["WRD", "LAN", "MERE"])
+        XCTAssertEqual(lines.map(\.offer), ["Join", "Join", "Ask to join"])
+        XCTAssertEqual(lines.map(\.why), ["That alliance is full.", nil, nil])
+        XCTAssertEqual(lines.map(\.standing), [nil, nil, nil])
+        XCTAssertEqual(world.foundingBlock, "Raise your Embassy to level 1 first.")
+        XCTAssertFalse(world.isOfficer || world.isLeader)
+        // Having asked to join one: that is said, and the others are still offered.
+        snapshot["my_applicants"] = [[n(2), n(5), .string("Bryn"), n(2_030)]]
+        lines = LiveWorld(snapshot: snapshot).allianceLines()
+        XCTAssertEqual(lines.last?.standing, "You have asked to join")
+        XCTAssertNil(lines.last?.offer)
+        XCTAssertEqual(lines[1].offer, "Join")
+        // With an Embassy he may found one.
+        snapshot["my_buildings"]?.append([n(22), n(8), n(15), n(1)])
+        XCTAssertNil(LiveWorld(snapshot: snapshot).foundingBlock)
+        // In one: his own comes first, and no other can be joined or founded.
+        snapshot["member"] = [[n(2), n(7), n(4), n(1_800)], [n(1), n(5), n(5), n(1_500)]]
+        snapshot["my_applicants"] = [[n(9), n(7), .string("Edda"), n(2_040)]]
+        world = LiveWorld(snapshot: snapshot)
+        lines = world.allianceLines()
+        XCTAssertEqual(lines.map(\.alliance.tag), ["LAN", "WRD", "MERE"])
+        XCTAssertEqual(lines[0].standing, "Your alliance")
+        XCTAssertNil(lines[0].offer)
+        XCTAssertEqual(lines[2].why, "You are in an alliance already. Leave it first.")
+        XCTAssertEqual(world.foundingBlock, "You are in an alliance already. Leave it first.")
+        XCTAssertTrue(world.isOfficer)
+        XCTAssertFalse(world.isLeader)
+        XCTAssertEqual(lines[2].standing, nil, "someone else's asking is not his own")
+
+        // What is said, the oldest first, his own marked.
+        XCTAssertEqual(world.chatLines(withinAlliance: false).map { [$0.name, $0.words] }, [["[MERE] Ada", "Good morning, all."], ["Bryn", "Morning."]])
+        XCTAssertEqual(world.chatLines(withinAlliance: false).map(\.own), [false, true])
+        XCTAssertTrue(world.chatLines(withinAlliance: true).isEmpty)
+
+        // Shapes the realm takes, as the module has them.
+        XCTAssertTrue(LiveWorld.allianceNameFits("  Keepers   of the Mere "))
+        for name in ["Me", "A name much too long to be an alliance's", "Keepers!", "-Keepers", ""] {
+            XCTAssertFalse(LiveWorld.allianceNameFits(name), name)
+        }
+        XCTAssertEqual(["MERE", " wrd ", "ME", "MERES", "M-R", "M R"].map { LiveWorld.tagFits($0) }, [true, true, false, false, false, false])
+        XCTAssertEqual(["Hello", "   ", String(repeating: "a", count: 200), String(repeating: "a", count: 201)].map { LiveWorld.sayingFits($0) }, [true, false, true, false])
+        let rules = try source("rules/mod.rs"), catalog = try source("catalog.rs"), alliance = try source("rules/alliance.rs")
+        for sentence in ["You are in an alliance already. Leave it first.", "That alliance is full."] {
+            XCTAssertTrue(rules.contains("\"\(sentence)\""), sentence)
+        }
+        XCTAssertTrue(catalog.contains("pub const ALLIANCE_MOST: u32 = \(LiveWorld.allianceMost);"))
+        XCTAssertTrue(catalog.contains("pub const SAID_LONGEST: usize = \(LiveWorld.saidLongest);"))
+        XCTAssertTrue(alliance.contains("pub const ALLIANCE_NAME_SHORTEST: usize = 3;") && alliance.contains("pub const ALLIANCE_NAME_LONGEST: usize = 20;"))
+    }
+
     func testEachArmyOutIsToldInPlainWords() throws {
         func route(_ hexes: [LiveHex]) -> JSONValue {
             .string(hexes.flatMap { hex -> [UInt8] in

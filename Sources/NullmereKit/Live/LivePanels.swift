@@ -15,6 +15,8 @@ struct LiveSidePanel: View {
         switch panel {
         case .city: return "Buildings"
         case .troops: return "Troops"
+        case .alliance: return "Alliance"
+        case .chat: return "Chat"
         case .reports: return "Reports"
         }
     }
@@ -32,6 +34,8 @@ struct LiveSidePanel: View {
                     switch panel {
                     case .city: LiveBuildings(session: session, seconds: seconds)
                     case .troops: LiveTroops(session: session, seconds: seconds)
+                    case .alliance: LiveAlliancePanel(session: session)
+                    case .chat: LiveChatPanel(session: session)
                     case .reports: LiveReports(session: session, seconds: seconds)
                     }
                 }
@@ -233,5 +237,183 @@ struct LiveReports: View {
             }
             .accessibilityElement(children: .contain)
         }
+    }
+}
+
+/// A line of typing with a rule under it, as the interface takes words.
+private struct LiveField: View {
+    let prompt: String
+    @Binding var text: String
+    var width: CGFloat?
+    let submit: () -> Void
+
+    var body: some View {
+        TextField(prompt, text: $text)
+            .textFieldStyle(.plain)
+            .font(.nm(12))
+            .foregroundStyle(Palette.ink)
+            .frame(width: width)
+            .padding(.vertical, 4)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Palette.line(0.35)).frame(height: 1)
+            }
+            .onSubmit(submit)
+            .accessibilityLabel(prompt)
+    }
+}
+
+/// The player's alliance, with its members and those asking to join; and
+/// every alliance of the realm, to join one or found another.
+struct LiveAlliancePanel: View {
+    let session: LiveSession
+    @State private var name = ""
+    @State private var tag = ""
+
+    var body: some View {
+        let world = session.world
+        if let mine = world.myAlliance {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verbatim: "[\(mine.tag)] \(mine.name)")
+                    .font(.nm(14, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                LiveSmall(words: "\(mine.members) of \(LiveWorld.allianceMost) members. \(mine.open ? "Anyone may join." : "Joining is by asking.")")
+                if !mine.words.isEmpty {
+                    LiveSmall(words: mine.words)
+                }
+            }
+            ForEach(world.roster(of: mine.id)) { member in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: world.players[member.player]?.name ?? "Someone")
+                        .font(.nm(12, weight: member.player == world.me?.id ? .medium : .regular))
+                        .foregroundStyle(Palette.ink)
+                    LiveSmall(words: member.title, dim: true)
+                    Spacer(minLength: 0)
+                    if world.isLeader, member.player != world.me?.id {
+                        QuietButton(title: member.rank == LiveMember.officer ? "Make member" : "Make officer", enabled: session.asking == 0) {
+                            Task { await session.setRank(of: member.player, to: member.rank == LiveMember.officer ? LiveMember.member : LiveMember.officer) }
+                        }
+                    }
+                    if world.isOfficer, member.rank < (world.myMembership?.rank ?? 0) {
+                        QuietButton(title: "Put out", enabled: session.asking == 0, name: "Put \(world.players[member.player]?.name ?? "them") out of the alliance") {
+                            Task { await session.expel(member.player) }
+                        }
+                    }
+                }
+            }
+            if world.isOfficer, !world.applicants.isEmpty {
+                Caps("Asking to join", size: 10)
+                    .foregroundStyle(Palette.text(0.7))
+                ForEach(world.applicants) { asked in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(verbatim: asked.name)
+                            .font(.nm(12))
+                            .foregroundStyle(Palette.ink)
+                        Spacer(minLength: 0)
+                        QuietButton(title: "Let in", prominent: true, enabled: session.asking == 0, name: "Let \(asked.name) in") {
+                            Task { await session.answer(applicant: asked.player, admit: true) }
+                        }
+                        QuietButton(title: "Turn away", enabled: session.asking == 0, name: "Turn \(asked.name) away") {
+                            Task { await session.answer(applicant: asked.player, admit: false) }
+                        }
+                    }
+                }
+            }
+            QuietButton(title: "Leave the alliance", enabled: session.asking == 0) {
+                Task { await session.leaveAlliance() }
+            }
+        } else {
+            LiveSmall(words: "You are in no alliance. Join one below, or found your own.")
+        }
+
+        let others = world.allianceLines().filter { $0.standing != "Your alliance" }
+        if !others.isEmpty {
+            Caps("Alliances of the realm", size: 10)
+                .foregroundStyle(Palette.text(0.7))
+        }
+        ForEach(others) { line in
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: "[\(line.alliance.tag)] \(line.alliance.name)")
+                        .font(.nm(12, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                    Spacer(minLength: 0)
+                    if let offer = line.offer {
+                        QuietButton(title: offer, prominent: line.why == nil, enabled: line.why == nil && session.asking == 0,
+                                    name: "\(offer): \(line.alliance.name)", why: line.why) {
+                            Task { await session.joinAlliance(line.alliance.id) }
+                        }
+                    }
+                }
+                LiveSmall(words: "\(line.alliance.members) members\(line.standing.map { ". \($0)." } ?? "")", dim: true)
+                if !line.alliance.words.isEmpty {
+                    LiveSmall(words: line.alliance.words)
+                }
+            }
+        }
+
+        if world.myAlliance == nil {
+            Caps("Found an alliance", size: 10)
+                .foregroundStyle(Palette.text(0.7))
+            if let block = world.foundingBlock {
+                LiveSmall(words: block, dim: true)
+            } else {
+                HStack(spacing: 10) {
+                    LiveField(prompt: "Its name", text: $name, width: nil, submit: found)
+                    LiveField(prompt: "Tag", text: $tag, width: 56, submit: found)
+                }
+                QuietButton(title: "Found it", prominent: true,
+                            enabled: LiveWorld.allianceNameFits(name) && LiveWorld.tagFits(tag) && session.asking == 0,
+                            why: "A name of 3 to 20 letters, and a tag of 3 or 4.", action: found)
+            }
+        }
+    }
+
+    private func found() {
+        guard LiveWorld.allianceNameFits(name), LiveWorld.tagFits(tag) else { return }
+        Task { await session.foundAlliance(name: name, tag: tag) }
+    }
+}
+
+/// What is being said: in the realm, or within the player's alliance,
+/// the latest first, with a line to say something more.
+struct LiveChatPanel: View {
+    let session: LiveSession
+    @State private var within = false
+    @State private var words = ""
+
+    var body: some View {
+        let world = session.world
+        HStack(spacing: 4) {
+            QuietButton(title: "Realm", prominent: !within) { within = false }
+            QuietButton(title: "Alliance", prominent: within, enabled: world.myAlliance != nil, why: "You are in no alliance.") { within = true }
+        }
+        HStack(spacing: 8) {
+            LiveField(prompt: within ? "Say to your alliance" : "Say to the realm", text: $words, width: nil, submit: say)
+            QuietButton(title: "Say", prominent: true, enabled: LiveWorld.sayingFits(words) && session.asking == 0,
+                        why: "Something to say, of 200 letters at most.", action: say)
+        }
+        let lines = world.chatLines(withinAlliance: within && world.myAlliance != nil)
+        if lines.isEmpty {
+            LiveSmall(words: "Nothing has been said here yet.", dim: true)
+        }
+        ForEach(lines.reversed()) { line in
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: line.name)
+                    .font(.nm(11, weight: .medium))
+                    .foregroundStyle(line.own ? Palette.glowWords : Palette.text(0.7))
+                Text(verbatim: line.words)
+                    .font(.nm(12))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private func say() {
+        guard LiveWorld.sayingFits(words) else { return }
+        let saying = words
+        words = ""
+        Task { await session.say(saying, withinAlliance: within && session.world.myAlliance != nil) }
     }
 }

@@ -308,3 +308,99 @@ extension LiveWorld {
         return tends > held ? tends - held : 0
     }
 }
+
+/// An alliance as a list offers it to the player.
+public struct LiveAllianceLine: Equatable, Identifiable, Sendable {
+    public let alliance: LiveAlliance
+    public var id: UInt64 { alliance.id }
+    /// What the player can do about it: "Join", "Ask to join", or nothing
+    /// where it is their own or they have asked already.
+    public let offer: String?
+    /// Where they stand with it, where there is something to say:
+    /// "Your alliance", "You have asked to join".
+    public let standing: String?
+    /// Why the offer can't be taken up now; nil where it can.
+    public let why: String?
+}
+
+/// One thing said, as a list shows it.
+public struct LiveChatLine: Equatable, Identifiable, Sendable {
+    public let id: UInt64
+    public let name: String
+    public let words: String
+    /// Whether the player said it themselves.
+    public let own: Bool
+}
+
+extension LiveWorld {
+    /// The most members an alliance has, the longest thing that can be
+    /// said, and the letters an alliance's name may have, as the module
+    /// has them.
+    public static let allianceMost = 100
+    public static let saidLongest = 200
+    public static let allianceName = 3...20
+
+    /// Every alliance, the player's own first, then the largest.
+    public func allianceLines() -> [LiveAllianceLine] {
+        let mine = myMembership?.alliance
+        let asked = mine == nil ? applicants.first { $0.player == me?.id }?.alliance : nil
+        return alliances.values.sorted { a, b in
+            if (a.id == mine) != (b.id == mine) { return a.id == mine }
+            return (b.members, a.id) < (a.members, b.id)
+        }.map { alliance in
+            if alliance.id == mine {
+                return LiveAllianceLine(alliance: alliance, offer: nil, standing: "Your alliance", why: nil)
+            }
+            if alliance.id == asked {
+                return LiveAllianceLine(alliance: alliance, offer: nil, standing: "You have asked to join", why: nil)
+            }
+            var why: String?
+            if mine != nil {
+                why = "You are in an alliance already. Leave it first."
+            } else if alliance.members >= LiveWorld.allianceMost {
+                why = "That alliance is full."
+            }
+            return LiveAllianceLine(alliance: alliance, offer: alliance.open ? "Join" : "Ask to join", standing: nil, why: why)
+        }
+    }
+
+    /// Why the player can't found an alliance now; nil where they can.
+    public var foundingBlock: String? {
+        if myMembership != nil { return "You are in an alliance already. Leave it first." }
+        if (building(15)?.level ?? 0) < 1 { return "Raise your Embassy to level 1 first." }
+        return nil
+    }
+
+    /// Whether an alliance's name and tag are of a shape the realm takes:
+    /// the realm has the last word, on these and on whether they are
+    /// taken.
+    public static func allianceNameFits(_ name: String) -> Bool {
+        let tidy = name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let allowed = tidy.allSatisfy { $0.isLetter || $0.isNumber || $0 == " " || $0 == "-" || $0 == "'" }
+        let ends = (tidy.first.map { $0.isLetter || $0.isNumber } ?? false) && (tidy.last.map { $0.isLetter || $0.isNumber } ?? false)
+        return allianceName.contains(tidy.count) && allowed && ends
+    }
+
+    public static func tagFits(_ tag: String) -> Bool {
+        let tidy = tag.trimmingCharacters(in: .whitespaces)
+        return (3...4).contains(tidy.count) && tidy.allSatisfy { $0.isLetter || $0.isNumber }
+    }
+
+    /// Whether something can be said as it stands: not nothing, and not
+    /// too long.
+    public static func sayingFits(_ words: String) -> Bool {
+        let tidy = words.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return !tidy.isEmpty && tidy.count <= saidLongest
+    }
+
+    /// What has been said, the oldest first: in the realm, or within the
+    /// player's alliance.
+    public func chatLines(withinAlliance: Bool) -> [LiveChatLine] {
+        (withinAlliance ? allianceChat : realmChat).map { LiveChatLine(id: $0.id, name: $0.name, words: $0.words, own: $0.player == me?.id) }
+    }
+
+    /// Whether the player may let applicants in, put members out and the
+    /// like: an officer of their alliance, or its leader.
+    public var isOfficer: Bool { (myMembership?.rank ?? 0) >= LiveMember.officer }
+    public var isLeader: Bool { myMembership?.rank == LiveMember.leader }
+}
