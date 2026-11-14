@@ -434,6 +434,16 @@ pub fn batch(level: u32) -> u64 {
     10 + 40 * level.min(TOP_LEVEL) as u64
 }
 
+/// How many buildings a city may raise at once, by its Keep's level: a
+/// second builder from the eighth.
+pub fn builders(keep: u32) -> u32 {
+    if keep >= 8 {
+        2
+    } else {
+        1
+    }
+}
+
 /// How many armies a city may have out at once, by its Keep's level.
 pub fn marches(keep: u32) -> u32 {
     match keep {

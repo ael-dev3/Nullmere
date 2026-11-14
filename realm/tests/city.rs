@@ -135,6 +135,38 @@ fn those_who_join_about_the_same_time_are_neighbours() {
 }
 
 #[test]
+fn a_city_has_a_second_builder_from_its_eighth_keep() {
+    assert_eq!([1, 7, 8, 25].map(catalog::builders), [1, 1, 2, 2]);
+    let mut db = opened(1);
+    let (player, city) = joined(&mut db, "Ada");
+    let mut keep = building(&db, city.id, Kind::Keep);
+    // At the seventh level, one thing at a time.
+    keep.level = 7;
+    db.update(keep.clone());
+    let mut row = city.clone();
+    row.keep = 7;
+    db.update(row);
+    db.insert(Building { id: 0, city: city.id, kind: Kind::Wall as u8, level: 7 });
+    let farm = building(&db, city.id, Kind::Farm);
+    let sawmill = building(&db, city.id, Kind::Sawmill);
+    let mut rich = Table::<Stock>::get(&db, city.id).unwrap();
+    (rich.grain, rich.timber, rich.stone, rich.holds) = (9_000_000, 9_000_000, 9_000_000, 9_000_000);
+    db.update(rich);
+    db.call(|db| rules::upgrade(db, player, keep.id)).unwrap();
+    assert_eq!(db.call(|db| rules::upgrade(db, player, farm.id)), Err(Refusal::BuildersBusy));
+    // The Keep reaches its eighth: the city is reckoned afresh, with two builders.
+    wait(&mut db, catalog::seconds(Kind::Keep, 8));
+    assert_eq!(rules::city_of(&db, player).unwrap().builders, 2);
+    assert!(db.call(|db| rules::upgrade(db, player, farm.id)).is_ok());
+    assert!(db.call(|db| rules::upgrade(db, player, sawmill.id)).is_ok());
+    // And no third.
+    let wall = building(&db, city.id, Kind::Wall);
+    assert_eq!(db.call(|db| rules::upgrade(db, player, wall.id)), Err(Refusal::BuildersBusy));
+    wait(&mut db, catalog::seconds(Kind::Farm, 2));
+    assert!(db.call(|db| rules::upgrade(db, player, wall.id)).is_ok());
+}
+
+#[test]
 fn a_world_with_no_ground_left_takes_no_more_players() {
     // A world so small that its band of settled ground is a few hexes wide.
     let mut db = Mem::new(START, 3);

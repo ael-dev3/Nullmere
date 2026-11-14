@@ -176,6 +176,7 @@ pub(super) fn reckon(db: &mut impl Db, city: u64) -> City {
         db.update(stock);
     }
     row.keep = level_of(Kind::Keep).max(1);
+    row.builders = catalog::builders(row.keep);
     row.power = power + troop_power(db, city) + marching_power(db, city);
     db.update(row.clone());
     row
