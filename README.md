@@ -96,8 +96,11 @@ code changes: keepers' clients meet, trade, ally, speak and make war there,
 and the app enters a realm across the network. Going live takes five steps
 that need the maintainer's own accounts and ears, each a checklist in
 [GO-LIVE.md](docs/GO-LIVE.md). Measured honestly against Rise of Kingdoms,
-it falls short of it today; [GAPS.md](docs/GAPS.md) says, area by area, what
-is there, what CI has shown of it and what is still missing.
+it falls well short of it today. An audit on 14 November found the game
+turn-based where it should be persistent, its world too dark and plain, its
+interface mostly text, and no live realm; [rework-plan.md](docs/rework-plan.md)
+has the audit and the plan to rebuild it, and [GAPS.md](docs/GAPS.md) the
+record before it.
 
 ## Documentation
 
