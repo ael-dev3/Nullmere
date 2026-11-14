@@ -176,6 +176,63 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual([session.windowVersion, session.standingVersion], [2, 3])
     }
 
+    func testTheCameraKeepsItsPlaceAsTheWindowMoves() async throws {
+        let line = StandInLine(rows: LiveWindowTests.rows())
+        let session = session(line)
+        await session.open()
+        XCTAssertEqual([session.camera.centerX, session.camera.centerY], [0, 0], "opened on her city, at the window's heart")
+        XCTAssertEqual(session.camera.scale, LiveSession.openingScale)
+
+        // Panned four hexes east: the look follows, the window stays.
+        var camera = session.camera
+        camera.centerX = 4 * 3.0.squareRoot()
+        session.moved(camera)
+        XCTAssertEqual(session.look, LiveHex(q: 14, r: -4))
+        XCTAssertEqual(session.windowVersion, 1)
+        XCTAssertEqual(session.camera.centerX, 4 * 3.0.squareRoot(), accuracy: 1e-9)
+
+        // Ten hexes east: the window is taken afresh about the look, and
+        // the camera is at that window's heart: the same place in the world.
+        camera.centerX = 10 * 3.0.squareRoot()
+        session.moved(camera)
+        XCTAssertEqual(session.look, LiveHex(q: 20, r: -4))
+        XCTAssertEqual(session.window?.centre, LiveHex(q: 20, r: -4))
+        XCTAssertEqual(session.windowVersion, 2)
+        XCTAssertEqual(session.camera.centerX, 0, accuracy: 1e-9)
+        XCTAssertEqual(session.camera.centerY, 0, accuracy: 1e-9)
+        // A little south-east in the new window: no new window, the camera as it was put.
+        camera = session.camera
+        (camera.centerX, camera.centerY) = (3.0.squareRoot() / 2, 1.5)
+        session.moved(camera)
+        XCTAssertEqual(session.look, LiveHex(q: 20, r: -3))
+        XCTAssertEqual(session.windowVersion, 2)
+        XCTAssertEqual(session.camera.centerY, 1.5, accuracy: 1e-9)
+
+        // Drawn back no further than keeps the window's rim out of sight.
+        camera.scale = 5
+        session.moved(camera)
+        XCTAssertEqual(session.camera.scale, LiveSession.furthestScale)
+
+        // Turned to a hex far off: a window about it, the camera on it.
+        session.go(to: LiveHex(q: -20, r: 9))
+        XCTAssertEqual(session.window?.centre, LiveHex(q: -20, r: 9))
+        XCTAssertEqual([session.camera.centerX, session.camera.centerY], [0, 0])
+        // And to one nearby: the same window, the camera moved over it.
+        session.go(to: LiveHex(q: -18, r: 9))
+        XCTAssertEqual(session.window?.centre, LiveHex(q: -20, r: 9))
+        XCTAssertEqual(session.camera.centerX, 2 * 3.0.squareRoot(), accuracy: 1e-9)
+
+        // A hex of the window chosen is a hex of the world.
+        session.choose(local: Hex(3, -1))
+        XCTAssertEqual(session.selected, LiveHex(q: -17, r: 8))
+        XCTAssertEqual(session.selectedLocal, Hex(3, -1))
+        session.go(to: LiveHex(q: 10, r: -4))
+        XCTAssertNil(session.selectedLocal, "chosen still, but out of the window now")
+        XCTAssertEqual(session.selected, LiveHex(q: -17, r: 8))
+        session.choose(local: nil)
+        XCTAssertNil(session.selected)
+    }
+
     func testTheWindowIsStagedForTheRendererAtAMoment() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         let session = session(line)

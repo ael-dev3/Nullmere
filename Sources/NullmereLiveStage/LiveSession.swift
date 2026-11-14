@@ -64,6 +64,10 @@ public final class LiveSession {
     /// may stray from that heart before the window is taken afresh.
     public static let reach = 24
     public static let stray = 8
+    /// How close the view opens on a city, and the furthest out it draws
+    /// back: no further than keeps the window's rim out of sight.
+    public static let openingScale = 46.0
+    public static let furthestScale = 22.0
 
     public private(set) var phase: Phase = .opening
     public private(set) var world = LiveWorld()
@@ -73,8 +77,11 @@ public final class LiveSession {
     public private(set) var asking = 0
     /// The hex of the world the player has chosen.
     public var selected: LiveHex?
-    /// The hex of the world the player is looking at.
+    /// The hex of the world the player is looking at, and the camera over
+    /// the window it is drawn in: in that window's own land, whose heart
+    /// is the window's centre.
     public private(set) var look = LiveHex(q: 0, r: 0)
+    public private(set) var camera = Camera(scale: LiveSession.openingScale)
     /// The window of the world being drawn, and a number that moves each
     /// time another is taken: the land to be drawn has changed.
     public private(set) var window: LiveWindow?
@@ -145,6 +152,7 @@ public final class LiveSession {
             placed = true
             look = city.hex
             window = nil
+            (camera.centerX, camera.centerY) = (0, 0)
         }
         retake()
     }
@@ -156,6 +164,44 @@ public final class LiveSession {
         look = hex
         retake()
     }
+
+    /// The view's camera has moved: the look follows what it is centred
+    /// on, and where that takes the window afresh, the camera is carried
+    /// over to the same place in the new one, so nothing on screen moves.
+    public func moved(_ camera: Camera) {
+        var camera = camera
+        camera.scale = max(camera.scale, LiveSession.furthestScale)
+        self.camera = camera
+        guard let before = window?.centre else { return }
+        let under = HexLayout(size: 1).hex(atX: camera.centerX, y: camera.centerY)
+        look(at: LiveHex(q: under.q + before.q, r: under.r + before.r))
+        if let after = window?.centre, after != before {
+            self.camera.centerX -= after.centre.x - before.centre.x
+            self.camera.centerY -= after.centre.y - before.centre.y
+        }
+    }
+
+    /// Turns the view to a hex of the world, wherever it lies.
+    public func go(to hex: LiveHex) {
+        look(at: hex)
+        guard let centre = window?.centre else { return }
+        camera.centerX = hex.centre.x - centre.centre.x
+        camera.centerY = hex.centre.y - centre.centre.y
+    }
+
+    /// The player chooses a hex of the window's own land, or with nil,
+    /// nothing.
+    public func choose(local hex: Hex?) {
+        guard let hex, let centre = window?.centre else {
+            selected = nil
+            return
+        }
+        selected = LiveHex(q: hex.q + centre.q, r: hex.r + centre.r)
+    }
+
+    /// What the player has chosen, as a hex of the window's own land,
+    /// where it lies in the window.
+    public var selectedLocal: Hex? { selected.flatMap { window?.local($0) } }
 
     /// Takes the window afresh where it is wanted: none yet, the look
     /// strayed from its heart, or more of the land known than when it was
