@@ -147,6 +147,17 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertTrue(LiveWorld(snapshot: ["city": [[.string("x")]], "my_stock": [[]]]).cities.isEmpty)
     }
 
+    /// What a call carries goes in its body as the module reads it: a
+    /// hex's place may be below zero, and a march's soldiers are records
+    /// by name.
+    func testACallsArgumentsGoAsTheModuleReadsThem() throws {
+        let arguments: [ReducerArgument] = [.signed(-3), .signed(5), .integer(2), .records([["kind": 1, "tier": 2, "count": 20]])]
+        XCTAssertEqual(arguments[0].json as? Int64, -3)
+        XCTAssertEqual(arguments[3].json as? [[String: UInt64]], [["kind": 1, "tier": 2, "count": 20]])
+        let body = try JSONSerialization.data(withJSONObject: arguments.map(\.json), options: [.sortedKeys])
+        XCTAssertEqual(String(decoding: body, as: UTF8.self), #"[-3,5,2,[{"count":20,"kind":1,"tier":2}]]"#)
+    }
+
     func testAMarchIsSomewhereAlongItsWayAtEveryMoment() throws {
         // Three hexes east, as the module keeps a way: q then r, sixteen bits each, low byte first.
         let way = [LiveHex(q: -1, r: 2), LiveHex(q: 0, r: 2), LiveHex(q: 1, r: 2), LiveHex(q: 2, r: 2)]
