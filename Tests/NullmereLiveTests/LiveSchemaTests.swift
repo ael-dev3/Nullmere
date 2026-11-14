@@ -89,6 +89,20 @@ final class LiveSchemaTests: XCTestCase {
         XCTAssertTrue(LiveSchema.queries.contains("SELECT * FROM my_stock"))
     }
 
+    /// The land's bytes are the renderer's own codes for the same grounds:
+    /// the module's `Ground` numbers its cases as `Terrain` orders them.
+    func testTheLandsBytesAreTheRenderersTerrainCodes() throws {
+        let land = try source("land.rs")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let terrain = try String(contentsOf: root.appendingPathComponent("Sources/NullmereCore/Terrain.swift"), encoding: .utf8)
+        let cases = terrain.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.hasPrefix("case ") && !$0.contains(":") && !$0.contains(",") }.map { String($0.dropFirst(5)) }
+        XCTAssertEqual(Array(cases.prefix(8)), ["still", "shallows", "strand", "saltFlat", "greyfield", "blackwood", "barrow", "spine"])
+        for (ground, code) in [("Deep", 0), ("Shallows", 1), ("Strand", 2), ("Salt", 3), ("Plain", 4), ("Wood", 5), ("Heath", 6), ("Mountain", 7)] {
+            XCTAssertTrue(land.contains("    \(ground) = \(code),"), "\(ground) is \(cases[code]): \(code)")
+        }
+    }
+
     /// Every reducer the client calls is one the module has, with as many
     /// arguments.
     func testEveryReducerTheClientCallsIsTheModules() throws {

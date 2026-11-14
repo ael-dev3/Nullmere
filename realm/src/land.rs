@@ -9,8 +9,9 @@
 
 use crate::hex::Hex;
 
-/// What ground a hex is. The numbers are the clients' own codes for the
-/// same grounds.
+/// What ground a hex is. The numbers are the ones the clients' renderer
+/// already knows these grounds by (`Terrain` in Sources/NullmereCore, in
+/// the order of its cases), so the land's bytes draw as they are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Ground {
@@ -19,17 +20,17 @@ pub enum Ground {
     /// Water shallow enough to wade.
     Shallows = 1,
     /// Sand along the water.
-    Strand = 5,
+    Strand = 2,
     /// Pale salt flats, where moonsalt is worked.
-    Salt = 6,
+    Salt = 3,
     /// Open grass: the plain cities are raised on.
-    Plain = 7,
+    Plain = 4,
     /// Woodland.
-    Wood = 8,
+    Wood = 5,
     /// Dry heath over old graves.
-    Heath = 9,
+    Heath = 6,
     /// Bare mountain: nothing crosses it.
-    Mountain = 10,
+    Mountain = 7,
 }
 
 impl Ground {
@@ -37,11 +38,11 @@ impl Ground {
         match code {
             0 => Ground::Deep,
             1 => Ground::Shallows,
-            5 => Ground::Strand,
-            6 => Ground::Salt,
-            7 => Ground::Plain,
-            8 => Ground::Wood,
-            9 => Ground::Heath,
+            2 => Ground::Strand,
+            3 => Ground::Salt,
+            4 => Ground::Plain,
+            5 => Ground::Wood,
+            6 => Ground::Heath,
             _ => Ground::Mountain,
         }
     }
