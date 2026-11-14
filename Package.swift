@@ -30,7 +30,8 @@ var targets: [Target] = [
     // a map, its cities as holds and its armies as companies, each where
     // it is at a moment. Pure Swift, so tested on Linux.
     .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereRealm", "NullmereWorld", "NullmereModels", "NullmereCore"]),
-    .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore", "NullmereRealm"]),
+    .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore", "NullmereRealm",
+                                                           "NullmereTestSupport"]),
     // A keeper's phone on their realm, apart from its screens: linked by the
     // code their Mac shows, in as the keeper, their House as the phone
     // lists it and the orders it gives. Foundation only, so tested on Linux.
@@ -59,7 +60,7 @@ var targets: [Target] = [
     .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
-    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereCore"], path: "Tests/NullmereTestSupport"),
+    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereCore", "NullmereLive", "NullmereLiveStage"], path: "Tests/NullmereTestSupport"),
     .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereCompanionCore", "NullmereTestSupport"]),
     // Platform-independent launcher logic: settings, navigation, scene
     // constants, the news feed and the moon's veil. Pure Swift, so it is
@@ -79,7 +80,7 @@ targets += [
     .testTarget(name: "NullmereCounselTests", dependencies: ["NullmereCounsel", "NullmereCore"]),
     // The world's interface: the front door, the Metal world, the panels.
     .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel",
-                                                "NullmereCompanionCore", "LauncherCore", "LauncherKit"]),
+                                                "NullmereCompanionCore", "NullmereLive", "NullmereLiveStage", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit", "NullmereCounsel"]),
     // Nullmere Companion, the keeper's iPhone app: its SwiftUI screens over
@@ -87,7 +88,7 @@ targets += [
     // which bundles it; on the Mac it builds too, to be checked as the rest is.
     .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereCompanionCore", "NullmereCounsel", "NullmereCore", "NullmereRealm"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "NullmereCompanionCore", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "NullmereCompanionCore", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 // The trailer drawn by the game's own renderers and written to a film,
 // built only when scripts/render-trailer.sh asks for it: then the trailer's

@@ -4,6 +4,7 @@ import NullmereCore
 @testable import NullmereLiveStage
 import NullmereModels
 import NullmereRealm
+import NullmereTestSupport
 @testable import NullmereWorld
 import XCTest
 
@@ -13,9 +14,6 @@ import XCTest
 /// real realm, and written out for the browser preview, where
 /// NULLMERE_REALM_CHECK names one and NULLMERE_WORLD_PREVIEW a folder.
 final class LiveWindowTests: XCTestCase {
-    private static func n(_ value: Double) -> JSONValue { .number(value) }
-    private static func n(_ value: UInt64) -> JSONValue { .number(Double(value)) }
-    private static func n(_ value: Int) -> JSONValue { .number(Double(value)) }
 
     /// A small world: plain, a wood to the east, deep water in the far
     /// west; Ada's city at 10, -4 with a Farm and a Wall; Bryn's at 14, -4;
@@ -25,47 +23,7 @@ final class LiveWindowTests: XCTestCase {
     private func world() -> LiveWorld { LiveWorld(snapshot: LiveWindowTests.rows()) }
 
     /// That world's rows, as a subscription would hold them.
-    static func rows() -> [String: [[JSONValue]]] {
-        func ground(_ hex: LiveHex) -> UInt8 {
-            if hex.q <= -10 { return 0 }
-            if hex.q >= 16 { return 5 }
-            return 4
-        }
-        var chunks: [[JSONValue]] = []
-        for cr in -3...2 {
-            for cq in -3...2 {
-                let bytes = (0..<256).map { index -> UInt8 in ground(LiveHex(q: cq * 16 + index % 16, r: cr * 16 + index / 16)) }
-                chunks.append([n(LiveHex(q: cq, r: cr).packed), .string(bytes.map { String(format: "%02x", $0) }.joined())])
-            }
-        }
-        let (ada, bryn, grove, barrow) = (LiveHex(q: 10, r: -4), LiveHex(q: 14, r: -4), LiveHex(q: 12, r: -2), LiveHex(q: 8, r: -2))
-        func encoded(_ way: [LiveHex]) -> String {
-            way.flatMap { hex -> [UInt8] in
-                let (q, r) = (UInt16(bitPattern: Int16(hex.q)), UInt16(bitPattern: Int16(hex.r)))
-                return [UInt8(q & 0xFF), UInt8(q >> 8), UInt8(r & 0xFF), UInt8(r >> 8)]
-            }.map { String(format: "%02x", $0) }.joined()
-        }
-        let route = encoded([ada, LiveHex(q: 10, r: -3), LiveHex(q: 11, r: -3), LiveHex(q: 11, r: -2), grove])
-        // Bryn's second army came to the barrow from the east.
-        let toBarrow = encoded([LiveHex(q: 10, r: -2), LiveHex(q: 9, r: -2), barrow])
-        return [
-            "realm": [[n(0), n(42), n(1_000), n(1), n(1_000), n(2), n(40)]],
-            "land": chunks,
-            "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]],
-            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
-            "city": [[n(7), n(1), n(ada.packed), .string("Ada"), n(3), n(1_000), n(1_000), n(1)],
-                     [n(8), n(2), n(bryn.packed), .string("Bryn"), n(8), n(9_000), n(1_000), n(1)]],
-            "my_city": [[n(7), n(1), n(ada.packed), .string("Ada"), n(3), n(1_000), n(1_000), n(1)]],
-            "my_buildings": [[n(21), n(7), n(1), n(3)], [n(22), n(7), n(2), n(2)], [n(23), n(7), n(12), n(11)]],
-            "place": [[n(ada.packed), n(1), n(7)], [n(bryn.packed), n(1), n(8)], [n(grove.packed), n(2), n(5)], [n(barrow.packed), n(3), n(9)]],
-            "barrow": [[n(9), n(barrow.packed), n(2), n(6)]],
-            "site": [[n(5), n(grove.packed), n(2), n(4), n(80_000), n(4)]],
-            "march": [[n(3), n(1), n(7), n(1), n(1), n(ada.packed), n(grove.packed), n(5), n(2_000), n(2_024), n(40), .string(route), n(1)],
-                      [n(4), n(2), n(8), n(1), n(2), n(bryn.packed), n(grove.packed), n(5), n(2_000), n(2_600), n(90), .string(route), n(2)],
-                      [n(6), n(2), n(8), n(2), n(4), n(bryn.packed), n(barrow.packed), n(9), n(2_010), n(2_025), n(50), .string(toBarrow), n(3)]],
-            "my_squads": [[n(UInt64(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(10), n(0)], [n(UInt64(3 << 16 | 3 << 8 | 2)), n(3), n(3), n(2), n(30), n(0)]],
-        ]
-    }
+    static func rows() -> [String: [[JSONValue]]] { LiveSample.rows() }
 
     func testAWindowOfTheLandIsAMapOfItsOwn() {
         let world = world()

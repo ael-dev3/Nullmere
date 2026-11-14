@@ -50,7 +50,13 @@ pub fn edge(striker: Troops, struck: Troops) -> u64 {
 /// the heads, and takes a soldier for every measure of health and defence
 /// it has worn through. It ends when a side has no one left, or after
 /// twenty rounds.
-pub fn fight(attackers: &[Unit], defenders: &[Unit], mut chance: impl FnMut() -> u64) -> Outcome {
+pub fn fight(attackers: &[Unit], defenders: &[Unit], chance: impl FnMut() -> u64) -> Outcome {
+    fight_sheltered(attackers, defenders, 0, chance)
+}
+
+/// The same fight with the defenders behind a wall: each of them takes
+/// `shelter` hundredths more to bring down.
+pub fn fight_sheltered(attackers: &[Unit], defenders: &[Unit], shelter: u64, mut chance: impl FnMut() -> u64) -> Outcome {
     let sides = [attackers, defenders];
     let mut left: [Vec<u64>; 2] = [attackers.iter().map(|unit| unit.count).collect(), defenders.iter().map(|unit| unit.count).collect()];
     // What each unit has taken toward its next soldier down.
@@ -71,7 +77,8 @@ pub fn fight(attackers: &[Unit], defenders: &[Unit], mut chance: impl FnMut() ->
             let blow = blow * luck / 100 / 4;
             for (index, unit) in sides[struck].iter().enumerate() {
                 let soldier = unit.kind.soldier(unit.tier);
-                let tough = (soldier.health * soldier.defence / 100).max(1);
+                let behind = if struck == 1 { 100 + shelter } else { 100 };
+                let tough = (soldier.health * soldier.defence * behind / 10_000).max(1);
                 worn[struck][index] += (blow * stood[struck][index] as u128 / heads) as u64;
                 let down = (worn[struck][index] / tough).min(left[struck][index]);
                 worn[struck][index] -= down * tough;
@@ -300,20 +307,13 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
 
 /// A fight at a barrow in plain words.
 fn told(level: u32, won: bool, fought: u64, wounded: u64, dead: u64, standing: u64, spoils: Goods) -> String {
-    let count = |number: u64, one: &str, many: &str| format!("{} {}", catalog::grouped(number), if number == 1 { one } else { many });
     let mut words = if won {
         format!("Your army cleared a level {level} barrow of the Unquiet.")
     } else {
         format!("Your army was beaten at a level {level} barrow of the Unquiet. {} of the Unquiet still stood.", catalog::grouped(standing))
     };
-    words += &match (wounded, dead) {
-        (0, 0) => format!(" None of your {} fell.", count(fought, "soldier", "soldiers")),
-        (wounded, 0) => format!(" Of your {}, {} wounded.", count(fought, "soldier", "soldiers"), count(wounded, "was", "were")),
-        (0, dead) => format!(" Of your {}, {} died.", count(fought, "soldier", "soldiers"), catalog::grouped(dead)),
-        (wounded, dead) => {
-            format!(" Of your {}, {} wounded and {} died.", count(fought, "soldier", "soldiers"), count(wounded, "was", "were"), catalog::grouped(dead))
-        }
-    };
+    words += " ";
+    words += &fallen(fought, wounded, dead, "soldier", "soldiers");
     if dead > 0 {
         words += " Your city had no room to tend more wounded.";
     }
@@ -321,6 +321,18 @@ fn told(level: u32, won: bool, fought: u64, wounded: u64, dead: u64, standing: u
         words += &format!(" It is bringing home {spoils}.");
     }
     words
+}
+
+/// What became of a force that fought, in a sentence: "Of your 200
+/// soldiers, 6 were wounded and 2 died."
+pub(super) fn fallen(fought: u64, wounded: u64, dead: u64, one: &str, many: &str) -> String {
+    let count = |number: u64, one: &str, many: &str| format!("{} {}", catalog::grouped(number), if number == 1 { one } else { many });
+    match (wounded, dead) {
+        (0, 0) => format!("None of your {} fell.", count(fought, one, many)),
+        (wounded, 0) => format!("Of your {}, {} wounded.", count(fought, one, many), count(wounded, "was", "were")),
+        (0, dead) => format!("Of your {}, {} died.", count(fought, one, many), catalog::grouped(dead)),
+        (wounded, dead) => format!("Of your {}, {} wounded and {} died.", count(fought, one, many), count(wounded, "was", "were"), catalog::grouped(dead)),
+    }
 }
 
 /// Keeps a report for its player, and lets their oldest go past what a

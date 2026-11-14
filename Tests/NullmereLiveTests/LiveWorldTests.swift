@@ -66,6 +66,11 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(city.hex, hex)
         XCTAssertEqual([city.keep, city.builders, city.founded], [3, 1, 1_000])
         XCTAssertEqual(world.cities[7], city)
+        // A city's peace: none where the row tells of none, as before the
+        // realm kept it; else until the moment it gives.
+        XCTAssertEqual([city.shield, city.peace(at: 5_000)], [0, 0])
+        let guarded = try XCTUnwrap(LiveWorld(snapshot: ["city": [[n(7), n(1), n(Double(hex.packed)), .string("Ada"), n(3), n(940), n(1_000), n(1), n(9_000)]]]).cities[7])
+        XCTAssertEqual([guarded.shield, guarded.peace(at: 5_000), guarded.peace(at: 5_000.9), guarded.peace(at: 9_000), guarded.peace(at: 99_999)], [9_000, 4_000, 4_000, 0, 0])
         XCTAssertEqual(world.places[hex]?.kind, LivePlace.city)
         XCTAssertEqual(world.places[LiveHex(q: 13, r: -30)]?.id, 5)
         XCTAssertEqual(world.sites[5]?.left, 80_000)
@@ -194,7 +199,8 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertTrue(fighting.stands)
         XCTAssertEqual(fighting.position(at: 100).x, way[3].centre.x, accuracy: 1e-9)
         XCTAssertEqual(fighting.position(at: 109).x, way[3].centre.x, accuracy: 1e-9)
-        XCTAssertEqual([LiveMarch.gather, LiveMarch.hunt], [1, 2])
+        XCTAssertEqual([LiveMarch.gather, LiveMarch.hunt, LiveMarch.attack], [1, 2, 3])
+        XCTAssertEqual([LiveReport.hunt, LiveReport.attack, LiveReport.defence], [1, 2, 3])
         XCTAssertNil(LiveMarch(march(state: 1, route: .string("xyz"))), "a way that doesn't read")
 
         var world = LiveWorld()

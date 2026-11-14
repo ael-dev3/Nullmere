@@ -619,3 +619,22 @@ pub fn healing(soldier: Soldier) -> (Goods, i64) {
     let [grain, timber, stone, moonsalt] = soldier.cost.parts();
     (Goods::of(grain / 3, timber / 3, stone / 3, moonsalt / 3), (soldier.seconds / 4).max(1))
 }
+
+/// How long a new city is kept from attack, how long a city beaten
+/// within its own walls is, and how long an assault on a city lasts, as
+/// written.
+pub const NEW_CITY_PEACE: i64 = 3 * 86_400;
+pub const BEATEN_PEACE: i64 = 4 * 3_600;
+pub const ASSAULT_SECONDS: i64 = 30;
+
+/// How much harder a city's defenders are to bring down behind its Wall,
+/// in hundredths: three for each of the Wall's levels.
+pub fn shelter(wall: u32) -> u64 {
+    3 * wall.min(TOP_LEVEL) as u64
+}
+
+/// How much of each good a city keeps safe from plunder, by its
+/// Storehouse's level.
+pub fn kept_safe(storehouse: u32) -> u64 {
+    2_000 + 1_000 * storehouse.min(TOP_LEVEL) as u64
+}

@@ -97,6 +97,13 @@ final class LiveRealmTests: XCTestCase {
         let notHis = await refusal { try await bryn.upgrade(building: farm.id) }
         XCTAssertEqual(notHis, "That is not yours.")
 
+        // A new city is at peace: no army may be sent against it yet.
+        let his = try XCTUnwrap(bryn.world.city)
+        XCTAssertGreaterThan(his.peace(at: Date().timeIntervalSince1970), 0)
+        XCTAssertEqual(ada.world.cities[his.id]?.shield, his.shield, "Everyone sees until when")
+        let atPeace = await refusal { try await ada.attack(at: his.hex, soldiers: [(kind: 1, tier: 1, count: 1)]) }
+        XCTAssertEqual(atPeace?.hasPrefix("That city is at peace for another "), true, atPeace ?? "not refused")
+
         // Raising the Keep: paid at once, done by the database's own timer, pushed as it happens.
         let keep = try XCTUnwrap(world.building(1))
         let cost = try XCTUnwrap(world.blueprint(1, level: 2))

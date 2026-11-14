@@ -67,6 +67,7 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual([0, 5, 65, 3_605, 12_005, 90_000, -1].map { LiveWords.clock($0) }, ["0:00", "0:05", "1:05", "1:00:05", "3:20:05", "1d 1h", "0:00"])
         XCTAssertEqual(LiveGoods().words, "nothing")
         XCTAssertEqual(LiveGoods(timber: 620).words, "620 timber")
+        XCTAssertEqual([LiveGoods().sentence, LiveGoods(timber: 620).sentence], ["Nothing", "620 timber"])
         XCTAssertEqual(LiveGoods(timber: 620, stone: 310).words, "620 timber and 310 stone")
         XCTAssertEqual(LiveGoods(grain: 1_500, timber: 620, stone: 310, moonsalt: 4).words, "1,500 grain, 620 timber, 310 stone and 4 moonsalt")
         XCTAssertEqual(LiveGoods(grain: 10, timber: 700).short(of: LiveGoods(grain: 50, timber: 620, stone: 310)), LiveGoods(grain: 40, stone: 310))
@@ -76,7 +77,11 @@ final class LiveBookTests: XCTestCase {
         let rules = try source("rules/mod.rs")
         for sentence in ["Raise your Keep to level {level} first.", "Raise your {} to level {level} first.", "Your {} is already being built.",
                          "Your {} is training troops. Wait for them to finish.", "Your {} is already training troops.",
-                         "Your builders are busy. Wait for them to finish.", "You need {short} more.", "Your {} is at its highest level."] {
+                         "Your builders are busy. Wait for them to finish.", "You need {short} more.", "Your {} is at its highest level.",
+                         // And those the card for what is chosen gives (`LiveCard`).
+                         "That city is at peace for another {}.", "Clear a level {level} barrow first.", "Another army is fighting there.",
+                         "Another army is gathering there.", "That army is fighting. Wait for the fight to end.", "That army is already on its way home.",
+                         "Your one army is out. Raise your Keep to send more.", "All {most} of your armies are out."] {
             XCTAssertTrue(rules.contains("\"\(sentence)\""), "the module says: \(sentence)")
         }
         XCTAssertEqual(LiveBlock.needsKeep(4).words, "Raise your Keep to level 4 first.")
@@ -203,15 +208,18 @@ final class LiveBookTests: XCTestCase {
         snapshot["barrow"] = [[n(9), n(Double(LiveHex(q: 4, r: 4).packed)), n(3), n(0)]]
         snapshot["march"] = [march(1, kind: 1, state: 1, target: 5), march(2, kind: 1, state: 2, target: 5), march(3, kind: 1, state: 3, target: 5),
                              march(4, kind: 2, state: 1, target: 9), march(5, kind: 2, state: 4, target: 9), march(6, kind: 2, state: 3, target: 99, soldiers: 14),
-                             march(7, kind: 1, state: 1, target: 77),
+                             march(7, kind: 1, state: 1, target: 77), march(9, kind: 3, state: 1, target: 12), march(10, kind: 3, state: 4, target: 12),
+                             march(11, kind: 3, state: 3, target: 13),
                              [n(8), n(2), n(8), n(1), n(1), n(0), n(0), n(5), n(2_000), n(2_060), n(9), way, n(1)]]
+        snapshot["city"] = [[n(12), n(2), n(Double(LiveHex(q: 4, r: 4).packed)), .string("Bryn"), n(4), n(900), n(1_000), n(1)]]
         snapshot["my_hauls"] = [[n(3), n(1), n(0), n(240), n(0), n(0)]]
         snapshot["my_squads"] = [[n(6 << 16 | 1 << 8 | 1), n(6), n(1), n(1), n(14), n(6)]]
         let lines = LiveWorld(snapshot: snapshot).marchLines()
-        XCTAssertEqual(lines.map(\.id), [1, 2, 3, 4, 5, 6, 7], "her own, not another's")
+        XCTAssertEqual(lines.map(\.id), [1, 2, 3, 4, 5, 6, 7, 9, 10, 11], "her own, not another's")
         XCTAssertEqual(lines.map(\.doing), ["On its way to gather timber", "Gathering timber", "Coming home with 240 timber", "On its way to a level 3 barrow",
-                                            "Fighting at a level 3 barrow", "Coming home", "On its way to gather"])
-        XCTAssertEqual(lines.map(\.canRecall), [true, true, false, true, false, false, true])
+                                            "Fighting at a level 3 barrow", "Coming home", "On its way to gather", "On its way to Bryn's city",
+                                            "Attacking Bryn's city", "Coming home"])
+        XCTAssertEqual(lines.map(\.canRecall), [true, true, false, true, false, false, true, true, false, false])
         XCTAssertEqual(lines[2].carrying, LiveGoods(timber: 240))
         XCTAssertEqual([lines[5].soldiers, lines[5].wounded], [14, 6])
         XCTAssertTrue(LiveWorld().marchLines().isEmpty)

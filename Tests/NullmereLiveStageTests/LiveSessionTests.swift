@@ -4,92 +4,9 @@ import NullmereCore
 @testable import NullmereLiveStage
 import NullmereModels
 import NullmereRealm
+import NullmereTestSupport
 @testable import NullmereWorld
 import XCTest
-
-/// A line to no realm at all: it holds the rows a test gives it, tells
-/// the session when they change, and keeps what was asked of it.
-final class StandInLine: LiveLine, @unchecked Sendable {
-    private let lock = NSLock()
-    private var rows: [String: [[JSONValue]]] = [:]
-    private var told: (@Sendable () -> Void)?
-    private var calls: [String] = []
-    private var refusal: String?
-    private var reachable = true
-    private var broken = false
-
-    init(rows: [String: [[JSONValue]]] = [:], reachable: Bool = true) {
-        self.rows = rows
-        self.reachable = reachable
-    }
-
-    private func locked<Value>(_ body: () -> Value) -> Value {
-        lock.lock()
-        defer { lock.unlock() }
-        return body()
-    }
-
-    var world: LiveWorld { LiveWorld(snapshot: locked { rows }) }
-    var asked: [String] { locked { calls } }
-
-    /// Changes the rows held, and tells whoever watches.
-    func change(_ edit: (inout [String: [[JSONValue]]]) -> Void) {
-        let tell = locked { () -> (@Sendable () -> Void)? in
-            edit(&rows)
-            return told
-        }
-        tell?()
-    }
-
-    /// From here on everything asked is refused in these words; nil to
-    /// agree again. Or fails as a line that has dropped.
-    func refuse(_ words: String?) { locked { refusal = words } }
-    func drop() { locked { broken = true } }
-
-    func watch(changed: @escaping @Sendable () -> Void) async -> Bool {
-        locked { told = changed }
-        return reachable
-    }
-
-    func close() { locked { calls.append("close") } }
-
-    private func take(_ call: String) throws {
-        let (words, down) = locked { () -> (String?, Bool) in
-            calls.append(call)
-            return (refusal, broken)
-        }
-        if down { throw URLError(.notConnectedToInternet) }
-        if let words { throw LiveRefusal(words: words) }
-    }
-
-    private func listed(_ soldiers: [(kind: Int, tier: Int, count: UInt64)]) -> String {
-        soldiers.map { "\($0.count) of \($0.kind).\($0.tier)" }.joined(separator: ", ")
-    }
-
-    func join(name: String) async throws { try take("join \(name)") }
-    func build(_ kind: Int) async throws { try take("build \(kind)") }
-    func upgrade(building: UInt64) async throws { try take("upgrade \(building)") }
-    func train(building: UInt64, tier: Int, count: UInt64) async throws { try take("train \(count) of tier \(tier) in \(building)") }
-    func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("gather at \(hex.q), \(hex.r) with \(listed(soldiers))") }
-    func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("hunt at \(hex.q), \(hex.r) with \(listed(soldiers))") }
-    func heal(kind: Int, tier: Int, count: UInt64) async throws { try take("heal \(count) of \(kind).\(tier)") }
-    func read(report: UInt64) async throws { try take("read \(report)") }
-    func forget(report: UInt64) async throws { try take("forget \(report)") }
-    func recall(march: UInt64) async throws { try take("recall \(march)") }
-}
-
-/// How many times something has been tried.
-final class Tries: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-
-    func next() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        count += 1
-        return count
-    }
-}
 
 /// A player's session over a line: what it reads, the window it keeps
 /// about where the player looks, what it stages, what is chosen, and what
@@ -374,12 +291,12 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(home.lines, ["Your city. Keep level 3, power 1,000.", "Farm to level 3: 1:25"])
         XCTAssertEqual(home.buttons.map(\.title), ["Buildings", "Troops"])
         XCTAssertEqual(home.buttons.map(\.act), [.city, .troops])
-        // Another's: whose, and that they are here.
-        XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["Bryn's city. Keep level 8, power 9,000. They are here now."], buttons: []))
-
         // Ada has one army out and a Keep of the third level: no second
         // army may go, wherever it is sent.
         let oneOut = "Your one army is out. Raise your Keep to send more."
+        // Another's: whose, that they are here, and that it may be attacked.
+        XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["Bryn's city. Keep level 8, power 9,000. They are here now."],
+                                              buttons: [.init(title: "Attack with 40 soldiers", act: .send, why: oneOut)]))
         XCTAssertEqual(card(7, 1), LiveCard(title: "Grain, level 2", lines: ["40,000 left to gather."],
                                             buttons: [.init(title: "Gather with 40 soldiers", act: .send, why: oneOut)]))
         // The grove Bryn's army works; the barrow his other army fights at.
@@ -410,6 +327,27 @@ final class LiveSessionTests: XCTestCase {
         await session.press(card(6, -1).buttons[0])
         XCTAssertEqual(session.said, "Clear a level 3 barrow first.")
         XCTAssertEqual(line.asked.count, 2)
+        // Bryn's city may be attacked; pressed, everyone ready goes against it.
+        XCTAssertNil(card(14, -4).buttons.first?.why)
+        session.selected = LiveHex(q: 14, r: -4)
+        await session.press(card(14, -4).buttons[0])
+        XCTAssertEqual(line.asked.last, "attack at 14, -4 with 40 of 1.1")
+        // While his city is at peace it can't be; while her own is, she is
+        // told what attacking would cost her.
+        line.change { rows in
+            rows["city"] = rows["city"]?.map { row in row[0] == .number(8) ? row + [.number(2_015 + 4_000)] : row + [.number(2_015 + 86_400)] }
+            rows["my_city"] = rows["my_city"]?.map { $0 + [.number(2_015 + 86_400)] }
+        }
+        session.refresh()
+        let guarded = card(14, -4)
+        XCTAssertEqual(guarded.lines.last, "Attacking ends your own city's peace.")
+        XCTAssertEqual(guarded.buttons.first?.why, "That city is at peace for another 1 hour 6 minutes.")
+        XCTAssertEqual(card(10, -4).lines[1], "At peace for another 1 day: no army may attack it.")
+        line.change { rows in
+            rows["city"] = rows["city"]?.map { Array($0.prefix(8)) }
+            rows["my_city"] = rows["my_city"]?.map { Array($0.prefix(8)) }
+        }
+        session.refresh()
         // Too little energy; and no one ready.
         line.change { $0["my_hunt"] = [[self.n(1), self.n(30), self.n(2_015), self.n(1_000), self.n(8_000), self.n(1)]] }
         session.refresh()

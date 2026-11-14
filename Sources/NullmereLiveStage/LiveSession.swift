@@ -18,6 +18,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func train(building: UInt64, tier: Int, count: UInt64) async throws
     func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
     func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
+    func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
     func heal(kind: Int, tier: Int, count: UInt64) async throws
     func read(report: UInt64) async throws
     func forget(report: UInt64) async throws
@@ -351,12 +352,14 @@ public final class LiveSession {
     public func forget(report: UInt64) async { await ask { try await $0.forget(report: report) } }
 
     /// Sends soldiers to what the player has chosen: to gather at a site,
-    /// or to clear a barrow. Elsewhere there is nothing to send them for.
+    /// to clear a barrow, or against another player's city. Elsewhere
+    /// there is nothing to send them for.
     public func send(_ soldiers: [(kind: Int, tier: Int, count: UInt64)], to hex: LiveHex) async {
         let asked = soldiers.map { (kind: $0.kind, tier: $0.tier, count: $0.count) }
         switch selection(at: hex) {
         case .site(let site): await ask { try await $0.gather(at: site.hex, soldiers: asked) }
         case .barrow(let barrow): await ask { try await $0.hunt(at: barrow.hex, soldiers: asked) }
+        case .city(let city, _): await ask { try await $0.attack(at: city.hex, soldiers: asked) }
         default: said = "There is nothing to send an army for there."
         }
     }

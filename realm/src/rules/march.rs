@@ -1,7 +1,9 @@
 //! Armies on the map: sent out along a way over open ground, arriving in
 //! real time, gathering what lies at a site, and carrying it home.
 
-use super::{asking, city_of, engage, fought, goods, keep_troop, may_hunt, realm, set_goods, settle, spend_energy, troop, Refusal};
+use super::{
+    asking, besiege, break_peace, city_of, engage, fought, goods, keep_troop, may_attack, may_hunt, realm, set_goods, settle, spend_energy, stormed, troop, Refusal,
+};
 use crate::catalog::{self, Goods, Troops, TOP_TIER};
 use crate::hex::{self, Hex};
 use crate::land::{self, Ground};
@@ -101,8 +103,8 @@ fn travel(db: &impl Db, squads: &[Squad], steps: usize) -> Seconds {
     catalog::paced((steps as u64 * slowest).div_ceil(10) as Seconds, pace)
 }
 
-/// A player sends soldiers from their city: to gather at a site, or to
-/// clear a barrow of the Unquiet.
+/// A player sends soldiers from their city: to gather at a site, to
+/// clear a barrow of the Unquiet, or against another player's city.
 pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -> Result<March, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
@@ -119,6 +121,7 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
             site.id
         }
         March::HUNT => may_hunt(db, player, to)?.id,
+        March::ATTACK => may_attack(db, player, to)?.id,
         _ => return Err(Refusal::NoSuchOrder),
     };
     // What was asked, each kind and tier once.
@@ -152,6 +155,9 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
 
     if kind == March::HUNT {
         spend_energy(db, player, false);
+    }
+    if kind == March::ATTACK {
+        break_peace(db, city.clone());
     }
     for ask in &wanted {
         let troops = Troops::of(ask.kind).ok_or(Refusal::NoSuchTroops)?;
@@ -243,8 +249,22 @@ pub fn arrive(db: &mut impl Db, march: u64) {
                 turn_home(db, march, way);
             }
         }
+        March::GOING if march.kind == March::ATTACK => {
+            if besiege(db, &mut march) {
+                march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
+                db.update(march);
+            } else {
+                // Gone, or at peace since the army set out: home again.
+                let way = way_back(&march);
+                turn_home(db, march, way);
+            }
+        }
         March::FIGHTING => {
-            fought(db, &mut march);
+            if march.kind == March::ATTACK {
+                stormed(db, &mut march);
+            } else {
+                fought(db, &mut march);
+            }
             if squads(db, march.id).is_empty() {
                 // No one is left to come home.
                 Table::<Haul>::delete(db, march.id);

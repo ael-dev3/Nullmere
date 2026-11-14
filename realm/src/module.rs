@@ -261,7 +261,8 @@ pub struct Soldiers {
 }
 
 /// Send soldiers from the caller's city to a hex, to do an order there:
-/// 1 to gather at a site, 2 to clear a barrow of the Unquiet.
+/// 1 to gather at a site, 2 to clear a barrow of the Unquiet, 3 to take
+/// another player's city by storm.
 #[reducer]
 pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>) -> Result<(), String> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();

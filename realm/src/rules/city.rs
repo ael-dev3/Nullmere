@@ -77,7 +77,9 @@ pub fn found(db: &mut impl Db, player: &Player) -> Result<City, Refusal> {
     let realm = realm(db)?;
     let hex = settle_site(db, realm.seed, realm.radius, player.id).ok_or(Refusal::NoRoom)?;
     let now = db.now();
-    let city = db.insert(City { id: 0, owner: player.id, hex: hex.packed(), name: player.name.clone(), keep: 1, power: 0, founded: now, builders: 1 });
+    // A new city is at peace for its first days.
+    let shield = now + catalog::paced(catalog::NEW_CITY_PEACE, realm.pace);
+    let city = db.insert(City { id: 0, owner: player.id, hex: hex.packed(), name: player.name.clone(), keep: 1, power: 0, founded: now, builders: 1, shield });
     db.insert(Place { hex: hex.packed(), kind: Place::CITY, id: city.id });
     for kind in [Kind::Keep, Kind::Farm, Kind::Sawmill] {
         db.insert(Building { id: 0, city: city.id, kind: kind as u8, level: 1 });

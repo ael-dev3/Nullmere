@@ -9,6 +9,10 @@ import NullmereRealm
 public struct LiveRefusal: Error, Equatable, CustomStringConvertible, Sendable {
     public let words: String
     public var description: String { words }
+
+    public init(words: String) {
+        self.words = words
+    }
 }
 
 /// A player's line to the realm: who they are there, what they ask of it,
@@ -123,6 +127,13 @@ public final class LiveClient: @unchecked Sendable {
     public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
         try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(2), .records(records)])
+    }
+
+    /// Sends soldiers from the player's city against another player's
+    /// city at a hex.
+    public func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
+        let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(3), .records(records)])
     }
 
     /// Has some of the player's wounded of a kind and tier healed.

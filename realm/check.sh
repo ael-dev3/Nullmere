@@ -225,6 +225,14 @@ check("its soldiers ready again", [(t["kind"], t["ready"]) for t in rows(bryn, "
 after = rows(bryn, "SELECT * FROM my_stock")[0]
 check("and its load in the city's stock", after[good] >= before[good] + 240, True)
 
+# A new city is at peace: no army may be sent against it yet.
+theirs = rows(nobody, "SELECT * FROM city")
+check("every city shows until when it is at peace", all(city["shield"] > city["founded"] for city in theirs), True)
+adas = unpacked(rows(ada, "SELECT * FROM my_city")[0]["hex"])
+refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count": 1}])
+check("an army sent against a new city is refused", (refused or "").startswith("That city is at peace for another "), True)
+check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}]), "That is your own city.")
+
 # The Unquiet: a barrow cleared, its report read, the wounded healed.
 barrows = sorted(rows(nobody, "SELECT * FROM barrow"), key=lambda barrow: distance(unpacked(barrow["hex"]), home))
 check("barrows of the Unquiet stand over the land", len(barrows) > 300, True)

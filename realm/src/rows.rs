@@ -106,7 +106,7 @@ pub struct March {
     pub state: u8,
     pub from: u64,
     pub to: u64,
-    /// What it set out for: a site's number, or a barrow's.
+    /// What it set out for: a site's number, a barrow's, or a city's.
     pub target: u64,
     pub departed: Seconds,
     pub arrives: Seconds,
@@ -123,6 +123,8 @@ impl March {
     pub const GATHER: u8 = 1;
     /// To clear a barrow of the Unquiet.
     pub const HUNT: u8 = 2;
+    /// To take another player's city by storm and plunder it.
+    pub const ATTACK: u8 = 3;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
@@ -256,6 +258,8 @@ pub struct City {
     pub founded: Seconds,
     /// How many buildings it can raise at once.
     pub builders: u32,
+    /// Until when it is at peace: no army may attack it before then.
+    pub shield: Seconds,
 }
 row!(City in city, auto, by id, owner);
 
@@ -451,7 +455,7 @@ pub struct Report {
     pub kind: u8,
     pub hex: u64,
     pub won: bool,
-    /// The other side: a barrow's level.
+    /// The other side: a barrow's level, or a player's number.
     pub foe: u64,
     pub rounds: u32,
     /// The player's soldiers: how many fought, and of them how many came
@@ -474,7 +478,12 @@ pub struct Report {
 row!(Report in report, auto, by id, player);
 
 impl Report {
+    /// A fight at a barrow: `foe` is the barrow's level.
     pub const HUNT: u8 = 1;
+    /// The player's army at another's city, and another's army at the
+    /// player's own: `foe` is the other player's number.
+    pub const ATTACK: u8 = 2;
+    pub const DEFENCE: u8 = 3;
 }
 
 /// Everything the rules keep: every table, the clock, chance and timers.

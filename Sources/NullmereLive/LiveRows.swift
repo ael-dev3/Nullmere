@@ -151,6 +151,8 @@ public struct LiveCity: Equatable, Sendable, Identifiable {
     public let power: UInt64
     public let founded: Int
     public let builders: Int
+    /// Until when it is at peace: no army may attack it before then.
+    public let shield: Int
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -159,7 +161,11 @@ public struct LiveCity: Equatable, Sendable, Identifiable {
         else { return nil }
         (self.id, self.owner, self.hex, self.name) = (id, owner, LiveHex(packed: hex), name)
         (self.keep, self.power, self.founded, self.builders) = (keep, power, founded, builders)
+        shield = cells.whole(8) ?? 0
     }
+
+    /// The seconds of peace it has left at a moment; none once it may be attacked.
+    public func peace(at seconds: Double) -> Int { max(shield - Int(seconds), 0) }
 }
 
 /// What stands on a hex.
@@ -204,6 +210,8 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
     /// barrow of the Unquiet.
     public static let gather = 1
     public static let hunt = 2
+    /// To take another player's city by storm.
+    public static let attack = 3
 
     public static let going = 1
     public static let working = 2
@@ -488,14 +496,19 @@ public struct LiveHunt: Equatable, Sendable {
 
 /// What happened to one of the player's armies, as the realm told it.
 public struct LiveReport: Equatable, Sendable, Identifiable {
+    /// A fight at a barrow: `foe` is the barrow's level.
     public static let hunt = 1
+    /// The player's army at another's city, and another's army at the
+    /// player's own: `foe` is the other player's number.
+    public static let attack = 2
+    public static let defence = 3
 
     public let id: UInt64
     public let at: Int
     public let kind: Int
     public let hex: LiveHex
     public let won: Bool
-    /// The other side: a barrow's level.
+    /// The other side: a barrow's level, or a player's number.
     public let foe: UInt64
     public let rounds: Int
     /// The player's soldiers: how many fought, and of them how many came

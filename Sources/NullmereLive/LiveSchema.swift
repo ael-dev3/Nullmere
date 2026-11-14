@@ -7,7 +7,7 @@ import NullmereRealm
 /// come in. `LiveSchemaTests` holds every list to the module's source.
 public enum LiveSchema {
     static let player = ["id", "name_key", "name", "joined", "online", "seen"]
-    static let city = ["id", "owner", "hex", "name", "keep", "power", "founded", "builders"]
+    static let city = ["id", "owner", "hex", "name", "keep", "power", "founded", "builders", "shield"]
 
     /// Every table and view a client reads, with the column that tells
     /// its rows apart. The views show a caller their own rows.

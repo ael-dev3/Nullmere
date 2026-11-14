@@ -10,12 +10,14 @@ mod battle;
 mod city;
 mod entry;
 mod march;
+mod siege;
 
 pub use army::*;
 pub use battle::*;
 pub use city::*;
 pub use entry::*;
 pub use march::*;
+pub use siege::*;
 
 use crate::catalog::{Building, Goods, Troops};
 use crate::rows::Db;
@@ -102,6 +104,12 @@ pub enum Refusal {
     NotEnoughWounded(Troops, u32, u64),
     AlreadyHealing,
     NoSuchReport,
+    /// No city stands at the hex named.
+    NoCityThere,
+    /// The player's own city.
+    OwnCity,
+    /// The city is at peace: for how many seconds more.
+    AtPeace(i64),
     /// Something only the realm's owner may do.
     NotTheOwner,
 }
@@ -129,6 +137,7 @@ impl fmt::Display for Refusal {
             Refusal::NotEnoughWounded(troops, tier, wounded) => {
                 return write!(f, "You have only {} wounded tier {tier} {}.", crate::catalog::grouped(*wounded), troops.name());
             }
+            Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
             _ => {}
@@ -161,6 +170,8 @@ impl fmt::Display for Refusal {
             Refusal::Fighting => "That army is fighting. Wait for the fight to end.",
             Refusal::AlreadyHealing => "Your wounded are already being healed. Wait for them to finish.",
             Refusal::NoSuchReport => "There is no such report.",
+            Refusal::NoCityThere => "There is no city to attack there.",
+            Refusal::OwnCity => "That is your own city.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",
             _ => "",
         })

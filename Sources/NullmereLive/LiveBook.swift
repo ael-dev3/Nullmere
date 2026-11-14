@@ -57,6 +57,12 @@ extension LiveGoods {
         }
     }
 
+    /// The same to begin a line with: "620 timber and 310 stone", "Nothing".
+    public var sentence: String {
+        let words = self.words
+        return words.prefix(1).uppercased() + String(words.dropFirst())
+    }
+
     /// What of a cost these goods fall short by.
     public func short(of cost: LiveGoods) -> LiveGoods {
         let lacking = zip(parts, cost.parts).map { $1 > $0 ? $1 - $0 : 0 }
@@ -271,6 +277,8 @@ extension LiveWorld {
             case (LiveMarch.gather, LiveMarch.working): doing = good.map { "Gathering \($0)" } ?? "Gathering"
             case (LiveMarch.hunt, LiveMarch.going): doing = level.map { "On its way to a level \($0) barrow" } ?? "On its way to a barrow"
             case (LiveMarch.hunt, LiveMarch.fighting): doing = level.map { "Fighting at a level \($0) barrow" } ?? "Fighting at a barrow"
+            case (LiveMarch.attack, LiveMarch.going): doing = "On its way to \(cities[march.target].map { "\($0.name)'s city" } ?? "a city")"
+            case (LiveMarch.attack, LiveMarch.fighting): doing = "Attacking \(cities[march.target].map { "\($0.name)'s city" } ?? "a city")"
             default: doing = haul.isNone ? "Coming home" : "Coming home with \(haul.words)"
             }
             return LiveMarchLine(march: march, doing: doing, soldiers: march.soldiers, wounded: own.reduce(0) { $0 + $1.wounded }, carrying: haul,

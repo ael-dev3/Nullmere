@@ -55,6 +55,9 @@ extension LiveSession {
         switch selection {
         case .home(let city):
             var lines = ["Your city. Keep level \(city.keep), power \(LiveWords.grouped(city.power))."]
+            if city.peace(at: seconds) > 0 {
+                lines.append("At peace for another \(LiveWords.spoken(city.peace(at: seconds))): no army may attack it.")
+            }
             if let job = world.jobs.first(where: { $0.kind == LiveJob.raise }),
                let name = world.buildings.first(where: { $0.id == job.subject }).flatMap({ world.blueprint($0.kind, level: 1)?.name }) {
                 lines.append("\(name) to level \(job.level): \(LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))")
@@ -63,7 +66,16 @@ extension LiveSession {
 
         case .city(let city, let owner):
             let here = world.players[city.owner]?.online == true ? " They are here now." : ""
-            return LiveCard(title: city.name, lines: ["\(owner)'s city. Keep level \(city.keep), power \(LiveWords.grouped(city.power)).\(here)"], buttons: [])
+            var lines = ["\(owner)'s city. Keep level \(city.keep), power \(LiveWords.grouped(city.power)).\(here)"]
+            var why = cannotSend
+            if let mine = world.city, mine.peace(at: seconds) > 0 {
+                lines.append("Attacking ends your own city's peace.")
+            }
+            if city.peace(at: seconds) > 0 {
+                why = "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))."
+            }
+            return LiveCard(title: city.name, lines: lines,
+                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)])
 
         case .site(let site):
             let good = LiveSession.goods.indices.contains(site.kind - 1) ? LiveSession.goods[site.kind - 1] : "Goods"
