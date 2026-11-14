@@ -121,6 +121,10 @@ final class WorldMetalView: MTKView {
     private var trackingArea: NSTrackingArea?
     private var appObservers: [any NSObjectProtocol] = []
     private var dragOrigin: CGPoint?
+    /// Where the pointer was at the last drag event: a pan moves by how far
+    /// it has come, not by the event's own deltas (which a synthetic event
+    /// leaves at zero).
+    private var dragLast: CGPoint?
     private var dragged = false
 
     init() {
@@ -396,6 +400,7 @@ final class WorldMetalView: MTKView {
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         dragOrigin = point(of: event)
+        dragLast = dragOrigin
         dragged = false
     }
 
@@ -404,6 +409,11 @@ final class WorldMetalView: MTKView {
         if let origin = dragOrigin, !dragged, hypot(now.x - origin.x, now.y - origin.y) > 4 {
             dragged = true
         }
+        // The pointer's step since the last event, in the points AppKit's own
+        // deltas use: right is positive, and up is positive (the view's y runs down).
+        let last = dragLast ?? now
+        dragLast = now
+        let step = (dx: now.x - last.x, dy: last.y - now.y)
         if dragged {
             var moved = camera
             if event.modifierFlags.contains(.option) {
@@ -411,7 +421,7 @@ final class WorldMetalView: MTKView {
                 moved.turn(by: -Double(event.deltaX) * 0.008)
                 moved.lean(by: Double(event.deltaY) * 0.006)
             } else {
-                moved.pan(dx: event.deltaX, dy: event.deltaY, in: bounds.size)
+                moved.pan(dx: Double(step.dx), dy: Double(step.dy), in: bounds.size)
                 moved.clamp(toRadius: radius)
             }
             camera = moved
@@ -424,6 +434,7 @@ final class WorldMetalView: MTKView {
             onClick?(hex(of: event))
         }
         dragOrigin = nil
+        dragLast = nil
         dragged = false
     }
 
