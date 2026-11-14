@@ -85,7 +85,7 @@ fn joining_founds_a_city_on_clear_ground() {
             assert!(Hex::unpacked(a.hex).distance(Hex::unpacked(b.hex)) > rules::CITY_SPACING, "{} and {} crowd each other", a.name, b.name);
         }
     }
-    assert_eq!(Table::<Place>::all(&db).len(), 31);
+    assert_eq!(Table::<Place>::all(&db).iter().filter(|place| place.kind == Place::CITY).count(), 31);
 }
 
 #[test]
@@ -282,6 +282,26 @@ fn a_faster_realm_runs_everything_at_its_pace() {
     wait(&mut db, 1);
     let job = db.call(|db| rules::upgrade(db, ada, keep.id)).unwrap();
     assert_eq!(job.ends - job.started, 2, "forty-five as written");
+}
+
+#[test]
+fn the_realms_pace_can_be_set_afresh() {
+    let mut db = opened(1);
+    let (ada, city) = joined(&mut db, "Ada");
+    let keep = building(&db, city.id, Kind::Keep);
+    let slow = db.call(|db| rules::upgrade(db, ada, keep.id)).unwrap();
+    db.call(|db| rules::repace(db, 60)).unwrap();
+    assert_eq!(rules::realm(&db).unwrap().pace, 60);
+    assert_eq!(Table::<Blueprint>::all(&db).len(), 18 * 25, "written out afresh, none twice");
+    assert_eq!(Table::<Blueprint>::get(&db, Blueprint::key(Kind::Keep as u8, 5)).unwrap().seconds, 10);
+    assert_eq!(Table::<realm::rows::Soldier>::all(&db).len(), 20);
+    assert_eq!(stock(&db, city.id).grain_hourly, 1_300 * 60, "every city's rates reckoned again");
+    assert_eq!(Table::<Job>::get(&db, slow.id).unwrap().ends, slow.ends, "what is under way keeps its end");
+    wait(&mut db, 8);
+    let fast = db.call(|db| rules::upgrade(db, ada, keep.id)).unwrap();
+    assert_eq!(fast.ends - fast.started, 1, "forty-five seconds as written");
+    db.call(|db| rules::repace(db, 0)).unwrap();
+    assert_eq!(rules::realm(&db).unwrap().pace, 1, "never slower than written");
 }
 
 /// A player who builds whatever they can afford, in order, for a day:

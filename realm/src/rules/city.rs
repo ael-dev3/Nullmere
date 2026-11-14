@@ -1,6 +1,6 @@
 //! Cities: founding one, raising its buildings on timers, and its goods.
 
-use super::{asking, realm, Refusal};
+use super::{asking, clear_for_city, marching_power, realm, trained, troop_power, Refusal};
 use crate::catalog::{self, Building as Kind, Goods, TOP_LEVEL};
 use crate::hex::Hex;
 use crate::land;
@@ -13,9 +13,10 @@ pub const TIMER_JOB: u8 = 1;
 /// How many hexes lie clear between one city and the next.
 pub const CITY_SPACING: u32 = 2;
 
-/// Whether a hex and the ground about it stand clear for a city.
+/// Whether a hex stands clear for a city: nothing on it, and no other
+/// city crowding it.
 fn is_clear(db: &impl Db, hex: Hex) -> bool {
-    hex.within(CITY_SPACING).iter().all(|near| Table::<Place>::get(db, near.packed()).is_none())
+    clear_for_city(db, hex, CITY_SPACING)
 }
 
 /// A place for a new city: buildable ground between the lake's shores and
@@ -86,7 +87,7 @@ pub fn goods(stock: &Stock) -> Goods {
     Goods::of(stock.grain, stock.timber, stock.stone, stock.moonsalt)
 }
 
-fn set_goods(stock: &mut Stock, goods: Goods) {
+pub(super) fn set_goods(stock: &mut Stock, goods: Goods) {
     (stock.grain, stock.timber, stock.stone, stock.moonsalt) = (goods.grain, goods.timber, goods.stone, goods.moonsalt);
 }
 
@@ -128,7 +129,7 @@ pub fn settle(db: &mut impl Db, city: u64) -> Result<Stock, Refusal> {
 /// Reckons a city afresh from what stands in it: its power, its Keep's
 /// level, what its works bring in each hour and how much it holds. Its
 /// stock is settled first, at the rates it had.
-fn reckon(db: &mut impl Db, city: u64) -> City {
+pub(super) fn reckon(db: &mut impl Db, city: u64) -> City {
     let pace = realm(db).map(|realm| realm.pace).unwrap_or(1) as u64;
     let mut row = Table::<City>::get(db, city).expect("a city reckoned is a city kept");
     let buildings = Table::<Building>::by(db, 0, city);
@@ -148,7 +149,7 @@ fn reckon(db: &mut impl Db, city: u64) -> City {
         db.update(stock);
     }
     row.keep = level_of(Kind::Keep).max(1);
-    row.power = power;
+    row.power = power + troop_power(db, city) + marching_power(db, city);
     db.update(row.clone());
     row
 }
@@ -159,6 +160,9 @@ fn raise(db: &mut impl Db, city: &City, building: &Building, kind: Kind, level: 
     let jobs = Table::<Job>::by(db, 0, city.id);
     if jobs.iter().any(|job| job.kind == Job::RAISE && job.subject == building.id) {
         return Err(Refusal::AlreadyRising(kind));
+    }
+    if jobs.iter().any(|job| job.kind == Job::TRAIN && job.subject == building.id) {
+        return Err(Refusal::BusyTraining(kind));
     }
     if jobs.iter().filter(|job| job.kind == Job::RAISE).count() as u32 >= city.builders {
         return Err(Refusal::BuildersBusy);
@@ -174,7 +178,7 @@ fn raise(db: &mut impl Db, city: &City, building: &Building, kind: Kind, level: 
     db.update(stock);
     let now = db.now();
     let ends = now + catalog::paced(catalog::seconds(kind, level), realm(db)?.pace);
-    let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::RAISE, subject: building.id, level, started: now, ends, timer: 0 });
+    let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::RAISE, subject: building.id, level, amount: 0, started: now, ends, timer: 0 });
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());
     Ok(job)
@@ -239,7 +243,11 @@ pub fn finish(db: &mut impl Db, job: u64) {
         if let Some(mut building) = Table::<Building>::get(db, job.subject) {
             building.level = job.level;
             db.update(building);
-            reckon(db, job.city);
         }
+    } else if job.kind == Job::TRAIN {
+        trained(db, &job);
+    }
+    if Table::<City>::get(db, job.city).is_some() {
+        reckon(db, job.city);
     }
 }

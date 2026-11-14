@@ -337,6 +337,114 @@ pub fn needs(building: Building, level: u32) -> Option<(Building, u32)> {
 /// What a new city starts with.
 pub const STARTING_GOODS: Goods = Goods::of(6_000, 8_000, 6_000, 0);
 
+/// The four kinds of troops, each trained in a building of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum Troops {
+    /// Foot with spear and shield: they stand.
+    Spearmen = 1,
+    /// Bows: they strike hardest and stand least.
+    Archers = 2,
+    /// Horse: they are fastest.
+    Riders = 3,
+    /// Siege engines: slow, weak in the field, and they carry the most.
+    Mangonels = 4,
+}
+
+/// The highest tier of troops.
+pub const TOP_TIER: u32 = 5;
+
+/// What one soldier of a kind and tier is and costs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Soldier {
+    pub attack: u64,
+    pub defence: u64,
+    pub health: u64,
+    /// Tenths of a second to cross one hex, as written.
+    pub pace: u64,
+    /// How much of any goods one carries home.
+    pub load: u64,
+    pub power: u64,
+    pub cost: Goods,
+    /// Seconds to train one, as written.
+    pub seconds: i64,
+    /// The level their building must have reached.
+    pub needs_level: u32,
+}
+
+impl Troops {
+    pub const ALL: [Troops; 4] = [Troops::Spearmen, Troops::Archers, Troops::Riders, Troops::Mangonels];
+
+    pub fn of(code: u8) -> Option<Troops> {
+        Troops::ALL.into_iter().find(|troops| *troops as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Troops::Spearmen => "Spearmen",
+            Troops::Archers => "Archers",
+            Troops::Riders => "Riders",
+            Troops::Mangonels => "Mangonels",
+        }
+    }
+
+    /// Where they are trained.
+    pub fn trained_in(self) -> Building {
+        match self {
+            Troops::Spearmen => Building::Barracks,
+            Troops::Archers => Building::Range,
+            Troops::Riders => Building::Stable,
+            Troops::Mangonels => Building::Workshop,
+        }
+    }
+
+    /// The kind a building trains, if it trains any.
+    pub fn trained_by(building: Building) -> Option<Troops> {
+        Troops::ALL.into_iter().find(|troops| troops.trained_in() == building)
+    }
+
+    /// One soldier of this kind at a tier, 1 to 5.
+    pub fn soldier(self, tier: u32) -> Soldier {
+        let tier = tier.clamp(1, TOP_TIER) as usize;
+        // Each tier's strength and cost against the first's, in hundredths.
+        let strength = [100, 135, 180, 240, 320][tier - 1];
+        let dearer = [100, 200, 350, 600, 1_000][tier - 1];
+        let (attack, defence, health, pace, load, cost) = match self {
+            Troops::Spearmen => (90, 110, 110, 60, 12, [50, 50, 0]),
+            Troops::Archers => (110, 90, 95, 60, 10, [40, 70, 0]),
+            Troops::Riders => (105, 100, 100, 35, 8, [80, 30, 20]),
+            Troops::Mangonels => (60, 60, 90, 90, 30, [0, 80, 60]),
+        };
+        Soldier {
+            attack: attack * strength / 100,
+            defence: defence * strength / 100,
+            health: health * strength / 100,
+            pace,
+            load: load * (100 + 20 * (tier as u64 - 1)) / 100,
+            power: [1, 2, 3, 4, 10][tier - 1],
+            cost: Goods::of(cost[0] * dearer / 100, cost[1] * dearer / 100, cost[2] * dearer / 100, [0, 0, 0, 4, 10][tier - 1]),
+            seconds: [8, 16, 30, 50, 80][tier - 1],
+            needs_level: [1, 5, 10, 17, 25][tier - 1],
+        }
+    }
+}
+
+/// The most soldiers a training building takes in one batch at a level.
+pub fn batch(level: u32) -> u64 {
+    10 + 40 * level.min(TOP_LEVEL) as u64
+}
+
+/// How many armies a city may have out at once, by its Keep's level.
+pub fn marches(keep: u32) -> u32 {
+    match keep {
+        0..=4 => 1,
+        5..=10 => 2,
+        11..=16 => 3,
+        17..=21 => 4,
+        _ => 5,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -402,6 +510,36 @@ mod tests {
         assert_eq!(paced(3_600, 60), 60);
         assert_eq!(paced(5, 100), 1, "never less than a second");
         assert_eq!(paced(5, 0), 5);
+    }
+
+    #[test]
+    fn troops_grow_stronger_and_dearer_tier_by_tier() {
+        for (index, troops) in Troops::ALL.into_iter().enumerate() {
+            assert_eq!(troops as u8 as usize, index + 1);
+            assert_eq!(Troops::of(troops as u8), Some(troops));
+            assert_eq!(Troops::trained_by(troops.trained_in()), Some(troops));
+            for tier in 2..=TOP_TIER {
+                let (before, now) = (troops.soldier(tier - 1), troops.soldier(tier));
+                assert!(now.attack > before.attack && now.defence > before.defence && now.health > before.health, "{troops:?} {tier}");
+                assert!(now.power > before.power && now.seconds > before.seconds && now.needs_level > before.needs_level);
+                assert!(now.cost.parts().iter().sum::<u64>() > before.cost.parts().iter().sum::<u64>());
+                assert!(now.load >= before.load);
+                assert_eq!(now.pace, before.pace, "a tier marches no faster");
+            }
+            assert_eq!(troops.soldier(0), troops.soldier(1));
+            assert_eq!(troops.soldier(9), troops.soldier(TOP_TIER));
+        }
+        assert_eq!(Troops::of(0), None);
+        assert_eq!(Troops::trained_by(Building::Farm), None);
+        let (spear, bow, horse, engine) = (Troops::Spearmen.soldier(1), Troops::Archers.soldier(1), Troops::Riders.soldier(1), Troops::Mangonels.soldier(1));
+        assert!(bow.attack > horse.attack && horse.attack > spear.attack, "bows strike hardest");
+        assert!(spear.defence > horse.defence && horse.defence > bow.defence, "spears stand best");
+        assert!(horse.pace < spear.pace && spear.pace < engine.pace, "horse is fastest, engines slowest");
+        assert!(engine.load > spear.load, "engines carry the most");
+        assert_eq!(spear.cost, Goods::of(50, 50, 0, 0));
+        assert_eq!(Troops::Spearmen.soldier(5).cost, Goods::of(500, 500, 0, 10));
+        assert_eq!((batch(1), batch(25), batch(99)), (50, 1_010, 1_010));
+        assert_eq!([1, 4, 5, 10, 11, 17, 22, 25].map(marches), [1, 1, 2, 2, 3, 4, 5, 5]);
     }
 
     #[test]

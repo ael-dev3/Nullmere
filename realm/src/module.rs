@@ -5,12 +5,14 @@
 //! player the rules' refusal, in its own words, if there is one. The one
 //! timer table schedules whatever the rules ask to happen later.
 
-use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Table as _, Timestamp, ViewContext};
+use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, SpacetimeType, Table as _, Timestamp, ViewContext};
 
+use crate::hex::Hex;
 use crate::rows::{
-    blueprint as _, building as _, building__view as _, city as _, city__view as _, job as _, job__view as _, land as _, pace as _, place as _,
-    player as _, player__view as _, realm as _, stock as _, stock__view as _, Blueprint, Building, City, Job, Land, Pace, Place, Player, Realm,
-    Stock,
+    blueprint as _, building as _, building__view as _, city as _, city__view as _, haul as _, haul__view as _, job as _, job__view as _,
+    land as _, march as _, march__view as _, pace as _, place as _, player as _, player__view as _, realm as _, site as _, soldier as _,
+    squad as _, squad__view as _, stock as _, stock__view as _, troop as _, troop__view as _, Blueprint, Building, City, Haul, Job, Land,
+    March, Pace, Place, Player, Realm, Site, Soldier, Squad, Stock, Troop,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -23,6 +25,14 @@ pub struct Account {
     pub identity: Identity,
     #[unique]
     pub player: u64,
+}
+
+/// Who published the module: the realm's owner, who alone sets its pace.
+#[table(accessor = owner)]
+pub struct Owner {
+    #[primary_key]
+    pub id: u8,
+    pub identity: Identity,
 }
 
 /// What the rules have asked to happen later: the scheduler calls `fire`
@@ -109,6 +119,12 @@ stored!(City in city by id, owner);
 stored!(Building in building by id, city);
 stored!(Job in job by id, city);
 stored!(Stock in stock by city);
+stored!(Troop in troop by id, city);
+stored!(Soldier in soldier by id);
+stored!(Site in site by id);
+stored!(March in march by id, owner, city);
+stored!(Squad in squad by id, march);
+stored!(Haul in haul by march, owner);
 
 /// The player a caller is, by their identity.
 fn caller(ctx: &ReducerContext) -> Result<u64, Refusal> {
@@ -132,8 +148,19 @@ const RADIUS: u32 = 128;
 #[reducer(init)]
 pub fn init(ctx: &ReducerContext) {
     let seed: u64 = ctx.random();
+    ctx.db.owner().insert(Owner { id: 0, identity: ctx.sender() });
     rules::open(&mut Stdb(ctx), seed, PACE, RADIUS);
     log::info!("The realm is open: seed {seed}, {RADIUS} hexes from heart to rim.");
+}
+
+/// Sets how many times faster than written the realm runs: its owner's
+/// alone to ask, for a trial realm or a check.
+#[reducer]
+pub fn set_pace(ctx: &ReducerContext, pace: u32) -> Result<(), String> {
+    if ctx.db.owner().id().find(0).is_none_or(|owner| owner.identity != ctx.sender()) {
+        return said::<()>(Err(Refusal::NotTheOwner));
+    }
+    said(rules::repace(&mut Stdb(ctx), pace))
 }
 
 /// A player's client connects: they are here.
@@ -177,6 +204,35 @@ pub fn upgrade(ctx: &ReducerContext, building: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::upgrade(&mut Stdb(ctx), player, building)))
 }
 
+/// Train a batch of troops of a tier in one of the caller's training
+/// buildings.
+#[reducer]
+pub fn train(ctx: &ReducerContext, building: u64, tier: u32, count: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::train(&mut Stdb(ctx), player, building, tier, count)))
+}
+
+/// Soldiers of a kind and tier, as a client asks for them in a march.
+#[derive(SpacetimeType)]
+pub struct Soldiers {
+    pub kind: u8,
+    pub tier: u32,
+    pub count: u64,
+}
+
+/// Send soldiers from the caller's city to a hex, to do an order there
+/// (1, to gather).
+#[reducer]
+pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>) -> Result<(), String> {
+    let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
+    said(caller(ctx).and_then(|player| rules::send(&mut Stdb(ctx), player, Hex::new(q, r), order, &asked)))
+}
+
+/// Call one of the caller's armies home.
+#[reducer]
+pub fn recall(ctx: &ReducerContext, march: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::recall(&mut Stdb(ctx), player, march)))
+}
+
 /// A timer the rules set has come due. Only the scheduler may call this.
 #[reducer]
 pub fn fire(ctx: &ReducerContext, timer: Timer) -> Result<(), String> {
@@ -218,6 +274,25 @@ fn my_buildings(ctx: &ViewContext) -> Vec<Building> {
 #[view(accessor = my_jobs, public)]
 fn my_jobs(ctx: &ViewContext) -> Vec<Job> {
     my_city(ctx).map(|city| ctx.db.job().city().filter(city.id).collect()).unwrap_or_default()
+}
+
+/// The troops in the caller's city, ready and wounded.
+#[view(accessor = my_troops, public)]
+fn my_troops(ctx: &ViewContext) -> Vec<Troop> {
+    my_city(ctx).map(|city| ctx.db.troop().city().filter(city.id).collect()).unwrap_or_default()
+}
+
+/// The soldiers in the caller's armies out of the city.
+#[view(accessor = my_squads, public)]
+fn my_squads(ctx: &ViewContext) -> Vec<Squad> {
+    let Some(player) = viewer(ctx) else { return Vec::new() };
+    ctx.db.march().owner().filter(player).flat_map(|march| ctx.db.squad().march().filter(march.id)).collect()
+}
+
+/// What the caller's armies carry home.
+#[view(accessor = my_hauls, public)]
+fn my_hauls(ctx: &ViewContext) -> Vec<Haul> {
+    viewer(ctx).map(|player| ctx.db.haul().owner().filter(player).collect()).unwrap_or_default()
 }
 
 /// The caller's city's goods, as they stood when the realm last touched

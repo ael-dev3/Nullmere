@@ -5,21 +5,27 @@
 //! changes rows, or refuses with the reason in plain words and changes
 //! nothing.
 
+mod army;
 mod city;
 mod entry;
+mod march;
 
+pub use army::*;
 pub use city::*;
 pub use entry::*;
+pub use march::*;
 
-use crate::catalog::{Building, Goods};
+use crate::catalog::{Building, Goods, Troops};
 use crate::rows::Db;
 use crate::store::Timer;
 use std::fmt;
 
 /// A timer the rules set has come due: what it was set for is done.
 pub fn fire(db: &mut impl Db, timer: &Timer) {
-    if timer.kind == TIMER_JOB {
-        finish(db, timer.subject);
+    match timer.kind {
+        TIMER_JOB => finish(db, timer.subject),
+        TIMER_MARCH => arrive(db, timer.subject),
+        _ => {}
     }
 }
 
@@ -56,6 +62,31 @@ pub enum Refusal {
     BuildersBusy,
     /// What the city's stock is short by.
     CannotAfford(Goods),
+    /// The building trains no troops.
+    TrainsNothing(Building),
+    NoSuchTroops,
+    NothingAsked,
+    /// The most that may be asked for at once.
+    TooMany(u64),
+    AlreadyTraining(Building),
+    /// It can't be raised while troops train in it.
+    BusyTraining(Building),
+    /// An order the realm does not know.
+    NoSuchOrder,
+    /// Nothing to gather at the hex named.
+    NothingThere,
+    /// Another army is gathering there.
+    SiteTaken,
+    /// The city has fewer ready than were asked for: which, and how many.
+    NotEnoughTroops(Troops, u32, u64),
+    /// Every army the city may send is out: how many that is.
+    NoFreeMarch(u32),
+    /// No way over open ground.
+    NoWay,
+    NoSuchMarch,
+    AlreadyReturning,
+    /// Something only the realm's owner may do.
+    NotTheOwner,
 }
 
 impl fmt::Display for Refusal {
@@ -67,6 +98,15 @@ impl fmt::Display for Refusal {
             Refusal::NeedsKeep(level) => return write!(f, "Raise your Keep to level {level} first."),
             Refusal::NeedsOther(building, level) => return write!(f, "Raise your {} to level {level} first.", building.name()),
             Refusal::CannotAfford(short) => return write!(f, "You need {short} more."),
+            Refusal::TrainsNothing(building) => return write!(f, "No troops are trained in a {}.", building.name()),
+            Refusal::TooMany(most) => return write!(f, "At most {} at once.", crate::catalog::grouped(*most)),
+            Refusal::AlreadyTraining(building) => return write!(f, "Your {} is already training troops.", building.name()),
+            Refusal::BusyTraining(building) => return write!(f, "Your {} is training troops. Wait for them to finish.", building.name()),
+            Refusal::NotEnoughTroops(troops, tier, ready) => {
+                return write!(f, "You have only {} tier {tier} {} ready.", crate::catalog::grouped(*ready), troops.name());
+            }
+            Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
+            Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
             _ => {}
         }
         f.write_str(match self {
@@ -84,6 +124,15 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchBuilding => "There is no such building.",
             Refusal::NotYours => "That is not yours.",
             Refusal::BuildersBusy => "Your builders are busy. Wait for them to finish.",
+            Refusal::NoSuchTroops => "There are no such troops.",
+            Refusal::NothingAsked => "Ask for at least one.",
+            Refusal::NoSuchOrder => "The realm knows no such order.",
+            Refusal::NothingThere => "There is nothing to gather there.",
+            Refusal::SiteTaken => "Another army is gathering there.",
+            Refusal::NoWay => "There is no way there over open ground.",
+            Refusal::NoSuchMarch => "There is no such army.",
+            Refusal::AlreadyReturning => "That army is already on its way home.",
+            Refusal::NotTheOwner => "Only the realm's owner may do that.",
             _ => "",
         })
     }

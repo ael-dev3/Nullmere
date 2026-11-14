@@ -165,9 +165,89 @@ pub fn chunks(seed: u64, radius: u32) -> Vec<(u64, Vec<u8>)> {
     all
 }
 
+/// The most hexes a search for a way looks at before giving up.
+const SEARCH_LIMIT: usize = 60_000;
+
+/// The shortest way over open ground from one hex to another, both ends
+/// among its hexes; none where there is no way, or either end is closed.
+pub fn way(seed: u64, radius: u32, from: Hex, to: Hex) -> Option<Vec<Hex>> {
+    use std::cmp::Reverse;
+    use std::collections::{BinaryHeap, HashMap};
+    let open = |hex: Hex| hex.length() <= radius && ground(seed, radius, hex).is_open();
+    if !open(from) || !open(to) {
+        return None;
+    }
+    if from == to {
+        return Some(vec![from]);
+    }
+    // A* over the hexes, each step the same cost, the straight distance
+    // left as its guide; ties broken by the hex's own number, so the same
+    // two ends always give the same way.
+    let mut came: HashMap<Hex, (Hex, u32)> = HashMap::new();
+    let mut frontier = BinaryHeap::new();
+    came.insert(from, (from, 0));
+    frontier.push(Reverse((from.distance(to), 0u32, from.packed())));
+    while let Some(Reverse((_, gone, packed))) = frontier.pop() {
+        let at = Hex::unpacked(packed);
+        if at == to {
+            let mut way = vec![to];
+            let mut back = to;
+            while back != from {
+                back = came[&back].0;
+                way.push(back);
+            }
+            way.reverse();
+            return Some(way);
+        }
+        if came[&at].1 < gone {
+            continue;
+        }
+        if came.len() > SEARCH_LIMIT {
+            return None;
+        }
+        for next in at.neighbours() {
+            if !open(next) {
+                continue;
+            }
+            let steps = gone + 1;
+            if came.get(&next).is_none_or(|(_, known)| steps < *known) {
+                came.insert(next, (at, steps));
+                frontier.push(Reverse((steps + next.distance(to), steps, next.packed())));
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_way_is_found_round_the_lake_and_never_through_it() {
+        let (seed, radius) = (42, 64);
+        let open: Vec<Hex> = Hex::new(0, 0).within(radius).into_iter().filter(|hex| ground(seed, radius, *hex).is_open()).collect();
+        // Two shores of the lake, opposite each other.
+        let west = *open.iter().filter(|hex| hex.r == 0 && hex.q < 0).max_by_key(|hex| hex.q).unwrap();
+        let east = *open.iter().filter(|hex| hex.r == 0 && hex.q > 0).min_by_key(|hex| hex.q).unwrap();
+        let found = way(seed, radius, west, east).expect("a way round the lake");
+        assert_eq!((found[0], *found.last().unwrap()), (west, east));
+        assert!(found.windows(2).all(|pair| pair[0].distance(pair[1]) == 1), "step by step");
+        assert!(found.iter().all(|hex| ground(seed, radius, *hex).is_open()), "over open ground alone");
+        assert!(found.len() as u32 - 1 >= west.distance(east), "no shorter than the straight line");
+        assert_eq!(way(seed, radius, west, east), Some(found.clone()), "the same way every time");
+        let back = way(seed, radius, east, west).unwrap();
+        assert_eq!(back.len(), found.len(), "as long back as there");
+
+        assert_eq!(way(seed, radius, west, west), Some(vec![west]));
+        assert_eq!(way(seed, radius, west, Hex::new(0, 0)), None, "nothing walks into the deep");
+        assert_eq!(way(seed, radius, Hex::new(0, 0), west), None);
+        assert_eq!(way(seed, radius, west, Hex::new(radius as i32 + 5, 0)), None, "nor off the world");
+
+        // Open land next to open land is one step.
+        let near = west.neighbours().into_iter().find(|hex| ground(seed, radius, *hex).is_open()).unwrap();
+        assert_eq!(way(seed, radius, west, near), Some(vec![west, near]));
+    }
 
     #[test]
     fn every_hex_has_its_place_in_one_chunk() {

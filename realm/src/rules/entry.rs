@@ -1,9 +1,9 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::{found, Refusal};
-use crate::catalog::{self, Building};
+use super::{found, reckon, scatter_sites, Refusal};
+use crate::catalog::{self, Building, Troops};
 use crate::land;
-use crate::rows::{Blueprint, Db, Land, Pace, Player, Realm};
+use crate::rows::{Blueprint, City, Db, Land, Pace, Player, Realm, Soldier};
 use crate::store::{Seconds, Table};
 
 /// The fewest and the most letters in a player's name.
@@ -27,6 +27,33 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     for (chunk, ground) in land::chunks(seed, radius) {
         db.insert(Land { chunk, ground });
     }
+    write_catalogue(db, pace);
+    scatter_sites(db);
+}
+
+/// Sets the realm's pace: how many times faster than written everything
+/// that takes time runs. The catalogue is written out afresh at the new
+/// pace and every city's hourly rates reckoned again; what is already
+/// under way keeps the end it was given. For a trial realm, or a check.
+pub fn repace(db: &mut impl Db, pace: u32) -> Result<(), Refusal> {
+    let mut realm = realm(db)?;
+    realm.pace = pace.max(1);
+    db.update(realm.clone());
+    for row in Table::<Blueprint>::all(db) {
+        Table::<Blueprint>::delete(db, row.id);
+    }
+    for row in Table::<Soldier>::all(db) {
+        Table::<Soldier>::delete(db, row.id);
+    }
+    write_catalogue(db, realm.pace);
+    for city in Table::<City>::all(db) {
+        reckon(db, city.id);
+    }
+    Ok(())
+}
+
+/// Writes the catalogue out as rows, at a pace, for clients to show.
+fn write_catalogue(db: &mut impl Db, pace: u32) {
     for building in Building::ALL {
         for level in 1..=catalog::TOP_LEVEL {
             let cost = catalog::cost(building, level);
@@ -50,6 +77,30 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
                 needs_building: needs.map(|(other, _)| other as u8).unwrap_or(0),
                 needs_level: needs.map(|(_, level)| level).unwrap_or(0),
                 power: catalog::power(building, level),
+            });
+        }
+    }
+    for troops in Troops::ALL {
+        for tier in 1..=catalog::TOP_TIER {
+            let soldier = troops.soldier(tier);
+            db.insert(Soldier {
+                id: Soldier::key(troops as u8, tier),
+                kind: troops as u8,
+                tier,
+                name: troops.name().to_string(),
+                attack: soldier.attack,
+                defence: soldier.defence,
+                health: soldier.health,
+                pace: (soldier.pace / pace as u64).max(1),
+                load: soldier.load,
+                power: soldier.power,
+                grain: soldier.cost.grain,
+                timber: soldier.cost.timber,
+                stone: soldier.cost.stone,
+                moonsalt: soldier.cost.moonsalt,
+                millis: (soldier.seconds as u64 * 1_000 / pace as u64).max(1),
+                building: troops.trained_in() as u8,
+                needs_level: soldier.needs_level,
             });
         }
     }

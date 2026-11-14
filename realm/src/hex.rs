@@ -80,9 +80,34 @@ impl Hex {
     }
 }
 
+/// A way across the land, hex by hex, as a row keeps it: four bytes a hex,
+/// `q` then `r`, each sixteen bits, low byte first.
+pub fn encode(way: &[Hex]) -> Vec<u8> {
+    way.iter().flat_map(|hex| [(hex.q as i16).to_le_bytes(), (hex.r as i16).to_le_bytes()].concat()).collect()
+}
+
+/// A way as a row keeps it, hex by hex.
+pub fn decode(bytes: &[u8]) -> Vec<Hex> {
+    bytes
+        .chunks_exact(4)
+        .map(|part| Hex::new(i16::from_le_bytes([part[0], part[1]]) as i32, i16::from_le_bytes([part[2], part[3]]) as i32))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_way_is_kept_as_bytes_and_read_back() {
+        let way = vec![Hex::new(0, 0), Hex::new(-128, 127), Hex::new(300, -7)];
+        let bytes = encode(&way);
+        assert_eq!(bytes.len(), 12);
+        assert_eq!(decode(&bytes), way);
+        assert_eq!(&bytes[4..8], &[0x80, 0xFF, 0x7F, 0x00]);
+        assert!(decode(&[]).is_empty());
+        assert_eq!(decode(&[1, 0, 2, 0, 9]), vec![Hex::new(1, 2)], "a ragged end is left off");
+    }
 
     #[test]
     fn hexes_pack_into_a_key_and_back() {

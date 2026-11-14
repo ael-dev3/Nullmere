@@ -46,10 +46,10 @@ echo "== Publishing $DB"
 $SPACETIME publish --server "$SERVER" --bin-path "$WASM" --yes --delete-data "$DB" | tail -2
 
 echo "== Playing it through"
-python3 -I - "$HOST" "$DB" <<'PY'
+python3 -I - "$HOST" "$DB" "$SPACETIME" "$SERVER" <<'PY'
 import json, sys, urllib.request, urllib.error
 
-host, db = sys.argv[1], sys.argv[2]
+host, db, spacetime, server = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 failures = []
 
 def post(path, body, token=None, content="application/json"):
@@ -85,7 +85,7 @@ def check(what, got, wanted):
     if got == wanted:
         print("  ok  ", what)
     else:
-        print("  FAIL", what, "\n        got:   ", got, "\n        wanted:", wanted)
+        print("  FAIL", what, "\n        got:   ", str(got)[:300], "\n        wanted:", str(wanted)[:300])
         failures.append(what)
 
 ada, bryn, nobody = someone(), someone(), someone()
@@ -121,7 +121,7 @@ check("the catalogue is written out, 18 buildings by 25 levels", len(rows(nobody
 city = rows(ada, "SELECT * FROM my_city")
 check("joining founds a city", [(c["name"], c["keep"], c["builders"]) for c in city], [("Ada of the Lake", 1, 1)])
 check("everyone sees where cities stand", len(rows(nobody, "SELECT id FROM city")), 2)
-check("and what stands on which hex", sorted(p["kind"] for p in rows(nobody, "SELECT * FROM place")), [1, 1])
+check("and what stands on which hex", sorted(p["kind"] for p in rows(nobody, "SELECT * FROM place") if p["kind"] == 1), [1, 1])
 buildings = rows(ada, "SELECT * FROM my_buildings")
 check("it has a Keep, a Farm and a Sawmill", sorted((b["kind"], b["level"]) for b in buildings), [(1, 1), (2, 1), (3, 1)])
 check("another player's buildings are not theirs to read", sorted(b["city"] for b in rows(bryn, "SELECT * FROM my_buildings")) == [c["id"] for c in rows(bryn, "SELECT * FROM my_city")] * 3, True)
@@ -151,6 +151,77 @@ check("and everyone sees the city's Keep at level 2", [c["keep"] for c in rows(n
 check("now the Farm may follow", call(ada, "upgrade", farm["id"]), None)
 check("a second thing must wait for the builder", call(ada, "build", 4), "Your builders are busy. Wait for them to finish.")
 check("a building not yet open is refused", call(bryn, "build", 10), "Raise your Keep to level 10 first.")
+
+# A faster realm, for the rest: its owner's alone to set.
+check("a player can't set the realm's pace", call(bryn, "set_pace", 60), "Only the realm's owner may do that.")
+import subprocess, shlex
+owner = subprocess.run(shlex.split(spacetime) + ["call", "--server", server, db, "set_pace", "60"], capture_output=True, text=True)
+check("its owner can", owner.returncode, 0)
+check("and the catalogue is written out at the new pace", [(b["seconds"]) for b in rows(nobody, "SELECT * FROM blueprint") if b["building"] == 1 and b["level"] == 5], [10])
+
+def until(what, done, seconds=90):
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        if done():
+            return check(what, True, True)
+        time.sleep(0.5)
+    check(what, False, True)
+
+def mine(token, kind):
+    return next((b for b in rows(token, "SELECT * FROM my_buildings") if b["kind"] == kind), None)
+
+# Troops: a Barracks raised, a batch trained on a timer.
+check("Bryn raises the Keep", call(bryn, "upgrade", mine(bryn, 1)["id"]), None)
+until("to level 2", lambda: mine(bryn, 1)["level"] == 2)
+check("builds a Barracks", call(bryn, "build", 7), None)
+until("which stands", lambda: (mine(bryn, 7) or {}).get("level") == 1)
+barracks = mine(bryn, 7)
+check("more than a batch holds is refused", call(bryn, "train", barracks["id"], 1, 51), "At most 50 at once.")
+check("a tier not yet open is refused", call(bryn, "train", barracks["id"], 2, 10), "Raise your Barracks to level 5 first.")
+check("twenty spearmen go into training", call(bryn, "train", barracks["id"], 1, 20), None)
+check("one batch at a time", call(bryn, "train", barracks["id"], 1, 5), "Your Barracks is already training troops.")
+until("and stand ready", lambda: [(t["kind"], t["tier"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(1, 1, 20)])
+check("only their owner counts them", rows(ada, "SELECT * FROM my_troops"), [])
+check("the troop table itself is closed to clients", isinstance(rows(bryn, "SELECT * FROM troop"), str), True)
+
+# A march: out along a way, gathering, and home with the goods.
+def unpacked(packed):
+    return ((packed >> 16) & 0xFFFF) - 32768, (packed & 0xFFFF) - 32768
+
+def distance(a, b):
+    dq, dr = a[0] - b[0], a[1] - b[1]
+    return (abs(dq) + abs(dr) + abs(dq + dr)) // 2
+
+home = unpacked(rows(bryn, "SELECT * FROM my_city")[0]["hex"])
+sites = sorted(rows(nobody, "SELECT * FROM site"), key=lambda site: distance(unpacked(site["hex"]), home))
+check("sites lie scattered over the land", len(sites) > 500, True)
+check("nothing is gathered where nothing lies", call(bryn, "send", home[0], home[1], 1, [{"kind": 1, "tier": 1, "count": 5}]), "There is nothing to gather there.")
+check("more than stand ready can't be sent", call(bryn, "send", *unpacked(sites[0]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 21}]), "You have only 20 tier 1 Spearmen ready.")
+site, sent = None, "There is no way there over open ground."
+for site in sites[:20]:
+    sent = call(bryn, "send", *unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}])
+    if sent != "There is no way there over open ground.":
+        break
+check("an army sets out for the nearest site", sent, None)
+before = rows(bryn, "SELECT * FROM my_stock")[0]
+marches = rows(nobody, "SELECT * FROM march")
+check("everyone sees it on the map", [(m["kind"], m["state"], m["soldiers"], m["target"]) for m in marches], [(1, 1, 20, site["id"])])
+route = marches[0]["route"]
+check("with the way it takes, from its city to the site", (len(route) >= 16, marches[0]["from"] == rows(bryn, "SELECT * FROM my_city")[0]["hex"], marches[0]["to"] == site["hex"]), (True, True, True))
+check("what it is made of is its owner's alone to read", [(q["kind"], q["tier"], q["count"]) for q in rows(bryn, "SELECT * FROM my_squads")], [(1, 1, 20)])
+check("and no one else's", rows(ada, "SELECT * FROM my_squads"), [])
+check("its soldiers are out of the city", rows(bryn, "SELECT * FROM my_troops"), [])
+check("one army at a time at Keep 2", call(bryn, "send", *unpacked(sites[1]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 1}]) in ("You have only 0 tier 1 Spearmen ready.", "Your one army is out. Raise your Keep to send more."), True)
+until("it reaches the site and works it", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [2], 60)
+check("the site is its while it works", [s["gatherer"] for s in rows(nobody, "SELECT * FROM site") if s["id"] == site["id"]], [marches[0]["id"]])
+until("then turns for home with its load", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [3], 60)
+good = {1: "grain", 2: "timber", 3: "stone", 4: "moonsalt"}[site["kind"]]
+check("carrying what twenty spearmen carry", [h[good] for h in rows(bryn, "SELECT * FROM my_hauls")], [240])
+check("which has come off the site", [s["left"] for s in rows(nobody, "SELECT * FROM site") if s["id"] == site["id"]], [site["left"] - 240])
+until("and comes home", lambda: rows(nobody, "SELECT * FROM march") == [], 60)
+check("its soldiers ready again", [(t["kind"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")], [(1, 20)])
+after = rows(bryn, "SELECT * FROM my_stock")[0]
+check("and its load in the city's stock", after[good] >= before[good] + 240, True)
 
 if failures:
     print(f"{len(failures)} of the realm's checks failed")

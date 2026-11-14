@@ -54,7 +54,113 @@ row!(Place in place, by hex);
 
 impl Place {
     pub const CITY: u8 = 1;
+    pub const SITE: u8 = 2;
 }
+
+/// Somewhere on the land where goods lie to be gathered, until they run
+/// out. Everyone sees it, and whose army is working it.
+#[spacetimedb::table(accessor = site, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Site {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    pub hex: u64,
+    /// Which good lies there (`Site::GRAIN` and the rest), how rich it was
+    /// found, and how much is left.
+    pub kind: u8,
+    pub level: u32,
+    pub left: u64,
+    /// The march gathering there now; 0 for none.
+    pub gatherer: u64,
+}
+row!(Site in site, auto, by id);
+
+impl Site {
+    pub const GRAIN: u8 = 1;
+    pub const TIMBER: u8 = 2;
+    pub const STONE: u8 = 3;
+    pub const MOONSALT: u8 = 4;
+}
+
+/// An army out of its city: where it set out from, where it is bound, the
+/// way it takes and when it gets there. Everyone sees it on the map; what
+/// it is made of and what it carries are its owner's alone to read.
+///
+/// On the way out or home it moves along `route` from `departed` to
+/// `arrives`, at an even pace. Working, it stands at `to` until `arrives`.
+#[spacetimedb::table(accessor = march, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct March {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub owner: u64,
+    #[index(btree)]
+    pub city: u64,
+    /// What it set out to do (`March::GATHER`), and what it is doing now
+    /// (`March::GOING`, `WORKING`, `RETURNING`).
+    pub kind: u8,
+    pub state: u8,
+    pub from: u64,
+    pub to: u64,
+    /// What it set out for: a site's number.
+    pub target: u64,
+    pub departed: Seconds,
+    pub arrives: Seconds,
+    /// How many soldiers march.
+    pub soldiers: u64,
+    /// The way it is on now, hex by hex (`hex::decode`).
+    pub route: Vec<u8>,
+    pub timer: u64,
+}
+row!(March in march, auto, by id, owner, city);
+
+impl March {
+    pub const GATHER: u8 = 1;
+
+    pub const GOING: u8 = 1;
+    pub const WORKING: u8 = 2;
+    pub const RETURNING: u8 = 3;
+}
+
+/// The soldiers of one kind and tier in a march: its owner's alone to
+/// read. Keyed by march, kind and tier.
+#[spacetimedb::table(accessor = squad)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Squad {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub march: u64,
+    pub kind: u8,
+    pub tier: u32,
+    pub count: u64,
+}
+row!(Squad in squad, by id, march);
+
+impl Squad {
+    pub fn key(march: u64, kind: u8, tier: u32) -> u64 {
+        (march << 16) | ((kind as u64) << 8) | tier as u64
+    }
+}
+
+/// What a march carries home: its owner's alone to read. Keyed by the
+/// march.
+#[spacetimedb::table(accessor = haul)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Haul {
+    #[primary_key]
+    pub march: u64,
+    #[index(btree)]
+    pub owner: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+}
+row!(Haul in haul, by march, owner);
 
 /// What a building costs and gives at a level, as the catalogue has it:
 /// the game's numbers, for clients to show. Keyed by kind and level.
@@ -172,10 +278,13 @@ pub struct Job {
     pub id: u64,
     #[index(btree)]
     pub city: u64,
-    /// What kind of work (`Job::RAISE` and the rest), on what, and to what.
+    /// What kind of work (`Job::RAISE` and the rest), on what, and to what:
+    /// a building and its new level, or a training building, the tier it
+    /// trains and how many.
     pub kind: u8,
     pub subject: u64,
     pub level: u32,
+    pub amount: u64,
     pub started: Seconds,
     pub ends: Seconds,
     /// The timer that ends it.
@@ -186,6 +295,67 @@ row!(Job in job, auto, by id, city);
 impl Job {
     /// A building being raised a level: its subject is the building.
     pub const RAISE: u8 = 1;
+    /// Troops in training: its subject is the building that trains them.
+    pub const TRAIN: u8 = 2;
+}
+
+/// A city's troops of one kind and tier: its owner's alone to read. Keyed
+/// by city, kind and tier.
+#[spacetimedb::table(accessor = troop)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Troop {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub city: u64,
+    pub kind: u8,
+    pub tier: u32,
+    /// How many stand ready in the city, and how many lie wounded in its
+    /// Hospital.
+    pub ready: u64,
+    pub wounded: u64,
+}
+row!(Troop in troop, by id, city);
+
+impl Troop {
+    pub fn key(city: u64, kind: u8, tier: u32) -> u64 {
+        (city << 16) | ((kind as u64) << 8) | tier as u64
+    }
+}
+
+/// What one soldier of a kind and tier is and costs in this realm, as the
+/// catalogue has it, for clients to show. Keyed by kind and tier.
+#[spacetimedb::table(accessor = soldier, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Soldier {
+    #[primary_key]
+    pub id: u64,
+    pub kind: u8,
+    pub tier: u32,
+    pub name: String,
+    pub attack: u64,
+    pub defence: u64,
+    pub health: u64,
+    /// Tenths of a second to cross a hex, in this realm.
+    pub pace: u64,
+    pub load: u64,
+    pub power: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    /// Thousandths of a second to train one, in this realm.
+    pub millis: u64,
+    /// The building that trains them, and the level it must have reached.
+    pub building: u8,
+    pub needs_level: u32,
+}
+row!(Soldier in soldier, by id);
+
+impl Soldier {
+    pub fn key(kind: u8, tier: u32) -> u64 {
+        ((kind as u64) << 8) | tier as u64
+    }
 }
 
 /// A city's goods: its owner's alone to read. Keyed by the city.
@@ -231,6 +401,12 @@ pub trait Db:
     + Table<Building>
     + Table<Job>
     + Table<Stock>
+    + Table<Troop>
+    + Table<Soldier>
+    + Table<Site>
+    + Table<March>
+    + Table<Squad>
+    + Table<Haul>
 {
 }
 
@@ -245,7 +421,13 @@ impl<
             + Table<City>
             + Table<Building>
             + Table<Job>
-            + Table<Stock>,
+            + Table<Stock>
+            + Table<Troop>
+            + Table<Soldier>
+            + Table<Site>
+            + Table<March>
+            + Table<Squad>
+            + Table<Haul>,
     > Db for T
 {
 }
