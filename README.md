@@ -102,6 +102,17 @@ interface mostly text, and no live realm; [rework-plan.md](docs/rework-plan.md)
 has the audit and the plan to rebuild it, and [GAPS.md](docs/GAPS.md) the
 record before it.
 
+The rebuild is under way beside the game described above, which is still
+what the app opens. A new realm (`realm/`) keeps one persistent world in
+real time with every rule inside the SpacetimeDB module: cities and their
+buildings on timers, troops, armies that march, gather and fight, the
+Unquiet's barrows, attacks on cities, research, alliances, chat and a new
+player's first tasks, each tested and played through on a real server in
+CI. The world now keeps a day. A debug build of the Mac app can open on
+the new realm; it is not yet what Play opens, it has not been published,
+and its screens are a first cut. The plan's status table says what is
+done, what is unverified, and what has not been started.
+
 ## Documentation
 
 | Document | What it covers |
