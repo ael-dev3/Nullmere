@@ -191,6 +191,51 @@ public enum WorldShaders {
         return mix(earth, moss, smoothstep(0.35, 0.65, patches)) * shade;
     }
 
+    // The ground by day, over its grain: the country it lies in, and the
+    // stone of its slopes. Whole reaches of the land are lusher or drier
+    // than the rest, several hexes across, so no plain is one flat green;
+    // where the ground is bare stone and steep, it shows its beds, darker
+    // in the clefts; and the finest grain of all, blades and grit, shows
+    // close to and fades before it is smaller than a pixel. `day` is how
+    // much of this the hour shows: all of it under the sun, none of it by
+    // the moon, whose land is drawn as it always was.
+    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day) {
+        float2 p = world.xz;
+        float3 c = nm_grain(p, albedo);
+        if (day <= 0.0) {
+            return c;
+        }
+        float most = max(albedo.r, max(albedo.g, albedo.b));
+        float least = min(albedo.r, min(albedo.g, albedo.b));
+        // How much of the ground is growth, and how much bare stone, by
+        // its own colour: green stands over red and blue; stone is grey.
+        float growth = clamp((albedo.g - max(albedo.r, albedo.b)) * 7.0, 0.0, 1.0);
+        float stone = 1.0 - clamp((most - least) * 9.0, 0.0, 1.0);
+        float country = nm_fbm(p * 0.23 + float2(17.3, 5.1));
+        float3 lush = float3(0.80, 0.96, 0.78);
+        float3 dry = float3(1.04, 0.99, 0.76);
+        float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
+        // Glades: paler grass in rounds a hex or so across.
+        float glade = smoothstep(0.6, 0.8, nm_fbm(p * 0.9 + float2(41.0, 8.0)));
+        reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
+        float3 shown = c * mix(float3(1.0), reach, growth);
+        // The land's colours were chosen to be read by the moon, whose
+        // light is a tenth of the sun's: in full sun they stand at the top
+        // of the picture, every green a pale lime. Under the sun they are
+        // set deeper, the darker the more, so a meadow is a deep green and
+        // snow and salt stay bright.
+        shown = pow(max(shown, float3(0.0)), float3(1.45));
+        // Stone's beds across a slope, broken where the rock is sound.
+        float steep = clamp((1.0 - n.y) * 3.0, 0.0, 1.0);
+        float beds = 0.5 + 0.5 * sin(world.y * 15.0 + nm_fbm(p * 2.3 + float2(2.0, 31.0)) * 9.0);
+        float broken = smoothstep(0.3, 0.7, nm_noise(p * 1.1 + float2(23.0, 4.0)));
+        shown *= mix(1.0, 0.72 + 0.4 * beds, stone * steep * broken);
+        // Blades and grit, close to.
+        float fine = nm_noise(p * 43.0 + float2(7.0, 19.0)) - 0.5;
+        shown *= 1.0 + 0.16 * fine * (1.0 - smoothstep(0.012, 0.045, pixel));
+        return mix(c, shown, day);
+    }
+
     // The grain a model's surface is drawn with, on the model's own
     // coordinates so it keeps to the model: stone laid in courses, each
     // block its own shade and mortar between; timber in planks, a grain
@@ -684,7 +729,9 @@ public enum WorldShaders {
             float4 tile = nm_tileAt(h, radius NM_TEXTURE_PASS);
             float owner = nm_owner(tile);
         #ifndef NM_NO_GRAIN
-            float3 albedo = nm_grain(p, colour);
+            // All of it at noon, some of it at dusk and dawn (by how
+            // brightly the hour's marks are lit), none of it at night.
+            float3 albedo = nm_ground(world, n, colour, pixel, frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0));
         #else
             float3 albedo = colour;
         #endif
