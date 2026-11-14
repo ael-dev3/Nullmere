@@ -82,6 +82,7 @@ public enum LiveBlock: Equatable, Sendable {
     case top(String)
     case studying
     case learntAll(String)
+    case commandersFull
 
     /// As the realm says it.
     public var words: String {
@@ -96,6 +97,7 @@ public enum LiveBlock: Equatable, Sendable {
         case .top(let name): return "Your \(name) is at its highest level."
         case .studying: return "Your Academy is already at its studies. Wait for them to finish."
         case .learntAll(let name): return "You have learnt all there is of \(name)."
+        case .commandersFull: return "Your city keeps as many commanders as it can."
         }
     }
 }

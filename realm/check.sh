@@ -197,11 +197,11 @@ def distance(a, b):
 home = unpacked(rows(bryn, "SELECT * FROM my_city")[0]["hex"])
 sites = sorted(rows(nobody, "SELECT * FROM site"), key=lambda site: distance(unpacked(site["hex"]), home))
 check("sites lie scattered over the land", len(sites) > 500, True)
-check("nothing is gathered where nothing lies", call(bryn, "send", home[0], home[1], 1, [{"kind": 1, "tier": 1, "count": 5}]), "There is nothing to gather there.")
-check("more than stand ready can't be sent", call(bryn, "send", *unpacked(sites[0]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 21}]), "You have only 20 tier 1 Spearmen ready.")
+check("nothing is gathered where nothing lies", call(bryn, "send", home[0], home[1], 1, [{"kind": 1, "tier": 1, "count": 5}], 0), "There is nothing to gather there.")
+check("more than stand ready can't be sent", call(bryn, "send", *unpacked(sites[0]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 21}], 0), "You have only 20 tier 1 Spearmen ready.")
 site, sent = None, "There is no way there over open ground."
 for site in sites[:20]:
-    sent = call(bryn, "send", *unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}])
+    sent = call(bryn, "send", *unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}], 0)
     if sent != "There is no way there over open ground.":
         break
 check("an army sets out for the nearest site", sent, None)
@@ -213,7 +213,7 @@ check("with the way it takes, from its city to the site", (len(route) >= 16, mar
 check("what it is made of is its owner's alone to read", [(q["kind"], q["tier"], q["count"]) for q in rows(bryn, "SELECT * FROM my_squads")], [(1, 1, 20)])
 check("and no one else's", rows(ada, "SELECT * FROM my_squads"), [])
 check("its soldiers are out of the city", rows(bryn, "SELECT * FROM my_troops"), [])
-check("one army at a time at Keep 2", call(bryn, "send", *unpacked(sites[1]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 1}]) in ("You have only 0 tier 1 Spearmen ready.", "Your one army is out. Raise your Keep to send more."), True)
+check("one army at a time at Keep 2", call(bryn, "send", *unpacked(sites[1]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 1}], 0) in ("You have only 0 tier 1 Spearmen ready.", "Your one army is out. Raise your Keep to send more."), True)
 until("it reaches the site and works it", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [2], 60)
 check("the site is its while it works", [s["gatherer"] for s in rows(nobody, "SELECT * FROM site") if s["id"] == site["id"]], [marches[0]["id"]])
 until("then turns for home with its load", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [3], 60)
@@ -229,9 +229,9 @@ check("and its load in the city's stock", after[good] >= before[good] + 240, Tru
 theirs = rows(nobody, "SELECT * FROM city")
 check("every city shows until when it is at peace", all(city["shield"] > city["founded"] for city in theirs), True)
 adas = unpacked(rows(ada, "SELECT * FROM my_city")[0]["hex"])
-refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count": 1}])
+refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0)
 check("an army sent against a new city is refused", (refused or "").startswith("That city is at peace for another "), True)
-check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}]), "That is your own city.")
+check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0), "That is your own city.")
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
 tasks = rows(nobody, "SELECT * FROM task")
@@ -242,6 +242,12 @@ check("a task done is claimed", call(ada, "claim_task"), None)
 check("and gives what it promised", (rows(ada, "SELECT * FROM my_stock")[0]["grain"] >= grain + 1000, rows(ada, "SELECT * FROM my_progress")[0]["step"]), (True, 2))
 check("the next is not done yet", call(ada, "claim_task"), "Not done yet: Build a Barracks.")
 check("no one reads another's progress", isinstance(rows(ada, "SELECT * FROM progress"), str), True)
+
+# Commanders: one to begin with, more from a Tavern.
+captains = rows(bryn, "SELECT * FROM my_commanders")
+check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])
+check("another is taken on from a Tavern", call(bryn, "hire"), "Raise your Tavern to level 1 first.")
+check("no one reads another's commanders", (rows(ada, "SELECT * FROM my_commanders") != captains, isinstance(rows(bryn, "SELECT * FROM commander"), str)), (True, True))
 
 # What an Academy studies.
 studies = rows(nobody, "SELECT * FROM study")
@@ -267,7 +273,7 @@ barrows = sorted(rows(nobody, "SELECT * FROM barrow"), key=lambda barrow: distan
 check("barrows of the Unquiet stand over the land", len(barrows) > 300, True)
 check("a player begins with all their energy and nothing cleared", [(h["energy"], h["most"], h["cleared"]) for h in rows(bryn, "SELECT * FROM my_hunt")], [(1000, 1000, 0)])
 strong = next(barrow for barrow in barrows if barrow["level"] >= 3)
-check("a barrow too strong is refused", call(bryn, "send", *unpacked(strong["hex"]), 2, [{"kind": 1, "tier": 1, "count": 20}]), f"Clear a level {strong['level'] - 1} barrow first.")
+check("a barrow too strong is refused", call(bryn, "send", *unpacked(strong["hex"]), 2, [{"kind": 1, "tier": 1, "count": 20}], 0), f"Clear a level {strong['level'] - 1} barrow first.")
 check("fifty more spearmen go into training", call(bryn, "train", barracks["id"], 1, 50), None)
 until("and stand ready", lambda: [(t["kind"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(1, 70)])
 # Slower from here, so that the fight lasts long enough to be seen.
@@ -275,13 +281,14 @@ slower = subprocess.run(shlex.split(spacetime) + ["call", "--server", server, db
 check("the realm's owner slows it", slower.returncode, 0)
 barrow, sent = None, "There is no way there over open ground."
 for barrow in [barrow for barrow in barrows if barrow["level"] == 1][:20]:
-    sent = call(bryn, "send", *unpacked(barrow["hex"]), 2, [{"kind": 1, "tier": 1, "count": 70}])
+    sent = call(bryn, "send", *unpacked(barrow["hex"]), 2, [{"kind": 1, "tier": 1, "count": 70}], captains[0]["id"])
     if sent != "There is no way there over open ground.":
         break
 check("an army sets out against the nearest weak barrow", sent, None)
 check("which takes fifty energy", [950 <= h["energy"] < 1000 for h in rows(bryn, "SELECT * FROM my_hunt")], [True])
 until("it reaches the barrow and fights", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [4], 180)
 hunting = rows(nobody, "SELECT * FROM march")[0]
+check("under the commander who was asked to lead it", (hunting["leader"], [c["march"] for c in rows(bryn, "SELECT * FROM my_commanders")]), (captains[0]["id"], [hunting["id"]]))
 check("the barrow is its while it fights", [b["fighter"] for b in rows(nobody, "SELECT * FROM barrow") if b["id"] == barrow["id"]], [hunting["id"]])
 check("and it can't be called away", call(bryn, "recall", hunting["id"]), "That army is fighting. Wait for the fight to end.")
 until("the fight ends and it turns for home", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [3], 60)
@@ -299,6 +306,7 @@ check("and the player has cleared the first level", [h["cleared"] for h in rows(
 check("the report is marked read", (call(bryn, "read_report", told[0]["id"]), [r["read"] for r in rows(bryn, "SELECT * FROM my_reports")]), (None, [True]))
 check("another player can't read it", call(ada, "read_report", told[0]["id"]), "There is no such report.")
 until("the army comes home", lambda: rows(nobody, "SELECT * FROM march") == [], 180)
+check("its commander with it, having seen the Unquiet fall", [(c["march"], c["seen"]) for c in rows(bryn, "SELECT * FROM my_commanders")], [(0, 25)])
 wounded = told[0]["wounded"]
 check("with its wounded", [(t["ready"], t["wounded"]) for t in rows(bryn, "SELECT * FROM my_troops")], [(70 - wounded, wounded)])
 check("more than lie wounded can't be healed", call(bryn, "heal", 1, 1, wounded + 1), f"You have only {wounded} wounded tier 1 Spearmen.")

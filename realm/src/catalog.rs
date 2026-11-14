@@ -873,3 +873,119 @@ pub fn study_seconds(level: u32) -> i64 {
 pub fn study_needs(level: u32) -> u32 {
     (2 * level.clamp(1, TOP_STUDY)).saturating_sub(1).min(TOP_LEVEL)
 }
+
+/// The way of war a commander has: what they are best at leading.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Way {
+    /// Leads spearmen in the front of a fight.
+    Vanguard = 1,
+    /// Leads archers.
+    Fletcher = 2,
+    /// Leads riders, and marches fast.
+    Outrider = 3,
+    /// Leads mangonels, and makes less of a city's Wall.
+    Wallbreaker = 4,
+    /// Keeps those they lead standing.
+    Warden = 5,
+    /// Gathers fast and carries much.
+    Gleaner = 6,
+}
+
+/// The highest level a commander reaches.
+pub const TOP_COMMAND: u32 = 30;
+
+/// What a commander adds to the army they lead, in hundredths: how much
+/// harder each kind strikes (by the kind's number less one), how much
+/// harder all are to bring down, how much faster it marches and gathers,
+/// how much more it carries, and how much less a Wall shelters those it
+/// attacks.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Leading {
+    pub strikes: [u64; 4],
+    pub shields: u64,
+    pub haste: u64,
+    pub gathers: u64,
+    pub carries: u64,
+    pub breaches: u64,
+}
+
+impl Way {
+    pub const ALL: [Way; 6] = [Way::Vanguard, Way::Fletcher, Way::Outrider, Way::Wallbreaker, Way::Warden, Way::Gleaner];
+
+    pub fn of(code: u8) -> Option<Way> {
+        Way::ALL.into_iter().find(|way| *way as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Way::Vanguard => "Vanguard",
+            Way::Fletcher => "Fletcher",
+            Way::Outrider => "Outrider",
+            Way::Wallbreaker => "Wallbreaker",
+            Way::Warden => "Warden",
+            Way::Gleaner => "Gleaner",
+        }
+    }
+
+    /// What they are best at, in a player's words.
+    pub fn words(self) -> &'static str {
+        match self {
+            Way::Vanguard => "Spearmen they lead strike harder.",
+            Way::Fletcher => "Archers they lead strike harder.",
+            Way::Outrider => "Riders they lead strike harder, and their army marches faster.",
+            Way::Wallbreaker => "Mangonels they lead strike harder, and a Wall shelters its city less from them.",
+            Way::Warden => "Everyone they lead is harder to bring down.",
+            Way::Gleaner => "Their army gathers faster and carries more.",
+        }
+    }
+
+    /// What a commander of this way adds at a level, 1 to 30: five
+    /// hundredths and one more a level for what they are best at, and
+    /// about half that for what else they bring.
+    pub fn leading(self, level: u32) -> Leading {
+        let level = level.clamp(1, TOP_COMMAND) as u64;
+        let best = 5 + level;
+        let also = 3 + level / 2;
+        let mut leading = Leading::default();
+        match self {
+            Way::Vanguard => leading.strikes[Troops::Spearmen as usize - 1] = best,
+            Way::Fletcher => leading.strikes[Troops::Archers as usize - 1] = best,
+            Way::Outrider => {
+                leading.strikes[Troops::Riders as usize - 1] = best;
+                leading.haste = also;
+            }
+            Way::Wallbreaker => {
+                leading.strikes[Troops::Mangonels as usize - 1] = best;
+                leading.breaches = 10 + level;
+            }
+            Way::Warden => leading.shields = best,
+            Way::Gleaner => {
+                leading.gathers = 2 * best;
+                leading.carries = best;
+            }
+        }
+        leading
+    }
+}
+
+/// What a commander must have seen to rise from a level to the next.
+pub fn command_needs(level: u32) -> u64 {
+    100 * level.max(1) as u64 * level.max(1) as u64
+}
+
+/// How many commanders a city keeps, by its Tavern's level: one without
+/// a Tavern, another with one, and one more every five levels after, to
+/// six.
+pub fn commanders(tavern: u32) -> u32 {
+    if tavern == 0 {
+        1
+    } else {
+        (2 + tavern / 5).min(6)
+    }
+}
+
+/// What taking on a city's next commander costs, by how many it has.
+pub fn hire_cost(have: u32) -> Goods {
+    let n = have.max(1) as u64;
+    Goods::of(2_000 * n * n, 2_000 * n * n, 1_000 * n * n, if n >= 2 { 50 * n } else { 0 })
+}

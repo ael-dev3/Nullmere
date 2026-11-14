@@ -115,6 +115,8 @@ pub struct March {
     /// The way it is on now, hex by hex (`hex::decode`).
     pub route: Vec<u8>,
     pub timer: u64,
+    /// The commander who leads it; 0 for none.
+    pub leader: u64,
 }
 row!(March in march, auto, by id, owner, city);
 
@@ -666,6 +668,26 @@ impl Study {
     }
 }
 
+/// Someone who leads a player's armies: their owner's alone to read.
+#[spacetimedb::table(accessor = commander)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Commander {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub owner: u64,
+    pub name: String,
+    /// Their way of war (`catalog::Way`), their level, and what they have
+    /// seen toward the next.
+    pub way: u8,
+    pub level: u32,
+    pub seen: u64,
+    /// The march they lead now; 0 while they are in the city.
+    pub march: u64,
+}
+row!(Commander in commander, auto, by id, owner);
+
 /// Everything the rules keep: every table, the clock, chance and timers.
 pub trait Db:
     World
@@ -697,6 +719,7 @@ pub trait Db:
     + Table<Progress>
     + Table<Lore>
     + Table<Study>
+    + Table<Commander>
 {
 }
 
@@ -729,7 +752,8 @@ impl<
             + Table<Task>
             + Table<Progress>
             + Table<Lore>
-            + Table<Study>,
+            + Table<Study>
+            + Table<Commander>,
     > Db for T
 {
 }

@@ -55,6 +55,7 @@ final class LiveGameTests: XCTestCase {
         }
         rows["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(2)]]
         rows["my_buildings"]?.append([n(30), n(7), n(14), n(3)])
+        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(1), n(2), n(100), n(0)], [n(12), n(1), .string("Halen"), n(3), n(4), n(0), n(3)]]
         rows["task"] = [[n(1), n(1), n(2), n(0), .string("Raise your Keep to level 2."), n(1_000), n(1_000), n(0), n(0)],
                         [n(2), n(2), n(7), n(1), .string("Build a Barracks."), n(1_000), n(1_000), n(0), n(0)]]
         rows["my_progress"] = [[n(1), n(1)]]

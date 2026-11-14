@@ -320,13 +320,36 @@ final class LiveSessionTests: XCTestCase {
         session.selected = LiveHex(q: 6, r: 0)
         await session.press(card(6, 0).buttons[0])
         XCTAssertEqual(line.asked, ["hunt at 6, 0 with 40 of 1.1"])
+        // With commanders, the highest of those in the city leads, and the
+        // card says who; one named leads instead.
+        line.change { $0["my_commanders"] = [[self.n(11), self.n(1), .string("Corwen"), self.n(1), self.n(2), self.n(100), self.n(0)],
+                                             [self.n(12), self.n(1), .string("Halen"), self.n(3), self.n(4), self.n(0), self.n(0)],
+                                             [self.n(13), self.n(1), .string("Ulric"), self.n(6), self.n(9), self.n(0), self.n(77)]] }
+        session.refresh()
+        XCTAssertEqual(card(6, 0).lines.last, "Halen, outrider of level 4, will lead it.")
+        XCTAssertEqual(card(7, 1).lines.last, "Halen, outrider of level 4, will lead it.")
+        await session.press(card(6, 0).buttons[0])
+        XCTAssertEqual(line.asked.last, "hunt at 6, 0 with 40 of 1.1 under 12")
+        await session.send([(kind: 1, tier: 1, count: 5)], to: LiveHex(q: 6, r: 0), leader: 11)
+        XCTAssertEqual(line.asked.last, "hunt at 6, 0 with 5 of 1.1 under 11")
+        await session.send([(kind: 1, tier: 1, count: 5)], to: LiveHex(q: 6, r: 0), leader: 0)
+        XCTAssertEqual(line.asked.last, "hunt at 6, 0 with 5 of 1.1")
+        await session.hire()
+        XCTAssertEqual(line.asked.last, "hire")
+        XCTAssertNil(card(6, -1).lines.first { $0.hasSuffix("will lead it.") }, "no one is named for an army that can't be sent")
+        line.change { rows in
+            rows["my_commanders"] = nil
+            rows["march"] = rows["march"]
+        }
+        session.refresh()
+        line.clear()
         session.selected = LiveHex(q: 7, r: 1)
         await session.press(card(7, 1).buttons[0])
         XCTAssertEqual(line.asked.last, "gather at 7, 1 with 40 of 1.1")
         // A button that can't be pressed says why, and asks nothing.
         await session.press(card(6, -1).buttons[0])
         XCTAssertEqual(session.said, "Clear a level 3 barrow first.")
-        XCTAssertEqual(line.asked.count, 2)
+        XCTAssertEqual(line.asked.count, 1)
         // Bryn's city may be attacked; pressed, everyone ready goes against it.
         XCTAssertNil(card(14, -4).buttons.first?.why)
         session.selected = LiveHex(q: 14, r: -4)

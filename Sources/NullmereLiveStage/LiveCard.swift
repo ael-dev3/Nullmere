@@ -36,6 +36,12 @@ extension LiveSession {
 
     private func soldiers(_ count: UInt64) -> String { "\(LiveWords.grouped(count)) \(count == 1 ? "soldier" : "soldiers")" }
 
+    /// Who would lead an army sent now, in a line; nil where no commander
+    /// is in the city.
+    private var leaderLine: String? {
+        world.freeLeader.map { "\($0.name), \($0.wayName.lowercased()) of level \($0.level), will lead it." }
+    }
+
     /// Why no army can be sent now, whatever it is sent for: no one ready,
     /// or every army the city may send already out.
     private var cannotSend: String? {
@@ -79,6 +85,7 @@ extension LiveSession {
             if world.isAlly(city.owner) {
                 return LiveCard(title: city.name, lines: [lines[0], "Your ally."], buttons: [])
             }
+            if why == nil, let leaderLine { lines.append(leaderLine) }
             return LiveCard(title: city.name, lines: lines,
                             buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)])
 
@@ -91,6 +98,7 @@ extension LiveSession {
                 lines.append(mine ? "Your army is gathering here." : "Another army is gathering here.")
                 why = "Another army is gathering there."
             }
+            if why == nil, let leaderLine { lines.append(leaderLine) }
             return LiveCard(title: "\(good), level \(site.level)", lines: lines,
                             buttons: [.init(title: ready > 0 ? "Gather with \(soldiers(ready))" : "Gather", act: .send, why: why)])
 
@@ -105,6 +113,7 @@ extension LiveSession {
                 lines.append(mine ? "Your army is fighting here." : "Another army is fighting here.")
                 why = "Another army is fighting there."
             }
+            if why == nil, let leaderLine { lines.append(leaderLine) }
             return LiveCard(title: "Barrow, level \(barrow.level)", lines: lines,
                             buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)])
 
@@ -114,6 +123,9 @@ extension LiveSession {
                 return LiveCard(title: "\(owner)'s army", lines: [soldiers(march.soldiers)], buttons: [])
             }
             var lines = ["\(line.doing): \(LiveWords.clock(march.arrives - Int(seconds)))"]
+            if let leader = world.commanders.first(where: { $0.id == march.leader }) {
+                lines.append("Led by \(leader.name).")
+            }
             lines.append(line.wounded > 0 ? "\(soldiers(line.soldiers)), and \(LiveWords.grouped(line.wounded)) wounded." : "\(soldiers(line.soldiers)).")
             let why = line.canRecall ? nil : (march.state == LiveMarch.fighting ? "That army is fighting. Wait for the fight to end." : "That army is already on its way home.")
             return LiveCard(title: "Your army", lines: lines, buttons: [.init(title: "Call home", act: .recall(march.id), why: why)])

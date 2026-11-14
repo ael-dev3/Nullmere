@@ -140,7 +140,7 @@ for index, token in enumerate(players):
     order, places = (2, barrows) if index % 2 else (1, sites)
     near = sorted((place for place in places if (order, place["id"]) not in taken), key=lambda place: distance(unpacked(place["hex"]), home))
     for place in near[:12]:
-        refusal = call(token, "send", *unpacked(place["hex"]), order, [{"kind": 1, "tier": 1, "count": 50}])
+        refusal = call(token, "send", *unpacked(place["hex"]), order, [{"kind": 1, "tier": 1, "count": 50}], 0)
         if refusal is None:
             taken.add((order, place["id"]))
             out += 1

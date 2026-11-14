@@ -2,7 +2,7 @@
 //! the barrows of the Unquiet that players clear, and the energy that
 //! takes; the wounded and their healing; and the reports of what happened.
 
-use super::{asking, boost, city_of, goods, keep_troop, mastery, realm, set_goods, settle, squads, troop, Mastery, Refusal, TIMER_JOB};
+use super::{asking, boost, city_of, goods, keep_troop, leading_of, load, mastery, realm, seen_by_leader, set_goods, settle, squads, troop, Mastery, Refusal, TIMER_JOB};
 use crate::catalog::{self, Building as Kind, Goods, Topic, Troops, Unit, TOP_TIER};
 use crate::hex::Hex;
 use crate::land::{self, Ground};
@@ -101,6 +101,18 @@ pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2
         defenders_lost: lost(1),
         won: left[1].iter().sum::<u64>() == 0 && left[0].iter().sum::<u64>() > 0,
     }
+}
+
+/// What an army has in a fight beyond its numbers: what its city has
+/// learnt, and what the commander who leads it adds.
+pub(super) fn led(db: &impl Db, march: &March) -> Mastery {
+    let mut all = mastery(db, march.city);
+    let leading = leading_of(db, march);
+    for kind in 0..4 {
+        all.strikes[kind] += leading.strikes[kind];
+    }
+    all.shields += leading.shields;
+    all
 }
 
 /// Sets one new barrow of the Unquiet somewhere on the land, on open
@@ -241,7 +253,7 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     let army: Vec<Unit> = own.iter().filter_map(|squad| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
     let unquiet = catalog::barrow(barrow.level);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
-    let outcome = fight_learned(&army, &unquiet, [mastery(db, march.city), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
+    let outcome = fight_learned(&army, &unquiet, [led(db, march), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
 
     let mut room = room_for_wounded(db, march.city);
     let (mut wounded, mut dead) = (0, 0);
@@ -265,7 +277,7 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     if outcome.won {
         // As much of the spoils as those still standing can carry, each
         // good by its share.
-        let load: u64 = own.iter().map(|squad| Troops::of(squad.kind).map(|kind| kind.soldier(squad.tier).load).unwrap_or(0) * squad.count).sum();
+        let load = load(db, march);
         let spoils = catalog::spoils(barrow.level);
         let all: u64 = spoils.parts().iter().sum();
         won = Goods::from_parts(spoils.parts().map(|part| if all > load { (part as u128 * load as u128 / all as u128) as u64 } else { part }));
@@ -286,6 +298,8 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
 
     let stood: u64 = unquiet.iter().map(|unit| unit.count).sum();
     let fell: u64 = outcome.defenders_lost.iter().sum();
+    // Whoever led them has seen as much as fell before them.
+    seen_by_leader(db, march, fell * (1 + (barrow.level as u64 - 1) / 5));
     let words = told(barrow.level, outcome.won, fought, wounded, dead, stood - fell, won);
     report(
         db,

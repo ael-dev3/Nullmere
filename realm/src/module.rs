@@ -10,10 +10,10 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    building__view as _, city as _, city__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
+    building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
-    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, City, Haul, Hunt, Job, Land, Lore, March, Member,
+    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, City, Commander, Haul, Hunt, Job, Land, Lore, March, Member,
     Pace, Place, Player, Progress, Realm, RealmChat, Report, Site, Soldier, Squad, Stock, Study, Task, Troop,
 };
 use crate::rules::{self, Refusal};
@@ -150,6 +150,7 @@ stored!(Task in task by step);
 stored!(Progress in progress by player);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
+stored!(Commander in commander by id, owner);
 
 /// The player a caller is, by their identity.
 fn caller(ctx: &ReducerContext) -> Result<u64, Refusal> {
@@ -272,11 +273,18 @@ pub struct Soldiers {
 
 /// Send soldiers from the caller's city to a hex, to do an order there:
 /// 1 to gather at a site, 2 to clear a barrow of the Unquiet, 3 to take
-/// another player's city by storm.
+/// another player's city by storm. Under one of the caller's commanders,
+/// by their number, or under none with 0.
 #[reducer]
-pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>) -> Result<(), String> {
+pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>, leader: u64) -> Result<(), String> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
-    said(caller(ctx).and_then(|player| rules::send(&mut Stdb(ctx), player, Hex::new(q, r), order, &asked)))
+    said(caller(ctx).and_then(|player| rules::send_led(&mut Stdb(ctx), player, Hex::new(q, r), order, &asked, leader)))
+}
+
+/// Take on another commander.
+#[reducer]
+pub fn hire(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::hire(&mut Stdb(ctx), player)))
 }
 
 /// Call one of the caller's armies home.
@@ -477,4 +485,10 @@ fn my_progress(ctx: &ViewContext) -> Option<Progress> {
 #[view(accessor = my_lore, public)]
 fn my_lore(ctx: &ViewContext) -> Vec<Lore> {
     my_city(ctx).map(|city| ctx.db.lore().city().filter(city.id).collect()).unwrap_or_default()
+}
+
+/// The caller's commanders.
+#[view(accessor = my_commanders, public)]
+fn my_commanders(ctx: &ViewContext) -> Vec<Commander> {
+    viewer(ctx).map(|player| ctx.db.commander().owner().filter(player).collect()).unwrap_or_default()
 }

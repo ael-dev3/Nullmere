@@ -1,6 +1,6 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::{found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_studies, write_tasks, Refusal};
+use super::{enlist, found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_studies, write_tasks, Refusal};
 use crate::catalog::{self, Building, Troops};
 use crate::land;
 use crate::rows::{Blueprint, City, Db, Hunt, Land, Pace, Player, Progress, Realm, Soldier};
@@ -191,6 +191,7 @@ pub fn join(db: &mut impl Db, name: &str) -> Result<Player, Refusal> {
     let hunt = hunt_of(db, player.id);
     keep_hunt(db, hunt);
     db.insert(Progress { player: player.id, step: 1 });
+    enlist(db, player.id);
     Ok(player)
 }
 

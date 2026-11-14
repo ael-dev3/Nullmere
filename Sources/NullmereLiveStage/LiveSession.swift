@@ -16,9 +16,10 @@ public protocol LiveLine: AnyObject, Sendable {
     func build(_ kind: Int) async throws
     func upgrade(building: UInt64) async throws
     func train(building: UInt64, tier: Int, count: UInt64) async throws
-    func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
-    func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
-    func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
+    func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func hire() async throws
     func heal(kind: Int, tier: Int, count: UInt64) async throws
     func read(report: UInt64) async throws
     func forget(report: UInt64) async throws
@@ -361,6 +362,7 @@ public final class LiveSession {
     public func read(report: UInt64) async { await ask { try await $0.read(report: report) } }
     public func forget(report: UInt64) async { await ask { try await $0.forget(report: report) } }
 
+    public func hire() async { await ask { try await $0.hire() } }
     public func learn(topic: Int) async { await ask { try await $0.learn(topic: topic) } }
     public func claimTask() async { await ask { try await $0.claimTask() } }
     public func foundAlliance(name: String, tag: String) async { await ask { try await $0.foundAlliance(name: name, tag: tag) } }
@@ -374,13 +376,16 @@ public final class LiveSession {
 
     /// Sends soldiers to what the player has chosen: to gather at a site,
     /// to clear a barrow, or against another player's city. Elsewhere
-    /// there is nothing to send them for.
-    public func send(_ soldiers: [(kind: Int, tier: Int, count: UInt64)], to hex: LiveHex) async {
+    /// there is nothing to send them for. The army is led by the commander
+    /// named, or where none is, by the highest of those in the city.
+    public func send(_ soldiers: [(kind: Int, tier: Int, count: UInt64)], to hex: LiveHex, leader: UInt64? = nil) async {
         let asked = soldiers.map { (kind: $0.kind, tier: $0.tier, count: $0.count) }
+        // Led by whoever is named, or by the highest of those in the city.
+        let leader = leader ?? world.freeLeader?.id ?? 0
         switch selection(at: hex) {
-        case .site(let site): await ask { try await $0.gather(at: site.hex, soldiers: asked) }
-        case .barrow(let barrow): await ask { try await $0.hunt(at: barrow.hex, soldiers: asked) }
-        case .city(let city, _): await ask { try await $0.attack(at: city.hex, soldiers: asked) }
+        case .site(let site): await ask { try await $0.gather(at: site.hex, soldiers: asked, leader: leader) }
+        case .barrow(let barrow): await ask { try await $0.hunt(at: barrow.hex, soldiers: asked, leader: leader) }
+        case .city(let city, _): await ask { try await $0.attack(at: city.hex, soldiers: asked, leader: leader) }
         default: said = "There is nothing to send an army for there."
         }
     }

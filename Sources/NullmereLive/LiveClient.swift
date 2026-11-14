@@ -116,24 +116,25 @@ public final class LiveClient: @unchecked Sendable {
         try await ask("train", [.integer(building), .integer(UInt64(tier)), .integer(count)])
     }
 
-    /// Sends soldiers from the player's city to gather at a hex.
-    public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
+    /// Sends soldiers from the player's city to gather at a hex, under one
+    /// of the player's commanders (by their number) or under none.
+    public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(1), .records(records)])
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(1), .records(records), .integer(leader)])
     }
 
     /// Sends soldiers from the player's city to clear the barrow of the
     /// Unquiet at a hex.
-    public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
+    public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(2), .records(records)])
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(2), .records(records), .integer(leader)])
     }
 
     /// Sends soldiers from the player's city against another player's
     /// city at a hex.
-    public func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
+    public func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(3), .records(records)])
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(3), .records(records), .integer(leader)])
     }
 
     /// Has some of the player's wounded of a kind and tier healed.
@@ -146,6 +147,9 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Throws one of the player's reports away.
     public func forget(report: UInt64) async throws { try await ask("forget_report", [.integer(report)]) }
+
+    /// Takes on another commander.
+    public func hire() async throws { try await ask("hire", []) }
 
     /// Has the player's Academy study the next level of a topic.
     public func learn(topic: Int) async throws { try await ask("learn", [.integer(UInt64(topic))]) }

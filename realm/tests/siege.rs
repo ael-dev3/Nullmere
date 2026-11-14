@@ -180,27 +180,27 @@ fn a_wall_and_its_defenders_hold_a_city() {
     );
     assert!(!walled.won);
 
-    let (mut db, (ada, hers), (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 110)], &[(Troops::Spearmen, 1, 100)]);
+    let (mut db, (ada, hers), (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 90)], &[(Troops::Spearmen, 1, 100)]);
     db.insert(Building { id: 0, city: his.id, kind: Kind::Wall as u8, level: 10 });
     end_peace(&mut db, his.id);
-    let march = db.call(|db| rules::send(db, ada, Hex::unpacked(his.hex), March::ATTACK, &spears(110))).unwrap();
+    let march = db.call(|db| rules::send(db, ada, Hex::unpacked(his.hex), March::ATTACK, &spears(90))).unwrap();
     let before = stock_at(&db, his.id, march.arrives + catalog::ASSAULT_SECONDS);
     until(&mut db, march.arrives + catalog::ASSAULT_SECONDS);
 
     let told = reports(&db, ada).pop().unwrap();
     assert!(!told.won);
-    assert_eq!((told.fought, told.wounded + told.dead), (110, 110), "all of them fell");
-    assert_eq!(told.wounded, 50, "as many as her city has room to tend, of the half that might be carried home");
+    assert_eq!((told.fought, told.wounded + told.dead), (90, 90), "all of them fell");
+    assert_eq!(told.wounded, 45, "half of the fallen are carried home, her city having room to tend fifty");
     assert_eq!((told.grain, told.timber), (0, 0));
     assert_eq!(
         told.words,
-        format!("Your army was beaten at Bryn's city. {} of its defenders still stood. Of your 110 soldiers, 50 were wounded and 60 died.", 100 - told.fell)
+        format!("Your army was beaten at Bryn's city. {} of its defenders still stood. Of your 90 soldiers, 45 were wounded and 45 died.", 100 - told.fell)
     );
     let heard = reports(&db, bryn).pop().unwrap();
     assert!(heard.won);
-    assert_eq!((heard.kind, heard.fought, heard.stood, heard.fell), (Report::DEFENCE, 100, 110, 110));
+    assert_eq!((heard.kind, heard.fought, heard.stood, heard.fell), (Report::DEFENCE, 100, 90, 90));
     assert_eq!(heard.wounded, told.fell.min(50));
-    assert!(heard.words.starts_with("Ada's army attacked your city and was beaten. 110 of its 110 fell. Of your 100 defenders, "), "{}", heard.words);
+    assert!(heard.words.starts_with("Ada's army attacked your city and was beaten. 90 of its 90 fell. Of your 100 defenders, "), "{}", heard.words);
     // Nothing is carried off, and a city that held keeps no new peace.
     assert_eq!(stock(&db, his.id), before);
     assert!(Table::<City>::get(&db, his.id).unwrap().shield <= db.clock);
@@ -209,7 +209,7 @@ fn a_wall_and_its_defenders_hold_a_city() {
     assert_eq!((returning.state, returning.soldiers), (March::RETURNING, 0));
     until(&mut db, returning.arrives);
     let home = rules::troop(&db, hers.id, Troops::Spearmen, 1);
-    assert_eq!((home.ready, home.wounded), (0, 50));
+    assert_eq!((home.ready, home.wounded), (0, 45));
 }
 
 #[test]

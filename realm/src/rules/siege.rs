@@ -1,7 +1,7 @@
 //! A city under attack: another player's army at its walls, the fight,
 //! what is carried off, and the peace that follows.
 
-use super::{allied, building_of, fallen, fight_learned, goods, mastery, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
+use super::{allied, building_of, fallen, fight_learned, goods, leading_of, led, load, mastery, seen_by_leader, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
 use crate::catalog::{self, Building as Kind, Goods, Troops, Unit};
 use crate::hex::Hex;
 use crate::rows::{City, Db, Haul, March, Place, Player, Report, Squad, Troop};
@@ -86,7 +86,9 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
     let defenders: Vec<Unit> = garrison.iter().filter_map(|row| Troops::of(row.kind).map(|kind| Unit { kind, tier: row.tier, count: row.ready })).collect();
     let wall = building_of(db, city.id, Kind::Wall).map(|building| building.level).unwrap_or(0);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
-    let outcome = fight_learned(&army, &defenders, [mastery(db, march.city), mastery(db, city.id)], catalog::shelter(wall), || rolls.pop().unwrap_or(0));
+    // A Wall shelters its city less from an army a wallbreaker leads.
+    let shelter = catalog::shelter(wall) * (100 - leading_of(db, march).breaches.min(100)) / 100;
+    let outcome = fight_learned(&army, &defenders, [led(db, march), mastery(db, city.id)], shelter, || rolls.pop().unwrap_or(0));
 
     // The army's fallen: half carried home wounded, while there is room.
     let mut room = room_for_wounded(db, march.city);
@@ -121,6 +123,7 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
     }
     let stood: u64 = defenders.iter().map(|unit| unit.count).sum();
     let fell: u64 = outcome.defenders_lost.iter().sum();
+    seen_by_leader(db, march, 2 * fell + fought / 10);
 
     let mut taken = Goods::NONE;
     let now = db.now();
@@ -131,7 +134,7 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
             let safe = catalog::kept_safe(storehouse);
             let open = goods(&stock).parts().map(|part| part.saturating_sub(safe));
             let all: u64 = open.iter().sum();
-            let load: u64 = own.iter().map(|squad| Troops::of(squad.kind).map(|kind| kind.soldier(squad.tier).load).unwrap_or(0) * squad.count).sum();
+            let load = load(db, march);
             taken = Goods::from_parts(open.map(|part| if all > load { (part as u128 * load as u128 / all as u128) as u64 } else { part }));
             let left = goods(&stock).minus(taken);
             set_goods(&mut stock, left);

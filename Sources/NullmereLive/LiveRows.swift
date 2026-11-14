@@ -232,6 +232,8 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
     public let soldiers: UInt64
     /// The way it is on now, hex by hex.
     public let route: [LiveHex]
+    /// The commander who leads it, by their number; 0 for none.
+    public let leader: UInt64
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -247,6 +249,7 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
             let r = Int16(bitPattern: UInt16(route[at + 2]) | UInt16(route[at + 3]) << 8)
             return LiveHex(q: Int(q), r: Int(r))
         }
+        leader = cells.unsigned(13) ?? 0
     }
 
     /// How far through what it is doing it is at a moment, 0 to 1.
@@ -700,4 +703,49 @@ public struct LiveStudy: Equatable, Sendable {
         (self.topic, self.level, self.name, self.words, self.each, self.seconds, self.needsLevel) = (topic, level, name, words, each, seconds, needsLevel)
         cost = LiveGoods(grain: cells.unsigned(6) ?? 0, timber: cells.unsigned(7) ?? 0, stone: cells.unsigned(8) ?? 0, moonsalt: cells.unsigned(9) ?? 0)
     }
+}
+
+/// Someone who leads the player's armies.
+public struct LiveCommander: Equatable, Sendable, Identifiable {
+    /// The ways of war, as the module's catalogue numbers and names them,
+    /// with what each is best at.
+    public static let ways: [Int: (name: String, words: String)] = [
+        1: ("Vanguard", "Spearmen they lead strike harder."),
+        2: ("Fletcher", "Archers they lead strike harder."),
+        3: ("Outrider", "Riders they lead strike harder, and their army marches faster."),
+        4: ("Wallbreaker", "Mangonels they lead strike harder, and a Wall shelters its city less from them."),
+        5: ("Warden", "Everyone they lead is harder to bring down."),
+        6: ("Gleaner", "Their army gathers faster and carries more."),
+    ]
+    /// The highest level a commander reaches.
+    public static let topLevel = 30
+
+    public let id: UInt64
+    public let name: String
+    public let way: Int
+    public let level: Int
+    /// What they have seen toward their next level.
+    public let seen: UInt64
+    /// The march they lead now; 0 while they are in the city.
+    public let march: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let name = cells.text(2), let way = cells.whole(3), let level = cells.whole(4),
+              let seen = cells.unsigned(5), let march = cells.unsigned(6) else { return nil }
+        (self.id, self.name, self.way, self.level, self.seen, self.march) = (id, name, way, level, seen, march)
+    }
+
+    /// Their way of war in a word, and what it is best at.
+    public var wayName: String { LiveCommander.ways[way]?.name ?? "Commander" }
+    public var wayWords: String { LiveCommander.ways[way]?.words ?? "" }
+
+    /// What they must have seen to rise from their level to the next.
+    public var needs: UInt64 { 100 * UInt64(max(level, 1)) * UInt64(max(level, 1)) }
+
+    /// How far they are toward their next level, 0 to 1; 1 at the last.
+    public var progress: Double { level >= LiveCommander.topLevel ? 1 : min(Double(seen) / Double(needs), 1) }
+
+    /// Whether they are in the city, free to lead an army.
+    public var isFree: Bool { march == 0 }
 }

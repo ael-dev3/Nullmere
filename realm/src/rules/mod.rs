@@ -9,6 +9,7 @@ mod alliance;
 mod army;
 mod battle;
 mod city;
+mod command;
 mod entry;
 mod march;
 mod siege;
@@ -19,6 +20,7 @@ pub use alliance::*;
 pub use army::*;
 pub use battle::*;
 pub use city::*;
+pub use command::*;
 pub use entry::*;
 pub use march::*;
 pub use siege::*;
@@ -139,6 +141,10 @@ pub enum Refusal {
     NothingSaid,
     SaidTooLong,
     SayingTooFast,
+    NoSuchCommander,
+    /// The commander named is out with another army: their name.
+    CommanderAway(String),
+    NoMoreCommanders,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -174,6 +180,7 @@ impl fmt::Display for Refusal {
             Refusal::NotEnoughWounded(troops, tier, wounded) => {
                 return write!(f, "You have only {} wounded tier {tier} {}.", crate::catalog::grouped(*wounded), troops.name());
             }
+            Refusal::CommanderAway(name) => return write!(f, "{name} is out with another army."),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
@@ -232,6 +239,8 @@ impl fmt::Display for Refusal {
             Refusal::SayingTooFast => "Wait a moment before you say more.",
             Refusal::NoTasksLeft => "You have done every task there is.",
             Refusal::NoSuchTopic => "There is no such study.",
+            Refusal::NoSuchCommander => "You have no such commander.",
+            Refusal::NoMoreCommanders => "Your city keeps as many commanders as it can.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

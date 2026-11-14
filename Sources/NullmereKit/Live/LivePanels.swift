@@ -34,7 +34,9 @@ struct LiveSidePanel: View {
                 VStack(alignment: .leading, spacing: 12) {
                     switch panel {
                     case .city: LiveBuildings(session: session, seconds: seconds)
-                    case .troops: LiveTroops(session: session, seconds: seconds)
+                    case .troops:
+                        LiveCommanders(session: session, seconds: seconds)
+                        LiveTroops(session: session, seconds: seconds)
                     case .studies: LiveStudies(session: session, seconds: seconds)
                     case .alliance: LiveAlliancePanel(session: session)
                     case .chat: LiveChatPanel(session: session)
@@ -128,6 +130,45 @@ struct LiveBuildings: View {
             }
             .accessibilityElement(children: .contain)
         }
+    }
+}
+
+/// Those who lead the city's armies: each with their way of war, their
+/// level and where they are, and a way to take on another.
+struct LiveCommanders: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        ForEach(world.commanders) { commander in
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: commander.name)
+                        .font(.nm(13, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                    Text(verbatim: "\(commander.wayName), level \(commander.level)")
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.text(0.65))
+                    Spacer(minLength: 0)
+                    LiveSmall(words: commander.isFree ? "In the city" : "Out with an army", dim: true)
+                }
+                LiveSmall(words: commander.wayWords)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        let block = world.hireBlock(at: seconds)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            LiveSmall(words: block?.words ?? "Another commander: \(LiveWorld.hireCost(have: world.commanders.count).words).", dim: block != nil)
+            Spacer(minLength: 0)
+            QuietButton(title: "Take on", prominent: block == nil, enabled: block == nil && session.asking == 0, name: "Take on another commander",
+                        why: block?.words) {
+                Task { await session.hire() }
+            }
+        }
+        Rectangle()
+            .fill(Palette.line(0.12))
+            .frame(height: 1)
     }
 }
 

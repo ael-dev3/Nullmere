@@ -94,6 +94,9 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
         tell?()
     }
 
+    /// Forgets what has been asked so far.
+    public func clear() { locked { calls.removeAll() } }
+
     /// From here on everything asked is refused in these words; nil to
     /// agree again. Or fails as a line that has dropped.
     public func refuse(_ words: String?) { locked { refusal = words } }
@@ -123,13 +126,20 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func build(_ kind: Int) async throws { try take("build \(kind)") }
     public func upgrade(building: UInt64) async throws { try take("upgrade \(building)") }
     public func train(building: UInt64, tier: Int, count: UInt64) async throws { try take("train \(count) of tier \(tier) in \(building)") }
-    public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("gather at \(hex.q), \(hex.r) with \(listed(soldiers))") }
-    public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("hunt at \(hex.q), \(hex.r) with \(listed(soldiers))") }
-    public func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("attack at \(hex.q), \(hex.r) with \(listed(soldiers))") }
+    public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("gather at \(hex.q), \(hex.r) with \(listed(soldiers))\(leader == 0 ? "" : " under \(leader)")")
+    }
+    public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("hunt at \(hex.q), \(hex.r) with \(listed(soldiers))\(leader == 0 ? "" : " under \(leader)")")
+    }
+    public func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("attack at \(hex.q), \(hex.r) with \(listed(soldiers))\(leader == 0 ? "" : " under \(leader)")")
+    }
     public func heal(kind: Int, tier: Int, count: UInt64) async throws { try take("heal \(count) of \(kind).\(tier)") }
     public func read(report: UInt64) async throws { try take("read \(report)") }
     public func forget(report: UInt64) async throws { try take("forget \(report)") }
     public func recall(march: UInt64) async throws { try take("recall \(march)") }
+    public func hire() async throws { try take("hire") }
     public func learn(topic: Int) async throws { try take("learn \(topic)") }
     public func claimTask() async throws { try take("claim task") }
     public func foundAlliance(name: String, tag: String) async throws { try take("found \(name) [\(tag)]") }

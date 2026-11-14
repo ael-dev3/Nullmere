@@ -97,6 +97,15 @@ final class LiveRealmTests: XCTestCase {
         let notHis = await refusal { try await bryn.upgrade(building: farm.id) }
         XCTAssertEqual(notHis, "That is not yours.")
 
+        // One commander to begin with, in the city; another waits on a Tavern.
+        await eventually("her commander is pushed") { ada.world.commanders.count == 1 }
+        let commander = try XCTUnwrap(ada.world.commanders.first)
+        XCTAssertEqual([commander.level, Int(commander.march)], [1, 0])
+        XCTAssertNotNil(LiveCommander.ways[commander.way], "of a way the client knows")
+        XCTAssertTrue(bryn.world.commanders.allSatisfy { $0.id != commander.id }, "Hers alone to read")
+        let noTavern = await refusal { try await ada.hire() }
+        XCTAssertEqual(noTavern, "Raise your Tavern to level 1 first.")
+
         // A new city is at peace: no army may be sent against it yet.
         let his = try XCTUnwrap(bryn.world.city)
         XCTAssertGreaterThan(his.peace(at: Date().timeIntervalSince1970), 0)
@@ -112,7 +121,12 @@ final class LiveRealmTests: XCTestCase {
         let job = try XCTUnwrap(ada.world.jobs.first)
         XCTAssertEqual([job.kind, Int(job.subject), job.level], [LiveJob.raise, Int(keep.id), 2])
         XCTAssertEqual(job.ends - job.started, cost.seconds)
-        XCTAssertLessThanOrEqual(try XCTUnwrap(ada.world.stock).goods.timber, stock.goods(at: Double(job.started)).timber - cost.cost.timber + 5)
+        // Paid for: the stock as it is now told, against what it was told
+        // before grown to the same moment, less the cost. (The realm may
+        // have settled it again since the work began: a fast realm's Keep
+        // is done within the second.)
+        let paid = try XCTUnwrap(ada.world.stock)
+        XCTAssertLessThanOrEqual(paid.goods.timber, stock.goods(at: Double(paid.asOf)).timber - cost.cost.timber + 5)
         await eventually("the Keep reaches level 2") { ada.world.building(1)?.level == 2 && ada.world.jobs.isEmpty }
         await eventually("and everyone sees it") { bryn.world.cities[city.id]?.keep == 2 }
 
@@ -182,7 +196,7 @@ final class LiveRealmTests: XCTestCase {
         }
         var fought: LiveBarrow?
         for barrow in barrows.filter({ $0.level == 1 }).prefix(20) {
-            let why = await refusal { try await ada.hunt(at: barrow.hex, soldiers: [(kind: 1, tier: 1, count: 20)]) }
+            let why = await refusal { try await ada.hunt(at: barrow.hex, soldiers: [(kind: 1, tier: 1, count: 20)], leader: commander.id) }
             if why == nil {
                 fought = barrow
                 break
@@ -203,8 +217,12 @@ final class LiveRealmTests: XCTestCase {
         XCTAssertEqual(ada.world.unread, 1)
         XCTAssertTrue(bryn.world.reports.isEmpty, "Hers alone to read")
         XCTAssertEqual(bryn.world.barrows[barrow.id]?.level, 1, "The barrow stands as it stood, for everyone")
+        XCTAssertEqual(ada.world.myMarches.first?.leader ?? commander.id, commander.id, "Led by her commander while it is out")
         await eventually("her wounded are carried home", within: 120) {
             ada.world.myMarches.isEmpty && ada.world.troops.first { $0.kind == 1 }.map { [$0.ready, $0.wounded] } == [0, 20]
+        }
+        await eventually("and her commander with them, having seen some of the Unquiet fall") {
+            ada.world.commanders.first.map { $0.march == 0 && ($0.seen > 0 || $0.level > 1) } == true
         }
         let tooManyWounded = await refusal { try await ada.heal(kind: 1, tier: 1, count: 21) }
         XCTAssertEqual(tooManyWounded, "You have only 20 wounded tier 1 Spearmen.")

@@ -38,6 +38,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var hunt: LiveHunt?
     /// The player's reports, the latest first.
     public var reports: [LiveReport] = []
+    /// The player's commanders, in the order they came.
+    public var commanders: [LiveCommander] = []
     /// What the player's city has learnt: each topic's level, by the topic.
     public var lore: [Int: Int] = [:]
     /// The task the player is on, by its place in the order; one past the
@@ -87,6 +89,7 @@ public struct LiveWorld: Equatable, Sendable {
         allianceChat = rows("my_alliance_chat", LiveSaying.init(alliance:)).sorted { $0.id < $1.id }
         applicants = rows("my_applicants", LiveApplicant.init).sorted { $0.at < $1.at }
         step = (snapshot["my_progress"] ?? []).compactMap { Cells(row: $0).whole(1) }.first
+        commanders = rows("my_commanders", LiveCommander.init).sorted { $0.id < $1.id }
         for row in snapshot["my_lore"] ?? [] {
             let cells = Cells(row: row)
             if let topic = cells.whole(2), let level = cells.whole(3) { lore[topic] = level }
@@ -159,6 +162,31 @@ public struct LiveWorld: Equatable, Sendable {
         case LiveTask.power: return city.power >= task.amount
         default: return false
         }
+    }
+
+    /// The commander to lead the next army, where the player has not
+    /// said: the highest of those in the city.
+    public var freeLeader: LiveCommander? {
+        commanders.filter(\.isFree).max { ($0.level, $1.id) < ($1.level, $0.id) }
+    }
+
+    /// How many commanders the city keeps, by its Tavern's level, and what
+    /// taking on the next costs, as the module's catalogue has them.
+    public static func commandersKept(tavern: Int) -> Int { tavern == 0 ? 1 : min(2 + tavern / 5, 6) }
+    public static func hireCost(have: Int) -> LiveGoods {
+        let n = UInt64(max(have, 1))
+        return LiveGoods(grain: 2_000 * n * n, timber: 2_000 * n * n, stone: 1_000 * n * n, moonsalt: n >= 2 ? 50 * n : 0)
+    }
+
+    /// Why the player can't take on another commander now; nil where they can.
+    public func hireBlock(at seconds: Double) -> LiveBlock? {
+        let tavern = building(16)?.level ?? 0
+        if tavern == 0 { return .needsOther("Tavern", 1) }
+        if commanders.count >= 6 { return .commandersFull }
+        if commanders.count >= LiveWorld.commandersKept(tavern: tavern) { return .needsOther("Tavern", (commanders.count - 1) * 5) }
+        let have = stock?.goods(at: seconds) ?? LiveGoods()
+        let cost = LiveWorld.hireCost(have: commanders.count)
+        return have.covers(cost) ? nil : .short(have.short(of: cost))
     }
 
     /// How many of the player's reports are unread.

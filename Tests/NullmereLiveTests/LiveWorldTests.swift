@@ -152,6 +152,58 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertTrue(LiveWorld(snapshot: ["city": [[.string("x")]], "my_stock": [[]]]).cities.isEmpty)
     }
 
+    func testThePlayersCommandersAreReadWithWhatTheyLead() throws {
+        var snapshot: [String: [[JSONValue]]] = [
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "my_city": [[n(7), n(1), n(Double(LiveHex(q: 0, r: 0).packed)), .string("Ada"), n(5), n(940), n(1_000), n(1)]],
+            "my_buildings": [[n(21), n(7), n(1), n(5)]],
+            "my_stock": [[n(7), n(6_000), n(8_000), n(6_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(30_000)]],
+            "my_commanders": [[n(12), n(1), .string("Halen"), n(3), n(4), n(600), n(0)], [n(11), n(1), .string("Corwen"), n(1), n(2), n(100), n(31)],
+                              [n(13), n(1), .string("Ulric"), n(6), n(30), n(55), n(0)]],
+        ]
+        let world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.commanders.map(\.name), ["Corwen", "Halen", "Ulric"], "in the order they came")
+        let (corwen, halen, ulric) = (world.commanders[0], world.commanders[1], world.commanders[2])
+        XCTAssertEqual([corwen.wayName, halen.wayName, ulric.wayName], ["Vanguard", "Outrider", "Gleaner"])
+        XCTAssertEqual(halen.wayWords, "Riders they lead strike harder, and their army marches faster.")
+        XCTAssertEqual([corwen.isFree, halen.isFree], [false, true])
+        XCTAssertEqual(corwen.march, 31)
+        XCTAssertEqual([corwen.needs, halen.needs], [400, 1_600], "a hundred times the level, squared")
+        XCTAssertEqual(corwen.progress, 0.25, accuracy: 1e-9)
+        XCTAssertEqual(ulric.progress, 1, "at the last level there is no next")
+        XCTAssertEqual(world.freeLeader?.name, "Ulric", "the highest of those in the city")
+        // Each way named and worded as the module's catalogue has it.
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        if let catalog = try? String(contentsOf: root.appendingPathComponent("realm/src/catalog.rs"), encoding: .utf8) {
+            for (code, way) in LiveCommander.ways {
+                XCTAssertTrue(catalog.contains("\(way.name) = \(code),"), "\(way.name) is way \(code)")
+                XCTAssertTrue(catalog.contains("\"\(way.words)\""), way.words)
+            }
+            XCTAssertTrue(catalog.contains("pub const TOP_COMMAND: u32 = \(LiveCommander.topLevel);"))
+            XCTAssertTrue(catalog.contains("100 * level.max(1) as u64 * level.max(1) as u64"))
+            XCTAssertTrue(catalog.contains("(2 + tavern / 5).min(6)"))
+            XCTAssertTrue(catalog.contains("Goods::of(2_000 * n * n, 2_000 * n * n, 1_000 * n * n, if n >= 2 { 50 * n } else { 0 })"))
+            XCTAssertTrue(catalog.contains("Tavern = 16,"))
+        }
+        XCTAssertEqual(LiveCommander.ways.count, 6)
+        XCTAssertEqual([0, 1, 4, 5, 10, 19, 20, 25].map { LiveWorld.commandersKept(tavern: $0) }, [1, 2, 2, 3, 4, 5, 6, 6])
+        XCTAssertEqual(LiveWorld.hireCost(have: 1), LiveGoods(grain: 2_000, timber: 2_000, stone: 1_000))
+        XCTAssertEqual(LiveWorld.hireCost(have: 3), LiveGoods(grain: 18_000, timber: 18_000, stone: 9_000, moonsalt: 150))
+
+        // Taking on another: a Tavern first, then its levels, then the goods.
+        XCTAssertEqual(world.hireBlock(at: 2_000), .needsOther("Tavern", 1))
+        snapshot["my_buildings"]?.append([n(40), n(7), n(16), n(5)])
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).hireBlock(at: 2_000), .needsOther("Tavern", 10), "three kept at the fifth level; the fourth waits on the tenth")
+        snapshot["my_buildings"] = [[n(21), n(7), n(1), n(5)], [n(40), n(7), n(16), n(10)]]
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).hireBlock(at: 2_000), .short(LiveGoods(grain: 12_000, timber: 10_000, stone: 3_000, moonsalt: 150)))
+        snapshot["my_stock"] = [[n(7), n(60_000), n(80_000), n(60_000), n(500), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(90_000)]]
+        XCTAssertNil(LiveWorld(snapshot: snapshot).hireBlock(at: 2_000))
+        snapshot["my_commanders"] = (1...6).map { [n(Double($0)), n(1), .string("Name \($0)"), n(Double($0)), n(1), n(0), n(0)] }
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).hireBlock(at: 2_000), .commandersFull)
+        XCTAssertEqual(LiveBlock.commandersFull.words, "Your city keeps as many commanders as it can.")
+        XCTAssertNil(LiveWorld(snapshot: [:]).freeLeader)
+    }
+
     func testThePlayersTaskIsReadAndReckonedDone() throws {
         func task(_ step: Int, _ goal: Int, _ amount: Int, _ level: Int, _ words: String) -> [JSONValue] {
             [n(Double(step)), n(Double(goal)), n(Double(amount)), n(Double(level)), .string(words), n(1_000), n(1_500), n(0), n(0)]
@@ -255,6 +307,8 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(going.route, way)
         XCTAssertEqual([going.from, going.to], [way[0], way[3]])
         XCTAssertEqual(going.soldiers, 20)
+        XCTAssertEqual(going.leader, 0, "led by no one, as a row from before leaders tells nothing of one")
+        XCTAssertEqual(LiveMarch(march(state: LiveMarch.going, route: .string(hexText)) + [n(12)])?.leader, 12)
         XCTAssertEqual(going.progress(at: 109), 0.5, accuracy: 1e-9)
         let start = going.position(at: 100), middle = going.position(at: 109), end = going.position(at: 118)
         XCTAssertEqual(start.x, way[0].centre.x, accuracy: 1e-9)

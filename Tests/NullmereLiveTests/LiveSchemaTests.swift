@@ -77,15 +77,15 @@ final class LiveSchemaTests: XCTestCase {
             XCTAssertEqual(listed.key, declared.key, "\(name)'s key")
             checked += 1
         }
-        XCTAssertEqual(checked, 29)
+        XCTAssertEqual(checked, 30)
         XCTAssertNotNil(byType["Player"])
 
         // What is a player's alone stays closed: read only through a view.
-        for table in ["pace", "building", "job", "stock", "troop", "squad", "haul", "hunt", "report", "applicant", "alliance_chat", "progress", "lore"] {
+        for table in ["pace", "building", "job", "stock", "troop", "squad", "haul", "hunt", "report", "applicant", "alliance_chat", "progress", "lore", "commander"] {
             XCTAssertNil(LiveSchema.tables[table], "\(table) is not a client's to read")
             XCTAssertTrue(try source("rows.rs").contains("table(accessor = \(table))"), "\(table) is private in the module")
         }
-        XCTAssertEqual(LiveSchema.queries.count, 29)
+        XCTAssertEqual(LiveSchema.queries.count, 30)
         XCTAssertTrue(LiveSchema.queries.contains("SELECT * FROM my_stock"))
     }
 
@@ -107,7 +107,7 @@ final class LiveSchemaTests: XCTestCase {
     /// arguments.
     func testEveryReducerTheClientCallsIsTheModules() throws {
         let module = try source("module.rs")
-        for (reducer, arguments) in [("join", 1), ("build", 1), ("upgrade", 1), ("train", 3), ("send", 4), ("recall", 1), ("heal", 3),
+        for (reducer, arguments) in [("join", 1), ("build", 1), ("upgrade", 1), ("train", 3), ("send", 5), ("recall", 1), ("heal", 3), ("hire", 0),
                                       ("read_report", 1), ("forget_report", 1), ("found_alliance", 2), ("join_alliance", 1), ("leave_alliance", 0),
                                       ("answer_applicant", 2), ("expel", 1), ("set_rank", 2), ("set_alliance", 2), ("say", 2), ("claim_task", 0), ("learn", 1)] {
             let signature = try XCTUnwrap(module.range(of: "pub fn \(reducer)(ctx: &ReducerContext"), "\(reducer) is a reducer")
