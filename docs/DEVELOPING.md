@@ -393,6 +393,32 @@ They are written as eight-bit blocks of differences in base64 Swift, read
 back exactly by `Recordings.decode` in `Sources/NullmereSound/Recordings.swift`.
 The files in `Recorded/` are generated: run the script again to change them.
 
+## The realm being rebuilt
+
+`realm/` is the game's rules as the rework plan has them
+([rework-plan.md](rework-plan.md), Phase 2): one persistent world on server
+time, the rules inside the SpacetimeDB module, no other server process. It
+grows beside `realm-server/` and the Swift rules until the apps switch to it.
+
+- `src/rows.rs` holds the tables: each a plain struct and a SpacetimeDB
+  table at once.
+- `src/rules/` holds every rule, written over `store::Db` and never over
+  the database itself.
+- `src/store.rs` is that interface and `Mem`, a store kept in memory with a
+  clock a test moves and timers it fires.
+- `src/module.rs` is the SpacetimeDB side: reducers that find who is
+  asking and hand the request to the rules, the one timer table, and the
+  views that show each player their own rows.
+
+```sh
+cd realm && cargo test                    # every rule, natively, in seconds
+realm/check.sh                            # the tests, the build to WebAssembly, and a play-through on a local SpacetimeDB
+```
+
+`realm/check.sh` needs `spacetime` on the PATH (it starts a server if none
+answers), or a server in a container: see its header. The Realm rules
+workflow runs it on every push that touches `realm/`.
+
 ## Layout
 
 ```

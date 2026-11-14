@@ -1,0 +1,47 @@
+name: Realm rules
+
+# The realm (realm/): one persistent world whose rules run inside the
+# SpacetimeDB module. Its rules' unit tests, its build to WebAssembly, and
+# a play-through of the published module on a SpacetimeDB server started
+# on the runner, through the HTTP API a client uses (realm/check.sh).
+# Linux only, a few minutes: it runs apart from CI, which builds and tests
+# the apps on Macs.
+on:
+  pull_request:
+    paths:
+      - realm/**
+      - .github/workflows/realm-check.yml
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - realm/**
+      - .github/workflows/realm-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realm-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  realm:
+    name: Rules, module and play-through
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust's WebAssembly target and SpacetimeDB
+        run: |
+          rustup target add wasm32-unknown-unknown
+          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check the realm
+        run: realm/check.sh
+
+      - name: The server's log, if it failed
+        if: failure()
+        run: tail -n 60 build/realm-check-server.log 2>/dev/null || true

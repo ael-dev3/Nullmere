@@ -1,0 +1,13 @@
+[package]
+name = "realm"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "Nullmere Online's realm: one persistent world on server time, its rules inside the SpacetimeDB module."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+spacetimedb = "2.13"
+log = "0.4"
