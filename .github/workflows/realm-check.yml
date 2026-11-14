@@ -10,11 +10,15 @@ on:
   pull_request:
     paths:
       - realm/**
+      - Sources/NullmereLive/**
+      - Tests/NullmereLiveTests/**
       - .github/workflows/realm-check.yml
   push:
     branches: [main, "claude/**"]
     paths:
       - realm/**
+      - Sources/NullmereLive/**
+      - Tests/NullmereLiveTests/**
       - .github/workflows/realm-check.yml
   workflow_dispatch:
 
@@ -41,6 +45,52 @@ jobs:
 
       - name: Check the realm
         run: realm/check.sh
+
+      - name: The server's log, if it failed
+        if: failure()
+        run: tail -n 60 build/realm-check-server.log 2>/dev/null || true
+
+  # The realm's Swift client (Sources/NullmereLive) on the same server:
+  # its lists of the realm's tables held to the module's source, then two
+  # clients on a realm set to sixty times its written pace, who join,
+  # build on the database's own timers, train troops and send an army to
+  # gather and home again, every row pushed to them as it changes.
+  client:
+    name: Swift client on a live realm
+    runs-on: ubuntu-24.04
+    container: swift:6.2-noble
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust and SpacetimeDB
+        run: |
+          apt-get update -qq && apt-get install -y -qq curl python3 > /dev/null
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --target wasm32-unknown-unknown
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build the client and its tests
+        run: swift build --build-tests -Xswiftc -warnings-as-errors 2>&1 | tail -n 20
+
+      # The realm's own check starts the server and leaves it running.
+      - name: Check the realm
+        run: realm/check.sh
+
+      - name: Play the realm through its Swift client
+        run: |
+          spacetime publish --server http://127.0.0.1:3000 --bin-path realm/target/wasm32-unknown-unknown/release/realm.wasm --yes --delete-data nullmere-client
+          spacetime call --server http://127.0.0.1:3000 nullmere-client set_pace 60
+          NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveTests 2>&1 | tee realm-client.log
+          total="$(grep "Executed .* tests" realm-client.log | tail -n 1)"
+          echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" && ! grep -q "skipped" realm-client.log || {
+            echo "::error::The Swift client didn't play the realm through: $total"
+            exit 1
+          }
 
       - name: The server's log, if it failed
         if: failure()

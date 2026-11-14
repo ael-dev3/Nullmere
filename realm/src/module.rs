@@ -27,6 +27,17 @@ pub struct Account {
     pub player: u64,
 }
 
+/// How many connections an identity has open. A player's client keeps a
+/// subscription open while it runs, and each thing it asks over HTTP is a
+/// connection of its own that opens and closes: a player is here while
+/// any of theirs is open.
+#[table(accessor = presence)]
+pub struct Presence {
+    #[primary_key]
+    pub identity: Identity,
+    pub connections: u32,
+}
+
 /// Who published the module: the realm's owner, who alone sets its pace.
 #[table(accessor = owner)]
 pub struct Owner {
@@ -163,20 +174,46 @@ pub fn set_pace(ctx: &ReducerContext, pace: u32) -> Result<(), String> {
     said(rules::repace(&mut Stdb(ctx), pace))
 }
 
-/// A player's client connects: they are here.
+/// Counts one connection more or fewer for the caller, and gives how many
+/// they now have open.
+fn connections(ctx: &ReducerContext, opened: bool) -> u32 {
+    let identity = ctx.sender();
+    let had = ctx.db.presence().identity().find(identity).map(|presence| presence.connections).unwrap_or(0);
+    let have = if opened { had + 1 } else { had.saturating_sub(1) };
+    match (had, have) {
+        (0, 0) => {}
+        (0, _) => {
+            ctx.db.presence().insert(Presence { identity, connections: have });
+        }
+        (_, 0) => {
+            ctx.db.presence().identity().delete(identity);
+        }
+        _ => {
+            ctx.db.presence().identity().update(Presence { identity, connections: have });
+        }
+    }
+    have
+}
+
+/// A connection opens. A player's first means they are here.
 #[reducer(client_connected)]
 pub fn connected(ctx: &ReducerContext) {
-    if let Ok(player) = caller(ctx) {
-        rules::seen(&mut Stdb(ctx), player, true);
+    if connections(ctx, true) == 1 {
+        if let Ok(player) = caller(ctx) {
+            rules::seen(&mut Stdb(ctx), player, true);
+        }
     }
 }
 
-/// A player's client is gone: so are they, until they come back. Their
-/// city, their armies and everything under way go on without them.
+/// A connection closes. A player's last means they are gone, until they
+/// come back: their city, their armies and everything under way go on
+/// without them.
 #[reducer(client_disconnected)]
 pub fn disconnected(ctx: &ReducerContext) {
-    if let Ok(player) = caller(ctx) {
-        rules::seen(&mut Stdb(ctx), player, false);
+    if connections(ctx, false) == 0 {
+        if let Ok(player) = caller(ctx) {
+            rules::seen(&mut Stdb(ctx), player, false);
+        }
     }
 }
 

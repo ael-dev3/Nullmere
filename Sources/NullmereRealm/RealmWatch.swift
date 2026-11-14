@@ -75,7 +75,7 @@ final class SpacetimeWatch: RealmWatch, @unchecked Sendable {
     private let queries: [String]
     private let changed: @Sendable () -> Void
     /// The rows the queries watch, kept as the server's messages tell them.
-    private let rows = SubscriptionMirror()
+    private let rows: SubscriptionMirror
     var mirror: SubscriptionMirror? { rows }
     private let lock = NSLock()
     private var alive = false
@@ -90,10 +90,12 @@ final class SpacetimeWatch: RealmWatch, @unchecked Sendable {
     /// WebSockets: for testing them on a Mac.
     private let throughTheSystem: Bool
 
-    init(address: URL, token: String, queries: [String], throughTheSystem: Bool = false, changed: @escaping @Sendable () -> Void) {
+    init(address: URL, token: String, queries: [String], tables: [String: SubscriptionMirror.Table] = SubscriptionMirror.realm,
+         throughTheSystem: Bool = false, changed: @escaping @Sendable () -> Void) {
         self.address = address
         self.token = token
         self.queries = queries
+        self.rows = SubscriptionMirror(tables: tables)
         self.throughTheSystem = throughTheSystem
         self.changed = changed
     }

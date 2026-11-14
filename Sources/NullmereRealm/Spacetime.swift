@@ -44,6 +44,11 @@ public enum ReducerArgument: Sendable, Equatable {
     case integer(UInt64)
     case strings([String])
     case integers([UInt64])
+    /// A whole number that may be below zero: a hex's place.
+    case signed(Int64)
+    /// A list of records, each a few whole numbers by name: the soldiers
+    /// of a march.
+    case records([[String: UInt64]])
 
     /// As it goes in a call's body.
     public var json: Any {
@@ -53,6 +58,8 @@ public enum ReducerArgument: Sendable, Equatable {
         case .integer(let value): return value
         case .strings(let value): return value
         case .integers(let value): return value
+        case .signed(let value): return value
+        case .records(let value): return value
         }
     }
 }
@@ -205,12 +212,20 @@ extension SpacetimeHTTP {
     /// A subscription over SpacetimeDB's WebSocket, kept open and opened
     /// again when it drops.
     public func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
+        await watch(queries, token: token, tables: SubscriptionMirror.realm, changed: changed)
+    }
+
+    /// The same, over tables of the caller's naming: each table or view
+    /// the queries read, its columns in the order its module declares
+    /// them, and the column that tells its rows apart.
+    public func watch(_ queries: [String], token: String, tables: [String: SubscriptionMirror.Table],
+                      changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
         guard let address = SpacetimeSubscription.address(server: server, database: database) else { return nil }
         #if !canImport(Darwin)
         // Without the system's WebSockets, only a realm reached plainly.
         guard address.scheme == "ws" else { return nil }
         #endif
-        let watch = SpacetimeWatch(address: address, token: token, queries: queries, changed: changed)
+        let watch = SpacetimeWatch(address: address, token: token, queries: queries, tables: tables, changed: changed)
         watch.start()
         return watch
     }

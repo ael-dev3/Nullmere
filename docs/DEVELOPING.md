@@ -419,6 +419,22 @@ realm/check.sh                            # the tests, the build to WebAssembly,
 answers), or a server in a container: see its header. The Realm rules
 workflow runs it on every push that touches `realm/`.
 
+`Sources/NullmereLive` is its Swift client: the realm's tables as typed
+rows (`LiveSchema`, held to the module's source by `LiveSchemaTests`), the
+world as a subscription pushes it (`LiveWorld`), and each reducer as a call
+(`LiveClient`), a refusal thrown in the realm's own words. To play it
+through a server with the realm published:
+
+```sh
+spacetime publish --server local --bin-path realm/target/wasm32-unknown-unknown/release/realm.wasm --yes --delete-data nullmere-client
+spacetime call --server local nullmere-client set_pace 60     # the owner's alone: sixty times the written pace
+NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client swift test --filter NullmereLiveTests
+```
+
+At the written pace the test joins and builds; at thirty times or more it
+trains troops and sends an army to gather as well. The Realm rules
+workflow's second job runs it so.
+
 ## Layout
 
 ```

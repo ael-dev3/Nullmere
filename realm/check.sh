@@ -101,6 +101,8 @@ check("another joins", call(bryn, "join", "Bryn"), None)
 
 players = rows(nobody, "SELECT id, name, online FROM player")
 check("everyone may read who plays", sorted((p["id"], p["name"]) for p in players), [(1, "Ada of the Lake"), (2, "Bryn")])
+check("neither is here: each asked and went", [p["online"] for p in players], [False, False])
+check("how many connections an identity has open is the realm's alone to know", isinstance(rows(ada, "SELECT * FROM presence"), str), True)
 check("each player reads themself", [p["name"] for p in rows(ada, "SELECT * FROM me")], ["Ada of the Lake"])
 check("and no one else", [p["name"] for p in rows(bryn, "SELECT * FROM me")], ["Bryn"])
 check("someone who has not joined reads no one", rows(nobody, "SELECT * FROM me"), [])

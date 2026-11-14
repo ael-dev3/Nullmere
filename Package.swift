@@ -21,6 +21,11 @@ var targets: [Target] = [
     .target(name: "NullmereRealm", dependencies: ["NullmereCore"]),
     // The steward's command-line entry point.
     .executableTarget(name: "NullmereSteward", dependencies: ["NullmereRealm", "NullmereCore"]),
+    // A client of the realm being rebuilt (realm/): the rows of one
+    // persistent world, pushed as they change, and the reducers a player
+    // calls. Foundation only, so tested on Linux against a real server.
+    .target(name: "NullmereLive", dependencies: ["NullmereRealm"]),
+    .testTarget(name: "NullmereLiveTests", dependencies: ["NullmereLive", "NullmereRealm"]),
     // A keeper's phone on their realm, apart from its screens: linked by the
     // code their Mac shows, in as the keeper, their House as the phone
     // lists it and the orders it gives. Foundation only, so tested on Linux.
