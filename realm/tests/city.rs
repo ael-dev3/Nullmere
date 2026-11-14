@@ -89,6 +89,51 @@ fn joining_founds_a_city_on_clear_ground() {
 }
 
 #[test]
+fn those_who_join_about_the_same_time_are_neighbours() {
+    // A world as wide as the realm's own, where chance alone would set
+    // sixty cities a hundred hexes apart.
+    let mut db = Mem::new(START, 5);
+    rules::open(&mut db, 7, 1, 128);
+    let cities: Vec<Hex> = (0..60).map(|index| Hex::unpacked(joined(&mut db, &format!("Player {index}")).1.hex)).collect();
+    let nearest = |index: usize| cities.iter().enumerate().filter(|(other, _)| *other != index).map(|(_, hex)| hex.distance(cities[index])).min().unwrap();
+
+    // The second player is settled beside the first.
+    assert!(cities[0].distance(cities[1]) <= rules::NEIGHBOUR_REACH, "{} hexes apart", cities[0].distance(cities[1]));
+    // Every city has a neighbour in reach, none crowding it,
+    for index in 0..cities.len() {
+        assert!(nearest(index) > rules::CITY_SPACING, "city {index} is crowded");
+        assert!(nearest(index) <= rules::NEIGHBOUR_REACH, "city {index} stands {} hexes from anyone", nearest(index));
+    }
+    // and each was settled by one of the twelve who joined before it.
+    for index in 1..cities.len() {
+        let before = &cities[index.saturating_sub(12)..index];
+        assert!(before.iter().any(|hex| hex.distance(cities[index]) <= rules::NEIGHBOUR_REACH), "city {index} was settled away from those before it");
+    }
+    // Sixty cities make one country, not a scattering over the world.
+    let widest = cities.iter().flat_map(|a| cities.iter().map(|b| a.distance(*b))).max().unwrap();
+    assert!(widest < 70, "the sixty lie {widest} hexes across");
+
+    // Where the country about the latest has no room left, the next is
+    // begun elsewhere: a small world fills to its last places all the same.
+    let mut small = Mem::new(START, 3);
+    rules::open(&mut small, 42, 1, 16);
+    let mut count = 0;
+    while small.call(|db| rules::join(db, &format!("Player {count}"))).is_ok() {
+        count += 1;
+        assert!(count < 400);
+    }
+    let all = Table::<City>::all(&small);
+    assert_eq!(all.len(), count);
+    assert!(count >= 12, "a world sixteen hexes out has room for a dozen cities: {count}");
+    for hex in Hex::new(0, 0).within(16) {
+        let length = hex.length();
+        if length >= 16 * 30 / 100 && length <= 16 * 86 / 100 && land::ground(42, 16, hex).is_buildable() {
+            assert!(all.iter().any(|city| Hex::unpacked(city.hex).distance(hex) <= rules::CITY_SPACING), "room was left at {}, {}", hex.q, hex.r);
+        }
+    }
+}
+
+#[test]
 fn a_world_with_no_ground_left_takes_no_more_players() {
     // A world so small that its band of settled ground is a few hexes wide.
     let mut db = Mem::new(START, 3);

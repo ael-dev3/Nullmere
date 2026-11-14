@@ -13,31 +13,52 @@ pub const TIMER_JOB: u8 = 1;
 /// How many hexes lie clear between one city and the next.
 pub const CITY_SPACING: u32 = 2;
 
-/// Whether a hex stands clear for a city: nothing on it, and no other
-/// city crowding it.
-fn is_clear(db: &impl Db, hex: Hex) -> bool {
-    clear_for_city(db, hex, CITY_SPACING)
-}
+/// How far from a city founded lately a new one may be settled, and how
+/// many of the latest players' cities it may be settled by.
+pub const NEIGHBOUR_REACH: u32 = 8;
+const LATEST_PLAYERS: u64 = 12;
 
-/// A place for a new city: buildable ground between the lake's shores and
-/// the mountains, clear of every other city. Tried by chance, so new
-/// cities are scattered, then hex by hex, so a place is found if one is
-/// left.
-fn settle_site(db: &mut impl Db, seed: u64, radius: u32) -> Option<Hex> {
+/// A place for a new player's city: buildable ground between the lake's
+/// shores and the mountains, clear of every other city.
+///
+/// First beside the city of one of the players who joined just before, so
+/// that those who come to the realm about the same time are neighbours,
+/// and a country fills before the next is begun. Then, where no room is
+/// left about them or no one came before, somewhere by chance, and the
+/// next neighbours gather there. Then hex by hex, so a place is found if
+/// one is left.
+fn settle_site(db: &mut impl Db, seed: u64, radius: u32, player: u64) -> Option<Hex> {
     let (near, far) = (radius * 30 / 100, radius * 86 / 100);
-    let fits = |db: &dyn Fn(Hex) -> bool, hex: Hex| {
+    fn fits_in(db: &impl Db, seed: u64, radius: u32, band: (u32, u32), hex: Hex) -> bool {
         let length = hex.length();
-        length >= near && length <= far && land::ground(seed, radius, hex).is_buildable() && db(hex)
-    };
+        length >= band.0 && length <= band.1 && land::ground(seed, radius, hex).is_buildable() && clear_for_city(db, hex, CITY_SPACING)
+    }
+    let fits = |db: &_, hex: Hex| fits_in(db, seed, radius, (near, far), hex);
+    let reach = NEIGHBOUR_REACH as i32;
+    let across = 2 * reach as u64 + 1;
+    // Players are numbered from one as they join: those before this one.
+    let before = player.saturating_sub(1).min(LATEST_PLAYERS);
+    for _ in 0..(if before > 0 { 8 } else { 0 }) {
+        let back = 1 + db.chance() % before;
+        let Some(neighbour) = Table::<City>::by(db, 0, player - back).into_iter().next() else { continue };
+        let heart = Hex::unpacked(neighbour.hex);
+        for _ in 0..24 {
+            let (a, b) = (db.chance(), db.chance());
+            let hex = Hex::new(heart.q + (a % across) as i32 - reach, heart.r + (b % across) as i32 - reach);
+            if heart.distance(hex) <= NEIGHBOUR_REACH && fits(db, hex) {
+                return Some(hex);
+            }
+        }
+    }
     let span = 2 * radius as u64 + 1;
     for _ in 0..200 {
         let (a, b) = (db.chance(), db.chance());
         let hex = Hex::new((a % span) as i32 - radius as i32, (b % span) as i32 - radius as i32);
-        if fits(&|hex| is_clear(db, hex), hex) {
+        if fits(db, hex) {
             return Some(hex);
         }
     }
-    (near..=far).flat_map(|ring| Hex::new(0, 0).ring(ring)).find(|hex| fits(&|hex| is_clear(db, hex), *hex))
+    (near..=far).flat_map(|ring| Hex::new(0, 0).ring(ring)).find(|hex| fits(db, *hex))
 }
 
 /// A player's city.
@@ -54,7 +75,7 @@ pub fn building_of(db: &impl Db, city: u64, kind: Kind) -> Option<Building> {
 /// ground, and goods to begin with.
 pub fn found(db: &mut impl Db, player: &Player) -> Result<City, Refusal> {
     let realm = realm(db)?;
-    let hex = settle_site(db, realm.seed, realm.radius).ok_or(Refusal::NoRoom)?;
+    let hex = settle_site(db, realm.seed, realm.radius, player.id).ok_or(Refusal::NoRoom)?;
     let now = db.now();
     let city = db.insert(City { id: 0, owner: player.id, hex: hex.packed(), name: player.name.clone(), keep: 1, power: 0, founded: now, builders: 1 });
     db.insert(Place { hex: hex.packed(), kind: Place::CITY, id: city.id });
