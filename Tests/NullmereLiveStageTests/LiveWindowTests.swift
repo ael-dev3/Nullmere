@@ -13,16 +13,19 @@ import XCTest
 /// real realm, and written out for the browser preview, where
 /// NULLMERE_REALM_CHECK names one and NULLMERE_WORLD_PREVIEW a folder.
 final class LiveWindowTests: XCTestCase {
-    private func n(_ value: Double) -> JSONValue { .number(value) }
-    private func n(_ value: UInt64) -> JSONValue { .number(Double(value)) }
-    private func n(_ value: Int) -> JSONValue { .number(Double(value)) }
+    private static func n(_ value: Double) -> JSONValue { .number(value) }
+    private static func n(_ value: UInt64) -> JSONValue { .number(Double(value)) }
+    private static func n(_ value: Int) -> JSONValue { .number(Double(value)) }
 
     /// A small world: plain, a wood to the east, deep water in the far
     /// west; Ada's city at 10, -4 with a Farm and a Wall; Bryn's at 14, -4;
     /// a grove at 12, -2; Ada's army half way from her city to it; Bryn's
     /// army at work there; a barrow of the Unquiet at 8, -2, and another
     /// of Bryn's armies fighting at it.
-    private func world() -> LiveWorld {
+    private func world() -> LiveWorld { LiveWorld(snapshot: LiveWindowTests.rows()) }
+
+    /// That world's rows, as a subscription would hold them.
+    static func rows() -> [String: [[JSONValue]]] {
         func ground(_ hex: LiveHex) -> UInt8 {
             if hex.q <= -10 { return 0 }
             if hex.q >= 16 { return 5 }
@@ -45,7 +48,7 @@ final class LiveWindowTests: XCTestCase {
         let route = encoded([ada, LiveHex(q: 10, r: -3), LiveHex(q: 11, r: -3), LiveHex(q: 11, r: -2), grove])
         // Bryn's second army came to the barrow from the east.
         let toBarrow = encoded([LiveHex(q: 10, r: -2), LiveHex(q: 9, r: -2), barrow])
-        return LiveWorld(snapshot: [
+        return [
             "realm": [[n(0), n(42), n(1_000), n(1), n(1_000), n(2), n(40)]],
             "land": chunks,
             "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]],
@@ -61,7 +64,7 @@ final class LiveWindowTests: XCTestCase {
                       [n(4), n(2), n(8), n(1), n(2), n(bryn.packed), n(grove.packed), n(5), n(2_000), n(2_600), n(90), .string(route), n(2)],
                       [n(6), n(2), n(8), n(2), n(4), n(bryn.packed), n(barrow.packed), n(9), n(2_010), n(2_025), n(50), .string(toBarrow), n(3)]],
             "my_squads": [[n(UInt64(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(10), n(0)], [n(UInt64(3 << 16 | 3 << 8 | 2)), n(3), n(3), n(2), n(30), n(0)]],
-        ])
+        ]
     }
 
     func testAWindowOfTheLandIsAMapOfItsOwn() {
@@ -70,8 +73,7 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(window.map.radius, 12)
         XCTAssertEqual(window.map[Hex(0, 0)]?.terrain, .greyfield, "the city's own ground, at the window's heart")
         XCTAssertEqual(window.map[Hex(6, 0)]?.terrain, .blackwood, "the wood to the east, six hexes on")
-        XCTAssertEqual(window.map[Hex(2, 2)]?.feature, .elderGrove, "the grove lies on its hex as the land's own")
-        XCTAssertNil(window.map[Hex(1, 2)]?.feature)
+        XCTAssertNil(window.map[Hex(2, 2)]?.feature, "the grove is staged apart: the window's land is the land alone")
         XCTAssertEqual(window.local(LiveHex(q: 12, r: -2)), Hex(2, 2))
         XCTAssertNil(window.local(LiveHex(q: 30, r: -4)), "beyond the window")
         let heart = window.local(x: LiveHex(q: 10, r: -4).centre.x, y: LiveHex(q: 10, r: -4).centre.y)
@@ -87,7 +89,6 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(rim.map[Hex(3, 0)]?.terrain, .spine, "forty-one hexes out: past the rim")
         XCTAssertEqual(LiveWindow(world: LiveWorld(), centre: LiveHex(q: 0, r: 0), radius: 3).map[Hex(0, 0)]?.terrain, .spine)
         XCTAssertEqual(LiveWindow.terrains.map(\.code), Array(0...7), "the module's grounds by the renderer's own numbers")
-        XCTAssertEqual([1, 2, 3, 4, 9].map { LiveWindow.feature(of: $0) }, [.darkLoam, .elderGrove, .stoneSeam, .moonsaltBed, nil])
     }
 
     func testCitiesStandAsHoldsAndArmiesAsCompaniesWhereTheyAre() throws {
@@ -114,7 +115,7 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertTrue(LiveWindow(world: world, centre: LiveHex(q: -20, r: 20), radius: 4).holds(in: world, colours: colours, at: 0).isEmpty)
 
         // The window's tiles: all of it watched, a hold where each city
-        // stands, the grove on its hex, no one's territory.
+        // stands, no one's territory.
         let tiles = window.tiles(holds: holds)
         let side = TileTexture.side(for: window.map)
         XCTAssertEqual(tiles.count, side * side * 4)
@@ -125,7 +126,7 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(tile(Hex(0, 0))[0], Terrain.greyfield.code)
         XCTAssertEqual(tile(Hex(0, 0))[1], TileTexture.holdFlag | 2 * TileTexture.seenStep)
         XCTAssertEqual(tile(Hex(4, 0))[1], TileTexture.holdFlag | 2 * TileTexture.seenStep)
-        XCTAssertEqual(tile(Hex(2, 2))[1], 2 * TileTexture.seenStep | (Feature.elderGrove.code + 1))
+        XCTAssertEqual(tile(Hex(2, 2))[1], 2 * TileTexture.seenStep, "the grove's own hex: watched, and nothing of the land's on it")
         XCTAssertEqual(TileTexture.seen(tile(Hex(-7, 3))[1]), 2)
         XCTAssertEqual(tile(Hex(6, 0))[0], Terrain.blackwood.code)
         XCTAssertEqual(TileTexture.owner(tiles, at: ((0 + 12) * side + 12) * 4), 0)

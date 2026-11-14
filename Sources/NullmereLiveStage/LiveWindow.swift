@@ -15,8 +15,9 @@ public struct LiveWindow: Sendable {
     /// The hex of the world at the window's heart, and how far it reaches.
     public let centre: LiveHex
     public let radius: Int
-    /// The window's land: the world's ground, hex for hex, each site lying
-    /// on it as the land's own feature.
+    /// The window's land: the world's ground, hex for hex. It is made of
+    /// the land alone, which never changes, so a window need be made only
+    /// once for where it lies; what stands on it is staged apart.
     public let map: WorldMap
 
     /// The window about a hex of a world. Ground the client has not been
@@ -30,11 +31,7 @@ public struct LiveWindow: Sendable {
         for hex in map.hexes {
             let there = LiveHex(q: hex.q + centre.q, r: hex.r + centre.r)
             guard there.distance(to: origin) <= reach, let code = world.ground(at: there), Int(code) < LiveWindow.terrains.count else { continue }
-            var tile = Tile(terrain: LiveWindow.terrains[Int(code)])
-            if let place = world.places[there], place.kind == LivePlace.site, let site = world.sites[place.id] {
-                tile.feature = LiveWindow.feature(of: site.kind)
-            }
-            map.set(hex, tile)
+            map.set(hex, Tile(terrain: LiveWindow.terrains[Int(code)]))
         }
         self.map = map
     }
@@ -42,17 +39,6 @@ public struct LiveWindow: Sendable {
     /// The module's grounds, in the order of their codes: the renderer's
     /// terrains by the same numbers (`LiveSchemaTests` holds them so).
     static let terrains: [Terrain] = [.still, .shallows, .strand, .saltFlat, .greyfield, .blackwood, .barrow, .spine]
-
-    /// What lies at a site, as the land shows it.
-    static func feature(of kind: Int) -> Feature? {
-        switch kind {
-        case 1: return .darkLoam
-        case 2: return .elderGrove
-        case 3: return .stoneSeam
-        case 4: return .moonsaltBed
-        default: return nil
-        }
-    }
 
     /// A hex of the world as the window's own, if it lies in the window.
     public func local(_ hex: LiveHex) -> Hex? {
