@@ -23,7 +23,7 @@ struct WorldView: View {
             if metalFailed || WorldMetalView.systemDevice == nil {
                 WorldFallback(session: session)
             } else {
-                WorldMetalRepresentable(session: session, motion: motion, frameRate: frameRate, quality: quality, night: night) {
+                WorldMetalRepresentable(session: session, motion: motion, frameRate: frameRate, quality: quality, night: night, hour: hour) {
                     metalFailed = true
                 } onFaltering: {
                     // A detail down, before the painting.
@@ -87,6 +87,9 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
     let frameRate: FrameRateCap
     let quality: RenderQuality
     let night: Night
+    /// The hour of the world's day it is drawn at; nil for the world's own
+    /// day by the clock.
+    let hour: Float?
     let onFailure: () -> Void
     let onFaltering: () -> Void
 
