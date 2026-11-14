@@ -432,8 +432,32 @@ NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client swift test --filter N
 ```
 
 At the written pace the test joins and builds; at thirty times or more it
-trains troops and sends an army to gather as well. The Realm rules
-workflow's second job runs it so.
+trains troops, sends an army to gather, and sends it against a barrow of
+the Unquiet as well. The Realm rules workflow's second job runs it so.
+
+`Sources/NullmereLive/LiveBook.swift` reads those rows into what a city
+screen lists (each building with what its next level costs and why it
+can't be raised yet, in the realm's own words). `Sources/NullmereLiveStage`
+is the player apart from any screen: `LiveWindow` turns the rows about a
+hex into what the world's renderer takes, `LiveSession` keeps the window
+about where the player looks, says what lies at a chosen hex
+(`LiveCard`) and hands what they ask to the realm, and `LiveDoor` keeps
+who they are between runs. All of it is tested on Linux over a stand-in
+line (`Tests/NullmereTestSupport/LiveSample.swift`).
+
+The Mac's screens over it are in `Sources/NullmereKit/Live`. Until the
+app switches to the rebuilt realm, a debug build opens on it where the
+environment names one:
+
+```sh
+realm/people.py http://127.0.0.1:3000 nullmere-rebuilt 12 -- spacetime call --server local nullmere-rebuilt set_pace
+NULLMERE_REBUILT_REALM=http://127.0.0.1:3000/nullmere-rebuilt swift run NullmereLauncher
+```
+
+`realm/people.py` plays a number of players into a realm, each under an
+identity of their own, so there is a neighbourhood to look at.
+`scripts/smoke-test-rebuilt.sh` does both on a Mac and takes pictures
+(`build/rebuilt-*.png`); CI runs it after the old realm's own smoke test.
 
 ## Layout
 

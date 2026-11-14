@@ -80,7 +80,9 @@ jobs:
     # runs in a job of its own beside this one (companion, below): with it,
     # this job had grown to 58 min 15 s on a slow runner (run 735, whose
     # plain work went 1.74 times slower than the baseline's).
-    timeout-minutes: 60
+    # The tests take thirty-five minutes on a slow runner (run 969), and
+    # the app is opened a dozen times after them.
+    timeout-minutes: 80
     # "bash" runs with -o pipefail, so a failure piped through tee still fails.
     defaults:
       run:
@@ -283,6 +285,14 @@ jobs:
         env:
           NULLMERE_REALM: http://127.0.0.1:3000/nullmere
         run: mkdir -p build && scripts/smoke-test-network.sh 2>&1 | tee build/smoke-network.log
+
+      # The rebuilt realm (realm/) on the same server: its module built and
+      # published, a dozen players played into it, and the app opened on
+      # it as one more. Its pictures are kept with the rest (rebuilt-*.png).
+      - name: Open the rebuilt realm
+        if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
+        timeout-minutes: 15
+        run: mkdir -p build && scripts/smoke-test-rebuilt.sh 2>&1 | tee build/smoke-rebuilt.log
 
       - name: Keep the screenshots
         if: always()
