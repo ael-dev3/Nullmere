@@ -350,6 +350,111 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(session.everyoneReady.count, 0, "no one stands ready in these rows")
     }
 
+    func testWhatIsChosenIsToldOnACardWithWhatCanBeDone() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
+        rows["my_hunt"] = [[n(1), n(1_000), n(2_000), n(1_000), n(8_000), n(1)]]
+        rows["blueprint"] = [[n(2 << 32 | 1), n(2), n(1), .string("Farm"), n(0), n(100), n(0), n(0), n(10), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)]]
+        rows["my_jobs"] = [[n(4), n(7), n(1), n(22), n(3), n(0), n(2_000), n(2_100), n(9)]]
+        // A second barrow no one is at, of the fourth level; a second site no one works.
+        rows["barrow"]?.append([n(10), n(LiveHex(q: 6, r: -1).packed), n(4), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 6, r: -1).packed), n(3), n(10)])
+        rows["barrow"]?.append([n(11), n(LiveHex(q: 6, r: 0).packed), n(2), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 6, r: 0).packed), n(3), n(11)])
+        rows["site"]?.append([n(6), n(LiveHex(q: 7, r: 1).packed), n(1), n(2), n(40_000), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 7, r: 1).packed), n(2), n(6)])
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        func card(_ q: Int, _ r: Int) -> LiveCard { session.card(for: session.selection(at: LiveHex(q: q, r: r))) }
+
+        // Her city: what it is, what it is raising, and its two doors.
+        let home = card(10, -4)
+        XCTAssertEqual(home.title, "Ada")
+        XCTAssertEqual(home.lines, ["Your city. Keep level 3, power 1,000.", "Farm to level 3: 1:25"])
+        XCTAssertEqual(home.buttons.map(\.title), ["Buildings", "Troops"])
+        XCTAssertEqual(home.buttons.map(\.act), [.city, .troops])
+        // Another's: whose, and that they are here.
+        XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["Bryn's city. Keep level 8, power 9,000. They are here now."], buttons: []))
+
+        // Ada has one army out and a Keep of the third level: no second
+        // army may go, wherever it is sent.
+        let oneOut = "Your one army is out. Raise your Keep to send more."
+        XCTAssertEqual(card(7, 1), LiveCard(title: "Grain, level 2", lines: ["40,000 left to gather."],
+                                            buttons: [.init(title: "Gather with 40 soldiers", act: .send, why: oneOut)]))
+        // The grove Bryn's army works; the barrow his other army fights at.
+        let grove = card(12, -2)
+        XCTAssertEqual(grove.title, "Timber, level 4")
+        XCTAssertEqual(grove.lines, ["80,000 left to gather.", "Another army is gathering here."])
+        XCTAssertEqual(grove.buttons.first?.why, "Another army is gathering there.")
+        let fought = card(8, -2)
+        XCTAssertEqual(fought.title, "Barrow, level 2")
+        XCTAssertEqual(fought.lines, ["The Unquiet hold it. An attack takes 50 energy.", "Another army is fighting here."])
+        XCTAssertEqual(fought.buttons.first?.why, "Another army is fighting there.")
+        // A barrow two levels above the one she has cleared.
+        XCTAssertEqual(card(6, -1).buttons.first?.why, "Clear a level 3 barrow first.")
+        XCTAssertEqual(card(6, 0).buttons.first, .init(title: "Attack with 40 soldiers", act: .send, why: oneOut))
+
+        // With her army home, both may be sent for; pressed, everyone ready goes.
+        line.change { $0["march"]?.removeFirst() }
+        session.refresh()
+        XCTAssertNil(card(7, 1).buttons.first?.why)
+        XCTAssertNil(card(6, 0).buttons.first?.why)
+        session.selected = LiveHex(q: 6, r: 0)
+        await session.press(card(6, 0).buttons[0])
+        XCTAssertEqual(line.asked, ["hunt at 6, 0 with 40 of 1.1"])
+        session.selected = LiveHex(q: 7, r: 1)
+        await session.press(card(7, 1).buttons[0])
+        XCTAssertEqual(line.asked.last, "gather at 7, 1 with 40 of 1.1")
+        // A button that can't be pressed says why, and asks nothing.
+        await session.press(card(6, -1).buttons[0])
+        XCTAssertEqual(session.said, "Clear a level 3 barrow first.")
+        XCTAssertEqual(line.asked.count, 2)
+        // Too little energy; and no one ready.
+        line.change { $0["my_hunt"] = [[self.n(1), self.n(30), self.n(2_015), self.n(1_000), self.n(8_000), self.n(1)]] }
+        session.refresh()
+        XCTAssertEqual(card(6, 0).buttons.first?.why, "An attack takes 50 energy. You have 30.")
+        line.change { $0["my_troops"] = [] }
+        session.refresh()
+        XCTAssertEqual(card(7, 1).buttons.first, .init(title: "Gather", act: .send, why: "No soldiers stand ready in your city."))
+
+        // Bare land by its ground; land never told.
+        XCTAssertEqual(card(5, 5), LiveCard(title: "Plain", lines: [], buttons: []))
+        XCTAssertEqual(card(20, -4).title, "Wood")
+        XCTAssertEqual(card(-12, 0).title, "Deep water")
+        XCTAssertEqual(card(500, 0).title, "Unknown land")
+    }
+
+    func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
+        let line = StandInLine(rows: LiveWindowTests.rows())
+        // Seventeen seconds along its way of twenty-four: on 11, -2.
+        let session = session(line, at: 2_017)
+        await session.open()
+        let hers = session.card(for: session.selection(at: LiveHex(q: 11, r: -2)))
+        XCTAssertEqual(hers.title, "Your army")
+        XCTAssertEqual(hers.lines, ["On its way to gather timber: 0:07", "40 soldiers."])
+        XCTAssertEqual(hers.buttons, [.init(title: "Call home", act: .recall(3), why: nil)])
+        await session.press(hers.buttons[0])
+        XCTAssertEqual(line.asked, ["recall 3"])
+
+        // Another's army is told by whose it is and how many march.
+        guard let bryns = session.world.marches[4] else { return XCTFail("Bryn's army") }
+        XCTAssertEqual(session.card(for: .army(bryns, own: false)), LiveCard(title: "Bryn's army", lines: ["90 soldiers"], buttons: []))
+        // Her own in a fight can't be called away, and the card says why.
+        guard let fighting = session.world.marches[6] else { return XCTFail("the army at the barrow") }
+        line.change { rows in
+            rows["march"] = rows["march"]?.map { row in
+                var row = row
+                if row[0] == .number(6) { row[1] = .number(1) }
+                return row
+            }
+        }
+        session.refresh()
+        let own = session.card(for: .army(session.world.marches[6] ?? fighting, own: true))
+        XCTAssertEqual(own.lines.first, "Fighting at a level 2 barrow: 0:08")
+        XCTAssertEqual(own.buttons, [.init(title: "Call home", act: .recall(6), why: "That army is fighting. Wait for the fight to end.")])
+    }
+
     func testWhatIsAskedGoesToTheRealmAndItsRefusalIsKept() async throws {
         var rows = LiveWindowTests.rows()
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)], [n(7 << 16 | 3 << 8 | 2), n(7), n(3), n(2), n(12), n(5)],

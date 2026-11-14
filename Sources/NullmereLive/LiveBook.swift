@@ -159,6 +159,8 @@ extension LiveWorld {
     /// training building takes at a level, as the module's catalogue has
     /// them.
     public static let topLevel = 25
+    /// The energy an attack on a barrow takes, as the module's catalogue has it.
+    public static let energyAnAttack = 50
     public static func batch(level: Int) -> UInt64 { UInt64(10 + 40 * min(max(level, 0), topLevel)) }
 
     /// How many buildings the city is raising now.

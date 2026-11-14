@@ -96,6 +96,7 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(catalog.contains("0..=4 => 1,") && catalog.contains("5..=10 => 2,") && catalog.contains("11..=16 => 3,") && catalog.contains("17..=21 => 4,"))
         XCTAssertEqual([1, 4, 5, 10, 11, 16, 17, 21, 22, 25].map { LiveWorld.marches(keep: $0) }, [1, 1, 2, 2, 3, 3, 4, 4, 5, 5])
         XCTAssertTrue(catalog.contains("50 + 150 * level + 10 * level * level"))
+        XCTAssertTrue(catalog.contains("pub const ENERGY_A_HUNT: u32 = \(LiveWorld.energyAnAttack);"))
     }
 
     func testEachBuildingIsListedWithWhatItsNextLevelAsks() throws {
