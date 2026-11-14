@@ -858,10 +858,13 @@ public enum WorldShaders {
             }
         }
     #endif
-        // Laid over what shows through the shallows as froth lies on it:
-        // pale, and never darker than the water it lies on, so the moon's
-        // image runs on through it.
-        float3 foam = max(frame.keyColour.rgb * 0.05 * frame.skyLight.a * mix(0.72, 1.0, knowledge.y), colour);
+        // Laid over what shows through the shallows as froth lies on it.
+        // Froth is white: lit as the palest thing on the shore would be in
+        // this hour's light, facing it full, so that it is never darker
+        // than the sand it washes over nor the water it lies on, and the
+        // moon's image runs on through it.
+        float3 pale = 0.9 * (frame.keyColour.rgb * frame.key.w * frame.land.y + frame.fillColour.rgb + frame.skyLight.rgb);
+        float3 foam = max(pale * mix(0.72, 1.0, knowledge.y), colour);
         float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
         colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
         colour = nm_haze(colour, distance(world, frame.eye.xyz) NM_FRAME_PASS);
